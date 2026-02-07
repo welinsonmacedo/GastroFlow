@@ -16,80 +16,94 @@ export const OwnerLogin: React.FC = () => {
         setLoading(true);
 
         try {
-            // 1. Auth do Supabase
+            // 1. Autenticação no Supabase Auth (Email/Senha)
             const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
                 email: form.email,
                 password: form.password
             });
 
             if (authError || !authData.user) {
-                throw new Error("Email ou senha incorretos.");
+                throw new Error("Credenciais inválidas. Verifique seu e-mail e senha.");
             }
 
-            // 2. Descobrir qual o Tenant deste usuário
+            const userId = authData.user.id;
+
+            // 2. Descobrir qual o Tenant (Restaurante) deste usuário
+            // Buscamos na tabela 'staff' onde o auth_user_id corresponde ao usuário logado.
+            // A query traz também os dados da tabela 'tenants' relacionada.
             const { data: staffData, error: staffError } = await supabase
                 .from('staff')
-                .select('tenant_id, tenants(slug)')
-                .eq('auth_user_id', authData.user.id)
-                .single();
+                .select('tenant_id, tenants ( slug, name )')
+                .eq('auth_user_id', userId)
+                .maybeSingle();
 
-            if (staffError || !staffData) {
-                // Tentar ver se é dono direto na tabela tenants (caso legado ou falha no staff)
+            // Se não encontrou staff, tenta verificar se é um "Dono Legado" direto na tabela tenants (fallback)
+            let tenantSlug = '';
+            
+            if (staffData && staffData.tenants) {
+                // @ts-ignore - Supabase join types inferidos
+                tenantSlug = staffData.tenants.slug;
+            } else {
+                // Fallback: Verifica owner_auth_id direto na tabela tenants
                 const { data: tenantData } = await supabase
                     .from('tenants')
                     .select('slug')
-                    .eq('owner_auth_id', authData.user.id)
-                    .single();
+                    .eq('owner_auth_id', userId)
+                    .maybeSingle();
                 
                 if (tenantData) {
-                    window.location.href = `/?restaurant=${tenantData.slug}`;
-                    return;
+                    tenantSlug = tenantData.slug;
                 }
-
-                throw new Error("Usuário não vinculado a nenhum restaurante.");
             }
 
-            // 3. Redirecionar para a URL do restaurante
-            const slug = (staffData.tenants as any).slug;
-            if (slug) {
-                // Força um reload para garantir que o Contexto pegue o novo Slug e a Sessão Auth
-                window.location.href = `/?restaurant=${slug}`;
-            } else {
-                throw new Error("Erro na configuração do restaurante.");
+            if (!tenantSlug) {
+                // Se logou no Auth mas não tem restaurante vinculado
+                await supabase.auth.signOut();
+                throw new Error("Usuário autenticado, mas nenhum restaurante vinculado foi encontrado.");
             }
+
+            // 3. Redirecionar para o ambiente do restaurante
+            // O App.tsx vai detectar o parâmetro ?restaurant=slug e carregar o contexto correto
+            window.location.href = `/?restaurant=${tenantSlug}`;
 
         } catch (err: any) {
             console.error(err);
-            setError(err.message || "Erro ao fazer login.");
+            setError(err.message || "Ocorreu um erro ao tentar fazer login.");
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-4">
-            <Link to="/" className="absolute top-6 left-6 text-white flex items-center gap-2 opacity-70 hover:opacity-100 transition-opacity">
-                <ArrowLeft size={20} /> Voltar
+        <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-4 relative overflow-hidden">
+            {/* Background Decorativo */}
+            <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none">
+                <div className="absolute right-0 top-0 bg-blue-600 w-96 h-96 rounded-full blur-3xl transform translate-x-1/2 -translate-y-1/2"></div>
+                <div className="absolute left-0 bottom-0 bg-purple-600 w-96 h-96 rounded-full blur-3xl transform -translate-x-1/2 translate-y-1/2"></div>
+            </div>
+
+            <Link to="/" className="absolute top-6 left-6 text-white flex items-center gap-2 opacity-70 hover:opacity-100 transition-opacity z-10">
+                <ArrowLeft size={20} /> Voltar para Home
             </Link>
 
-            <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
+            <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md z-10">
                 <div className="flex flex-col items-center mb-8">
-                    <div className="bg-blue-600 p-4 rounded-full text-white mb-4 shadow-lg">
+                    <div className="bg-blue-600 p-4 rounded-full text-white mb-4 shadow-lg ring-4 ring-blue-50">
                         <ChefHat size={40} />
                     </div>
-                    <h1 className="text-2xl font-bold text-gray-800">Login GastroFlow</h1>
-                    <p className="text-gray-500">Acesso para Donos e Gerentes</p>
+                    <h1 className="text-2xl font-bold text-gray-800">Minha Conta</h1>
+                    <p className="text-gray-500">Gerencie seu restaurante</p>
                 </div>
 
                 <form onSubmit={handleLogin} className="space-y-6">
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">E-mail</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">E-mail Cadastrado</label>
                         <div className="relative">
                             <Mail className="absolute left-3 top-3.5 text-gray-400" size={18} />
                             <input 
                                 type="email"
-                                className="w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                                placeholder="seu@email.com"
+                                className="w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                                placeholder="exemplo@gastroflow.com"
                                 value={form.email}
                                 onChange={(e) => setForm({...form, email: e.target.value})}
                                 autoFocus
@@ -103,7 +117,7 @@ export const OwnerLogin: React.FC = () => {
                             <Lock className="absolute left-3 top-3.5 text-gray-400" size={18} />
                             <input 
                                 type="password" 
-                                className="w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                className="w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all"
                                 placeholder="******"
                                 value={form.password}
                                 onChange={(e) => setForm({...form, password: e.target.value})}
@@ -118,14 +132,14 @@ export const OwnerLogin: React.FC = () => {
                         </div>
                     )}
 
-                    <Button type="submit" disabled={loading} className="w-full py-3 text-lg bg-slate-800 hover:bg-slate-900">
-                        {loading ? <Loader2 className="animate-spin" /> : 'Entrar no Painel'}
+                    <Button type="submit" disabled={loading} className="w-full py-3 text-lg bg-slate-900 hover:bg-slate-800">
+                        {loading ? <Loader2 className="animate-spin" /> : 'Entrar no Sistema'}
                     </Button>
 
                     <div className="text-center pt-4 border-t">
-                        <p className="text-sm text-gray-500 mb-2">Não tem uma conta?</p>
+                        <p className="text-sm text-gray-500 mb-2">Ainda não é cliente?</p>
                         <Link to="/register" className="text-blue-600 font-bold hover:underline">
-                            Cadastrar Restaurante Grátis
+                            Criar Restaurante Grátis
                         </Link>
                     </div>
                 </form>
