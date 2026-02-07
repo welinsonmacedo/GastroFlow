@@ -16,7 +16,7 @@ import { OwnerLogin } from './pages/OwnerLogin';
 import { PrivacyPolicy } from './pages/PrivacyPolicy';
 import { TermsOfService } from './pages/TermsOfService';
 import { InstallPWA } from './components/InstallPWA';
-import { ChefHat, Coffee, Monitor, DollarSign, Settings, LogOut, User as UserIcon, Menu, AlertCircle } from 'lucide-react';
+import { ChefHat, Coffee, Monitor, DollarSign, Settings, LogOut, User as UserIcon, Menu, AlertCircle, Lock } from 'lucide-react';
 import { Role } from './types';
 import { getTenantSlug } from './utils/tenant';
 
@@ -180,6 +180,24 @@ const TenantApp = () => {
 
     if (state.isLoading) return <div className="h-screen flex items-center justify-center">Carregando sistema...</div>;
     
+    // TELA DE BLOQUEIO (CONTA INATIVA)
+    if (state.isInactiveTenant) {
+        return (
+            <div className="h-screen flex flex-col items-center justify-center bg-gray-50 p-6 text-center">
+                <div className="bg-red-100 p-6 rounded-full mb-6 text-red-600 shadow-xl border border-red-200">
+                    <Lock size={64} />
+                </div>
+                <h1 className="text-3xl font-bold text-gray-800 mb-2">Acesso Temporariamente Suspenso</h1>
+                <p className="text-gray-600 max-w-md mb-8">
+                    A conta deste restaurante está desativada no momento. Por favor, entre em contato com o suporte ou com o administrador do sistema para regularizar o acesso.
+                </p>
+                <div className="text-sm text-gray-400">
+                    Código: TENANT_INACTIVE
+                </div>
+            </div>
+        );
+    }
+
     if (!state.isValidTenant) {
         return (
             <div className="h-screen flex flex-col items-center justify-center bg-gray-50">

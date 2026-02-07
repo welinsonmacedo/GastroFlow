@@ -9,6 +9,7 @@ interface State {
   tenantSlug: string | null;
   tenantId: string | null; // ID UUID do Supabase
   isValidTenant: boolean;
+  isInactiveTenant: boolean; // Novo estado para bloqueio
   tables: Table[];
   products: Product[];
   orders: Order[];
@@ -26,6 +27,7 @@ type Action =
   | { type: 'SET_LOADING'; isLoading: boolean }
   | { type: 'INIT_DATA'; payload: Partial<State> }
   | { type: 'TENANT_NOT_FOUND' }
+  | { type: 'TENANT_INACTIVE' } // Nova ação
   | { type: 'LOGIN'; user: User }
   | { type: 'LOGOUT' }
   | { type: 'REALTIME_UPDATE_TABLES'; tables: Table[] }
@@ -59,6 +61,7 @@ const initialState: State = {
   tenantSlug: null,
   tenantId: null,
   isValidTenant: false,
+  isInactiveTenant: false,
   tables: [],
   products: [],
   orders: [],
@@ -107,8 +110,11 @@ const restaurantReducer = (state: State, action: Action): State => {
     case 'TENANT_NOT_FOUND':
         return { ...state, isLoading: false, isValidTenant: false };
 
+    case 'TENANT_INACTIVE':
+        return { ...state, isLoading: false, isValidTenant: true, isInactiveTenant: true };
+
     case 'INIT_DATA':
-        return { ...state, ...action.payload, isLoading: false, isValidTenant: true };
+        return { ...state, ...action.payload, isLoading: false, isValidTenant: true, isInactiveTenant: false };
 
     case 'LOGIN':
       return { ...state, currentUser: action.user };
@@ -210,6 +216,12 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
             if (tenantError || !tenant) {
                 dispatchLocal({ type: 'TENANT_NOT_FOUND' });
+                return;
+            }
+
+            // --- VERIFICAÇÃO DE STATUS INATIVO ---
+            if (tenant.status === 'INACTIVE') {
+                dispatchLocal({ type: 'TENANT_INACTIVE' });
                 return;
             }
 

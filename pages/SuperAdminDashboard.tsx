@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useSaaS } from '../context/SaaSContext';
 import { Plan, PlanType, RestaurantTenant } from '../types';
 import { Button } from '../components/Button';
-import { Building2, Users, DollarSign, Activity, Settings, Search, MoreHorizontal, ExternalLink, LogOut, Plus, X, List, Edit, Key, Lock, BarChart2 } from 'lucide-react';
+import { Building2, Users, DollarSign, Activity, Settings, Search, MoreHorizontal, ExternalLink, LogOut, Plus, X, List, Edit, Key, Lock, BarChart2, Unlock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 type ViewMode = 'RESTAURANTS' | 'FINANCIAL' | 'PLANS' | 'SETTINGS';
@@ -253,7 +253,7 @@ export const SuperAdminDashboard: React.FC = () => {
                                 <th className="p-4">Dono</th>
                                 <th className="p-4">Plano</th>
                                 <th className="p-4">Requisições</th>
-                                <th className="p-4">Status</th>
+                                <th className="p-4">Acesso</th>
                                 <th className="p-4 text-right">Ações</th>
                             </tr>
                         </thead>
@@ -276,7 +276,19 @@ export const SuperAdminDashboard: React.FC = () => {
                                             <span className="font-mono font-bold text-gray-700">{tenant.requestCount || 0}</span>
                                         </div>
                                     </td>
-                                    <td className="p-4"><button onClick={() => dispatch({ type: 'TOGGLE_STATUS', tenantId: tenant.id })} className={`px-3 py-1 rounded-full text-xs font-bold transition-colors border ${tenant.status === 'ACTIVE' ? 'bg-green-100 text-green-700 border-green-200' : 'bg-red-100 text-red-700 border-red-200'}`}>{tenant.status === 'ACTIVE' ? 'ATIVO' : 'INATIVO'}</button></td>
+                                    <td className="p-4">
+                                        <button 
+                                            onClick={() => dispatch({ type: 'TOGGLE_STATUS', tenantId: tenant.id })} 
+                                            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all border shadow-sm w-fit
+                                            ${tenant.status === 'ACTIVE' 
+                                                ? 'bg-green-100 text-green-700 border-green-200 hover:bg-green-200' 
+                                                : 'bg-red-100 text-red-700 border-red-200 hover:bg-red-200'}`}
+                                            title={tenant.status === 'ACTIVE' ? 'Clique para Bloquear Acesso' : 'Clique para Liberar Acesso'}
+                                        >
+                                            {tenant.status === 'ACTIVE' ? <Unlock size={14}/> : <Lock size={14}/>}
+                                            {tenant.status === 'ACTIVE' ? 'LIBERADO' : 'BLOQUEADO'}
+                                        </button>
+                                    </td>
                                     <td className="p-4 text-right">
                                         <button 
                                             onClick={() => openEditModal(tenant)}
