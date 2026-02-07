@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ChefHat, CheckCircle, Smartphone, BarChart3, ShieldCheck, MessageCircle, ArrowRight, Star, Send, Menu, X, LogIn, Zap, Monitor, LayoutDashboard } from 'lucide-react';
+import { ChefHat, CheckCircle, Smartphone, BarChart3, ShieldCheck, MessageCircle, ArrowRight, Star, Send, Menu, X, LogIn, Zap, Monitor, LayoutDashboard, QrCode, MonitorPlay, PieChart, TrendingUp, ListChecks } from 'lucide-react';
 import { useSaaS } from '../context/SaaSContext';
 
 const FeatureCard = ({ icon, title, desc }: { icon: React.ReactNode, title: string, desc: string }) => (
@@ -264,19 +264,28 @@ export const LandingPage: React.FC = () => {
         </div>
       </div>
 
-      {/* --- Visual Showcase Section (NEW) --- */}
+      {/* --- Visual Showcase Section (Illustrations) --- */}
       <div id="showcase" className="py-24 bg-slate-50 border-t border-slate-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-32">
             
-            {/* Block 1: QR Code */}
+            {/* Block 1: QR Code Illustration */}
             <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-24">
-                <div className="lg:w-1/2 relative group">
-                    <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 to-cyan-500 rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-1000"></div>
-                    <img 
-                        src="https://images.unsplash.com/photo-1595079676339-1534801ad6cf?auto=format&fit=crop&w=800&q=80" 
-                        alt="Cliente usando QR Code" 
-                        className="relative rounded-2xl shadow-2xl border-4 border-white w-full h-[400px] object-cover"
-                    />
+                <div className="lg:w-1/2 relative flex justify-center items-center group">
+                    {/* Background Blob */}
+                    <div className="absolute inset-0 bg-blue-100 rounded-full blur-3xl opacity-60 scale-90 group-hover:scale-100 transition-transform duration-1000"></div>
+                    {/* Phone Mockup Illustration */}
+                    <div className="relative bg-white rounded-[3rem] border-8 border-slate-900 shadow-2xl h-[450px] w-[260px] flex flex-col overflow-hidden transform group-hover:-translate-y-2 transition-transform duration-500">
+                        {/* Notch */}
+                        <div className="absolute top-0 left-1/2 transform -translate-x-1/2 h-6 w-32 bg-slate-900 rounded-b-xl z-20"></div>
+                        {/* Screen Content */}
+                        <div className="bg-slate-50 flex-1 flex flex-col items-center justify-center p-6 relative">
+                            <div className="absolute top-10 w-16 h-2 bg-slate-200 rounded-full mb-8"></div>
+                            <QrCode size={120} className="text-slate-900 mb-6" strokeWidth={1.5} />
+                            <div className="w-full h-3 bg-blue-100 rounded-full mb-2"></div>
+                            <div className="w-2/3 h-3 bg-slate-200 rounded-full mb-8"></div>
+                            <button className="bg-blue-600 text-white rounded-lg px-6 py-2 text-sm font-bold shadow-lg shadow-blue-200">Ver Cardápio</button>
+                        </div>
+                    </div>
                 </div>
                 <div className="lg:w-1/2">
                     <div className="inline-flex items-center gap-2 bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-bold uppercase mb-4">
@@ -294,19 +303,51 @@ export const LandingPage: React.FC = () => {
                 </div>
             </div>
 
-            {/* Block 2: KDS (Reverse Layout) */}
+            {/* Block 2: KDS Illustration (Reverse Layout) */}
             <div className="flex flex-col lg:flex-row-reverse items-center gap-12 lg:gap-24">
-                <div className="lg:w-1/2 relative group">
-                    <div className="absolute -inset-1 bg-gradient-to-r from-purple-600 to-pink-500 rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-1000"></div>
-                    <img 
-                        src="https://images.unsplash.com/photo-1556910103-1c02745a30bf?auto=format&fit=crop&w=800&q=80" 
-                        alt="Cozinha com KDS" 
-                        className="relative rounded-2xl shadow-2xl border-4 border-white w-full h-[400px] object-cover"
-                    />
+                <div className="lg:w-1/2 relative flex justify-center items-center group">
+                    <div className="absolute inset-0 bg-purple-100 rounded-full blur-3xl opacity-60 scale-90 group-hover:scale-100 transition-transform duration-1000"></div>
+                    {/* Monitor Illustration */}
+                    <div className="relative bg-slate-900 rounded-2xl p-2 shadow-2xl w-full max-w-md transform group-hover:-translate-y-2 transition-transform duration-500">
+                        <div className="bg-slate-800 rounded-xl overflow-hidden border border-slate-700 h-[280px] relative flex">
+                            {/* Sidebar */}
+                            <div className="w-16 bg-slate-900 border-r border-slate-700 flex flex-col items-center py-4 gap-4">
+                                <div className="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center"><ChefHat size={16} className="text-white"/></div>
+                                <div className="w-8 h-8 bg-slate-700 rounded-lg"></div>
+                                <div className="w-8 h-8 bg-slate-700 rounded-lg"></div>
+                            </div>
+                            {/* Main KDS Area */}
+                            <div className="flex-1 p-4 flex gap-3 overflow-hidden">
+                                <div className="w-1/2 bg-slate-700 rounded-lg p-2 border-l-4 border-yellow-500">
+                                    <div className="flex justify-between mb-2">
+                                        <div className="w-12 h-3 bg-slate-500 rounded"></div>
+                                        <div className="w-8 h-3 bg-slate-600 rounded"></div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <div className="w-full h-2 bg-slate-600 rounded"></div>
+                                        <div className="w-2/3 h-2 bg-slate-600 rounded"></div>
+                                        <div className="w-3/4 h-2 bg-yellow-900/50 rounded border border-yellow-700/50"></div>
+                                    </div>
+                                </div>
+                                <div className="w-1/2 bg-slate-700 rounded-lg p-2 border-l-4 border-green-500 opacity-75">
+                                    <div className="flex justify-between mb-2">
+                                        <div className="w-12 h-3 bg-slate-500 rounded"></div>
+                                        <div className="w-8 h-3 bg-green-900 text-green-400 text-[8px] flex items-center justify-center font-bold px-1 rounded">PRONTO</div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <div className="w-full h-2 bg-slate-600 rounded"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {/* Monitor Stand */}
+                        <div className="absolute -bottom-6 left-1/2 transform -translate-x-1/2 w-24 h-6 bg-slate-800 rounded-b-lg"></div>
+                        <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 w-40 h-2 bg-slate-900 rounded-full shadow-lg"></div>
+                    </div>
                 </div>
                 <div className="lg:w-1/2">
                     <div className="inline-flex items-center gap-2 bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-xs font-bold uppercase mb-4">
-                        <Monitor size={14} /> KDS - Tela de Cozinha
+                        <MonitorPlay size={14} /> KDS - Tela de Cozinha
                     </div>
                     <h3 className="text-3xl md:text-4xl font-extrabold text-slate-900 mb-6">Cozinha sem caos, pratos no ponto.</h3>
                     <p className="text-lg text-slate-600 mb-6 leading-relaxed">
@@ -320,15 +361,50 @@ export const LandingPage: React.FC = () => {
                 </div>
             </div>
 
-            {/* Block 3: Admin Dashboard */}
+            {/* Block 3: Admin Illustration */}
             <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-24">
-                <div className="lg:w-1/2 relative group">
-                    <div className="absolute -inset-1 bg-gradient-to-r from-emerald-500 to-teal-600 rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-1000"></div>
-                    <img 
-                        src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=800&q=80" 
-                        alt="Dashboard Administrativo" 
-                        className="relative rounded-2xl shadow-2xl border-4 border-white w-full h-[400px] object-cover"
-                    />
+                <div className="lg:w-1/2 relative flex justify-center items-center group">
+                    <div className="absolute inset-0 bg-emerald-100 rounded-full blur-3xl opacity-60 scale-90 group-hover:scale-100 transition-transform duration-1000"></div>
+                    {/* Dashboard Illustration */}
+                    <div className="relative bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm border border-slate-100 transform group-hover:-translate-y-2 transition-transform duration-500">
+                        <div className="flex justify-between items-center mb-6">
+                            <div className="w-24 h-4 bg-slate-100 rounded-full"></div>
+                            <div className="w-8 h-8 bg-slate-100 rounded-full"></div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4 mb-6">
+                            <div className="bg-emerald-50 p-4 rounded-xl">
+                                <TrendingUp size={24} className="text-emerald-600 mb-2" />
+                                <div className="w-12 h-3 bg-emerald-200 rounded mb-1"></div>
+                                <div className="w-16 h-2 bg-emerald-100 rounded"></div>
+                            </div>
+                            <div className="bg-blue-50 p-4 rounded-xl">
+                                <PieChart size={24} className="text-blue-600 mb-2" />
+                                <div className="w-12 h-3 bg-blue-200 rounded mb-1"></div>
+                                <div className="w-16 h-2 bg-blue-100 rounded"></div>
+                            </div>
+                        </div>
+                        <div className="space-y-3">
+                            <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 bg-white rounded-md shadow-sm flex items-center justify-center"><ListChecks size={16} className="text-slate-400"/></div>
+                                    <div className="w-20 h-3 bg-slate-200 rounded"></div>
+                                </div>
+                                <div className="w-10 h-3 bg-slate-200 rounded"></div>
+                            </div>
+                            <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg opacity-60">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 bg-white rounded-md shadow-sm flex items-center justify-center"><ListChecks size={16} className="text-slate-400"/></div>
+                                    <div className="w-16 h-3 bg-slate-200 rounded"></div>
+                                </div>
+                                <div className="w-10 h-3 bg-slate-200 rounded"></div>
+                            </div>
+                        </div>
+                        {/* Floating Badge */}
+                        <div className="absolute -right-4 top-10 bg-white p-3 rounded-xl shadow-lg border border-slate-100 flex items-center gap-3 animate-bounce-slow">
+                            <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                            <span className="text-xs font-bold text-slate-600">Lucro +15%</span>
+                        </div>
+                    </div>
                 </div>
                 <div className="lg:w-1/2">
                     <div className="inline-flex items-center gap-2 bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-xs font-bold uppercase mb-4">
