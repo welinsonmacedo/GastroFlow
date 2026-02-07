@@ -1,4 +1,17 @@
 export const getTenantSlug = (): string | null => {
+  const path = window.location.pathname;
+
+  // Lista de rotas que pertencem EXCLUSIVAMENTE ao contexto SaaS.
+  // Se o usuário estiver tentando acessar estas rotas, ignoramos o contexto de restaurante
+  // para permitir que o roteador do SaaS assuma o controle.
+  const saasRoutes = ['/sys-admin', '/dashboard', '/register', '/login-owner'];
+  
+  // Verifica se a URL começa com alguma das rotas SaaS.
+  // Nota: A rota raiz '/' é ambígua, então não a incluímos aqui. Ela é tratada pela presença do param.
+  if (saasRoutes.some(route => path.startsWith(route))) {
+      return null;
+  }
+
   // 1. Prioridade: Parâmetro de URL (para testes locais: localhost:3000/?restaurant=bistro)
   const urlParams = new URLSearchParams(window.location.search);
   const tenantParam = urlParams.get('restaurant');

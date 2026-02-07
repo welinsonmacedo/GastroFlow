@@ -112,6 +112,8 @@ const TenantApp = () => {
                 <Route path="/kitchen" element={<ProtectedRestaurantRoute allowedRoles={[Role.KITCHEN, Role.ADMIN]}><KitchenDisplay /></ProtectedRestaurantRoute>} />
                 <Route path="/cashier" element={<ProtectedRestaurantRoute allowedRoles={[Role.CASHIER, Role.ADMIN]}><CashierDashboard /></ProtectedRestaurantRoute>} />
                 <Route path="/admin" element={<ProtectedRestaurantRoute allowedRoles={[Role.ADMIN]}><AdminDashboard /></ProtectedRestaurantRoute>} />
+                {/* Catch-all para rotas não definidas dentro do TenantApp, redireciona para login */}
+                <Route path="*" element={<Navigate to={`/login${window.location.search}`} replace />} />
             </Routes>
         </>
     );
