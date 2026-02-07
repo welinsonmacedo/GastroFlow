@@ -101,7 +101,8 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     // Busca Planos Publicamente (para Landing Page usar context se necessário, ou admin)
     const fetchPlans = async () => {
-         const { data } = await supabase.from('plans').select('*').order('price');
+         // Ordena por created_at para manter ordem lógica (Free -> Pro -> Enterprise)
+         const { data } = await supabase.from('plans').select('*').order('created_at', { ascending: true });
          if(data) {
              const mappedPlans: Plan[] = data.map(p => ({
                  id: p.id,
@@ -144,6 +145,18 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     if (action.type === 'CREATE_TENANT') {
         try {
+            // 0. Verificar Disponibilidade do Slug ANTES de tentar inserir
+            const { data: existing } = await supabase
+                .from('tenants')
+                .select('id')
+                .eq('slug', action.payload.slug)
+                .maybeSingle();
+            
+            if (existing) {
+                alert("O endereço (slug) escolhido já está em uso por outro restaurante. Por favor, tente um nome diferente.");
+                return; 
+            }
+
             // 1. Criar Tenant
             const defaultTheme = {
                 primaryColor: '#2563eb',
@@ -189,9 +202,13 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     }
                 });
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error("Erro ao criar tenant:", error);
-            alert("Erro ao criar restaurante. Verifique se o SLUG já existe.");
+            if (error.code === '23505') {
+                 alert("Ocorreu um erro: Este Slug já está cadastrado no sistema.");
+            } else {
+                 alert("Erro ao criar restaurante. Verifique o console para mais detalhes.");
+            }
         }
         return; // Retorna para não chamar o dispatch default com payload incorreto
     }
@@ -226,7 +243,7 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
             dispatch(action);
         } else {
             console.error("Erro ao atualizar plano", error);
-            alert("Erro ao salvar plano.");
+            alert("Erro ao salvar plano no banco de dados.");
         }
         return;
     }

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useNavigate, Link } from 'react-router-dom';
-import { ChefHat, ArrowLeft, Loader2, CheckCircle, Store, Mail, Lock, User as UserIcon } from 'lucide-react';
+import { ChefHat, ArrowLeft, Loader2, CheckCircle, Store, Mail, Lock, User as UserIcon, AlertCircle } from 'lucide-react';
 import { Button } from '../components/Button';
 
 export const RegisterRestaurant: React.FC = () => {
@@ -83,9 +83,6 @@ export const RegisterRestaurant: React.FC = () => {
                 }).select().single();
 
                 if (tenantError) {
-                    // Se falhar a criação do tenant, mas o user foi criado, é um estado inconsistente.
-                    // Em um app real, deveria haver um rollback ou a criação do tenant via trigger.
-                    // Aqui, lançamos o erro.
                     if (tenantError.code === '23505') { // Unique violation code
                         throw new Error("Este slug já está cadastrado.");
                     }
@@ -261,6 +258,3 @@ export const RegisterRestaurant: React.FC = () => {
         </div>
     );
 };
-
-// Icon import needed for the fix
-import { AlertCircle } from 'lucide-react';

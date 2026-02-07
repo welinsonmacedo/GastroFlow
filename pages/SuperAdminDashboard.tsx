@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useSaaS } from '../context/SaaSContext';
 import { Plan, PlanType } from '../types';
 import { Button } from '../components/Button';
-import { Building2, Users, DollarSign, Activity, Settings, Search, MoreHorizontal, ExternalLink, LogOut, Plus, X, TrendingUp, CreditCard, User, Edit, Save, List } from 'lucide-react';
+import { Building2, Users, DollarSign, Activity, Settings, Search, MoreHorizontal, ExternalLink, LogOut, Plus, X, List, Edit } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 type ViewMode = 'RESTAURANTS' | 'FINANCIAL' | 'PLANS' | 'SETTINGS';
@@ -32,6 +32,7 @@ export const SuperAdminDashboard: React.FC = () => {
   
   // Plans Edit State
   const [editingPlan, setEditingPlan] = useState<Plan | null>(null);
+  const [editingFeatures, setEditingFeatures] = useState<string>('');
 
   // Derived Metrics
   const filteredTenants = state.tenants.filter(t => 
@@ -43,16 +44,10 @@ export const SuperAdminDashboard: React.FC = () => {
   
   const mrr = state.tenants.reduce((acc, t) => {
     if (t.status === 'INACTIVE') return acc;
-    if (t.plan === 'PRO') return acc + 99; // TODO: Usar preço real do plano do DB
+    if (t.plan === 'PRO') return acc + 99; // Estimativa
     if (t.plan === 'ENTERPRISE') return acc + 249;
     return acc;
   }, 0);
-
-  const planDistribution = {
-      FREE: state.tenants.filter(t => t.plan === 'FREE').length,
-      PRO: state.tenants.filter(t => t.plan === 'PRO').length,
-      ENTERPRISE: state.tenants.filter(t => t.plan === 'ENTERPRISE').length
-  };
 
   const getDemoUrl = (slug: string) => {
       const baseUrl = window.location.origin + window.location.pathname;
@@ -73,7 +68,6 @@ export const SuperAdminDashboard: React.FC = () => {
       dispatch({ type: 'CREATE_TENANT', payload: newTenantForm });
       setIsModalOpen(false);
       setNewTenantForm({ name: '', slug: '', ownerName: '', email: '', plan: 'FREE' });
-      alert("Restaurante criado com sucesso!");
   };
 
   const handleUpdateProfile = (e: React.FormEvent) => {
@@ -82,12 +76,20 @@ export const SuperAdminDashboard: React.FC = () => {
       alert("Perfil atualizado com sucesso!");
   };
   
+  const handleEditPlan = (plan: Plan) => {
+      setEditingPlan(plan);
+      setEditingFeatures(plan.features.join('\n'));
+  }
+  
   const handleSavePlan = (e: React.FormEvent) => {
       e.preventDefault();
       if(editingPlan) {
-          dispatch({ type: 'UPDATE_PLAN_DETAILS', plan: editingPlan });
+          const featuresArray = editingFeatures.split('\n').filter(line => line.trim() !== '');
+          const updatedPlan = { ...editingPlan, features: featuresArray };
+          
+          dispatch({ type: 'UPDATE_PLAN_DETAILS', plan: updatedPlan });
           setEditingPlan(null);
-          alert("Plano atualizado! As alterações aparecerão na Landing Page.");
+          alert("Plano atualizado com sucesso!");
       }
   };
 
@@ -197,7 +199,7 @@ export const SuperAdminDashboard: React.FC = () => {
            {activeView === 'PLANS' && (
                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-fade-in">
                    {state.plans.map(plan => (
-                       <div key={plan.id} className="bg-white rounded-xl shadow-sm border p-6 flex flex-col h-full">
+                       <div key={plan.id} className="bg-white rounded-xl shadow-sm border p-6 flex flex-col h-full hover:shadow-md transition-shadow">
                            {editingPlan?.id === plan.id ? (
                                <form onSubmit={handleSavePlan} className="space-y-4 flex-1 flex flex-col">
                                    <div>
@@ -213,20 +215,14 @@ export const SuperAdminDashboard: React.FC = () => {
                                        <input className="w-full border p-2 rounded" value={editingPlan.button_text} onChange={e => setEditingPlan({...editingPlan, button_text: e.target.value})} />
                                    </div>
                                    <div className="flex-1">
-                                       <label className="text-xs font-bold text-gray-500 uppercase">Funcionalidades (JSON)</label>
+                                       <label className="text-xs font-bold text-gray-500 uppercase">Funcionalidades</label>
                                        <textarea 
-                                          className="w-full border p-2 rounded h-32 font-mono text-xs" 
-                                          value={JSON.stringify(editingPlan.features, null, 2)}
-                                          onChange={e => {
-                                              try {
-                                                  const parsed = JSON.parse(e.target.value);
-                                                  setEditingPlan({...editingPlan, features: parsed});
-                                              } catch(err) {
-                                                  // Ignore parse errors while typing
-                                              }
-                                          }}
+                                          className="w-full border p-2 rounded h-40 text-sm" 
+                                          value={editingFeatures}
+                                          onChange={e => setEditingFeatures(e.target.value)}
+                                          placeholder="Digite uma funcionalidade por linha..."
                                        />
-                                       <p className="text-xs text-gray-400">Edite como uma lista JSON.</p>
+                                       <p className="text-xs text-gray-400">Uma funcionalidade por linha.</p>
                                    </div>
                                    <div className="flex gap-2 pt-4">
                                        <Button type="button" variant="secondary" onClick={() => setEditingPlan(null)} className="flex-1">Cancelar</Button>
@@ -237,17 +233,19 @@ export const SuperAdminDashboard: React.FC = () => {
                                <>
                                    <div className="flex justify-between items-start mb-4">
                                        <h3 className="text-xl font-bold text-gray-800">{plan.name}</h3>
-                                       <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded font-mono">{plan.key}</span>
+                                       <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded font-mono border">{plan.key}</span>
                                    </div>
                                    <div className="text-3xl font-bold text-blue-600 mb-6">{plan.price} <span className="text-sm text-gray-400 font-normal">{plan.period}</span></div>
-                                   <ul className="space-y-2 mb-6 flex-1">
-                                       {plan.features.map((feat, i) => (
-                                           <li key={i} className="text-sm text-gray-600 flex items-start gap-2">
-                                               <span className="text-green-500 font-bold">✓</span> {feat}
-                                           </li>
-                                       ))}
-                                   </ul>
-                                   <Button variant="outline" onClick={() => setEditingPlan(plan)} className="w-full mt-auto">
+                                   <div className="flex-1 overflow-y-auto max-h-60 mb-6">
+                                       <ul className="space-y-2">
+                                           {plan.features.map((feat, i) => (
+                                               <li key={i} className="text-sm text-gray-600 flex items-start gap-2">
+                                                   <span className="text-green-500 font-bold">✓</span> {feat}
+                                               </li>
+                                           ))}
+                                       </ul>
+                                   </div>
+                                   <Button variant="outline" onClick={() => handleEditPlan(plan)} className="w-full mt-auto">
                                        <Edit size={16} /> Editar Detalhes
                                    </Button>
                                </>
