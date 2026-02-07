@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useSaaS } from '../context/SaaSContext';
+import { useUI } from '../context/UIContext';
 import { Plan, PlanType, RestaurantTenant, PlanLimits } from '../types';
 import { Button } from '../components/Button';
 import { Building2, Users, DollarSign, Activity, Settings, Search, MoreHorizontal, ExternalLink, LogOut, Plus, X, List, Edit, Key, Lock, BarChart2, Unlock, AlertTriangle, Link as LinkIcon, Copy, Check } from 'lucide-react';
@@ -9,13 +10,11 @@ type ViewMode = 'RESTAURANTS' | 'FINANCIAL' | 'PLANS' | 'SETTINGS';
 
 export const SuperAdminDashboard: React.FC = () => {
   const { state, dispatch } = useSaaS();
+  const { showAlert, showConfirm } = useUI();
   const navigate = useNavigate();
   const [activeView, setActiveView] = useState<ViewMode>('RESTAURANTS');
   const [filter, setFilter] = useState('');
   
-  // Logout Modal
-  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-
   // Modal State (Create)
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newTenantForm, setNewTenantForm] = useState({
@@ -71,14 +70,22 @@ export const SuperAdminDashboard: React.FC = () => {
   };
 
   const handleLogout = () => {
-      dispatch({ type: 'LOGOUT_ADMIN' });
-      navigate('/');
+      showConfirm({
+          title: "Sair do Painel?",
+          message: "Você precisará fazer login novamente.",
+          type: 'WARNING',
+          confirmText: "Sair",
+          onConfirm: () => {
+              dispatch({ type: 'LOGOUT_ADMIN' });
+              navigate('/');
+          }
+      });
   };
 
   const handleCreateTenant = (e: React.FormEvent) => {
       e.preventDefault();
       if(!newTenantForm.name || !newTenantForm.slug || !newTenantForm.ownerName) {
-          alert("Preencha os campos obrigatórios");
+          showAlert({ title: "Erro", message: "Preencha todos os campos obrigatórios.", type: 'ERROR' });
           return;
       }
       dispatch({ type: 'CREATE_TENANT', payload: newTenantForm });
@@ -109,7 +116,7 @@ export const SuperAdminDashboard: React.FC = () => {
           } 
       });
       setIsEditModalOpen(false);
-      alert("Restaurante atualizado!");
+      showAlert({ title: "Sucesso", message: "Restaurante atualizado!", type: 'SUCCESS' });
   };
 
   const handleCreateAdmin = (e: React.FormEvent) => {
@@ -131,7 +138,7 @@ export const SuperAdminDashboard: React.FC = () => {
   const handleUpdateProfile = (e: React.FormEvent) => {
       e.preventDefault();
       dispatch({ type: 'UPDATE_PROFILE', name: settingsForm.name, email: settingsForm.email });
-      alert("Perfil atualizado com sucesso!");
+      showAlert({ title: "Sucesso", message: "Perfil atualizado com sucesso!", type: 'SUCCESS' });
   };
   
   const handleEditPlan = (plan: Plan) => {
@@ -155,7 +162,7 @@ export const SuperAdminDashboard: React.FC = () => {
           
           dispatch({ type: 'UPDATE_PLAN_DETAILS', plan: updatedPlan });
           setEditingPlan(null);
-          alert("Plano atualizado com sucesso!");
+          showAlert({ title: "Sucesso", message: "Plano atualizado com sucesso!", type: 'SUCCESS' });
       }
   };
 
@@ -186,36 +193,6 @@ export const SuperAdminDashboard: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 flex">
-        
-       {/* LOGOUT MODAL */}
-       {showLogoutConfirm && (
-            <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
-                <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm">
-                    <div className="flex flex-col items-center text-center mb-6">
-                        <div className="bg-red-100 p-3 rounded-full mb-3 text-red-600">
-                            <LogOut size={32} />
-                        </div>
-                        <h3 className="text-xl font-bold text-gray-800">Sair do Painel?</h3>
-                        <p className="text-gray-500 text-sm mt-1">Você precisará fazer login novamente.</p>
-                    </div>
-                    <div className="flex gap-3">
-                        <button 
-                            onClick={() => setShowLogoutConfirm(false)}
-                            className="flex-1 py-3 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-lg transition-colors"
-                        >
-                            Cancelar
-                        </button>
-                        <button 
-                            onClick={handleLogout}
-                            className="flex-1 py-3 px-4 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg transition-colors"
-                        >
-                            Sair Agora
-                        </button>
-                    </div>
-                </div>
-            </div>
-       )}
-
        {/* Sidebar */}
        <div className="w-64 bg-slate-900 text-white p-6 sticky top-0 h-screen flex flex-col justify-between shrink-0 z-20">
           <div>
@@ -237,7 +214,7 @@ export const SuperAdminDashboard: React.FC = () => {
                 </button>
             </nav>
           </div>
-          <button onClick={() => setShowLogoutConfirm(true)} className="flex items-center gap-3 w-full p-3 rounded text-red-400 hover:bg-slate-800 mt-auto">
+          <button onClick={handleLogout} className="flex items-center gap-3 w-full p-3 rounded text-red-400 hover:bg-slate-800 mt-auto">
               <LogOut size={20} /> Sair
           </button>
        </div>
@@ -542,113 +519,68 @@ export const SuperAdminDashboard: React.FC = () => {
                                <button 
                                    onClick={() => handleCopyLink(link.url)}
                                    className={`p-3 rounded-lg border flex items-center gap-2 transition-all font-bold text-sm shrink-0
-                                       ${copiedLink === link.url ? 'bg-green-100 text-green-700 border-green-200' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-100'}
-                                   `}
+                                       ${copiedLink === link.url ? 'bg-green-100 text-green-700 border-green-200' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+                                   title="Copiar Link"
                                >
-                                   {copiedLink === link.url ? <Check size={18}/> : <Copy size={18}/>}
-                                   {copiedLink === link.url ? 'Copiado!' : 'Copiar'}
+                                   {copiedLink === link.url ? <Check size={16} /> : <Copy size={16} />}
+                                   {copiedLink === link.url ? 'Copiado' : 'Copiar'}
                                </button>
                            </div>
                        ))}
-                   </div>
-                   
-                   <div className="mt-6 pt-4 border-t text-center">
-                       <p className="text-xs text-gray-400">
-                           Estes links já incluem o identificador do restaurante para carregamento automático.
-                       </p>
                    </div>
                </div>
            </div>
        )}
 
-       {/* --- MODAL: EDIT TENANT & ADMIN --- */}
+       {/* --- MODAL: EDIT TENANT & CREATE ADMIN --- */}
        {isEditModalOpen && editingTenant && (
            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-               <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6 flex flex-col max-h-[90vh]">
+               <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6">
                    <div className="flex justify-between items-center mb-6">
-                       <h3 className="text-xl font-bold text-gray-800">Gerenciar {editingTenant.name}</h3>
-                       <button onClick={() => setIsEditModalOpen(false)} className="p-2 hover:bg-gray-100 rounded-full"><X size={20} /></button>
-                   </div>
-                   
-                   <div className="flex gap-2 mb-6 border-b">
-                       <button 
-                         onClick={() => setEditTab('DETAILS')} 
-                         className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${editTab === 'DETAILS' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
-                       >
-                           Dados Principais
-                       </button>
-                       <button 
-                         onClick={() => setEditTab('ADMIN')} 
-                         className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${editTab === 'ADMIN' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
-                       >
-                           Criar Admin
-                       </button>
+                       <h3 className="text-lg font-bold">Gerenciar {editingTenant.name}</h3>
+                       <button onClick={() => setIsEditModalOpen(false)}><X size={20} /></button>
                    </div>
 
-                   <div className="overflow-y-auto flex-1 px-1">
-                       {editTab === 'DETAILS' && (
-                           <form onSubmit={handleUpdateTenant} className="space-y-4">
-                               <div>
-                                   <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Nome do Restaurante</label>
-                                   <input className="w-full border p-2.5 rounded-lg" value={editingTenant.name} onChange={(e) => setEditingTenant({...editingTenant, name: e.target.value})} />
-                               </div>
-                               <div>
-                                   <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Slug (URL)</label>
-                                   <input className="w-full border p-2.5 rounded-lg" value={editingTenant.slug} onChange={(e) => setEditingTenant({...editingTenant, slug: e.target.value})} />
-                               </div>
-                               <div>
-                                   <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Nome do Dono</label>
-                                   <input className="w-full border p-2.5 rounded-lg" value={editingTenant.ownerName} onChange={(e) => setEditingTenant({...editingTenant, ownerName: e.target.value})} />
-                               </div>
-                               <div>
-                                   <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Email de Contato</label>
-                                   <input className="w-full border p-2.5 rounded-lg" value={editingTenant.email} onChange={(e) => setEditingTenant({...editingTenant, email: e.target.value})} />
-                               </div>
-                               <Button type="submit" className="w-full mt-4">Salvar Alterações</Button>
-                           </form>
-                       )}
+                   <div className="flex border-b mb-4">
+                       <button onClick={() => setEditTab('DETAILS')} className={`px-4 py-2 text-sm font-bold border-b-2 transition-colors ${editTab === 'DETAILS' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}>Detalhes</button>
+                       <button onClick={() => setEditTab('ADMIN')} className={`px-4 py-2 text-sm font-bold border-b-2 transition-colors ${editTab === 'ADMIN' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}>Criar Admin</button>
+                   </div>
 
-                       {editTab === 'ADMIN' && (
-                           <div className="space-y-4">
-                               <div className="bg-blue-50 p-4 rounded-lg text-sm text-blue-800 mb-4">
-                                   Adicione um usuário com acesso total (ADMIN) para este restaurante. Útil para resetar acesso ou criar contas manuais.
-                               </div>
-                               <form onSubmit={handleCreateAdmin} className="space-y-4">
-                                   <div>
-                                       <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Nome</label>
-                                       <input className="w-full border p-2.5 rounded-lg" placeholder="Ex: Gerente" value={newAdminForm.name} onChange={(e) => setNewAdminForm({...newAdminForm, name: e.target.value})} />
-                                   </div>
-                                   <div>
-                                       <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Email (Login)</label>
-                                       <input type="email" className="w-full border p-2.5 rounded-lg" placeholder="gerente@restaurante.com" value={newAdminForm.email} onChange={(e) => setNewAdminForm({...newAdminForm, email: e.target.value})} />
-                                   </div>
-                                   <div>
-                                       <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Senha (Login Remoto)</label>
-                                       <div className="relative">
-                                           <Lock size={16} className="absolute left-3 top-3 text-gray-400" />
-                                           <input 
-                                                type="password" 
-                                                className="w-full border p-2.5 pl-10 rounded-lg" 
-                                                placeholder="Para acesso via /login-owner" 
-                                                value={newAdminForm.password} 
-                                                onChange={(e) => setNewAdminForm({...newAdminForm, password: e.target.value})} 
-                                           />
-                                       </div>
-                                   </div>
-                                   <div>
-                                       <label className="block text-xs font-bold text-gray-500 uppercase mb-1">PIN de Acesso (Local)</label>
-                                       <div className="relative">
-                                           <Key size={16} className="absolute left-3 top-3 text-gray-400" />
-                                           <input className="w-full border p-2.5 pl-10 rounded-lg font-mono" placeholder="1234" maxLength={4} value={newAdminForm.pin} onChange={(e) => setNewAdminForm({...newAdminForm, pin: e.target.value})} />
-                                       </div>
-                                   </div>
-                                   <Button type="submit" variant="secondary" className="w-full mt-4 border border-gray-300">
-                                       <Plus size={16} /> Criar Usuário Admin
-                                   </Button>
-                               </form>
+                   {editTab === 'DETAILS' && (
+                       <form onSubmit={handleUpdateTenant} className="space-y-4">
+                           <div>
+                               <label className="text-xs font-bold text-gray-500 uppercase">Nome do Restaurante</label>
+                               <input type="text" className="w-full border p-2 rounded" value={editingTenant.name} onChange={e => setEditingTenant({...editingTenant, name: e.target.value})} />
                            </div>
-                       )}
-                   </div>
+                           <div>
+                               <label className="text-xs font-bold text-gray-500 uppercase">Slug (URL)</label>
+                               <input type="text" className="w-full border p-2 rounded" value={editingTenant.slug} onChange={e => setEditingTenant({...editingTenant, slug: e.target.value})} />
+                           </div>
+                           <div>
+                               <label className="text-xs font-bold text-gray-500 uppercase">Dono</label>
+                               <input type="text" className="w-full border p-2 rounded" value={editingTenant.ownerName} onChange={e => setEditingTenant({...editingTenant, ownerName: e.target.value})} />
+                           </div>
+                           <div>
+                               <label className="text-xs font-bold text-gray-500 uppercase">Email de Contato</label>
+                               <input type="text" className="w-full border p-2 rounded" value={editingTenant.email} onChange={e => setEditingTenant({...editingTenant, email: e.target.value})} />
+                           </div>
+                           <Button type="submit" className="w-full mt-2">Salvar Alterações</Button>
+                       </form>
+                   )}
+
+                   {editTab === 'ADMIN' && (
+                       <form onSubmit={handleCreateAdmin} className="space-y-4">
+                           <div className="bg-yellow-50 border border-yellow-200 p-3 rounded text-xs text-yellow-800 mb-2">
+                               <p className="font-bold">Atenção:</p>
+                               <p>Isso criará um novo usuário com papel ADMIN para este restaurante. Se definir uma senha, ele poderá logar no painel administrativo.</p>
+                           </div>
+                           <input type="text" placeholder="Nome" className="w-full border p-2 rounded" value={newAdminForm.name} onChange={e => setNewAdminForm({...newAdminForm, name: e.target.value})} required />
+                           <input type="email" placeholder="Email (Login)" className="w-full border p-2 rounded" value={newAdminForm.email} onChange={e => setNewAdminForm({...newAdminForm, email: e.target.value})} required />
+                           <input type="text" placeholder="PIN (4 dígitos)" maxLength={4} className="w-full border p-2 rounded" value={newAdminForm.pin} onChange={e => setNewAdminForm({...newAdminForm, pin: e.target.value})} required />
+                           <input type="password" placeholder="Senha (Opcional - Para Login Remoto)" className="w-full border p-2 rounded" value={newAdminForm.password} onChange={e => setNewAdminForm({...newAdminForm, password: e.target.value})} />
+                           <Button type="submit" className="w-full mt-2">Criar Administrador</Button>
+                       </form>
+                   )}
                </div>
            </div>
        )}

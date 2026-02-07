@@ -2,6 +2,7 @@ import React, { createContext, useContext, useReducer, useEffect } from 'react';
 import { RestaurantTenant, PlanType, Plan } from '../types';
 import { supabase } from '../lib/supabase';
 import { createClient } from '@supabase/supabase-js';
+import { useUI } from './UIContext';
 
 // Cliente Supabase auxiliar para operações administrativas sem afetar a sessão atual
 // Adicionada verificação segura para import.meta.env para evitar erros em alguns ambientes
@@ -125,6 +126,7 @@ const saasReducer = (state: SaaSState, action: SaaSAction): SaaSState => {
 
 export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(saasReducer, initialState);
+  const { showAlert } = useUI();
 
   // 1. Restaurar Sessão ao Carregar (Persistência)
   useEffect(() => {
@@ -246,7 +248,11 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
       let timeoutId: any;
 
       const handleLogout = async () => {
-          alert("Sessão expirada por inatividade (30min). Por favor, faça login novamente.");
+          showAlert({
+              title: "Sessão Expirada",
+              message: "Sua sessão expirou por inatividade (30min). Por favor, faça login novamente.",
+              type: 'WARNING'
+          });
           await supabase.auth.signOut();
           dispatch({ type: 'LOGOUT_ADMIN' });
       };
@@ -265,7 +271,7 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (timeoutId) clearTimeout(timeoutId);
           events.forEach(event => window.removeEventListener(event, resetTimer));
       };
-  }, [state.isAuthenticated]);
+  }, [state.isAuthenticated, showAlert]);
 
   // Intercepta ações de mutação para atualizar o Supabase também
   const dispatchWithSideEffects = async (action: SaaSAction) => {
@@ -280,7 +286,11 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 .maybeSingle();
             
             if (existing) {
-                alert("O endereço (slug) escolhido já está em uso por outro restaurante. Por favor, tente um nome diferente.");
+                showAlert({
+                    title: "Endereço Indisponível",
+                    message: "O endereço (slug) escolhido já está em uso por outro restaurante. Por favor, tente um nome diferente.",
+                    type: 'WARNING'
+                });
                 return; 
             }
 
@@ -333,9 +343,17 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } catch (error: any) {
             console.error("Erro ao criar tenant:", error);
             if (error.code === '23505') {
-                 alert("Ocorreu um erro: Este Slug já está cadastrado no sistema.");
+                 showAlert({
+                     title: "Erro de Duplicidade",
+                     message: "Este Slug já está cadastrado no sistema.",
+                     type: 'ERROR'
+                 });
             } else {
-                 alert("Erro ao criar restaurante. Verifique o console para mais detalhes.");
+                 showAlert({
+                     title: "Erro",
+                     message: "Erro ao criar restaurante. Verifique o console para mais detalhes.",
+                     type: 'ERROR'
+                 });
             }
         }
         return;
@@ -354,7 +372,7 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
             dispatch(action); // Atualiza UI
         } catch (error) {
             console.error("Erro ao atualizar tenant:", error);
-            alert("Erro ao atualizar dados do restaurante.");
+            showAlert({ title: "Erro", message: "Erro ao atualizar dados do restaurante.", type: 'ERROR' });
         }
         return;
     }
@@ -386,7 +404,7 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
                 if (authError) {
                     console.error("Erro Auth:", authError);
-                    alert(`Erro ao criar login Auth: ${authError.message}`);
+                    showAlert({ title: "Erro Auth", message: `Erro ao criar login Auth: ${authError.message}`, type: 'ERROR' });
                 } else if (authData.user) {
                     authUserId = authData.user.id;
                 }
@@ -404,14 +422,14 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
             if (error) throw error;
             
             if (authUserId) {
-                alert("Usuário Admin criado com sucesso! Login Auth e PIN configurados.");
+                showAlert({ title: "Sucesso", message: "Usuário Admin criado com sucesso! Login Auth e PIN configurados.", type: 'SUCCESS' });
             } else {
-                alert("Usuário Admin criado apenas localmente (PIN).");
+                showAlert({ title: "Sucesso", message: "Usuário Admin criado apenas localmente (PIN).", type: 'SUCCESS' });
             }
 
         } catch (error: any) {
              console.error("Erro ao criar admin:", error);
-             alert(`Erro ao criar usuário admin: ${error.message}`);
+             showAlert({ title: "Erro", message: `Erro ao criar usuário admin: ${error.message}`, type: 'ERROR' });
         }
         return;
     }
@@ -445,7 +463,7 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
             dispatch(action);
         } else {
             console.error("Erro ao atualizar plano", error);
-            alert("Erro ao salvar plano no banco de dados.");
+            showAlert({ title: "Erro", message: "Erro ao salvar plano no banco de dados.", type: 'ERROR' });
         }
         return;
     }

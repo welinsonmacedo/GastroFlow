@@ -2,6 +2,7 @@ import React, { createContext, useContext, useReducer, useEffect, useState, useC
 import { Table, Order, Product, TableStatus, OrderStatus, ProductType, OrderItem, RestaurantTheme, User, AuditLog, Transaction, Role, ServiceCall, OnlineUser, PlanLimits } from '../types';
 import { getTenantSlug } from '../utils/tenant';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { useUI } from './UIContext';
 
 // --- Types ---
 interface State {
@@ -190,6 +191,7 @@ const restaurantReducer = (state: State, action: Action): State => {
 export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, dispatchLocal] = useReducer(restaurantReducer, initialState);
   const [presenceChannel, setPresenceChannel] = useState<any>(null);
+  const { showAlert } = useUI(); // Hook do Modal
 
   const logAudit = async (tenantId: string, action: string, details: string) => {
       try {
@@ -554,7 +556,11 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         if (planData && planData.limits) {
             dispatchLocal({ type: 'UPDATE_PLAN_LIMITS', limits: planData.limits, status: newStatus });
             if (newStatus === 'INACTIVE') {
-                alert("ATENÇÃO: A conta deste restaurante foi suspensa pelo administrador.");
+                showAlert({
+                    title: "Acesso Suspenso",
+                    message: "A conta deste restaurante foi suspensa pelo administrador.",
+                    type: 'ERROR'
+                });
             }
         }
     };
@@ -640,7 +646,11 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             if (tenantId) {
                 // VERIFICA LIMITES DO PLANO
                 if (planLimits.maxTables !== -1 && state.tables.length >= planLimits.maxTables) {
-                    alert(`Limite de mesas atingido para o seu plano (${planLimits.maxTables}). Faça um upgrade para adicionar mais.`);
+                    showAlert({
+                        title: "Limite Atingido",
+                        message: `O limite de ${planLimits.maxTables} mesas para o seu plano foi atingido. Faça um upgrade para adicionar mais.`,
+                        type: 'WARNING'
+                    });
                     return;
                 }
 
@@ -660,7 +670,11 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             if (tenantId) {
                 const hasOrders = state.orders.some(o => o.tableId === action.tableId && !o.isPaid);
                 if (hasOrders) {
-                    alert("Não é possível excluir uma mesa com pedidos em aberto.");
+                    showAlert({
+                        title: "Ação Bloqueada",
+                        message: "Não é possível excluir uma mesa com pedidos em aberto.",
+                        type: 'ERROR'
+                    });
                     return;
                 }
                 await supabase.from('restaurant_tables').delete().eq('id', action.tableId);
@@ -785,7 +799,11 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
              if (tenantId) {
                  // VERIFICA LIMITES DO PLANO
                  if (planLimits.maxProducts !== -1 && state.products.length >= planLimits.maxProducts) {
-                    alert(`Limite de produtos atingido para o seu plano (${planLimits.maxProducts}). Faça um upgrade para adicionar mais.`);
+                    showAlert({
+                        title: "Limite Atingido",
+                        message: `O limite de ${planLimits.maxProducts} produtos para o seu plano foi atingido. Faça um upgrade para adicionar mais.`,
+                        type: 'WARNING'
+                    });
                     return;
                  }
 
@@ -839,7 +857,11 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 // VERIFICA LIMITES DO PLANO
                 // Subtrai 1 se quisermos excluir o admin principal, mas geralmente conta todos
                 if (planLimits.maxStaff !== -1 && state.users.length >= planLimits.maxStaff) {
-                    alert(`Limite de funcionários atingido para o seu plano (${planLimits.maxStaff}). Faça um upgrade para adicionar mais.`);
+                    showAlert({
+                        title: "Limite Atingido",
+                        message: `O limite de ${planLimits.maxStaff} funcionários para o seu plano foi atingido. Faça um upgrade para adicionar mais.`,
+                        type: 'WARNING'
+                    });
                     return;
                 }
 

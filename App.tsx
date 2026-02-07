@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { BrowserRouter, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
 import { RestaurantProvider, useRestaurant } from './context/RestaurantContext';
 import { SaaSProvider, useSaaS } from './context/SaaSContext';
+import { UIProvider, useUI } from './context/UIContext';
 import { ClientApp } from './pages/ClientApp';
 import { WaiterApp } from './pages/WaiterApp';
 import { KitchenDisplay } from './pages/KitchenDisplay';
@@ -82,7 +83,7 @@ const ProtectedSaaSRoute = ({ children }: { children: React.ReactElement }) => {
 const TenantNavigation = () => {
     const location = useLocation();
     const { state, dispatch } = useRestaurant();
-    const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+    const { showConfirm } = useUI();
     
     if (location.pathname.startsWith('/client') || location.pathname === '/login') return null;
     if (!state.currentUser) return null;
@@ -107,42 +108,18 @@ const TenantNavigation = () => {
         return state.currentUser?.allowedRoutes?.includes(link.to);
     });
 
-    const confirmLogout = () => {
-        dispatch({ type: 'LOGOUT' });
-        setShowLogoutConfirm(false);
+    const handleLogoutClick = () => {
+        showConfirm({
+            title: "Sair do Sistema?",
+            message: "Você precisará fazer login novamente para acessar suas funções.",
+            type: 'WARNING',
+            confirmText: "Sair Agora",
+            onConfirm: () => dispatch({ type: 'LOGOUT' })
+        });
     };
 
     return (
         <>
-            {/* LOGOUT CONFIRMATION MODAL */}
-            {showLogoutConfirm && (
-                <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
-                    <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm transform scale-100 transition-all">
-                        <div className="flex flex-col items-center text-center mb-6">
-                            <div className="bg-red-100 p-3 rounded-full mb-3 text-red-600">
-                                <LogOut size={32} />
-                            </div>
-                            <h3 className="text-xl font-bold text-gray-800">Sair do Sistema?</h3>
-                            <p className="text-gray-500 text-sm mt-1">Você precisará fazer login novamente para acessar suas funções.</p>
-                        </div>
-                        <div className="flex gap-3">
-                            <button 
-                                onClick={() => setShowLogoutConfirm(false)}
-                                className="flex-1 py-3 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-lg transition-colors"
-                            >
-                                Cancelar
-                            </button>
-                            <button 
-                                onClick={confirmLogout}
-                                className="flex-1 py-3 px-4 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg transition-colors"
-                            >
-                                Sair Agora
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
             {/* Desktop Navigation (Top Bar) */}
             <div className="hidden md:flex bg-white border-b px-6 py-3 justify-between items-center sticky top-0 z-50 shadow-sm">
                 <div className="font-bold text-xl flex items-center gap-2 text-blue-600">
@@ -166,7 +143,7 @@ const TenantNavigation = () => {
                         <UserIcon size={14} className="text-blue-500" />
                         {state.currentUser.name}
                      </div>
-                     <button onClick={() => setShowLogoutConfirm(true)} className="text-red-500 hover:text-red-700" title="Sair">
+                     <button onClick={handleLogoutClick} className="text-red-500 hover:text-red-700" title="Sair">
                         <LogOut size={20} />
                      </button>
                 </div>
@@ -186,7 +163,7 @@ const TenantNavigation = () => {
                         </Link>
                     ))}
                     <button 
-                        onClick={() => setShowLogoutConfirm(true)} 
+                        onClick={handleLogoutClick} 
                         className="flex flex-col items-center justify-center py-3 px-2 w-full text-red-400 hover:text-red-600"
                     >
                         <LogOut size={20} />
@@ -278,14 +255,16 @@ const App: React.FC = () => {
 
   return (
     <BrowserRouter>
-        <InstallPWA />
-        {tenantSlug ? (
-            <RestaurantProvider>
-                <TenantApp />
-            </RestaurantProvider>
-        ) : (
-            <SaaSApp />
-        )}
+        <UIProvider>
+            <InstallPWA />
+            {tenantSlug ? (
+                <RestaurantProvider>
+                    <TenantApp />
+                </RestaurantProvider>
+            ) : (
+                <SaaSApp />
+            )}
+        </UIProvider>
     </BrowserRouter>
   );
 };

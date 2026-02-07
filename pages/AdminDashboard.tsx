@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRestaurant } from '../context/RestaurantContext';
+import { useUI } from '../context/UIContext';
 import { Button } from '../components/Button';
 import { QRCodeGenerator } from '../components/QRCodeGenerator';
 import { ImageUploader } from '../components/ImageUploader';
@@ -10,6 +11,7 @@ import { supabase } from '../lib/supabase';
 
 export const AdminDashboard: React.FC = () => {
   const { state, dispatch } = useRestaurant();
+  const { showAlert, showConfirm } = useUI();
   const [activeTab, setActiveTab] = useState<'DASHBOARD' | 'PRODUCTS' | 'TABLES' | 'CUSTOMIZATION' | 'STAFF' | 'AUDIT' | 'REPORTS'>('DASHBOARD');
   
   // Mobile Sidebar State
@@ -80,7 +82,7 @@ export const AdminDashboard: React.FC = () => {
 
   const copyInviteLink = (userEmail?: string) => {
       if (!userEmail) {
-          alert("Este usuário não possui e-mail cadastrado.");
+          showAlert({ title: "Atenção", message: "Este usuário não possui e-mail cadastrado.", type: 'WARNING' });
           return;
       }
       const slug = state.tenantSlug || getTenantSlug();
@@ -88,7 +90,7 @@ export const AdminDashboard: React.FC = () => {
       const link = `${window.location.origin}/login?restaurant=${slug}&email=${encodeURIComponent(userEmail)}&register=true`;
       
       navigator.clipboard.writeText(link).then(() => {
-          alert("Link de primeiro acesso copiado! Envie para o funcionário criar a senha.");
+          showAlert({ title: "Copiado!", message: "Link de primeiro acesso copiado! Envie para o funcionário criar a senha.", type: 'SUCCESS' });
       });
   };
 
@@ -228,9 +230,13 @@ export const AdminDashboard: React.FC = () => {
   };
 
   const handleDeleteProduct = (product: Product) => {
-      if (window.confirm(`Tem certeza que deseja excluir "${product.name}"?`)) {
-          dispatch({ type: 'DELETE_PRODUCT', productId: product.id });
-      }
+      showConfirm({
+          title: "Excluir Produto",
+          message: `Tem certeza que deseja excluir "${product.name}"? Esta ação não pode ser desfeita.`,
+          type: 'ERROR',
+          confirmText: "Excluir",
+          onConfirm: () => dispatch({ type: 'DELETE_PRODUCT', productId: product.id })
+      });
   };
 
   const handleSaveUser = (e: React.FormEvent) => {
@@ -248,7 +254,7 @@ export const AdminDashboard: React.FC = () => {
                       allowedRoutes: userForm.allowedRoutes
                   } 
               });
-              alert("Dados do funcionário atualizados!");
+              showAlert({ title: "Sucesso", message: "Dados do funcionário atualizados!", type: 'SUCCESS' });
           } else {
               dispatch({ 
                   type: 'ADD_USER', 
@@ -261,12 +267,12 @@ export const AdminDashboard: React.FC = () => {
                       allowedRoutes: userForm.allowedRoutes
                   } as User
               });
-              alert("Funcionário adicionado!");
+              showAlert({ title: "Sucesso", message: "Funcionário adicionado!", type: 'SUCCESS' });
           }
           setEditingUser(null);
           setUserForm({ name: '', role: Role.WAITER, pin: '', email: '', allowedRoutes: [] });
       } else {
-          alert("Nome e E-mail são obrigatórios.");
+          showAlert({ title: "Erro", message: "Nome e E-mail são obrigatórios.", type: 'ERROR' });
       }
   };
 
@@ -298,15 +304,21 @@ export const AdminDashboard: React.FC = () => {
   };
 
   const handleAddTable = () => {
-      if(window.confirm('Adicionar uma nova mesa?')) {
-          dispatch({ type: 'ADD_TABLE' });
-      }
+      showConfirm({
+          title: "Adicionar Mesa",
+          message: "Deseja adicionar uma nova mesa ao restaurante?",
+          onConfirm: () => dispatch({ type: 'ADD_TABLE' })
+      });
   };
 
   const handleDeleteTable = (tableId: string) => {
-      if(window.confirm('Tem certeza que deseja excluir esta mesa?')) {
-          dispatch({ type: 'DELETE_TABLE', tableId });
-      }
+      showConfirm({
+          title: "Excluir Mesa",
+          message: "Tem certeza que deseja excluir esta mesa? Se houver histórico, ele será mantido nos relatórios.",
+          type: 'ERROR',
+          confirmText: "Excluir",
+          onConfirm: () => dispatch({ type: 'DELETE_TABLE', tableId })
+      });
   };
   
   const sortedProducts = [...state.products].sort((a,b) => (a.sortOrder || 0) - (b.sortOrder || 0));
@@ -682,7 +694,15 @@ export const AdminDashboard: React.FC = () => {
                                             <Edit size={20} />
                                         </button>
                                         <button 
-                                            onClick={() => { if(window.confirm(`Tem certeza que deseja excluir o funcionário ${user.name}?`)) dispatch({type: 'DELETE_USER', userId: user.id}) }} 
+                                            onClick={() => {
+                                                showConfirm({
+                                                    title: "Excluir Funcionário",
+                                                    message: `Tem certeza que deseja excluir ${user.name}?`,
+                                                    type: 'ERROR',
+                                                    confirmText: "Excluir",
+                                                    onConfirm: () => dispatch({type: 'DELETE_USER', userId: user.id})
+                                                });
+                                            }}
                                             className="text-red-500 hover:text-red-700 p-2 bg-red-50 rounded-lg hover:bg-red-100 transition-colors" 
                                             title="Excluir Funcionário"
                                         >
@@ -896,7 +916,7 @@ export const AdminDashboard: React.FC = () => {
                         </div>
 
                         <div className="pt-4 border-t">
-                            <Button onClick={() => { dispatch({ type: 'UPDATE_THEME', theme: localTheme }); alert('Tema salvo com sucesso!'); }} className="w-full py-3 text-lg">
+                            <Button onClick={() => { dispatch({ type: 'UPDATE_THEME', theme: localTheme }); showAlert({ title: "Sucesso", message: "Tema salvo com sucesso!", type: 'SUCCESS' }); }} className="w-full py-3 text-lg">
                                 <Save size={20} /> Salvar Personalização
                             </Button>
                         </div>

@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { useRestaurant } from '../context/RestaurantContext';
+import { useUI } from '../context/UIContext';
 import { TableStatus, OrderStatus, ProductType, Product } from '../types';
 import { Button } from '../components/Button';
 import { CheckCircle, Coffee, User, Key, X, Bell, Plus, Minus, Search, ShoppingCart, ChevronRight, Utensils, Trash2, ArrowLeft, Volume2, Edit3, MessageSquare } from 'lucide-react';
 
 export const WaiterApp: React.FC = () => {
   const { state, dispatch } = useRestaurant();
+  const { showAlert, showConfirm } = useUI();
   
   // States
   const [selectedTableForOpen, setSelectedTableForOpen] = useState<string | null>(null);
@@ -66,9 +68,17 @@ export const WaiterApp: React.FC = () => {
   };
 
   const handleCloseTable = () => {
-      if (selectedTableForAction && window.confirm("Tem certeza que deseja fechar esta mesa? Isso limpará a sessão atual.")) {
-          dispatch({ type: 'CLOSE_TABLE', tableId: selectedTableForAction });
-          setSelectedTableForAction(null);
+      if (selectedTableForAction) {
+          showConfirm({
+              title: "Fechar Mesa",
+              message: "Tem certeza que deseja fechar esta mesa? Isso limpará a sessão atual.",
+              confirmText: "Fechar",
+              type: 'WARNING',
+              onConfirm: () => {
+                  dispatch({ type: 'CLOSE_TABLE', tableId: selectedTableForAction });
+                  setSelectedTableForAction(null);
+              }
+          });
       }
   };
 
@@ -123,7 +133,7 @@ export const WaiterApp: React.FC = () => {
     });
     setCart([]);
     setOrderingTableId(null);
-    alert("Pedido enviado para a cozinha!");
+    showAlert({ title: "Sucesso", message: "Pedido enviado para a cozinha!", type: 'SUCCESS' });
   };
 
   const markDelivered = (orderId: string, itemId: string) => {

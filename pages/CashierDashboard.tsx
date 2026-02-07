@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { useRestaurant } from '../context/RestaurantContext';
+import { useUI } from '../context/UIContext';
 import { TableStatus } from '../types';
 import { Button } from '../components/Button';
 import { DollarSign, CreditCard, Smartphone, History, Receipt, ArrowLeft } from 'lucide-react';
 
 export const CashierDashboard: React.FC = () => {
   const { state, dispatch } = useRestaurant();
+  const { showAlert, showConfirm } = useUI();
   const [activeTab, setActiveTab] = useState<'ACTIVE' | 'HISTORY'>('ACTIVE');
   const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
 
@@ -25,16 +27,21 @@ export const CashierDashboard: React.FC = () => {
     if (!selectedTableId) return;
     const methodLabel = method === 'CREDIT' ? 'Cartão de Crédito' : method === 'DEBIT' ? 'Cartão de Débito' : method;
     
-    if (window.confirm(`Confirmar pagamento de R$ ${totalAmount.toFixed(2)} via ${methodLabel}?`)) {
-        dispatch({ 
-            type: 'PROCESS_PAYMENT', 
-            tableId: selectedTableId, 
-            amount: totalAmount, 
-            method: method 
-        });
-        setSelectedTableId(null);
-        alert("Pagamento registrado com sucesso!");
-    }
+    showConfirm({
+        title: "Confirmar Pagamento",
+        message: `Deseja registrar o pagamento de R$ ${totalAmount.toFixed(2)} via ${methodLabel}?`,
+        confirmText: "Confirmar",
+        onConfirm: () => {
+            dispatch({ 
+                type: 'PROCESS_PAYMENT', 
+                tableId: selectedTableId, 
+                amount: totalAmount, 
+                method: method 
+            });
+            setSelectedTableId(null);
+            showAlert({ title: "Sucesso", message: "Pagamento registrado com sucesso!", type: 'SUCCESS' });
+        }
+    });
   };
 
   return (
