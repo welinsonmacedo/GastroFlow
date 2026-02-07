@@ -106,7 +106,14 @@ export const RegisterRestaurant: React.FC = () => {
             }
         } catch (err: any) {
             console.error(err);
-            setError(err.message || "Erro ao criar conta.");
+            if (err.message) {
+                setError(err.message);
+            } else if (typeof err === 'object') {
+                 // Tenta extrair mensagem de erro do Supabase ou exibe o objeto
+                 setError(err.error_description || err.msg || JSON.stringify(err));
+            } else {
+                setError("Erro desconhecido ao criar conta.");
+            }
         } finally {
             setLoading(false);
         }
@@ -240,9 +247,10 @@ export const RegisterRestaurant: React.FC = () => {
                     </div>
 
                     {error && (
-                        <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm flex items-center gap-2 border border-red-200">
-                            <AlertCircle size={16} />
-                            <span className="font-bold">Erro:</span> {error}
+                        <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm flex items-center gap-2 border border-red-200 overflow-hidden text-ellipsis">
+                            <AlertCircle size={16} className="shrink-0" />
+                            <span className="font-bold shrink-0">Erro:</span> 
+                            <span className="truncate">{error}</span>
                         </div>
                     )}
 

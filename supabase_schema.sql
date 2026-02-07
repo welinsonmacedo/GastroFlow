@@ -141,8 +141,9 @@ CREATE TABLE audit_logs (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
 );
 
--- 4. CONFIGURAÇÃO DE REALTIME (Essencial para o funcionamento do App)
+-- 4. CONFIGURAÇÃO DE REALTIME E RLS
 
+-- Habilitar Realtime
 ALTER PUBLICATION supabase_realtime ADD TABLE restaurant_tables;
 ALTER PUBLICATION supabase_realtime ADD TABLE orders;
 ALTER PUBLICATION supabase_realtime ADD TABLE order_items;
@@ -150,6 +151,32 @@ ALTER PUBLICATION supabase_realtime ADD TABLE products;
 ALTER PUBLICATION supabase_realtime ADD TABLE transactions;
 ALTER PUBLICATION supabase_realtime ADD TABLE audit_logs;
 ALTER PUBLICATION supabase_realtime ADD TABLE plans;
+
+-- Habilitar RLS (Row Level Security) em todas as tabelas
+ALTER TABLE plans ENABLE ROW LEVEL SECURITY;
+ALTER TABLE tenants ENABLE ROW LEVEL SECURITY;
+ALTER TABLE saas_admins ENABLE ROW LEVEL SECURITY;
+ALTER TABLE staff ENABLE ROW LEVEL SECURITY;
+ALTER TABLE products ENABLE ROW LEVEL SECURITY;
+ALTER TABLE restaurant_tables ENABLE ROW LEVEL SECURITY;
+ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
+ALTER TABLE order_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
+
+-- Criar Políticas Permissivas (Public Access) para evitar erro 403
+-- Em produção, estas políticas devem ser restritas. Para este MVP, liberamos o acesso.
+
+CREATE POLICY "Public Access Plans" ON plans FOR ALL USING (true);
+CREATE POLICY "Public Access Tenants" ON tenants FOR ALL USING (true);
+CREATE POLICY "Public Access SaaS Admins" ON saas_admins FOR ALL USING (true);
+CREATE POLICY "Public Access Staff" ON staff FOR ALL USING (true);
+CREATE POLICY "Public Access Products" ON products FOR ALL USING (true);
+CREATE POLICY "Public Access Tables" ON restaurant_tables FOR ALL USING (true);
+CREATE POLICY "Public Access Orders" ON orders FOR ALL USING (true);
+CREATE POLICY "Public Access Order Items" ON order_items FOR ALL USING (true);
+CREATE POLICY "Public Access Transactions" ON transactions FOR ALL USING (true);
+CREATE POLICY "Public Access Audit Logs" ON audit_logs FOR ALL USING (true);
 
 -- 5. SEED DATA (Dados Iniciais)
 
