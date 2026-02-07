@@ -166,6 +166,38 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [state.isAuthenticated]);
 
+  // INACTIVITY LOGOUT TIMER (30 Minutes for CEO/Admin)
+  useEffect(() => {
+      // Se não está autenticado como admin do SaaS, não faz nada
+      if (!state.isAuthenticated) return;
+
+      const TIMEOUT_MS = 30 * 60 * 1000; // 30 Minutos
+      let timeoutId: any;
+
+      const handleLogout = async () => {
+          alert("Sessão expirada por inatividade (30min). Por favor, faça login novamente.");
+          await supabase.auth.signOut();
+          dispatch({ type: 'LOGOUT_ADMIN' });
+      };
+
+      const resetTimer = () => {
+          if (timeoutId) clearTimeout(timeoutId);
+          timeoutId = setTimeout(handleLogout, TIMEOUT_MS);
+      };
+
+      // Eventos para detectar atividade
+      const events = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'];
+      events.forEach(event => window.addEventListener(event, resetTimer));
+
+      // Inicia timer inicial
+      resetTimer();
+
+      return () => {
+          if (timeoutId) clearTimeout(timeoutId);
+          events.forEach(event => window.removeEventListener(event, resetTimer));
+      };
+  }, [state.isAuthenticated]);
+
   // Intercepta ações de mutação para atualizar o Supabase também
   const dispatchWithSideEffects = async (action: SaaSAction) => {
     

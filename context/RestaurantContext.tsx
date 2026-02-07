@@ -258,7 +258,7 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 type: p.type as ProductType,
                 image: p.image,
                 isVisible: p.is_visible,
-                sortOrder: p.sort_order
+                sort_order: p.sort_order
             }));
 
             const mappedTables: Table[] = (tablesRes.data || []).map(t => ({
@@ -437,7 +437,7 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     return () => { subscription.unsubscribe(); };
   }, [state.tenantId, state.users]); 
 
-  // 4. REALTIME SUBSCRIPTION (The Core Fix)
+  // 4. REALTIME SUBSCRIPTION
   useEffect(() => {
     if (!state.tenantId) return;
 
@@ -533,6 +533,38 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         supabase.removeChannel(channel);
     }
   }, [state.tenantId]);
+
+  // 6. INACTIVITY LOGOUT TIMER (5 Hours for Restaurant Staff)
+  useEffect(() => {
+      // Se não tem usuário logado, não faz nada
+      if (!state.currentUser) return;
+
+      const TIMEOUT_MS = 5 * 60 * 60 * 1000; // 5 Horas
+      let timeoutId: any;
+
+      const handleLogout = async () => {
+          console.log(`Sessão expirada por inatividade (${TIMEOUT_MS}ms).`);
+          await supabase.auth.signOut();
+          dispatchLocal({ type: 'LOGOUT' });
+      };
+
+      const resetTimer = () => {
+          if (timeoutId) clearTimeout(timeoutId);
+          timeoutId = setTimeout(handleLogout, TIMEOUT_MS);
+      };
+
+      // Eventos para detectar atividade
+      const events = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'];
+      events.forEach(event => window.addEventListener(event, resetTimer));
+
+      // Inicia timer inicial
+      resetTimer();
+
+      return () => {
+          if (timeoutId) clearTimeout(timeoutId);
+          events.forEach(event => window.removeEventListener(event, resetTimer));
+      };
+  }, [state.currentUser]);
 
   // 5. Intercept Dispatch
   const dispatch = async (action: Action) => {

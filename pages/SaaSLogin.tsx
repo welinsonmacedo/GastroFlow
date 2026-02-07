@@ -17,28 +17,43 @@ export const SaaSLogin: React.FC = () => {
 
   // Verifica conexão ao montar o componente
   useEffect(() => {
+    let isMounted = true;
+
     const checkConnection = async () => {
       if (!isSupabaseConfigured()) {
-        setConnectionStatus('ERROR');
+        if (isMounted) setConnectionStatus('ERROR');
         return;
       }
 
       try {
-        // Tenta um ping simples no banco (busca count da tabela tenants)
-        const { count, error } = await supabase.from('tenants').select('*', { count: 'exact', head: true });
+        // Tenta um ping simples no banco
+        const { error } = await supabase.from('tenants').select('count', { count: 'exact', head: true });
         
+        if (!isMounted) return;
+
         if (error) {
-          console.error("Erro de conexão Supabase:", error);
-          setConnectionStatus('ERROR');
+          // Ignora erros de cancelamento (AbortError) comuns em ambientes de desenvolvimento/strict mode
+          const isAbort = error.message?.includes('AbortError') || 
+                          error.details?.includes('AbortError') ||
+                          error.message?.includes('signal is aborted');
+          
+          if (!isAbort) {
+             console.error("Erro de conexão Supabase:", error);
+             setConnectionStatus('ERROR');
+          }
         } else {
           setConnectionStatus('CONNECTED');
         }
       } catch (err) {
-        setConnectionStatus('ERROR');
+        if (isMounted) setConnectionStatus('ERROR');
       }
     };
 
     checkConnection();
+
+    return () => {
+        isMounted = false;
+    };
   }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
