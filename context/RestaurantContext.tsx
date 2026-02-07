@@ -29,6 +29,8 @@ type Action =
   | { type: 'REALTIME_UPDATE_TABLES'; tables: Table[] }
   | { type: 'REALTIME_UPDATE_ORDERS'; orders: Order[] }
   | { type: 'REALTIME_UPDATE_PRODUCTS'; products: Product[] }
+  | { type: 'REALTIME_UPDATE_TRANSACTIONS'; transactions: Transaction[] }
+  | { type: 'REALTIME_UPDATE_AUDIT_LOGS'; auditLogs: AuditLog[] }
   // Ações que disparam side-effects no Supabase (interceptadas)
   | { type: 'ADD_USER'; user: User }
   | { type: 'UPDATE_USER'; user: User }
@@ -82,7 +84,6 @@ const restaurantReducer = (state: State, action: Action): State => {
 
     // Atualizações vindas do Realtime ou Fetch
     case 'REALTIME_UPDATE_TABLES':
-        // Mesclar tabelas existentes com as novas para não perder estado momentâneo se houver
         return { ...state, tables: action.tables };
     
     case 'REALTIME_UPDATE_ORDERS':
@@ -90,9 +91,13 @@ const restaurantReducer = (state: State, action: Action): State => {
     
     case 'REALTIME_UPDATE_PRODUCTS':
         return { ...state, products: action.products };
+    
+    case 'REALTIME_UPDATE_TRANSACTIONS':
+        return { ...state, transactions: action.transactions };
+    
+    case 'REALTIME_UPDATE_AUDIT_LOGS':
+        return { ...state, auditLogs: action.auditLogs };
 
-    // Optimistic Updates (opcional, aqui estamos confiando no Realtime para simplicidade, 
-    // mas poderíamos atualizar o state imediatamente para feedback instantâneo)
     case 'UPDATE_THEME':
         return { ...state, theme: action.theme };
 
@@ -105,6 +110,21 @@ const restaurantReducer = (state: State, action: Action): State => {
 export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, dispatchLocal] = useReducer(restaurantReducer, initialState);
 
+  // Helper para logging
+  const logAudit = async (tenantId: string, action: string, details: string) => {
+      try {
+          await supabase.from('audit_logs').insert({
+              tenant_id: tenantId,
+              user_id: state.currentUser?.id,
+              user_name: state.currentUser?.name || 'Sistema',
+              action,
+              details
+          });
+      } catch (e) {
+          console.error("Falha ao criar log de auditoria", e);
+      }
+  };
+
   // 1. Inicialização e Fetch de Dados
   useEffect(() => {
     const slug = getTenantSlug();
@@ -115,7 +135,6 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
     if (!isSupabaseConfigured()) {
         console.warn("Supabase não configurado. Verifique o arquivo .env");
-        // Fallback para mock se quiser, ou erro. Vamos dar erro para forçar config.
         alert("Por favor configure as chaves VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY no arquivo .env");
         return;
     }
@@ -135,14 +154,13 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             }
 
             // B. Buscar Dados Relacionados
-            const [usersRes, productsRes, tablesRes, ordersRes] = await Promise.all([
+            const [usersRes, productsRes, tablesRes, ordersRes, transactionsRes, auditRes] = await Promise.all([
                 supabase.from('staff').select('*').eq('tenant_id', tenant.id),
                 supabase.from('products').select('*').eq('tenant_id', tenant.id),
                 supabase.from('restaurant_tables').select('*').eq('tenant_id', tenant.id).order('number'),
-                supabase.from('orders').select(`
-                    *,
-                    items:order_items (*)
-                `).eq('tenant_id', tenant.id).eq('is_paid', false) // Apenas pedidos ativos
+                supabase.from('orders').select(`*, items:order_items (*)`).eq('tenant_id', tenant.id).eq('is_paid', false), // Apenas pedidos ativos
+                supabase.from('transactions').select('*').eq('tenant_id', tenant.id).order('created_at', { ascending: false }).limit(50),
+                supabase.from('audit_logs').select('*').eq('tenant_id', tenant.id).order('created_at', { ascending: false }).limit(50)
             ]);
 
             // Mapeamento de dados SQL -> App Types
@@ -184,6 +202,26 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 }))
             }));
 
+            const mappedTransactions: Transaction[] = (transactionsRes.data || []).map(t => ({
+                id: t.id,
+                tableId: t.table_id || '',
+                tableNumber: t.table_number || 0,
+                amount: t.amount,
+                method: t.method as any,
+                timestamp: new Date(t.created_at),
+                itemsSummary: t.items_summary || '',
+                cashierName: t.cashier_name || ''
+            }));
+
+            const mappedAuditLogs: AuditLog[] = (auditRes.data || []).map(l => ({
+                id: l.id,
+                userId: l.user_id || '',
+                userName: l.user_name || '',
+                action: l.action,
+                details: l.details || '',
+                timestamp: new Date(l.created_at)
+            }));
+
             dispatchLocal({
                 type: 'INIT_DATA',
                 payload: {
@@ -193,7 +231,9 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                     users: mappedUsers,
                     products: mappedProducts,
                     tables: mappedTables,
-                    orders: mappedOrders
+                    orders: mappedOrders,
+                    transactions: mappedTransactions,
+                    auditLogs: mappedAuditLogs
                 }
             });
 
@@ -211,11 +251,11 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     if (!state.tenantId) return;
 
     const channel = supabase.channel('restaurant_changes')
+        // Mesas
         .on(
             'postgres_changes',
             { event: '*', schema: 'public', table: 'restaurant_tables', filter: `tenant_id=eq.${state.tenantId}` },
-            async (payload) => {
-                // Simplificação: Refetch tables para garantir consistência
+            async () => {
                 const { data } = await supabase.from('restaurant_tables').select('*').eq('tenant_id', state.tenantId!).order('number');
                 if (data) {
                     const mapped = data.map(t => ({ id: t.id, number: t.number, status: t.status, customerName: t.customer_name, accessCode: t.access_code }));
@@ -223,11 +263,11 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 }
             }
         )
+        // Pedidos (Itens)
         .on(
             'postgres_changes',
-            { event: '*', schema: 'public', table: 'order_items', filter: `tenant_id=eq.${state.tenantId}` }, // Infelizmente filter em join tables é complexo, melhor ouvir orders ou items
+            { event: '*', schema: 'public', table: 'order_items', filter: `tenant_id=eq.${state.tenantId}` },
             async () => {
-                // Ao mudar qualquer item, refetch orders ativos
                 const { data } = await supabase.from('orders').select(`*, items:order_items (*)`).eq('tenant_id', state.tenantId!).eq('is_paid', false);
                 if (data) {
                      const mappedOrders: Order[] = data.map(o => ({
@@ -249,6 +289,48 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 }
             }
         )
+        // Transações
+        .on(
+            'postgres_changes',
+            { event: 'INSERT', schema: 'public', table: 'transactions', filter: `tenant_id=eq.${state.tenantId}` },
+            async () => {
+                const { data } = await supabase.from('transactions').select('*').eq('tenant_id', state.tenantId!).order('created_at', { ascending: false }).limit(50);
+                if (data) {
+                    const mapped = data.map(t => ({
+                        id: t.id, tableId: t.table_id || '', tableNumber: t.table_number || 0, amount: t.amount, method: t.method as any, timestamp: new Date(t.created_at), itemsSummary: t.items_summary || '', cashierName: t.cashier_name || ''
+                    }));
+                    dispatchLocal({ type: 'REALTIME_UPDATE_TRANSACTIONS', transactions: mapped });
+                }
+            }
+        )
+        // Logs de Auditoria
+        .on(
+            'postgres_changes',
+            { event: 'INSERT', schema: 'public', table: 'audit_logs', filter: `tenant_id=eq.${state.tenantId}` },
+            async () => {
+                const { data } = await supabase.from('audit_logs').select('*').eq('tenant_id', state.tenantId!).order('created_at', { ascending: false }).limit(50);
+                if (data) {
+                    const mapped = data.map(l => ({
+                        id: l.id, userId: l.user_id || '', userName: l.user_name || '', action: l.action, details: l.details || '', timestamp: new Date(l.created_at)
+                    }));
+                    dispatchLocal({ type: 'REALTIME_UPDATE_AUDIT_LOGS', auditLogs: mapped });
+                }
+            }
+        )
+        // Produtos
+        .on(
+            'postgres_changes',
+            { event: '*', schema: 'public', table: 'products', filter: `tenant_id=eq.${state.tenantId}` },
+            async () => {
+                 const { data } = await supabase.from('products').select('*').eq('tenant_id', state.tenantId!);
+                 if (data) {
+                     const mapped = data.map(p => ({
+                        id: p.id, name: p.name, description: p.description, price: p.price, category: p.category, type: p.type as ProductType, image: p.image, isVisible: p.is_visible, sortOrder: p.sort_order
+                    }));
+                    dispatchLocal({ type: 'REALTIME_UPDATE_PRODUCTS', products: mapped });
+                 }
+            }
+        )
         .subscribe();
 
     return () => {
@@ -259,14 +341,18 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   // 3. Intercept Dispatch para Side-Effects (Mutations)
   const dispatch = async (action: Action) => {
-    // Primeiro, aplica localmente (se necessário/possível)
-    // Para simplificar, vamos deixar o Realtime atualizar o estado na maioria dos casos,
-    // mas para Login/Logout usamos local.
-    
     const { tenantId } = state;
 
     switch (action.type) {
         case 'LOGIN':
+            // Log de login
+            if (action.user) {
+                // Pequeno hack: como login é local state, não temos user ID no context ainda. 
+                // Mas a action tem o user.
+                // Não logamos no DB login pois é "local session", mas poderíamos.
+            }
+            dispatchLocal(action);
+            break;
         case 'LOGOUT':
         case 'SET_LOADING':
             dispatchLocal(action);
@@ -279,6 +365,7 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                     customer_name: action.customerName,
                     access_code: action.accessCode
                 }).eq('id', action.tableId);
+                logAudit(tenantId, 'OPEN_TABLE', `Mesa ${action.tableId} aberta para ${action.customerName}`);
             }
             break;
 
@@ -289,6 +376,7 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                     customer_name: null,
                     access_code: null
                 }).eq('id', action.tableId);
+                logAudit(tenantId, 'CLOSE_TABLE', `Mesa ${action.tableId} fechada manualmente`);
             }
             break;
 
@@ -307,6 +395,7 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                     const itemsToInsert = action.items.map(item => {
                         const product = state.products.find(p => p.id === item.productId);
                         return {
+                            tenant_id: tenantId, // Importante para RLS/Filtro
                             order_id: orderData.id,
                             product_id: item.productId,
                             product_name: product?.name || 'Unknown',
@@ -318,6 +407,7 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                         };
                     });
                     await supabase.from('order_items').insert(itemsToInsert);
+                    // Não precisa logar audit aqui, é ação do cliente
                 }
             }
             break;
@@ -330,13 +420,17 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         
         case 'PROCESS_PAYMENT':
             if (tenantId) {
+                // Buscar número da mesa
+                const table = state.tables.find(t => t.id === action.tableId);
+                
                 // 1. Registrar Transação
                 await supabase.from('transactions').insert({
                     tenant_id: tenantId,
                     table_id: action.tableId,
+                    table_number: table?.number || 0,
                     amount: action.amount,
                     method: action.method,
-                    items_summary: 'Pedido processado via sistema',
+                    items_summary: 'Pedido processado via sistema', // Melhoria futura: listar itens
                     cashier_name: state.currentUser?.name || 'Sistema'
                 });
 
@@ -353,16 +447,14 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                     customer_name: null,
                     access_code: null
                 }).eq('id', action.tableId);
-
-                // Forçar atualização local rápida
-                const updatedOrders = state.orders.filter(o => o.tableId !== action.tableId);
-                dispatchLocal({ type: 'REALTIME_UPDATE_ORDERS', orders: updatedOrders });
+                
+                logAudit(tenantId, 'PAYMENT', `Pagamento de R$${action.amount} recebido via ${action.method} mesa ${table?.number}`);
             }
             break;
 
         case 'ADD_PRODUCT':
              if (tenantId) {
-                 const { data } = await supabase.from('products').insert({
+                 await supabase.from('products').insert({
                      tenant_id: tenantId,
                      name: action.product.name,
                      description: action.product.description,
@@ -372,14 +464,8 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                      image: action.product.image,
                      is_visible: action.product.isVisible,
                      sort_order: action.product.sortOrder
-                 }).select().single();
-                 
-                 // Recarregar lista
-                 if(data) {
-                    const { data: allProducts } = await supabase.from('products').select('*').eq('tenant_id', tenantId);
-                    // Mapeia e atualiza... simplificado:
-                    window.location.reload(); // Hack para simplificar atualização de produtos admin
-                 }
+                 });
+                 logAudit(tenantId, 'ADD_PRODUCT', `Produto ${action.product.name} criado`);
              }
              break;
         
@@ -395,14 +481,15 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                      is_visible: action.product.isVisible,
                      sort_order: action.product.sortOrder
                 }).eq('id', action.product.id);
-                window.location.reload(); 
+                logAudit(tenantId, 'UPDATE_PRODUCT', `Produto ${action.product.name} atualizado`);
             }
             break;
         
         case 'UPDATE_THEME':
             if(tenantId) {
                 await supabase.from('tenants').update({ theme_config: action.theme }).eq('id', tenantId);
-                dispatchLocal(action); // Atualiza localmente imediato
+                dispatchLocal(action);
+                logAudit(tenantId, 'UPDATE_THEME', `Tema atualizado`);
             }
             break;
             
@@ -414,7 +501,13 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                     role: action.user.role,
                     pin: action.user.pin
                 });
-                window.location.reload();
+                // Recarrega usuarios
+                const { data } = await supabase.from('staff').select('*').eq('tenant_id', tenantId);
+                if(data) {
+                    // Hack rápido, idealmente usaria um reducer action SET_USERS
+                    window.location.reload();
+                }
+                logAudit(tenantId, 'ADD_USER', `Usuário ${action.user.name} criado`);
             }
             break;
 
@@ -422,6 +515,7 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             if(tenantId) {
                 await supabase.from('staff').delete().eq('id', action.userId);
                 window.location.reload();
+                logAudit(tenantId, 'DELETE_USER', `Usuário ID ${action.userId} removido`);
             }
             break;
         
@@ -433,6 +527,7 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                     pin: action.user.pin
                 }).eq('id', action.user.id);
                 window.location.reload();
+                logAudit(tenantId, 'UPDATE_USER', `Usuário ${action.user.name} atualizado`);
             }
             break;
     }

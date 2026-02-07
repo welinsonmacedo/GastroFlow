@@ -1,6 +1,7 @@
 -- ⚠️ ATENÇÃO: RODE ESTE SCRIPT NO "SQL EDITOR" DO SUPABASE ⚠️
 
 -- 1. LIMPEZA (Cuidado: Isso apaga dados existentes para recriar a estrutura correta)
+DROP TABLE IF EXISTS audit_logs CASCADE;
 DROP TABLE IF EXISTS transactions CASCADE;
 DROP TABLE IF EXISTS order_items CASCADE;
 DROP TABLE IF EXISTS orders CASCADE;
@@ -112,6 +113,17 @@ CREATE TABLE transactions (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
 );
 
+-- Audit Logs (Auditoria)
+CREATE TABLE audit_logs (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    tenant_id UUID REFERENCES tenants(id) ON DELETE CASCADE NOT NULL,
+    user_id UUID REFERENCES staff(id) ON DELETE SET NULL,
+    user_name TEXT,
+    action TEXT NOT NULL,
+    details TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+
 -- 4. CONFIGURAÇÃO DE REALTIME (Essencial para o funcionamento do App)
 
 -- Adiciona as tabelas na publicação do supabase_realtime
@@ -119,6 +131,8 @@ ALTER PUBLICATION supabase_realtime ADD TABLE restaurant_tables;
 ALTER PUBLICATION supabase_realtime ADD TABLE orders;
 ALTER PUBLICATION supabase_realtime ADD TABLE order_items;
 ALTER PUBLICATION supabase_realtime ADD TABLE products;
+ALTER PUBLICATION supabase_realtime ADD TABLE transactions;
+ALTER PUBLICATION supabase_realtime ADD TABLE audit_logs;
 
 -- 5. SEED DATA (Dados Iniciais)
 
@@ -129,7 +143,7 @@ DECLARE
     t_id_pizza UUID;
 BEGIN
     -- Seed SaaS Admin (CEO)
-    INSERT INTO saas_admins (name, email, password) VALUES ('CEO GastroFlow', 'welinsonmarlon15@gmail.com', 'admin');
+    INSERT INTO saas_admins (name, email, password) VALUES ('CEO GastroFlow', 'admin@gastroflow.com', 'admin');
 
     -- --- RESTAURANTE 1: BISTRÔ DO CHEF ---
     INSERT INTO tenants (slug, name, theme_config, plan) 
