@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useReducer, useEffect, useState } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, useState, useCallback } from 'react';
 import { Table, Order, Product, TableStatus, OrderStatus, ProductType, OrderItem, RestaurantTheme, User, AuditLog, Transaction, Role, ServiceCall, OnlineUser } from '../types';
 import { getTenantSlug } from '../utils/tenant';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
@@ -19,7 +19,7 @@ interface State {
   transactions: Transaction[];
   serviceCalls: ServiceCall[];
   onlineUsers: OnlineUser[]; 
-  audioUnlocked: boolean; // Novo estado para controlar permissão de áudio
+  audioUnlocked: boolean;
 }
 
 type Action =
@@ -35,7 +35,7 @@ type Action =
   | { type: 'REALTIME_UPDATE_AUDIT_LOGS'; auditLogs: AuditLog[] }
   | { type: 'REALTIME_UPDATE_SERVICE_CALLS'; calls: ServiceCall[] }
   | { type: 'UPDATE_ONLINE_USERS'; users: OnlineUser[] }
-  | { type: 'UNLOCK_AUDIO' } // Nova Action
+  | { type: 'UNLOCK_AUDIO' }
   | { type: 'ADD_USER'; user: User }
   | { type: 'UPDATE_USER'; user: User }
   | { type: 'DELETE_USER'; userId: string }
@@ -86,7 +86,6 @@ export const useRestaurant = () => {
 };
 
 // --- Sounds Logic ---
-// Sons curtos e distintos
 const kitchenSound = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3'); 
 const waiterSound = new Audio('https://assets.mixkit.co/active_storage/sfx/2346/2346-preview.mp3');
 
@@ -118,7 +117,6 @@ const restaurantReducer = (state: State, action: Action): State => {
       return { ...state, currentUser: null };
 
     case 'UNLOCK_AUDIO':
-        // Toca um som mudo ou pausa/play para desbloquear o AudioContext do navegador
         kitchenSound.play().then(() => kitchenSound.pause()).catch(() => {});
         waiterSound.play().then(() => waiterSound.pause()).catch(() => {});
         return { ...state, audioUnlocked: true };
@@ -127,13 +125,10 @@ const restaurantReducer = (state: State, action: Action): State => {
         return { ...state, tables: action.tables };
     
     case 'REALTIME_UPDATE_ORDERS':
-        // Lógica inteligente de som para Cozinha
         if (state.currentUser?.role === Role.KITCHEN || state.currentUser?.role === Role.ADMIN) {
-             // Conta quantos itens PENDING (Cozinha) existem no estado novo vs antigo
              const countNewPending = action.orders.reduce((acc, order) => acc + order.items.filter(i => i.status === OrderStatus.PENDING && i.productType === ProductType.KITCHEN).length, 0);
              const countOldPending = state.orders.reduce((acc, order) => acc + order.items.filter(i => i.status === OrderStatus.PENDING && i.productType === ProductType.KITCHEN).length, 0);
              
-             // Se aumentou o número de pendentes, toca o sino
              if (countNewPending > countOldPending) {
                  playSoundSafely(kitchenSound);
              }
@@ -150,7 +145,6 @@ const restaurantReducer = (state: State, action: Action): State => {
         return { ...state, auditLogs: action.auditLogs };
 
     case 'REALTIME_UPDATE_SERVICE_CALLS':
-        // Lógica inteligente de som para Garçom
         const newPending = action.calls.filter(c => c.status === 'PENDING').length;
         const oldPending = state.serviceCalls.filter(c => c.status === 'PENDING').length;
         
@@ -203,7 +197,7 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
 
     if (!isSupabaseConfigured()) {
-        console.warn("Supabase não configurado. Verifique o arquivo .env");
+        console.warn("Supabase não configurado.");
     }
 
     const initTenant = async () => {
@@ -219,7 +213,6 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 return;
             }
 
-            // Define o período de busca (últimas 24h para garantir que tudo do dia apareça)
             const yesterday = new Date();
             yesterday.setHours(yesterday.getHours() - 24);
             const isoDate = yesterday.toISOString();
@@ -228,8 +221,6 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 supabase.from('staff').select('*').eq('tenant_id', tenant.id),
                 supabase.from('products').select('*').eq('tenant_id', tenant.id),
                 supabase.from('restaurant_tables').select('*').eq('tenant_id', tenant.id).order('number'),
-                // Mudança Crítica: Busca pedidos recentes (24h), independente de estarem pagos ou não.
-                // Isso evita que pedidos sumam da cozinha quando pagos.
                 supabase.from('orders').select(`*, items:order_items (*)`).eq('tenant_id', tenant.id).gte('created_at', isoDate),
                 supabase.from('transactions').select('*').eq('tenant_id', tenant.id).order('created_at', { ascending: false }).limit(50),
                 supabase.from('audit_logs').select('*').eq('tenant_id', tenant.id).order('created_at', { ascending: false }).limit(50),
@@ -368,18 +359,13 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       }
 
       const channel = supabase.channel(`presence:${state.tenantId}`, {
-          config: {
-              presence: {
-                  key: state.currentUser.id,
-              },
-          },
+          config: { presence: { key: state.currentUser.id } },
       });
 
       channel
         .on('presence', { event: 'sync' }, () => {
             const newState = channel.presenceState();
             const users: OnlineUser[] = [];
-            
             Object.keys(newState).forEach(key => {
                 const presence = newState[key][0];
                 if (presence) {
@@ -405,10 +391,7 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         });
 
       setPresenceChannel(channel);
-
-      return () => {
-          channel.unsubscribe();
-      };
+      return () => { channel.unsubscribe(); };
   }, [state.tenantId, state.currentUser?.id]);
 
   // 3. Auth Listener
@@ -421,13 +404,7 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             if (authenticatedStaff) {
                 dispatchLocal({ type: 'LOGIN', user: authenticatedStaff });
             } else {
-                 const { data: staffData } = await supabase
-                    .from('staff')
-                    .select('*')
-                    .eq('auth_user_id', session.user.id)
-                    .eq('tenant_id', state.tenantId)
-                    .maybeSingle();
-                
+                 const { data: staffData } = await supabase.from('staff').select('*').eq('auth_user_id', session.user.id).eq('tenant_id', state.tenantId).maybeSingle();
                  if(staffData) {
                      dispatchLocal({ type: 'LOGIN', user: {
                          id: staffData.id,
@@ -445,25 +422,31 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         }
     });
 
-    return () => {
-        subscription.unsubscribe();
-    };
+    return () => { subscription.unsubscribe(); };
   }, [state.tenantId, state.users]); 
 
-  // 4. Realtime Subscription
+  // 4. REALTIME SUBSCRIPTION (The Core Fix)
   useEffect(() => {
     if (!state.tenantId) return;
 
-    // Helper to fetch orders
+    const tenantId = state.tenantId;
+
+    // --- Definindo Fetchers Reutilizáveis ---
+    const fetchTables = async () => {
+        const { data } = await supabase.from('restaurant_tables').select('*').eq('tenant_id', tenantId).order('number');
+        if (data) {
+            const mapped = data.map((t: any) => ({ id: t.id, number: t.number, status: t.status, customerName: t.customer_name, accessCode: t.access_code }));
+            dispatchLocal({ type: 'REALTIME_UPDATE_TABLES', tables: mapped as Table[] });
+        }
+    };
+
     const fetchOrders = async () => {
         const yesterday = new Date();
         yesterday.setHours(yesterday.getHours() - 24);
         const isoDate = yesterday.toISOString();
 
-        // Busca pedidos recentes, INDEPENDENTE de status de pagamento
-        // Isso é crucial para que a cozinha veja pedidos mesmo após pagos
         const { data } = await supabase.from('orders')
-            .select(`*, items:order_items (*)`).eq('tenant_id', state.tenantId!).gte('created_at', isoDate);
+            .select(`*, items:order_items (*)`).eq('tenant_id', tenantId).gte('created_at', isoDate);
             
         if (data) {
              const mappedOrders: Order[] = data.map((o: any) => ({
@@ -485,85 +468,53 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         }
     };
 
-    const channel = supabase.channel('restaurant_changes')
-        .on(
-            'postgres_changes',
-            { event: '*', schema: 'public', table: 'restaurant_tables', filter: `tenant_id=eq.${state.tenantId}` },
-            async () => {
-                const { data } = await supabase.from('restaurant_tables').select('*').eq('tenant_id', state.tenantId!).order('number');
-                if (data) {
-                    const mapped = data.map((t: any) => ({ id: t.id, number: t.number, status: t.status, customerName: t.customer_name, accessCode: t.access_code }));
-                    dispatchLocal({ type: 'REALTIME_UPDATE_TABLES', tables: mapped as Table[] });
-                }
-            }
-        )
-        // Listen to ITEMS changes (added, status changed to READY)
-        .on(
-            'postgres_changes',
-            { event: '*', schema: 'public', table: 'order_items', filter: `tenant_id=eq.${state.tenantId}` },
-            fetchOrders
-        )
-        // Listen to ORDER changes (Payment status change primarily)
-        .on(
-            'postgres_changes',
-            { event: '*', schema: 'public', table: 'orders', filter: `tenant_id=eq.${state.tenantId}` },
-            fetchOrders
-        )
-        .on(
-            'postgres_changes',
-            { event: '*', schema: 'public', table: 'service_calls', filter: `tenant_id=eq.${state.tenantId}` },
-            async () => {
-                 const { data } = await supabase.from('service_calls').select('*').eq('tenant_id', state.tenantId!).eq('status', 'PENDING');
-                 if(data) {
-                     const mappedCalls: ServiceCall[] = data.map((c: any) => ({
-                        id: c.id,
-                        tableId: c.table_id,
-                        status: c.status,
-                        timestamp: new Date(c.created_at)
-                    }));
-                    dispatchLocal({ type: 'REALTIME_UPDATE_SERVICE_CALLS', calls: mappedCalls });
-                 }
-            }
-        )
-        .on(
-            'postgres_changes',
-            { event: 'INSERT', schema: 'public', table: 'transactions', filter: `tenant_id=eq.${state.tenantId}` },
-            async () => {
-                const { data } = await supabase.from('transactions').select('*').eq('tenant_id', state.tenantId!).order('created_at', { ascending: false }).limit(50);
-                if (data) {
-                    const mapped = data.map((t: any) => ({
-                        id: t.id, tableId: t.table_id || '', tableNumber: t.table_number || 0, amount: t.amount, method: t.method as any, timestamp: new Date(t.created_at), itemsSummary: t.items_summary || '', cashierName: t.cashier_name || ''
-                    }));
-                    dispatchLocal({ type: 'REALTIME_UPDATE_TRANSACTIONS', transactions: mapped });
-                }
-            }
-        )
-        .on(
-            'postgres_changes',
-            { event: 'INSERT', schema: 'public', table: 'audit_logs', filter: `tenant_id=eq.${state.tenantId}` },
-            async () => {
-                const { data } = await supabase.from('audit_logs').select('*').eq('tenant_id', state.tenantId!).order('created_at', { ascending: false }).limit(50);
-                if (data) {
-                    const mapped = data.map((l: any) => ({
-                        id: l.id, userId: l.user_id || '', userName: l.user_name || '', action: l.action, details: l.details || '', timestamp: new Date(l.created_at)
-                    }));
-                    dispatchLocal({ type: 'REALTIME_UPDATE_AUDIT_LOGS', auditLogs: mapped });
-                }
-            }
-        )
-        .on(
-            'postgres_changes',
-            { event: '*', schema: 'public', table: 'products', filter: `tenant_id=eq.${state.tenantId}` },
-            async () => {
-                 const { data } = await supabase.from('products').select('*').eq('tenant_id', state.tenantId!);
-                 if (data) {
-                     const mapped = data.map((p: any) => ({
-                        id: p.id, name: p.name, description: p.description, price: p.price, category: p.category, type: p.type as ProductType, image: p.image, isVisible: p.is_visible, sortOrder: p.sort_order
-                    }));
-                    dispatchLocal({ type: 'REALTIME_UPDATE_PRODUCTS', products: mapped });
-                 }
-            }
-        )
+    const fetchServiceCalls = async () => {
+         const { data } = await supabase.from('service_calls').select('*').eq('tenant_id', tenantId).eq('status', 'PENDING');
+         if(data) {
+             const mappedCalls: ServiceCall[] = data.map((c: any) => ({
+                id: c.id,
+                tableId: c.table_id,
+                status: c.status,
+                timestamp: new Date(c.created_at)
+            }));
+            dispatchLocal({ type: 'REALTIME_UPDATE_SERVICE_CALLS', calls: mappedCalls });
+         }
+    };
+
+    const fetchTransactions = async () => {
+        const { data } = await supabase.from('transactions').select('*').eq('tenant_id', tenantId).order('created_at', { ascending: false }).limit(50);
+        if (data) {
+            const mapped = data.map((t: any) => ({
+                id: t.id, tableId: t.table_id || '', tableNumber: t.table_number || 0, amount: t.amount, method: t.method as any, timestamp: new Date(t.created_at), itemsSummary: t.items_summary || '', cashierName: t.cashier_name || ''
+            }));
+            dispatchLocal({ type: 'REALTIME_UPDATE_TRANSACTIONS', transactions: mapped });
+        }
+    };
+
+    const fetchProducts = async () => {
+         const { data } = await supabase.from('products').select('*').eq('tenant_id', tenantId);
+         if (data) {
+             const mapped = data.map((p: any) => ({
+                id: p.id, name: p.name, description: p.description, price: p.price, category: p.category, type: p.type as ProductType, image: p.image, isVisible: p.is_visible, sortOrder: p.sort_order
+            }));
+            dispatchLocal({ type: 'REALTIME_UPDATE_PRODUCTS', products: mapped });
+         }
+    };
+
+    // --- Configurando Canal Único de Assinatura ---
+    const channel = supabase.channel(`restaurant_updates:${tenantId}`)
+        // Mesas
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'restaurant_tables', filter: `tenant_id=eq.${tenantId}` }, fetchTables)
+        // Pedidos (Atualiza a lista inteira se um pedido for criado ou pago)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `tenant_id=eq.${tenantId}` }, fetchOrders)
+        // Itens de Pedido (Atualiza a lista de PEDIDOS se um item mudar status na cozinha)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'order_items', filter: `tenant_id=eq.${tenantId}` }, fetchOrders)
+        // Chamados de Serviço
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'service_calls', filter: `tenant_id=eq.${tenantId}` }, fetchServiceCalls)
+        // Transações
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'transactions', filter: `tenant_id=eq.${tenantId}` }, fetchTransactions)
+        // Produtos
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'products', filter: `tenant_id=eq.${tenantId}` }, fetchProducts)
         .subscribe();
 
     return () => {
