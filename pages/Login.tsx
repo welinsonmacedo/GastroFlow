@@ -72,18 +72,38 @@ export const Login: React.FC = () => {
 
           if (error || !data.user) throw new Error("Email ou senha inválidos.");
 
-          // Verifica se este usuário autenticado pertence ao restaurante atual
+          // 1. Tenta encontrar o usuário no contexto atual (Restaurante Atual)
           const staffUser = state.users.find(u => u.auth_user_id === data.user?.id);
 
           if (staffUser) {
               performLogin(staffUser);
           } else {
+              // 2. Se não encontrou, verifica se ele pertence a OUTRO restaurante
+              // Consulta a tabela staff para descobrir o tenant correto desse usuário
+              const { data: correctTenantData } = await supabase
+                  .from('staff')
+                  .select('tenants ( slug )')
+                  .eq('auth_user_id', data.user.id)
+                  .maybeSingle();
+              
+              let targetSlug = '';
+              if (correctTenantData && correctTenantData.tenants) {
+                   // @ts-ignore
+                   targetSlug = Array.isArray(correctTenantData.tenants) ? correctTenantData.tenants[0]?.slug : correctTenantData.tenants.slug;
+              }
+
+              // Se encontrou outro slug, redireciona o usuário
+              if (targetSlug && targetSlug !== state.tenantSlug) {
+                  setLoading(true); // Mantém loading visual
+                  window.location.href = `/?restaurant=${targetSlug}`;
+                  return;
+              }
+
               throw new Error("Este usuário não tem permissão de acesso neste restaurante.");
           }
 
       } catch (err: any) {
           setError(err.message || "Erro de autenticação.");
-      } finally {
           setLoading(false);
       }
   };

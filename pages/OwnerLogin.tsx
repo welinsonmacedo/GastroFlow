@@ -29,31 +29,27 @@ export const OwnerLogin: React.FC = () => {
             const userId = authData.user.id;
 
             // 2. Descobrir qual o Tenant (Restaurante) deste usuário
-            // Buscamos na tabela 'staff' onde o auth_user_id corresponde ao usuário logado.
-            // A query traz também os dados da tabela 'tenants' relacionada.
+            // Query robusta para staff e tenant associado
             const { data: staffData, error: staffError } = await supabase
                 .from('staff')
-                .select('tenant_id, tenants ( slug, name )')
+                .select(`
+                    tenant_id, 
+                    tenants!inner ( slug, name )
+                `)
                 .eq('auth_user_id', userId)
                 .maybeSingle();
 
-            // Lógica robusta para encontrar o slug
             let tenantSlug = '';
             
-            // Verifica se veio do Staff
+            // Tenta extrair do staff
             if (staffData && staffData.tenants) {
-                 const tenantInfo = staffData.tenants;
-                 // @ts-ignore - Supabase pode retornar array ou objeto dependendo da inferência
-                 if (Array.isArray(tenantInfo)) {
-                     // @ts-ignore
-                     tenantSlug = tenantInfo[0]?.slug;
-                 } else {
-                     // @ts-ignore
-                     tenantSlug = tenantInfo.slug;
-                 }
+                 const t = staffData.tenants;
+                 // Verifica se é array ou objeto
+                 // @ts-ignore 
+                 tenantSlug = Array.isArray(t) ? t[0]?.slug : t.slug;
             } 
             
-            // Fallback: Verifica owner_auth_id direto na tabela tenants se não achou via staff
+            // Fallback: Verifica se é um Owner Legado (direto na tabela tenants)
             if (!tenantSlug) {
                 const { data: tenantData } = await supabase
                     .from('tenants')
@@ -73,7 +69,6 @@ export const OwnerLogin: React.FC = () => {
             }
 
             // 3. Redirecionar para o ambiente do restaurante
-            // O App.tsx vai detectar o parâmetro ?restaurant=slug e carregar o contexto correto
             window.location.href = `/?restaurant=${tenantSlug}`;
 
         } catch (err: any) {
