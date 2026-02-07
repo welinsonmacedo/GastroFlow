@@ -32,20 +32,42 @@ export const SaaSLogin: React.FC = () => {
         if (!isMounted) return;
 
         if (error) {
-          // Ignora erros de cancelamento (AbortError) comuns em ambientes de desenvolvimento/strict mode
-          const isAbort = error.message?.includes('AbortError') || 
-                          error.details?.includes('AbortError') ||
-                          error.message?.includes('signal is aborted');
+          // Normaliza strings para verificação insensível a case
+          const msg = (error.message || '').toLowerCase();
+          const details = (error.details || '').toLowerCase();
+          const hint = (error.hint || '').toLowerCase();
+
+          // Ignora erros de cancelamento (AbortError) comuns
+          const isAbort = 
+              msg.includes('abort') || 
+              msg.includes('signal is aborted') ||
+              details.includes('abort') ||
+              hint.includes('abort');
           
           if (!isAbort) {
              console.error("Erro de conexão Supabase:", error);
              setConnectionStatus('ERROR');
+          } else {
+             // Se foi abortado, mas não é erro de rede crítico, assumimos conectado ou tentamos novamente depois
+             // Para UX, mantemos como conectado para não bloquear o login se for apenas um glitch de montagem
+             setConnectionStatus('CONNECTED');
           }
         } else {
           setConnectionStatus('CONNECTED');
         }
-      } catch (err) {
-        if (isMounted) setConnectionStatus('ERROR');
+      } catch (err: any) {
+        if (!isMounted) return;
+        
+        // Verifica AbortError no catch também
+        const msg = (err.message || '').toLowerCase();
+        const name = (err.name || '').toLowerCase();
+        
+        if (name.includes('abort') || msg.includes('abort')) {
+            setConnectionStatus('CONNECTED'); // Assume OK se foi cancelado localmente
+        } else {
+            console.error("Exceção de conexão:", err);
+            setConnectionStatus('ERROR');
+        }
       }
     };
 
@@ -61,10 +83,11 @@ export const SaaSLogin: React.FC = () => {
     setLoading(true);
     setError('');
 
+    // Permite tentar login mesmo se o check falhou, pois pode ser falso negativo, 
+    // mas avisa se estiver explicitamente offline
     if (connectionStatus === 'ERROR') {
-        setError('Sem conexão com o Supabase. Verifique suas credenciais no .env');
-        setLoading(false);
-        return;
+        // Não bloqueia totalmente, mas avisa
+        console.warn("Tentando login mesmo com status de conexão ERROR");
     }
 
     try {
@@ -191,7 +214,7 @@ export const SaaSLogin: React.FC = () => {
 
             <button 
                 type="submit" 
-                disabled={loading || connectionStatus === 'ERROR'}
+                disabled={loading}
                 className="w-full bg-slate-900 text-white py-3 rounded-lg font-bold hover:bg-slate-800 transition-all transform hover:-translate-y-0.5 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex justify-center"
             >
                 {loading ? <Loader2 className="animate-spin" /> : 'Acessar Painel'}
