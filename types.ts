@@ -51,6 +51,7 @@ export interface RestaurantTenant {
   status: 'ACTIVE' | 'INACTIVE';
   plan: PlanType;
   joinedAt: Date;
+  requestCount?: number; // Nova métrica de uso
 }
 // ------------------
 
@@ -61,6 +62,14 @@ export interface User {
   email?: string; // Email opcional para contato/login
   role: Role;
   pin: string; 
+  allowedRoutes?: string[]; // Nova propriedade para permissões granulares
+}
+
+export interface OnlineUser {
+    id: string;
+    name: string;
+    role: Role;
+    onlineAt: Date;
 }
 
 export interface AuditLog {

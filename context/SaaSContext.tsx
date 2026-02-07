@@ -140,9 +140,15 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     if (state.isAuthenticated) {
         const fetchTenants = async () => {
-            const { data, error } = await supabase.from('tenants').select('*').order('created_at', { ascending: false });
+            // Busca tenants E contagem de logs de auditoria
+            // audit_logs(count) retorna a quantidade de registros ligados ao tenant
+            const { data, error } = await supabase
+                .from('tenants')
+                .select('*, audit_logs(count)') 
+                .order('created_at', { ascending: false });
+
             if (data && !error) {
-                const mapped: RestaurantTenant[] = data.map(t => ({
+                const mapped: RestaurantTenant[] = data.map((t: any) => ({
                     id: t.id,
                     name: t.name,
                     slug: t.slug || '',
@@ -150,7 +156,8 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     email: t.email || '',
                     status: t.status as 'ACTIVE' | 'INACTIVE',
                     plan: t.plan as PlanType,
-                    joinedAt: new Date(t.created_at)
+                    joinedAt: new Date(t.created_at),
+                    requestCount: t.audit_logs?.[0]?.count || 0 // Mapeia o count
                 }));
                 dispatch({ type: 'SET_TENANTS', payload: mapped });
             }
@@ -217,7 +224,8 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
                         email: newTenant.email,
                         status: newTenant.status,
                         plan: newTenant.plan,
-                        joinedAt: new Date(newTenant.created_at)
+                        joinedAt: new Date(newTenant.created_at),
+                        requestCount: 0
                     }
                 });
             }

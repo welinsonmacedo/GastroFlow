@@ -22,15 +22,29 @@ import { getTenantSlug } from './utils/tenant';
 
 // --- Components Helpers ---
 
-const ProtectedRestaurantRoute = ({ children, allowedRoles }: { children: React.ReactElement, allowedRoles?: Role[] }) => {
+interface ProtectedRouteProps {
+    children: React.ReactElement;
+    allowedRoles?: Role[];
+    requiredRoute?: string; // Nova prop para rota específica
+}
+
+const ProtectedRestaurantRoute = ({ children, allowedRoles, requiredRoute }: ProtectedRouteProps) => {
     const { state } = useRestaurant();
     
     if (state.isLoading) return <div className="p-10 text-center">Carregando...</div>;
 
     if (!state.currentUser) {
-        // Redireciona preservando o search param se existir
         return <Navigate to={`/login${window.location.search}`} replace />;
     }
+
+    // 1. Verificação por Permissão Explícita (Nova Lógica)
+    if (requiredRoute && state.currentUser.allowedRoutes && state.currentUser.allowedRoutes.length > 0) {
+        if (!state.currentUser.allowedRoutes.includes(requiredRoute) && state.currentUser.role !== Role.ADMIN) {
+             return <div className="p-10 text-center text-red-500">Acesso Negado: Você não tem permissão para acessar esta tela.</div>;
+        }
+    }
+
+    // 2. Verificação por Role (Compatibilidade e Admin)
     if (allowedRoles && !allowedRoles.includes(state.currentUser.role)) {
          return <div className="p-10 text-center text-red-500">Acesso Negado: Permissão insuficiente.</div>;
     }
@@ -52,12 +66,20 @@ const TenantNavigation = () => {
     if (location.pathname.startsWith('/client') || location.pathname === '/login') return null;
     if (!state.currentUser) return null;
 
-    const navLinks = [
+    // Filtra links baseado nas permissões do usuário
+    const allLinks = [
         { to: "/waiter", icon: <Coffee size={20}/>, label: "Garçom" },
         { to: "/kitchen", icon: <Monitor size={20}/>, label: "Cozinha" },
         { to: "/cashier", icon: <DollarSign size={20}/>, label: "Caixa" },
         { to: "/admin", icon: <Settings size={20}/>, label: "Admin" },
     ];
+
+    const navLinks = allLinks.filter(link => {
+        // Admin vê tudo
+        if (state.currentUser?.role === Role.ADMIN) return true;
+        // Outros veem se estiver no allowedRoutes
+        return state.currentUser?.allowedRoutes?.includes(link.to);
+    });
 
     return (
         <>
@@ -142,10 +164,10 @@ const TenantApp = () => {
                     <Route path="/login" element={<Login />} />
                     <Route path="/client/table/:tableId" element={<ClientApp />} />
                     
-                    <Route path="/waiter" element={<ProtectedRestaurantRoute allowedRoles={[Role.WAITER, Role.ADMIN]}><WaiterApp /></ProtectedRestaurantRoute>} />
-                    <Route path="/kitchen" element={<ProtectedRestaurantRoute allowedRoles={[Role.KITCHEN, Role.ADMIN]}><KitchenDisplay /></ProtectedRestaurantRoute>} />
-                    <Route path="/cashier" element={<ProtectedRestaurantRoute allowedRoles={[Role.CASHIER, Role.ADMIN]}><CashierDashboard /></ProtectedRestaurantRoute>} />
-                    <Route path="/admin" element={<ProtectedRestaurantRoute allowedRoles={[Role.ADMIN]}><AdminDashboard /></ProtectedRestaurantRoute>} />
+                    <Route path="/waiter" element={<ProtectedRestaurantRoute allowedRoles={[Role.WAITER, Role.ADMIN]} requiredRoute="/waiter"><WaiterApp /></ProtectedRestaurantRoute>} />
+                    <Route path="/kitchen" element={<ProtectedRestaurantRoute allowedRoles={[Role.KITCHEN, Role.ADMIN]} requiredRoute="/kitchen"><KitchenDisplay /></ProtectedRestaurantRoute>} />
+                    <Route path="/cashier" element={<ProtectedRestaurantRoute allowedRoles={[Role.CASHIER, Role.ADMIN]} requiredRoute="/cashier"><CashierDashboard /></ProtectedRestaurantRoute>} />
+                    <Route path="/admin" element={<ProtectedRestaurantRoute allowedRoles={[Role.ADMIN]} requiredRoute="/admin"><AdminDashboard /></ProtectedRestaurantRoute>} />
                     <Route path="*" element={<Navigate to={`/login${window.location.search}`} replace />} />
                 </Routes>
             </div>

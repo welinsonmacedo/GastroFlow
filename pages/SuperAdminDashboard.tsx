@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useSaaS } from '../context/SaaSContext';
 import { Plan, PlanType, RestaurantTenant } from '../types';
 import { Button } from '../components/Button';
-import { Building2, Users, DollarSign, Activity, Settings, Search, MoreHorizontal, ExternalLink, LogOut, Plus, X, List, Edit, Key, Lock } from 'lucide-react';
+import { Building2, Users, DollarSign, Activity, Settings, Search, MoreHorizontal, ExternalLink, LogOut, Plus, X, List, Edit, Key, Lock, BarChart2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 type ViewMode = 'RESTAURANTS' | 'FINANCIAL' | 'PLANS' | 'SETTINGS';
@@ -219,6 +219,7 @@ export const SuperAdminDashboard: React.FC = () => {
                                 <th className="p-4">Acesso (Slug)</th>
                                 <th className="p-4">Dono</th>
                                 <th className="p-4">Plano</th>
+                                <th className="p-4">Requisições</th>
                                 <th className="p-4">Status</th>
                                 <th className="p-4 text-right">Ações</th>
                             </tr>
@@ -235,6 +236,12 @@ export const SuperAdminDashboard: React.FC = () => {
                                             <option value="PRO">Pro</option>
                                             <option value="ENTERPRISE">Enterprise</option>
                                         </select>
+                                    </td>
+                                    <td className="p-4">
+                                        <div className="flex items-center gap-2">
+                                            <BarChart2 size={16} className="text-gray-400" />
+                                            <span className="font-mono font-bold text-gray-700">{tenant.requestCount || 0}</span>
+                                        </div>
                                     </td>
                                     <td className="p-4"><button onClick={() => dispatch({ type: 'TOGGLE_STATUS', tenantId: tenant.id })} className={`px-3 py-1 rounded-full text-xs font-bold transition-colors border ${tenant.status === 'ACTIVE' ? 'bg-green-100 text-green-700 border-green-200' : 'bg-red-100 text-red-700 border-red-200'}`}>{tenant.status === 'ACTIVE' ? 'ATIVO' : 'INATIVO'}</button></td>
                                     <td className="p-4 text-right">

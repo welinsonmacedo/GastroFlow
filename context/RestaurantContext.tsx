@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useReducer, useEffect } from 'react';
-import { Table, Order, Product, TableStatus, OrderStatus, ProductType, OrderItem, RestaurantTheme, User, AuditLog, Transaction, Role, ServiceCall } from '../types';
+import React, { createContext, useContext, useReducer, useEffect, useState } from 'react';
+import { Table, Order, Product, TableStatus, OrderStatus, ProductType, OrderItem, RestaurantTheme, User, AuditLog, Transaction, Role, ServiceCall, OnlineUser } from '../types';
 import { getTenantSlug } from '../utils/tenant';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
@@ -18,6 +18,7 @@ interface State {
   auditLogs: AuditLog[];
   transactions: Transaction[];
   serviceCalls: ServiceCall[];
+  onlineUsers: OnlineUser[]; // Novo estado para realtime
 }
 
 type Action =
@@ -32,6 +33,7 @@ type Action =
   | { type: 'REALTIME_UPDATE_TRANSACTIONS'; transactions: Transaction[] }
   | { type: 'REALTIME_UPDATE_AUDIT_LOGS'; auditLogs: AuditLog[] }
   | { type: 'REALTIME_UPDATE_SERVICE_CALLS'; calls: ServiceCall[] }
+  | { type: 'UPDATE_ONLINE_USERS'; users: OnlineUser[] }
   // Ações que disparam side-effects no Supabase (interceptadas)
   | { type: 'ADD_USER'; user: User }
   | { type: 'UPDATE_USER'; user: User }
@@ -64,7 +66,8 @@ const initialState: State = {
   users: [],
   auditLogs: [],
   transactions: [],
-  serviceCalls: []
+  serviceCalls: [],
+  onlineUsers: []
 };
 
 const RestaurantContext = createContext<{
@@ -111,7 +114,6 @@ const restaurantReducer = (state: State, action: Action): State => {
         // Detectar se há novos itens de cozinha para tocar som
         if (state.currentUser?.role === Role.KITCHEN || state.currentUser?.role === Role.ADMIN) {
              // Lógica simplificada: Se o numero de ordens aumentou, toca som. 
-             // O ideal seria comparar diffs, mas para este exemplo funciona.
              if (action.orders.length > state.orders.length) {
                  playSoundSafely(kitchenSound);
              }
@@ -137,6 +139,9 @@ const restaurantReducer = (state: State, action: Action): State => {
         }
         return { ...state, serviceCalls: action.calls };
 
+    case 'UPDATE_ONLINE_USERS':
+        return { ...state, onlineUsers: action.users };
+
     case 'UPDATE_THEME':
         return { ...state, theme: action.theme };
     
@@ -153,6 +158,7 @@ const restaurantReducer = (state: State, action: Action): State => {
 // --- Provider ---
 export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, dispatchLocal] = useReducer(restaurantReducer, initialState);
+  const [presenceChannel, setPresenceChannel] = useState<any>(null);
 
   // Helper para logging
   const logAudit = async (tenantId: string, action: string, details: string) => {
@@ -213,7 +219,8 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 role: u.role as Role, 
                 pin: u.pin,
                 auth_user_id: u.auth_user_id,
-                email: u.email
+                email: u.email,
+                allowedRoutes: u.allowed_routes || [] // Busca rotas permitidas
             }));
             
             const mappedProducts: Product[] = (productsRes.data || []).map(p => ({
@@ -297,7 +304,8 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                              role: staffData.role,
                              pin: staffData.pin,
                              auth_user_id: staffData.auth_user_id,
-                             email: staffData.email
+                             email: staffData.email,
+                             allowedRoutes: staffData.allowed_routes || []
                          };
                     }
                 }
@@ -329,7 +337,63 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     initTenant();
   }, []);
 
-  // 2. Auth Listener Change (Detecta logins feitos em outras partes, como Login.tsx ou OwnerLogin.tsx)
+  // 2. Presence Logic (Monitoramento Online)
+  useEffect(() => {
+      // Só ativa se tiver tenant e usuário logado
+      if (!state.tenantId || !state.currentUser) {
+          if (presenceChannel) {
+              presenceChannel.unsubscribe();
+              setPresenceChannel(null);
+          }
+          return;
+      }
+
+      // Cria canal para tracking de presença
+      const channel = supabase.channel(`presence:${state.tenantId}`, {
+          config: {
+              presence: {
+                  key: state.currentUser.id,
+              },
+          },
+      });
+
+      channel
+        .on('presence', { event: 'sync' }, () => {
+            const newState = channel.presenceState();
+            const users: OnlineUser[] = [];
+            
+            Object.keys(newState).forEach(key => {
+                const presence = newState[key][0]; // Pega a última sessão
+                if (presence) {
+                    users.push({
+                        id: presence.user_id,
+                        name: presence.name,
+                        role: presence.role,
+                        onlineAt: new Date(presence.online_at)
+                    });
+                }
+            });
+            dispatchLocal({ type: 'UPDATE_ONLINE_USERS', users });
+        })
+        .subscribe(async (status: string) => {
+            if (status === 'SUBSCRIBED') {
+                await channel.track({
+                    user_id: state.currentUser?.id,
+                    name: state.currentUser?.name,
+                    role: state.currentUser?.role,
+                    online_at: new Date().toISOString(),
+                });
+            }
+        });
+
+      setPresenceChannel(channel);
+
+      return () => {
+          channel.unsubscribe();
+      };
+  }, [state.tenantId, state.currentUser?.id]); // Re-executa se mudar o usuário logado
+
+  // 3. Auth Listener Change (Detecta logins feitos em outras partes, como Login.tsx ou OwnerLogin.tsx)
   useEffect(() => {
     if (!state.tenantId) return; // Só roda se o tenant já foi identificado
 
@@ -340,7 +404,7 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             if (authenticatedStaff) {
                 dispatchLocal({ type: 'LOGIN', user: authenticatedStaff });
             } else {
-                 // Fallback: busca no banco se não estiver na lista local (ex: acabou de ser vinculado no login)
+                 // Fallback: busca no banco se não estiver na lista local
                  const { data: staffData } = await supabase
                     .from('staff')
                     .select('*')
@@ -355,7 +419,8 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                          role: staffData.role,
                          pin: staffData.pin,
                          auth_user_id: staffData.auth_user_id,
-                         email: staffData.email
+                         email: staffData.email,
+                         allowedRoutes: staffData.allowed_routes || []
                      }});
                  }
             }
@@ -369,7 +434,7 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     };
   }, [state.tenantId, state.users]); 
 
-  // 3. Realtime Subscription (Dados do Banco)
+  // 4. Realtime Subscription (Dados do Banco)
   useEffect(() => {
     if (!state.tenantId) return;
 
@@ -479,7 +544,7 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   }, [state.tenantId]);
 
 
-  // 4. Intercept Dispatch para Side-Effects (Mutations)
+  // 5. Intercept Dispatch para Side-Effects (Mutations)
   const dispatch = async (action: Action) => {
     const { tenantId } = state;
 
@@ -704,7 +769,8 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                     name: action.user.name,
                     role: action.user.role,
                     pin: action.user.pin,
-                    email: action.user.email // Adicionado email
+                    email: action.user.email,
+                    allowed_routes: action.user.allowedRoutes // Salva permissões
                 });
                 window.location.reload();
                 logAudit(tenantId, 'ADD_USER', `Usuário ${action.user.name} criado`);
@@ -725,7 +791,8 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                     name: action.user.name,
                     role: action.user.role,
                     pin: action.user.pin,
-                    email: action.user.email
+                    email: action.user.email,
+                    allowed_routes: action.user.allowedRoutes // Atualiza permissões
                 }).eq('id', action.user.id);
                 window.location.reload();
                 logAudit(tenantId, 'UPDATE_USER', `Usuário ${action.user.name} atualizado`);

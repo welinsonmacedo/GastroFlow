@@ -4,7 +4,7 @@ import { Button } from '../components/Button';
 import { QRCodeGenerator } from '../components/QRCodeGenerator';
 import { ImageUploader } from '../components/ImageUploader';
 import { Product, ProductType, Role, User } from '../types';
-import { LayoutDashboard, Utensils, QrCode, Printer, ExternalLink, Palette, Eye, EyeOff, Save, Copy, Plus, Users, ShieldCheck, Trash2, Edit, AlertTriangle, FileBarChart, X, ArrowUp, ArrowDown, LayoutGrid, List as ListIcon, Image as ImageIcon, Calendar, TrendingUp, Search, Loader2, Menu } from 'lucide-react';
+import { LayoutDashboard, Utensils, QrCode, Printer, ExternalLink, Palette, Eye, EyeOff, Save, Copy, Plus, Users, ShieldCheck, Trash2, Edit, AlertTriangle, FileBarChart, X, ArrowUp, ArrowDown, LayoutGrid, List as ListIcon, Image as ImageIcon, Calendar, TrendingUp, Search, Loader2, Menu, Activity, CheckSquare } from 'lucide-react';
 import { getTenantSlug } from '../utils/tenant';
 import { supabase } from '../lib/supabase';
 
@@ -24,7 +24,7 @@ export const AdminDashboard: React.FC = () => {
 
   // Staff state
   const [editingUser, setEditingUser] = useState<User | null>(null);
-  const [userForm, setUserForm] = useState<Partial<User>>({ name: '', role: Role.WAITER, pin: '', email: '' });
+  const [userForm, setUserForm] = useState<Partial<User>>({ name: '', role: Role.WAITER, pin: '', email: '', allowedRoutes: [] });
 
   // Report State
   const [reportDateStart, setReportDateStart] = useState(new Date().toISOString().split('T')[0]);
@@ -214,7 +214,14 @@ export const AdminDashboard: React.FC = () => {
           if (editingUser) {
               dispatch({ 
                   type: 'UPDATE_USER', 
-                  user: { ...editingUser, name: userForm.name, role: userForm.role, pin: userForm.pin || '0000', email: userForm.email } 
+                  user: { 
+                      ...editingUser, 
+                      name: userForm.name, 
+                      role: userForm.role, 
+                      pin: userForm.pin || '0000', 
+                      email: userForm.email,
+                      allowedRoutes: userForm.allowedRoutes
+                  } 
               });
               alert("Dados do funcionário atualizados!");
           } else {
@@ -225,13 +232,14 @@ export const AdminDashboard: React.FC = () => {
                       name: userForm.name,
                       role: userForm.role,
                       pin: userForm.pin || '0000',
-                      email: userForm.email
+                      email: userForm.email,
+                      allowedRoutes: userForm.allowedRoutes
                   } as User
               });
               alert("Funcionário adicionado!");
           }
           setEditingUser(null);
-          setUserForm({ name: '', role: Role.WAITER, pin: '', email: '' });
+          setUserForm({ name: '', role: Role.WAITER, pin: '', email: '', allowedRoutes: [] });
       } else {
           alert("Nome e E-mail são obrigatórios.");
       }
@@ -239,12 +247,29 @@ export const AdminDashboard: React.FC = () => {
 
   const startEditUser = (user: User) => {
       setEditingUser(user);
-      setUserForm({ name: user.name, role: user.role, pin: user.pin, email: user.email || '' });
+      setUserForm({ 
+          name: user.name, 
+          role: user.role, 
+          pin: user.pin, 
+          email: user.email || '',
+          allowedRoutes: user.allowedRoutes || []
+      });
   };
 
   const cancelEditUser = () => {
       setEditingUser(null);
-      setUserForm({ name: '', role: Role.WAITER, pin: '', email: '' });
+      setUserForm({ name: '', role: Role.WAITER, pin: '', email: '', allowedRoutes: [] });
+  };
+
+  const toggleRoutePermission = (route: string) => {
+      setUserForm(prev => {
+          const current = prev.allowedRoutes || [];
+          if (current.includes(route)) {
+              return { ...prev, allowedRoutes: current.filter(r => r !== route) };
+          } else {
+              return { ...prev, allowedRoutes: [...current, route] };
+          }
+      });
   };
 
   const handleAddTable = () => {
@@ -324,23 +349,57 @@ export const AdminDashboard: React.FC = () => {
 
             <div className="p-4 md:p-8">
                 {activeTab === 'DASHBOARD' && (
-                    <div>
-                        <h2 className="text-2xl font-bold mb-6 text-gray-800">Visão Geral (Hoje)</h2>
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                            <div className="bg-white p-6 rounded-xl shadow-sm border-l-4 border-blue-500">
-                                <div className="text-gray-500 text-sm mb-1 uppercase tracking-wider">Vendas Hoje</div>
-                                <div className="text-3xl font-bold text-gray-800">
-                                    R$ {state.transactions.reduce((acc, t) => acc + t.amount, 0).toFixed(2)}
+                    <div className="space-y-8">
+                        <div>
+                            <h2 className="text-2xl font-bold mb-6 text-gray-800">Visão Geral (Hoje)</h2>
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                                <div className="bg-white p-6 rounded-xl shadow-sm border-l-4 border-blue-500">
+                                    <div className="text-gray-500 text-sm mb-1 uppercase tracking-wider">Vendas Hoje</div>
+                                    <div className="text-3xl font-bold text-gray-800">
+                                        R$ {state.transactions.reduce((acc, t) => acc + t.amount, 0).toFixed(2)}
+                                    </div>
+                                </div>
+                                <div className="bg-white p-6 rounded-xl shadow-sm border-l-4 border-green-500">
+                                    <div className="text-gray-500 text-sm mb-1 uppercase tracking-wider">Pedidos Ativos</div>
+                                    <div className="text-3xl font-bold text-gray-800">{state.orders.length}</div>
+                                </div>
+                                <div className="bg-white p-6 rounded-xl shadow-sm border-l-4 border-purple-500">
+                                    <div className="text-gray-500 text-sm mb-1 uppercase tracking-wider">Funcionários</div>
+                                    <div className="text-3xl font-bold text-gray-800">{state.users.length}</div>
                                 </div>
                             </div>
-                            <div className="bg-white p-6 rounded-xl shadow-sm border-l-4 border-green-500">
-                                <div className="text-gray-500 text-sm mb-1 uppercase tracking-wider">Pedidos Ativos</div>
-                                <div className="text-3xl font-bold text-gray-800">{state.orders.length}</div>
-                            </div>
-                            <div className="bg-white p-6 rounded-xl shadow-sm border-l-4 border-purple-500">
-                                <div className="text-gray-500 text-sm mb-1 uppercase tracking-wider">Funcionários</div>
-                                <div className="text-3xl font-bold text-gray-800">{state.users.length}</div>
-                            </div>
+                        </div>
+
+                        {/* Online Users Widget */}
+                        <div className="bg-white p-6 rounded-xl shadow-sm border">
+                            <h3 className="font-bold text-gray-700 flex items-center gap-2 mb-4">
+                                <Activity size={20} className="text-green-500" /> Usuários Online Agora
+                            </h3>
+                            {state.onlineUsers.length === 0 ? (
+                                <p className="text-gray-400 text-sm">Nenhum usuário online no momento.</p>
+                            ) : (
+                                <div className="flex flex-wrap gap-4">
+                                    {state.onlineUsers.map(user => (
+                                        <div key={user.id} className="flex items-center gap-3 bg-gray-50 p-2 rounded-lg border border-gray-100 pr-4">
+                                            <div className="relative">
+                                                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold
+                                                    ${user.role === Role.ADMIN ? 'bg-purple-500' : ''}
+                                                    ${user.role === Role.WAITER ? 'bg-orange-500' : ''}
+                                                    ${user.role === Role.KITCHEN ? 'bg-red-500' : ''}
+                                                    ${user.role === Role.CASHIER ? 'bg-green-500' : ''}
+                                                `}>
+                                                    {user.name.charAt(0)}
+                                                </div>
+                                                <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></span>
+                                            </div>
+                                            <div>
+                                                <div className="font-bold text-sm text-gray-800">{user.name}</div>
+                                                <div className="text-xs text-gray-500 uppercase">{user.role}</div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     </div>
                 )}
@@ -484,7 +543,7 @@ export const AdminDashboard: React.FC = () => {
                                     <input required type="email" className="w-full border p-2 rounded" value={userForm.email} onChange={e => setUserForm({...userForm, email: e.target.value})} placeholder="email@exemplo.com" />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium mb-1">Função</label>
+                                    <label className="block text-sm font-medium mb-1">Função Principal</label>
                                     <select className="w-full border p-2 rounded" value={userForm.role} onChange={e => setUserForm({...userForm, role: e.target.value as Role})}>
                                         <option value={Role.WAITER}>Garçom</option>
                                         <option value={Role.KITCHEN}>Cozinha</option>
@@ -496,6 +555,31 @@ export const AdminDashboard: React.FC = () => {
                                     <label className="block text-sm font-medium mb-1">PIN (Autorização Interna)</label>
                                     <input type="text" maxLength={4} className="w-full border p-2 rounded" value={userForm.pin} onChange={e => setUserForm({...userForm, pin: e.target.value})} placeholder="Opcional para login" />
                                 </div>
+                                
+                                {/* Permissões de Telas */}
+                                <div className="bg-gray-50 p-3 rounded-lg border">
+                                    <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2"><CheckSquare size={16}/> Telas Permitidas</label>
+                                    <div className="space-y-2">
+                                        <label className="flex items-center gap-2 cursor-pointer">
+                                            <input type="checkbox" checked={userForm.allowedRoutes?.includes('/waiter')} onChange={() => toggleRoutePermission('/waiter')} className="w-4 h-4" />
+                                            <span className="text-sm">App Garçom</span>
+                                        </label>
+                                        <label className="flex items-center gap-2 cursor-pointer">
+                                            <input type="checkbox" checked={userForm.allowedRoutes?.includes('/kitchen')} onChange={() => toggleRoutePermission('/kitchen')} className="w-4 h-4" />
+                                            <span className="text-sm">Tela Cozinha (KDS)</span>
+                                        </label>
+                                        <label className="flex items-center gap-2 cursor-pointer">
+                                            <input type="checkbox" checked={userForm.allowedRoutes?.includes('/cashier')} onChange={() => toggleRoutePermission('/cashier')} className="w-4 h-4" />
+                                            <span className="text-sm">Frente de Caixa</span>
+                                        </label>
+                                        <label className="flex items-center gap-2 cursor-pointer">
+                                            <input type="checkbox" checked={userForm.allowedRoutes?.includes('/admin')} onChange={() => toggleRoutePermission('/admin')} className="w-4 h-4" />
+                                            <span className="text-sm">Painel Admin</span>
+                                        </label>
+                                    </div>
+                                    <p className="text-xs text-gray-500 mt-2">Selecione quais áreas este usuário pode acessar.</p>
+                                </div>
+
                                 <div className="flex gap-2">
                                     {editingUser && (
                                         <Button type="button" variant="secondary" onClick={cancelEditUser}>Cancelar</Button>
@@ -506,9 +590,9 @@ export const AdminDashboard: React.FC = () => {
                         </div>
                         <div className="lg:col-span-2 space-y-4">
                             {state.users.filter(u => u.role !== Role.SUPER_ADMIN).map(user => (
-                                <div key={user.id} className="bg-white p-4 rounded-xl shadow-sm flex items-center justify-between border border-gray-100">
-                                    <div className="flex items-center gap-4">
-                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold
+                                <div key={user.id} className="bg-white p-4 rounded-xl shadow-sm flex flex-col md:flex-row items-center justify-between border border-gray-100 gap-4">
+                                    <div className="flex items-center gap-4 w-full md:w-auto">
+                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold shrink-0
                                             ${user.role === Role.ADMIN ? 'bg-purple-500' : ''}
                                             ${user.role === Role.WAITER ? 'bg-orange-500' : ''}
                                             ${user.role === Role.KITCHEN ? 'bg-red-500' : ''}
@@ -524,6 +608,16 @@ export const AdminDashboard: React.FC = () => {
                                             </div>
                                         </div>
                                     </div>
+                                    
+                                    {/* Lista de Permissões Visual */}
+                                    <div className="flex gap-1 flex-wrap justify-center">
+                                        {user.allowedRoutes?.map(route => (
+                                            <span key={route} className="text-[10px] bg-gray-100 px-2 py-1 rounded border border-gray-200 text-gray-600 font-mono">
+                                                {route}
+                                            </span>
+                                        ))}
+                                    </div>
+
                                     <div className="flex items-center gap-2">
                                         <button onClick={() => startEditUser(user)} className="text-blue-500 hover:text-blue-700 p-2 bg-blue-50 rounded-lg" title="Editar">
                                             <Edit size={20} />

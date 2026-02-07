@@ -1,14 +1,23 @@
 import React, { useState } from 'react';
 import { useRestaurant } from '../context/RestaurantContext';
-import { TableStatus, OrderStatus, ProductType } from '../types';
+import { TableStatus, OrderStatus, ProductType, Product } from '../types';
 import { Button } from '../components/Button';
-import { CheckCircle, Coffee, User, Key, X, Bell } from 'lucide-react';
+import { CheckCircle, Coffee, User, Key, X, Bell, Plus, Minus, Search, ShoppingCart, ChevronRight, Utensils, Trash2, ArrowLeft } from 'lucide-react';
 
 export const WaiterApp: React.FC = () => {
   const { state, dispatch } = useRestaurant();
+  
+  // States
   const [selectedTableForOpen, setSelectedTableForOpen] = useState<string | null>(null);
+  const [selectedTableForAction, setSelectedTableForAction] = useState<string | null>(null); // Menu de opções
+  const [orderingTableId, setOrderingTableId] = useState<string | null>(null); // Modo Pedido
+  
+  // Order Form States
   const [customerName, setCustomerName] = useState('');
   const [generatedCode, setGeneratedCode] = useState('');
+  const [cart, setCart] = useState<{ product: Product; quantity: number; notes: string }[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('Todos');
 
   // Active items ready to serve (Kitchen Ready OR Bar Pending)
   const readyToServeItems = state.orders.flatMap(order => 
@@ -22,6 +31,8 @@ export const WaiterApp: React.FC = () => {
   
   const pendingCalls = state.serviceCalls.filter(c => c.status === 'PENDING');
 
+  // --- Handlers ---
+
   const handleTableClick = (tableId: string, currentStatus: TableStatus) => {
     if (currentStatus === TableStatus.AVAILABLE) {
       // Inicia fluxo de abertura
@@ -30,9 +41,8 @@ export const WaiterApp: React.FC = () => {
       setCustomerName('');
       setSelectedTableForOpen(tableId);
     } else {
-      if(window.confirm("Fechar esta mesa? Isso limpará a sessão atual.")) {
-          dispatch({ type: 'CLOSE_TABLE', tableId });
-      }
+      // Abre menu de ações para mesa ocupada
+      setSelectedTableForAction(tableId);
     }
   };
 
@@ -48,6 +58,55 @@ export const WaiterApp: React.FC = () => {
     }
   };
 
+  const handleCloseTable = () => {
+      if (selectedTableForAction && window.confirm("Tem certeza que deseja fechar esta mesa? Isso limpará a sessão atual.")) {
+          dispatch({ type: 'CLOSE_TABLE', tableId: selectedTableForAction });
+          setSelectedTableForAction(null);
+      }
+  };
+
+  const startOrder = () => {
+      if (selectedTableForAction) {
+          setOrderingTableId(selectedTableForAction);
+          setSelectedTableForAction(null);
+          setCart([]);
+          setSearchQuery('');
+      }
+  };
+
+  // --- Cart Logic ---
+
+  const addToCart = (product: Product) => {
+    setCart(prev => {
+      const existing = prev.find(item => item.product.id === product.id);
+      if (existing) {
+        return prev.map(item => item.product.id === product.id ? { ...item, quantity: item.quantity + 1 } : item);
+      }
+      return [...prev, { product, quantity: 1, notes: '' }];
+    });
+  };
+
+  const updateQuantity = (productId: string, delta: number) => {
+    setCart(prev => prev.map(item => {
+      if (item.product.id === productId) {
+        return { ...item, quantity: Math.max(0, item.quantity + delta) }; // Allow 0 to remove? No, separate remove
+      }
+      return item;
+    }).filter(item => item.quantity > 0));
+  };
+
+  const submitOrder = () => {
+    if (!orderingTableId || cart.length === 0) return;
+    dispatch({
+      type: 'PLACE_ORDER',
+      tableId: orderingTableId,
+      items: cart.map(i => ({ productId: i.product.id, quantity: i.quantity, notes: i.notes }))
+    });
+    setCart([]);
+    setOrderingTableId(null);
+    alert("Pedido enviado para a cozinha!");
+  };
+
   const markDelivered = (orderId: string, itemId: string) => {
     dispatch({ type: 'UPDATE_ITEM_STATUS', orderId, itemId, status: OrderStatus.DELIVERED });
   };
@@ -56,6 +115,141 @@ export const WaiterApp: React.FC = () => {
       dispatch({ type: 'RESOLVE_WAITER_CALL', callId });
   };
 
+  // --- Render Views ---
+
+  // 1. VIEW: ORDERING (POS)
+  if (orderingTableId) {
+      const table = state.tables.find(t => t.id === orderingTableId);
+      const filteredProducts = state.products.filter(p => 
+          (selectedCategory === 'Todos' || p.category === selectedCategory) &&
+          p.name.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+      
+      const cartTotal = cart.reduce((acc, item) => acc + (item.product.price * item.quantity), 0);
+      const categories = ['Todos', ...Array.from(new Set(state.products.map(p => p.category)))];
+
+      return (
+          <div className="min-h-screen bg-gray-50 flex flex-col h-screen overflow-hidden">
+              {/* Header */}
+              <header className="bg-white border-b p-4 shadow-sm flex items-center justify-between shrink-0">
+                  <div className="flex items-center gap-2">
+                      <button onClick={() => setOrderingTableId(null)} className="p-2 hover:bg-gray-100 rounded-full">
+                          <ArrowLeft size={24} className="text-gray-600"/>
+                      </button>
+                      <div>
+                          <h1 className="font-bold text-lg leading-none">Novo Pedido</h1>
+                          <span className="text-sm text-gray-500">Mesa {table?.number} - {table?.customerName}</span>
+                      </div>
+                  </div>
+                  <div className="font-bold text-blue-600">
+                      R$ {cartTotal.toFixed(2)}
+                  </div>
+              </header>
+
+              <div className="flex flex-1 overflow-hidden">
+                  {/* Left: Product Selection */}
+                  <div className="flex-1 flex flex-col overflow-hidden relative">
+                      {/* Search & Filter */}
+                      <div className="p-4 bg-white border-b space-y-3">
+                          <div className="relative">
+                              <Search className="absolute left-3 top-3 text-gray-400" size={20} />
+                              <input 
+                                  type="text" 
+                                  placeholder="Buscar produto..." 
+                                  className="w-full pl-10 pr-4 py-2 border rounded-lg bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  value={searchQuery}
+                                  onChange={(e) => setSearchQuery(e.target.value)}
+                                  autoFocus
+                              />
+                          </div>
+                          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+                              {categories.map(cat => (
+                                  <button
+                                      key={cat}
+                                      onClick={() => setSelectedCategory(cat)}
+                                      className={`px-3 py-1 rounded-full text-sm font-medium whitespace-nowrap transition-colors border
+                                          ${selectedCategory === cat ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}
+                                      `}
+                                  >
+                                      {cat}
+                                  </button>
+                              ))}
+                          </div>
+                      </div>
+
+                      {/* Product List */}
+                      <div className="flex-1 overflow-y-auto p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 content-start">
+                          {filteredProducts.map(product => {
+                              const inCart = cart.find(i => i.product.id === product.id);
+                              return (
+                                  <div key={product.id} className={`bg-white p-3 rounded-xl border shadow-sm flex justify-between items-center transition-all ${inCart ? 'border-blue-500 ring-1 ring-blue-500 bg-blue-50' : 'hover:border-gray-300'}`}>
+                                      <div className="flex-1 min-w-0 pr-2">
+                                          <div className="font-bold text-gray-800 truncate">{product.name}</div>
+                                          <div className="text-sm text-gray-500">R$ {product.price.toFixed(2)}</div>
+                                      </div>
+                                      
+                                      {inCart ? (
+                                          <div className="flex items-center gap-3 bg-white px-2 py-1 rounded-lg border shadow-sm">
+                                              <button onClick={() => updateQuantity(product.id, -1)} className="p-1 hover:text-red-500"><Minus size={18}/></button>
+                                              <span className="font-bold w-4 text-center">{inCart.quantity}</span>
+                                              <button onClick={() => updateQuantity(product.id, 1)} className="p-1 hover:text-green-500"><Plus size={18}/></button>
+                                          </div>
+                                      ) : (
+                                          <button 
+                                              onClick={() => addToCart(product)}
+                                              className="bg-gray-100 p-2 rounded-lg text-gray-600 hover:bg-blue-600 hover:text-white transition-colors"
+                                          >
+                                              <Plus size={20} />
+                                          </button>
+                                      )}
+                                  </div>
+                              );
+                          })}
+                      </div>
+                  </div>
+
+                  {/* Right: Cart Summary (Desktop Only or Toggle) */}
+                  {cart.length > 0 && (
+                      <div className="w-full md:w-80 bg-white border-l shadow-xl flex flex-col z-20 absolute md:relative bottom-0 h-[60vh] md:h-auto rounded-t-2xl md:rounded-none">
+                          <div className="p-4 bg-gray-50 border-b flex justify-between items-center">
+                              <h3 className="font-bold flex items-center gap-2"><ShoppingCart size={18}/> Resumo</h3>
+                              <span className="bg-blue-100 text-blue-700 text-xs px-2 py-1 rounded-full font-bold">{cart.reduce((a,b)=>a+b.quantity,0)} itens</span>
+                          </div>
+                          
+                          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                              {cart.map(item => (
+                                  <div key={item.product.id} className="text-sm">
+                                      <div className="flex justify-between items-start mb-1">
+                                          <span className="font-medium text-gray-800">{item.quantity}x {item.product.name}</span>
+                                          <span className="font-bold">R$ {(item.product.price * item.quantity).toFixed(2)}</span>
+                                      </div>
+                                      <input 
+                                          placeholder="Obs: Sem cebola..."
+                                          className="w-full text-xs border-b border-dashed bg-transparent focus:outline-none focus:border-blue-500 text-gray-500"
+                                          value={item.notes}
+                                          onChange={(e) => setCart(prev => prev.map(p => p.product.id === item.product.id ? { ...p, notes: e.target.value } : p))}
+                                      />
+                                  </div>
+                              ))}
+                          </div>
+
+                          <div className="p-4 border-t bg-gray-50">
+                              <div className="flex justify-between items-center text-xl font-bold text-gray-800 mb-4">
+                                  <span>Total</span>
+                                  <span>R$ {cartTotal.toFixed(2)}</span>
+                              </div>
+                              <Button onClick={submitOrder} className="w-full py-3 text-lg shadow-lg">
+                                  Enviar Pedido <Utensils size={18} />
+                              </Button>
+                          </div>
+                      </div>
+                  )}
+              </div>
+          </div>
+      );
+  }
+
+  // 2. VIEW: DASHBOARD (Tables)
   return (
     <div className="min-h-screen bg-gray-100 p-4 lg:p-6 grid grid-cols-1 lg:grid-cols-3 gap-6 relative">
       
@@ -98,6 +292,32 @@ export const WaiterApp: React.FC = () => {
         </div>
       )}
 
+      {/* Modal de Ações da Mesa (Novo Pedido / Fechar) */}
+      {selectedTableForAction && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-xl shadow-2xl w-full max-w-xs overflow-hidden animate-fade-in">
+                  <div className="bg-slate-900 text-white p-4 flex justify-between items-center">
+                      <h3 className="font-bold text-lg">Mesa {state.tables.find(t => t.id === selectedTableForAction)?.number}</h3>
+                      <button onClick={() => setSelectedTableForAction(null)} className="text-slate-400 hover:text-white"><X size={20}/></button>
+                  </div>
+                  <div className="p-4 space-y-3">
+                      <button 
+                          onClick={startOrder}
+                          className="w-full py-4 bg-blue-50 text-blue-700 font-bold rounded-xl flex items-center justify-center gap-3 hover:bg-blue-100 transition-colors"
+                      >
+                          <Utensils size={24} /> Fazer Pedido
+                      </button>
+                      <button 
+                          onClick={handleCloseTable}
+                          className="w-full py-4 bg-red-50 text-red-700 font-bold rounded-xl flex items-center justify-center gap-3 hover:bg-red-100 transition-colors"
+                      >
+                          <Trash2 size={24} /> Fechar Mesa
+                      </button>
+                  </div>
+              </div>
+          </div>
+      )}
+
       {/* Left Column: Tables Management */}
       <div className="lg:col-span-2 space-y-6">
         <h1 className="text-2xl font-bold text-gray-800">Mesas</h1>
@@ -109,7 +329,7 @@ export const WaiterApp: React.FC = () => {
               key={table.id} 
               className={`p-4 rounded-xl shadow-sm border-2 transition-all cursor-pointer flex flex-col items-center justify-center min-h-[140px] relative
                 ${hasCall ? 'bg-red-50 border-red-500 animate-pulse' : ''}
-                ${!hasCall && table.status === TableStatus.OCCUPIED ? 'bg-white border-blue-500' : ''}
+                ${!hasCall && table.status === TableStatus.OCCUPIED ? 'bg-white border-blue-500 hover:shadow-md' : ''}
                 ${!hasCall && table.status === TableStatus.AVAILABLE ? 'bg-gray-50 border-transparent hover:border-gray-300' : ''}
                 ${!hasCall && table.status === TableStatus.WAITING_PAYMENT ? 'bg-yellow-50 border-yellow-400' : ''}
               `}

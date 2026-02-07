@@ -63,6 +63,7 @@ CREATE TABLE staff (
     email TEXT, -- Email para login/convite
     role TEXT NOT NULL, -- 'ADMIN', 'WAITER', 'KITCHEN', 'CASHIER'
     pin TEXT NOT NULL,
+    allowed_routes JSONB DEFAULT '[]'::jsonb, -- NOVA COLUNA: Lista de rotas permitidas ex: ["/waiter", "/kitchen"]
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
 );
 
@@ -214,11 +215,11 @@ BEGIN
     RETURNING id INTO t_id_bistro;
 
     -- Staff Bistrô
-    INSERT INTO staff (tenant_id, name, email, role, pin) VALUES 
-    (t_id_bistro, 'Admin', 'admin@bistro.com', 'ADMIN', '1234'),
-    (t_id_bistro, 'Garçom Carlos', 'carlos@bistro.com', 'WAITER', '0000'),
-    (t_id_bistro, 'Chef Jacquin', 'jacquin@bistro.com', 'KITCHEN', '1111'),
-    (t_id_bistro, 'Ana Caixa', 'ana@bistro.com', 'CASHIER', '2222');
+    INSERT INTO staff (tenant_id, name, email, role, pin, allowed_routes) VALUES 
+    (t_id_bistro, 'Admin', 'admin@bistro.com', 'ADMIN', '1234', '["/admin", "/waiter", "/kitchen", "/cashier"]'::jsonb),
+    (t_id_bistro, 'Garçom Carlos', 'carlos@bistro.com', 'WAITER', '0000', '["/waiter"]'::jsonb),
+    (t_id_bistro, 'Chef Jacquin', 'jacquin@bistro.com', 'KITCHEN', '1111', '["/kitchen"]'::jsonb),
+    (t_id_bistro, 'Ana Caixa', 'ana@bistro.com', 'CASHIER', '2222', '["/cashier"]'::jsonb);
 
     -- Produtos Bistrô
     INSERT INTO products (tenant_id, name, description, price, category, type, image, sort_order) VALUES
@@ -238,10 +239,10 @@ BEGIN
     RETURNING id INTO t_id_burger;
 
     -- Staff Burger
-    INSERT INTO staff (tenant_id, name, email, role, pin) VALUES 
-    (t_id_burger, 'Gerente', 'gerente@burger.com', 'ADMIN', '1234'),
-    (t_id_burger, 'Atendente', NULL, 'WAITER', '0000'),
-    (t_id_burger, 'Chapeiro', NULL, 'KITCHEN', '1111');
+    INSERT INTO staff (tenant_id, name, email, role, pin, allowed_routes) VALUES 
+    (t_id_burger, 'Gerente', 'gerente@burger.com', 'ADMIN', '1234', '["/admin", "/waiter", "/kitchen", "/cashier"]'::jsonb),
+    (t_id_burger, 'Atendente', NULL, 'WAITER', '0000', '["/waiter"]'::jsonb),
+    (t_id_burger, 'Chapeiro', NULL, 'KITCHEN', '1111', '["/kitchen"]'::jsonb);
 
     -- Produtos Burger
     INSERT INTO products (tenant_id, name, description, price, category, type, image, sort_order) VALUES
@@ -259,7 +260,7 @@ BEGIN
     VALUES ('pizza', 'Pizzaria Express', 'pizza@demo.com', '{"primaryColor": "#16a34a", "backgroundColor": "#f0fdf4", "fontColor": "#1f2937", "restaurantName": "Pizzaria Express", "logoUrl": "https://cdn-icons-png.flaticon.com/512/3132/3132693.png"}', 'FREE')
     RETURNING id INTO t_id_pizza;
     
-    INSERT INTO staff (tenant_id, name, role, pin) VALUES (t_id_pizza, 'Dono', 'ADMIN', '1234');
+    INSERT INTO staff (tenant_id, name, role, pin, allowed_routes) VALUES (t_id_pizza, 'Dono', 'ADMIN', '1234', '["/admin", "/waiter", "/kitchen", "/cashier"]'::jsonb);
     
     INSERT INTO products (tenant_id, name, description, price, category, type, image, sort_order) VALUES
     (t_id_pizza, 'Pizza Calabresa', 'Molho, mussarela e calabresa.', 45.00, 'Pizzas', 'KITCHEN', 'https://images.unsplash.com/photo-1628840042765-356cda07504e?auto=format&fit=crop&w=500&q=60', 1);
