@@ -45,7 +45,7 @@ export const LandingPage: React.FC = () => {
                <a href="#contact" className="text-sm font-medium text-slate-600 hover:text-blue-600 transition-colors">Contato</a>
             </div>
             <div className="flex gap-4">
-              <Link to="/login" className="hidden md:block text-slate-600 hover:text-blue-700 px-3 py-2 font-semibold text-sm transition-colors">
+              <Link to="/login-owner" className="hidden md:block text-slate-600 hover:text-blue-700 px-3 py-2 font-semibold text-sm transition-colors">
                 Área do Cliente
               </Link>
               <button 
