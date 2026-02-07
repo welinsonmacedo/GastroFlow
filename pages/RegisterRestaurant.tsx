@@ -39,7 +39,18 @@ export const RegisterRestaurant: React.FC = () => {
         }
 
         try {
-            // 1. Criar Usuário no Supabase Auth
+            // 1. Verificação Prévia do Slug
+            const { data: existingSlug } = await supabase
+                .from('tenants')
+                .select('slug')
+                .eq('slug', form.slug)
+                .maybeSingle();
+
+            if (existingSlug) {
+                throw new Error("Este endereço (URL) já está em uso por outro restaurante. Escolha outro.");
+            }
+
+            // 2. Criar Usuário no Supabase Auth
             const { data: authData, error: authError } = await supabase.auth.signUp({
                 email: form.email,
                 password: form.password,
@@ -51,7 +62,7 @@ export const RegisterRestaurant: React.FC = () => {
             if (authError) throw authError;
 
             if (authData.user) {
-                // 2. Criar Tenant
+                // 3. Criar Tenant
                 const defaultTheme = {
                     primaryColor: '#2563eb',
                     backgroundColor: '#ffffff',
@@ -71,9 +82,17 @@ export const RegisterRestaurant: React.FC = () => {
                     theme_config: defaultTheme
                 }).select().single();
 
-                if (tenantError) throw tenantError;
+                if (tenantError) {
+                    // Se falhar a criação do tenant, mas o user foi criado, é um estado inconsistente.
+                    // Em um app real, deveria haver um rollback ou a criação do tenant via trigger.
+                    // Aqui, lançamos o erro.
+                    if (tenantError.code === '23505') { // Unique violation code
+                        throw new Error("Este slug já está cadastrado.");
+                    }
+                    throw tenantError;
+                }
 
-                // 3. Criar Staff ADMIN vinculado ao Auth User
+                // 4. Criar Staff ADMIN vinculado ao Auth User
                 const { error: staffError } = await supabase.from('staff').insert({
                     tenant_id: tenant.id,
                     name: form.ownerName,
@@ -90,7 +109,7 @@ export const RegisterRestaurant: React.FC = () => {
             }
         } catch (err: any) {
             console.error(err);
-            setError(err.message || "Erro ao criar conta. Verifique se o Slug já existe ou tente outro email.");
+            setError(err.message || "Erro ao criar conta.");
         } finally {
             setLoading(false);
         }
@@ -162,6 +181,7 @@ export const RegisterRestaurant: React.FC = () => {
                                     onChange={(e) => setForm({...form, slug: e.target.value.toLowerCase().replace(/\s/g, '-')})}
                                 />
                             </div>
+                            <p className="text-xs text-gray-400 mt-1">Este será o link que seus clientes usarão.</p>
                         </div>
                     </div>
 
@@ -223,7 +243,8 @@ export const RegisterRestaurant: React.FC = () => {
                     </div>
 
                     {error && (
-                        <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm flex items-center gap-2">
+                        <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm flex items-center gap-2 border border-red-200">
+                            <AlertCircle size={16} />
                             <span className="font-bold">Erro:</span> {error}
                         </div>
                     )}
@@ -240,3 +261,6 @@ export const RegisterRestaurant: React.FC = () => {
         </div>
     );
 };
+
+// Icon import needed for the fix
+import { AlertCircle } from 'lucide-react';

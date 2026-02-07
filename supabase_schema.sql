@@ -10,11 +10,25 @@ DROP TABLE IF EXISTS products CASCADE;
 DROP TABLE IF EXISTS staff CASCADE;
 DROP TABLE IF EXISTS tenants CASCADE;
 DROP TABLE IF EXISTS saas_admins CASCADE;
+DROP TABLE IF EXISTS plans CASCADE;
 
 -- 2. EXTENSÕES
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- 3. TABELAS
+
+-- Plans (Planos do Sistema)
+CREATE TABLE plans (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    key TEXT UNIQUE NOT NULL, -- 'FREE', 'PRO', 'ENTERPRISE'
+    name TEXT NOT NULL,
+    price TEXT NOT NULL,
+    period TEXT DEFAULT '/mês',
+    features JSONB DEFAULT '[]'::jsonb,
+    is_popular BOOLEAN DEFAULT FALSE,
+    button_text TEXT DEFAULT 'Assinar Agora',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
 
 -- Tenants (Restaurantes)
 CREATE TABLE tenants (
@@ -135,6 +149,7 @@ ALTER PUBLICATION supabase_realtime ADD TABLE order_items;
 ALTER PUBLICATION supabase_realtime ADD TABLE products;
 ALTER PUBLICATION supabase_realtime ADD TABLE transactions;
 ALTER PUBLICATION supabase_realtime ADD TABLE audit_logs;
+ALTER PUBLICATION supabase_realtime ADD TABLE plans;
 
 -- 5. SEED DATA (Dados Iniciais)
 
@@ -146,6 +161,12 @@ DECLARE
 BEGIN
     -- Seed SaaS Admin (CEO)
     INSERT INTO saas_admins (name, email, password) VALUES ('CEO GastroFlow', 'admin@gastroflow.com', 'admin');
+
+    -- Seed Plans
+    INSERT INTO plans (key, name, price, features, is_popular, button_text) VALUES 
+    ('FREE', 'Starter', 'Grátis', '["Até 5 mesas", "Cardápio Digital QR", "1 Usuário Admin", "Suporte por Email"]'::jsonb, FALSE, 'Começar Agora'),
+    ('PRO', 'Profissional', 'R$ 99', '["Mesas Ilimitadas", "KDS (Tela Cozinha)", "Relatórios Financeiros", "5 Usuários", "Suporte Prioritário"]'::jsonb, TRUE, 'Assinar Pro'),
+    ('ENTERPRISE', 'Enterprise', 'Sob Consulta', '["Múltiplas Filiais", "API de Integração", "Gerente de Contas", "Usuários Ilimitados", "Treinamento Equipe"]'::jsonb, FALSE, 'Falar com Consultor');
 
     -- --- RESTAURANTE 1: BISTRÔ DO CHEF ---
     INSERT INTO tenants (slug, name, email, theme_config, plan) 

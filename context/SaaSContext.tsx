@@ -1,6 +1,5 @@
-
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
-import { RestaurantTenant, PlanType } from '../types';
+import { RestaurantTenant, PlanType, Plan } from '../types';
 import { supabase } from '../lib/supabase';
 
 interface SaaSState {
@@ -9,17 +8,20 @@ interface SaaSState {
   adminId: string | null;
   adminEmail: string | null;
   tenants: RestaurantTenant[];
+  plans: Plan[];
 }
 
 type SaaSAction =
   | { type: 'LOGIN_ADMIN'; name: string; id: string; email: string }
   | { type: 'LOGOUT_ADMIN' }
   | { type: 'SET_TENANTS'; payload: RestaurantTenant[] }
+  | { type: 'SET_PLANS'; payload: Plan[] }
   | { type: 'CREATE_TENANT'; payload: { name: string; slug: string; ownerName: string; email: string; plan: PlanType } }
   | { type: 'ADD_TENANT_TO_LIST'; tenant: RestaurantTenant }
   | { type: 'TOGGLE_STATUS'; tenantId: string }
   | { type: 'CHANGE_PLAN'; tenantId: string; plan: PlanType }
-  | { type: 'UPDATE_PROFILE'; name: string; email: string };
+  | { type: 'UPDATE_PROFILE'; name: string; email: string }
+  | { type: 'UPDATE_PLAN_DETAILS'; plan: Plan };
 
 const initialState: SaaSState = {
   isAuthenticated: false,
@@ -27,6 +29,7 @@ const initialState: SaaSState = {
   adminId: null,
   adminEmail: null,
   tenants: [],
+  plans: []
 };
 
 const SaaSContext = createContext<{
@@ -50,6 +53,9 @@ const saasReducer = (state: SaaSState, action: SaaSAction): SaaSState => {
 
     case 'SET_TENANTS':
         return { ...state, tenants: action.payload };
+    
+    case 'SET_PLANS':
+        return { ...state, plans: action.payload };
 
     case 'ADD_TENANT_TO_LIST':
       return { ...state, tenants: [action.tenant, ...state.tenants] };
@@ -77,6 +83,12 @@ const saasReducer = (state: SaaSState, action: SaaSAction): SaaSState => {
     case 'UPDATE_PROFILE':
         return { ...state, adminName: action.name, adminEmail: action.email };
 
+    case 'UPDATE_PLAN_DETAILS':
+        return {
+            ...state,
+            plans: state.plans.map(p => p.id === action.plan.id ? action.plan : p)
+        };
+
     default:
       return state;
   }
@@ -85,8 +97,27 @@ const saasReducer = (state: SaaSState, action: SaaSAction): SaaSState => {
 export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(saasReducer, initialState);
 
-  // Efeito para carregar tenants reais ao logar
+  // Efeito para carregar planos e tenants
   useEffect(() => {
+    // Busca Planos Publicamente (para Landing Page usar context se necessário, ou admin)
+    const fetchPlans = async () => {
+         const { data } = await supabase.from('plans').select('*').order('price');
+         if(data) {
+             const mappedPlans: Plan[] = data.map(p => ({
+                 id: p.id,
+                 key: p.key as PlanType,
+                 name: p.name,
+                 price: p.price,
+                 period: p.period,
+                 features: p.features,
+                 is_popular: p.is_popular,
+                 button_text: p.button_text
+             }));
+             dispatch({ type: 'SET_PLANS', payload: mappedPlans });
+         }
+    };
+    fetchPlans();
+
     if (state.isAuthenticated) {
         const fetchTenants = async () => {
             const { data, error } = await supabase.from('tenants').select('*').order('created_at', { ascending: false });
@@ -179,6 +210,23 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 name: action.name,
                 email: action.email
             }).eq('id', state.adminId);
+        }
+        return;
+    }
+    
+    if (action.type === 'UPDATE_PLAN_DETAILS') {
+        const { error } = await supabase.from('plans').update({
+            name: action.plan.name,
+            price: action.plan.price,
+            features: action.plan.features,
+            button_text: action.plan.button_text
+        }).eq('id', action.plan.id);
+
+        if (!error) {
+            dispatch(action);
+        } else {
+            console.error("Erro ao atualizar plano", error);
+            alert("Erro ao salvar plano.");
         }
         return;
     }

@@ -1,14 +1,21 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ChefHat, CheckCircle, Smartphone, BarChart3, ShieldCheck, MessageCircle, ArrowRight, Star, Send } from 'lucide-react';
+import { useSaaS } from '../context/SaaSContext';
 
 export const LandingPage: React.FC = () => {
+  const { state } = useSaaS();
   const whatsappNumber = "5534991448794";
   const defaultMessage = encodeURIComponent("Olá! Gostaria de conhecer melhor os planos do GastroFlow.");
 
   const openWhatsApp = () => {
     window.open(`https://wa.me/${whatsappNumber}?text=${defaultMessage}`, '_blank');
   };
+
+  // Se os planos ainda não foram carregados do DB, usa um fallback visual ou espera
+  const displayPlans = state.plans.length > 0 ? state.plans : [
+      { id: '1', name: 'Starter', price: 'Carregando...', features: [], is_popular: false, button_text: '...', period: '' }
+  ];
 
   return (
     <div className="min-h-screen bg-white font-sans text-slate-900">
@@ -161,31 +168,18 @@ export const LandingPage: React.FC = () => {
             </div>
             
             <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-                <PricingCard 
-                    title="Starter" 
-                    price="Grátis" 
-                    period="para testar"
-                    features={['Até 5 mesas', 'Cardápio Digital', '1 Usuário Admin', 'Suporte por Email']}
-                    cta="Começar Agora"
-                    onClick={openWhatsApp}
-                />
-                <PricingCard 
-                    title="Pro" 
-                    price="R$ 99" 
-                    period="/mês"
-                    isPopular 
-                    features={['Mesas Ilimitadas', 'KDS (Tela Cozinha)', 'Relatórios Financeiros', '5 Usuários', 'Suporte WhatsApp']}
-                    cta="Assinar Plano Pro"
-                    onClick={openWhatsApp}
-                />
-                <PricingCard 
-                    title="Enterprise" 
-                    price="Sob Consulta" 
-                    period=""
-                    features={['Múltiplas Filiais', 'API de Integração', 'Gerente de Contas', 'Usuários Ilimitados', 'Treinamento Equipe']}
-                    cta="Falar com Consultor"
-                    onClick={openWhatsApp}
-                />
+                {displayPlans.map(plan => (
+                    <PricingCard 
+                        key={plan.id}
+                        title={plan.name} 
+                        price={plan.price} 
+                        period={plan.period}
+                        features={plan.features}
+                        isPopular={plan.is_popular}
+                        cta={plan.button_text}
+                        onClick={openWhatsApp}
+                    />
+                ))}
             </div>
         </div>
       </div>
@@ -280,7 +274,7 @@ const PricingCard: React.FC<{title: string, price: string, period: string, featu
         <h3 className={`text-lg font-bold mb-2 ${isPopular ? 'text-blue-600' : 'text-slate-500'}`}>{title}</h3>
         <div className="mb-6">
             <span className="text-4xl font-extrabold text-slate-900">{price}</span>
-            <span className="text-sm font-medium text-slate-400"> {period}</span>
+            {period && <span className="text-sm font-medium text-slate-400"> {period}</span>}
         </div>
         <ul className="space-y-4 mb-8 flex-1">
             {features.map((f, i) => (

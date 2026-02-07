@@ -31,6 +31,17 @@ export enum OrderStatus {
 // --- SaaS Types ---
 export type PlanType = 'FREE' | 'PRO' | 'ENTERPRISE';
 
+export interface Plan {
+    id: string;
+    key: PlanType;
+    name: string;
+    price: string;
+    period: string;
+    features: string[];
+    is_popular: boolean;
+    button_text: string;
+}
+
 export interface RestaurantTenant {
   id: string;
   name: string;
