@@ -122,6 +122,13 @@ export interface Table {
   accessCode?: string; 
 }
 
+export interface ServiceCall {
+  id: string;
+  tableId: string;
+  status: 'PENDING' | 'RESOLVED';
+  timestamp: Date;
+}
+
 export interface RestaurantTheme {
   primaryColor: string;
   backgroundColor: string;

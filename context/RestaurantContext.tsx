@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
-import { Table, Order, Product, TableStatus, OrderStatus, ProductType, OrderItem, RestaurantTheme, User, AuditLog, Transaction, Role } from '../types';
+import { Table, Order, Product, TableStatus, OrderStatus, ProductType, OrderItem, RestaurantTheme, User, AuditLog, Transaction, Role, ServiceCall } from '../types';
 import { getTenantSlug } from '../utils/tenant';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
@@ -17,6 +17,7 @@ interface State {
   users: User[];
   auditLogs: AuditLog[];
   transactions: Transaction[];
+  serviceCalls: ServiceCall[];
 }
 
 type Action =
@@ -30,6 +31,7 @@ type Action =
   | { type: 'REALTIME_UPDATE_PRODUCTS'; products: Product[] }
   | { type: 'REALTIME_UPDATE_TRANSACTIONS'; transactions: Transaction[] }
   | { type: 'REALTIME_UPDATE_AUDIT_LOGS'; auditLogs: AuditLog[] }
+  | { type: 'REALTIME_UPDATE_SERVICE_CALLS'; calls: ServiceCall[] }
   // Ações que disparam side-effects no Supabase (interceptadas)
   | { type: 'ADD_USER'; user: User }
   | { type: 'UPDATE_USER'; user: User }
@@ -43,7 +45,10 @@ type Action =
   | { type: 'UPDATE_PRODUCT'; product: Product }
   | { type: 'ADD_PRODUCT'; product: Product }
   | { type: 'UPDATE_THEME'; theme: RestaurantTheme }
-  | { type: 'PROCESS_PAYMENT'; tableId: string; amount: number; method: 'CASH' | 'CARD' | 'PIX' };
+  | { type: 'PROCESS_PAYMENT'; tableId: string; amount: number; method: 'CASH' | 'CARD' | 'PIX' }
+  | { type: 'CALL_WAITER'; tableId: string }
+  | { type: 'RESOLVE_WAITER_CALL'; callId: string }
+  | { type: 'PLAY_SOUND'; soundType: 'KITCHEN' | 'WAITER' };
 
 const initialState: State = {
   isLoading: true,
@@ -57,13 +62,27 @@ const initialState: State = {
   currentUser: null,
   users: [],
   auditLogs: [],
-  transactions: []
+  transactions: [],
+  serviceCalls: []
 };
 
 const RestaurantContext = createContext<{
   state: State;
   dispatch: (action: Action) => Promise<void>;
 } | undefined>(undefined);
+
+// --- Sounds Logic ---
+const kitchenSound = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3'); 
+const waiterSound = new Audio('https://assets.mixkit.co/active_storage/sfx/2346/2346-preview.mp3');
+
+const playSoundSafely = async (audio: HTMLAudioElement) => {
+    try {
+        audio.currentTime = 0;
+        await audio.play();
+    } catch (e) {
+        console.warn("Autoplay blocked or audio error", e);
+    }
+};
 
 // --- Reducer (Gerencia apenas estado local e atualizações via Realtime) ---
 const restaurantReducer = (state: State, action: Action): State => {
@@ -88,6 +107,14 @@ const restaurantReducer = (state: State, action: Action): State => {
         return { ...state, tables: action.tables };
     
     case 'REALTIME_UPDATE_ORDERS':
+        // Detectar se há novos itens de cozinha para tocar som
+        if (state.currentUser?.role === Role.KITCHEN || state.currentUser?.role === Role.ADMIN) {
+             // Lógica simplificada: Se o numero de ordens aumentou, toca som. 
+             // O ideal seria comparar diffs, mas para este exemplo funciona.
+             if (action.orders.length > state.orders.length) {
+                 playSoundSafely(kitchenSound);
+             }
+        }
         return { ...state, orders: action.orders };
     
     case 'REALTIME_UPDATE_PRODUCTS':
@@ -99,8 +126,23 @@ const restaurantReducer = (state: State, action: Action): State => {
     case 'REALTIME_UPDATE_AUDIT_LOGS':
         return { ...state, auditLogs: action.auditLogs };
 
+    case 'REALTIME_UPDATE_SERVICE_CALLS':
+        // Se houver novos chamados pendentes e o usuário for Garçom/Admin
+        const newPending = action.calls.filter(c => c.status === 'PENDING').length;
+        const oldPending = state.serviceCalls.filter(c => c.status === 'PENDING').length;
+        
+        if (newPending > oldPending && (state.currentUser?.role === Role.WAITER || state.currentUser?.role === Role.ADMIN)) {
+            playSoundSafely(waiterSound);
+        }
+        return { ...state, serviceCalls: action.calls };
+
     case 'UPDATE_THEME':
         return { ...state, theme: action.theme };
+    
+    case 'PLAY_SOUND': // Action manual se necessário
+        if (action.soundType === 'KITCHEN') playSoundSafely(kitchenSound);
+        if (action.soundType === 'WAITER') playSoundSafely(waiterSound);
+        return state;
 
     default:
       return state;
@@ -153,13 +195,14 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             }
 
             // B. Buscar Dados Relacionados
-            const [usersRes, productsRes, tablesRes, ordersRes, transactionsRes, auditRes] = await Promise.all([
+            const [usersRes, productsRes, tablesRes, ordersRes, transactionsRes, auditRes, callsRes] = await Promise.all([
                 supabase.from('staff').select('*').eq('tenant_id', tenant.id),
                 supabase.from('products').select('*').eq('tenant_id', tenant.id),
                 supabase.from('restaurant_tables').select('*').eq('tenant_id', tenant.id).order('number'),
                 supabase.from('orders').select(`*, items:order_items (*)`).eq('tenant_id', tenant.id).eq('is_paid', false), // Apenas pedidos ativos
                 supabase.from('transactions').select('*').eq('tenant_id', tenant.id).order('created_at', { ascending: false }).limit(50),
-                supabase.from('audit_logs').select('*').eq('tenant_id', tenant.id).order('created_at', { ascending: false }).limit(50)
+                supabase.from('audit_logs').select('*').eq('tenant_id', tenant.id).order('created_at', { ascending: false }).limit(50),
+                supabase.from('service_calls').select('*').eq('tenant_id', tenant.id).eq('status', 'PENDING')
             ]);
 
             // Mapeamento de dados SQL -> App Types
@@ -228,6 +271,13 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 timestamp: new Date(l.created_at)
             }));
 
+             const mappedCalls: ServiceCall[] = (callsRes.data || []).map(c => ({
+                id: c.id,
+                tableId: c.table_id,
+                status: c.status,
+                timestamp: new Date(c.created_at)
+            }));
+
             // C. AUTO-LOGIN via Supabase Auth Check (Initial Load)
             let autoLoggedUser: User | null = null;
             const { data: { session } } = await supabase.auth.getSession();
@@ -264,6 +314,7 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                     orders: mappedOrders,
                     transactions: mappedTransactions,
                     auditLogs: mappedAuditLogs,
+                    serviceCalls: mappedCalls,
                     currentUser: autoLoggedUser
                 }
             });
@@ -360,6 +411,23 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 }
             }
         )
+        // Chamados (Service Calls)
+        .on(
+            'postgres_changes',
+            { event: '*', schema: 'public', table: 'service_calls', filter: `tenant_id=eq.${state.tenantId}` },
+            async () => {
+                 const { data } = await supabase.from('service_calls').select('*').eq('tenant_id', state.tenantId!).eq('status', 'PENDING');
+                 if(data) {
+                     const mappedCalls: ServiceCall[] = data.map((c: any) => ({
+                        id: c.id,
+                        tableId: c.table_id,
+                        status: c.status,
+                        timestamp: new Date(c.created_at)
+                    }));
+                    dispatchLocal({ type: 'REALTIME_UPDATE_SERVICE_CALLS', calls: mappedCalls });
+                 }
+            }
+        )
         // Transações
         .on(
             'postgres_changes',
@@ -425,6 +493,9 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             dispatchLocal(action);
             break;
         case 'SET_LOADING':
+            dispatchLocal(action);
+            break;
+        case 'PLAY_SOUND':
             dispatchLocal(action);
             break;
         
@@ -547,6 +618,33 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 }).eq('id', action.tableId);
                 
                 logAudit(tenantId, 'PAYMENT', `Pagamento de R$${action.amount} recebido via ${action.method} mesa ${table?.number}`);
+            }
+            break;
+
+        case 'CALL_WAITER':
+            if (tenantId) {
+                // Verifica se já existe chamado pendente para evitar spam
+                const { data: existing } = await supabase.from('service_calls')
+                    .select('id')
+                    .eq('table_id', action.tableId)
+                    .eq('status', 'PENDING')
+                    .maybeSingle();
+
+                if (!existing) {
+                    await supabase.from('service_calls').insert({
+                        tenant_id: tenantId,
+                        table_id: action.tableId,
+                        status: 'PENDING'
+                    });
+                }
+            }
+            break;
+        
+        case 'RESOLVE_WAITER_CALL':
+            if (tenantId) {
+                await supabase.from('service_calls')
+                    .update({ status: 'RESOLVED' })
+                    .eq('id', action.callId);
             }
             break;
 

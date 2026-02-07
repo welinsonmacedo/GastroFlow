@@ -4,12 +4,12 @@ import { Button } from '../components/Button';
 import { QRCodeGenerator } from '../components/QRCodeGenerator';
 import { ImageUploader } from '../components/ImageUploader';
 import { Product, ProductType, Role, User } from '../types';
-import { LayoutDashboard, Utensils, QrCode, Printer, ExternalLink, Palette, Eye, EyeOff, Save, Copy, Plus, Users, ShieldCheck, Trash2, Edit, AlertTriangle } from 'lucide-react';
+import { LayoutDashboard, Utensils, QrCode, Printer, ExternalLink, Palette, Eye, EyeOff, Save, Copy, Plus, Users, ShieldCheck, Trash2, Edit, AlertTriangle, FileBarChart, X } from 'lucide-react';
 import { getTenantSlug } from '../utils/tenant';
 
 export const AdminDashboard: React.FC = () => {
   const { state, dispatch } = useRestaurant();
-  const [activeTab, setActiveTab] = useState<'DASHBOARD' | 'PRODUCTS' | 'TABLES' | 'CUSTOMIZATION' | 'STAFF' | 'AUDIT'>('DASHBOARD');
+  const [activeTab, setActiveTab] = useState<'DASHBOARD' | 'PRODUCTS' | 'TABLES' | 'CUSTOMIZATION' | 'STAFF' | 'AUDIT' | 'REPORTS'>('DASHBOARD');
   
   // Theme state
   const [localTheme, setLocalTheme] = useState(state.theme);
@@ -57,6 +57,10 @@ export const AdminDashboard: React.FC = () => {
       `);
       printWindow.document.close();
     }
+  };
+  
+  const handlePrintReport = () => {
+      window.print();
   };
 
   const handleAddProduct = () => {
@@ -138,15 +142,31 @@ export const AdminDashboard: React.FC = () => {
           dispatch({ type: 'DELETE_TABLE', tableId });
       }
   };
+  
+  // --- Dados para Relatórios ---
+  const calculateTotalSales = () => state.transactions.reduce((acc, t) => acc + t.amount, 0);
+  const calculateSalesByMethod = () => {
+      const data: any = {};
+      state.transactions.forEach(t => {
+          data[t.method] = (data[t.method] || 0) + t.amount;
+      });
+      return data;
+  };
+  // Mock para produtos mais vendidos baseados em transações (idealmente seria uma query mais complexa)
+  // Como as transactions tem itemsSummary como string, não é preciso, mas vamos tentar extrair algo se possível
+  // ou apenas exibir as transações completas.
 
   return (
     <div className="min-h-screen bg-gray-100 flex">
         {/* Sidebar */}
-        <div className="w-64 bg-slate-900 text-white p-6 shrink-0 h-screen sticky top-0 overflow-y-auto">
+        <div className="w-64 bg-slate-900 text-white p-6 shrink-0 h-screen sticky top-0 overflow-y-auto print:hidden">
             <h1 className="text-xl font-bold mb-10">Admin Panel</h1>
             <nav className="space-y-2">
                 <button onClick={() => setActiveTab('DASHBOARD')} className={`flex items-center gap-3 w-full p-3 rounded transition-colors ${activeTab === 'DASHBOARD' ? 'bg-blue-600' : 'hover:bg-slate-800'}`}>
                     <LayoutDashboard size={20} /> Visão Geral
+                </button>
+                <button onClick={() => setActiveTab('REPORTS')} className={`flex items-center gap-3 w-full p-3 rounded transition-colors ${activeTab === 'REPORTS' ? 'bg-blue-600' : 'hover:bg-slate-800'}`}>
+                    <FileBarChart size={20} /> Relatórios
                 </button>
                 <button onClick={() => setActiveTab('PRODUCTS')} className={`flex items-center gap-3 w-full p-3 rounded transition-colors ${activeTab === 'PRODUCTS' ? 'bg-blue-600' : 'hover:bg-slate-800'}`}>
                     <Utensils size={20} /> Cardápio
@@ -188,6 +208,61 @@ export const AdminDashboard: React.FC = () => {
                             <div className="text-3xl font-bold text-gray-800">{state.users.length}</div>
                         </div>
                     </div>
+                </div>
+            )}
+            
+            {activeTab === 'REPORTS' && (
+                <div className="space-y-8">
+                     <div className="flex justify-between items-center no-print">
+                        <h2 className="text-2xl font-bold text-gray-800">Relatórios Gerenciais</h2>
+                        <Button onClick={handlePrintReport}><Printer size={16}/> Imprimir Relatório</Button>
+                     </div>
+
+                     {/* Vendas */}
+                     <div className="bg-white p-6 rounded-xl shadow-sm border">
+                         <h3 className="text-lg font-bold mb-4 border-b pb-2">Resumo Financeiro</h3>
+                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                             <div>
+                                 <p className="text-sm text-gray-500">Vendas Totais</p>
+                                 <p className="text-2xl font-bold text-green-600">R$ {calculateTotalSales().toFixed(2)}</p>
+                             </div>
+                             {Object.entries(calculateSalesByMethod()).map(([method, amount]: any) => (
+                                 <div key={method}>
+                                     <p className="text-sm text-gray-500">{method}</p>
+                                     <p className="text-xl font-bold">R$ {amount.toFixed(2)}</p>
+                                 </div>
+                             ))}
+                         </div>
+                     </div>
+
+                     {/* Transações Detalhadas */}
+                     <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+                        <div className="p-4 bg-gray-50 border-b">
+                            <h3 className="font-bold">Histórico de Transações</h3>
+                        </div>
+                        <table className="w-full text-left text-sm">
+                            <thead className="bg-gray-100">
+                                <tr>
+                                    <th className="p-3">Data</th>
+                                    <th className="p-3">Mesa</th>
+                                    <th className="p-3">Método</th>
+                                    <th className="p-3">Caixa</th>
+                                    <th className="p-3 text-right">Valor</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {state.transactions.map(t => (
+                                    <tr key={t.id} className="border-b">
+                                        <td className="p-3">{t.timestamp.toLocaleString()}</td>
+                                        <td className="p-3">Mesa {t.tableNumber}</td>
+                                        <td className="p-3">{t.method}</td>
+                                        <td className="p-3">{t.cashierName}</td>
+                                        <td className="p-3 text-right font-bold">R$ {t.amount.toFixed(2)}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                     </div>
                 </div>
             )}
 
@@ -256,12 +331,16 @@ export const AdminDashboard: React.FC = () => {
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-2">
-                                        <button onClick={() => startEditUser(user)} className="text-blue-500 hover:text-blue-700 p-2" title="Editar">
+                                        <button onClick={() => startEditUser(user)} className="text-blue-500 hover:text-blue-700 p-2 bg-blue-50 rounded-lg" title="Editar">
                                             <Edit size={20} />
                                         </button>
 
                                         {user.role !== Role.ADMIN && (
-                                            <button onClick={() => { if(window.confirm('Remover funcionário?')) dispatch({type: 'DELETE_USER', userId: user.id}) }} className="text-red-500 hover:text-red-700 p-2" title="Excluir">
+                                            <button 
+                                                onClick={() => { if(window.confirm(`ATENÇÃO: Tem certeza que deseja remover o usuário ${user.name}?`)) dispatch({type: 'DELETE_USER', userId: user.id}) }} 
+                                                className="text-red-500 hover:text-red-700 p-2 bg-red-50 rounded-lg" 
+                                                title="Apagar Usuário"
+                                            >
                                                 <Trash2 size={20} />
                                             </button>
                                         )}
@@ -316,8 +395,15 @@ export const AdminDashboard: React.FC = () => {
                     {/* Editor Modal */}
                     {editingProduct && (
                         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                            <div className="bg-white p-6 rounded-lg w-full max-w-lg shadow-xl max-h-[90vh] overflow-y-auto">
-                                <h3 className="text-xl font-bold mb-4">{isCreatingNew ? 'Novo Produto' : 'Editar Produto'}</h3>
+                            <div className="bg-white p-6 rounded-lg w-full max-w-lg shadow-xl max-h-[90vh] overflow-y-auto relative">
+                                <button 
+                                    onClick={() => setEditingProduct(null)} 
+                                    className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+                                >
+                                    <X size={24} />
+                                </button>
+
+                                <h3 className="text-xl font-bold mb-4 pr-8">{isCreatingNew ? 'Novo Produto' : 'Editar Produto'}</h3>
                                 <div className="space-y-4">
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="col-span-2">

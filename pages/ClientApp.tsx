@@ -42,8 +42,11 @@ export const ClientApp: React.FC = () => {
   };
 
   const callWaiter = () => {
-      setWaiterCalled(true);
-      setTimeout(() => setWaiterCalled(false), 5000); 
+      if (tableId) {
+          dispatch({ type: 'CALL_WAITER', tableId });
+          setWaiterCalled(true);
+          setTimeout(() => setWaiterCalled(false), 5000); 
+      }
   };
 
   const addToCart = (product: Product) => {

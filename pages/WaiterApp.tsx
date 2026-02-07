@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useRestaurant } from '../context/RestaurantContext';
 import { TableStatus, OrderStatus, ProductType } from '../types';
 import { Button } from '../components/Button';
-import { CheckCircle, Coffee, User, Key, X } from 'lucide-react';
+import { CheckCircle, Coffee, User, Key, X, Bell } from 'lucide-react';
 
 export const WaiterApp: React.FC = () => {
   const { state, dispatch } = useRestaurant();
@@ -19,6 +19,8 @@ export const WaiterApp: React.FC = () => {
       )
       .map(item => ({ ...item, tableId: order.tableId, orderId: order.id }))
   );
+  
+  const pendingCalls = state.serviceCalls.filter(c => c.status === 'PENDING');
 
   const handleTableClick = (tableId: string, currentStatus: TableStatus) => {
     if (currentStatus === TableStatus.AVAILABLE) {
@@ -49,6 +51,10 @@ export const WaiterApp: React.FC = () => {
   const markDelivered = (orderId: string, itemId: string) => {
     dispatch({ type: 'UPDATE_ITEM_STATUS', orderId, itemId, status: OrderStatus.DELIVERED });
   };
+  
+  const resolveCall = (callId: string) => {
+      dispatch({ type: 'RESOLVE_WAITER_CALL', callId });
+  };
 
   return (
     <div className="min-h-screen bg-gray-100 p-4 lg:p-6 grid grid-cols-1 lg:grid-cols-3 gap-6 relative">
@@ -56,10 +62,15 @@ export const WaiterApp: React.FC = () => {
       {/* Modal de Abertura de Mesa */}
       {selectedTableForOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm">
+          <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm relative">
+            <button 
+                onClick={() => setSelectedTableForOpen(null)}
+                className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 p-2 hover:bg-gray-100 rounded-full"
+            >
+                <X size={24}/>
+            </button>
             <div className="flex justify-between items-center mb-4">
                <h3 className="text-xl font-bold">Abrir Mesa</h3>
-               <button onClick={() => setSelectedTableForOpen(null)}><X size={24}/></button>
             </div>
             
             <div className="mb-4">
@@ -70,6 +81,7 @@ export const WaiterApp: React.FC = () => {
                   onChange={(e) => setCustomerName(e.target.value)}
                   className="w-full border p-2 rounded-lg"
                   placeholder="Ex: João Silva"
+                  autoFocus
                />
             </div>
 
@@ -90,17 +102,26 @@ export const WaiterApp: React.FC = () => {
       <div className="lg:col-span-2 space-y-6">
         <h1 className="text-2xl font-bold text-gray-800">Mesas</h1>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          {state.tables.map(table => (
+          {state.tables.map(table => {
+            const hasCall = pendingCalls.find(c => c.tableId === table.id);
+            return (
             <div 
               key={table.id} 
               className={`p-4 rounded-xl shadow-sm border-2 transition-all cursor-pointer flex flex-col items-center justify-center min-h-[160px] relative
-                ${table.status === TableStatus.OCCUPIED ? 'bg-white border-blue-500' : ''}
-                ${table.status === TableStatus.AVAILABLE ? 'bg-gray-50 border-transparent hover:border-gray-300' : ''}
-                ${table.status === TableStatus.WAITING_PAYMENT ? 'bg-yellow-50 border-yellow-400' : ''}
+                ${hasCall ? 'bg-red-50 border-red-500 animate-pulse' : ''}
+                ${!hasCall && table.status === TableStatus.OCCUPIED ? 'bg-white border-blue-500' : ''}
+                ${!hasCall && table.status === TableStatus.AVAILABLE ? 'bg-gray-50 border-transparent hover:border-gray-300' : ''}
+                ${!hasCall && table.status === TableStatus.WAITING_PAYMENT ? 'bg-yellow-50 border-yellow-400' : ''}
               `}
-              onClick={() => handleTableClick(table.id, table.status)}
+              onClick={() => hasCall ? resolveCall(hasCall.id) : handleTableClick(table.id, table.status)}
             >
               <div className="text-4xl font-bold mb-1 text-gray-700">{table.number}</div>
+              
+              {hasCall && (
+                  <div className="absolute top-2 right-2 bg-red-600 text-white p-2 rounded-full animate-bounce">
+                      <Bell size={20} fill="white" />
+                  </div>
+              )}
               
               {table.status === TableStatus.OCCUPIED && (
                 <div className="flex flex-col items-center">
@@ -114,15 +135,21 @@ export const WaiterApp: React.FC = () => {
               )}
 
               <div className={`text-xs font-bold uppercase px-2 py-1 rounded-full mt-2
-                 ${table.status === TableStatus.OCCUPIED ? 'bg-blue-100 text-blue-700' : 'bg-gray-200 text-gray-600'}
+                 ${hasCall ? 'bg-red-600 text-white' : ''}
+                 ${!hasCall && table.status === TableStatus.OCCUPIED ? 'bg-blue-100 text-blue-700' : ''}
+                 ${!hasCall && table.status === TableStatus.AVAILABLE ? 'bg-gray-200 text-gray-600' : ''}
               `}>
-                {table.status === TableStatus.AVAILABLE && 'LIVRE'}
-                {table.status === TableStatus.OCCUPIED && 'OCUPADA'}
-                {table.status === TableStatus.WAITING_PAYMENT && 'PAGAMENTO'}
-                {table.status === TableStatus.CLOSED && 'FECHADA'}
+                {hasCall ? 'CHAMANDO' : (
+                    <>
+                        {table.status === TableStatus.AVAILABLE && 'LIVRE'}
+                        {table.status === TableStatus.OCCUPIED && 'OCUPADA'}
+                        {table.status === TableStatus.WAITING_PAYMENT && 'PAGAMENTO'}
+                        {table.status === TableStatus.CLOSED && 'FECHADA'}
+                    </>
+                )}
               </div>
             </div>
-          ))}
+          )})}
         </div>
       </div>
 

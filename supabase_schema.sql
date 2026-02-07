@@ -1,6 +1,7 @@
 -- ⚠️ ATENÇÃO: RODE ESTE SCRIPT NO "SQL EDITOR" DO SUPABASE ⚠️
 
 -- 1. LIMPEZA (Cuidado: Isso apaga dados existentes para recriar a estrutura correta)
+DROP TABLE IF EXISTS service_calls CASCADE; -- Nova tabela
 DROP TABLE IF EXISTS audit_logs CASCADE;
 DROP TABLE IF EXISTS transactions CASCADE;
 DROP TABLE IF EXISTS order_items CASCADE;
@@ -91,6 +92,15 @@ CREATE TABLE restaurant_tables (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
 );
 
+-- Service Calls (Chamados de Garçom) -- NOVA TABELA
+CREATE TABLE service_calls (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    tenant_id UUID REFERENCES tenants(id) ON DELETE CASCADE NOT NULL,
+    table_id UUID REFERENCES restaurant_tables(id) ON DELETE CASCADE NOT NULL,
+    status TEXT DEFAULT 'PENDING', -- 'PENDING', 'RESOLVED'
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+
 -- Orders (Pedidos - Cabeçalho)
 CREATE TABLE orders (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
@@ -151,6 +161,7 @@ ALTER PUBLICATION supabase_realtime ADD TABLE products;
 ALTER PUBLICATION supabase_realtime ADD TABLE transactions;
 ALTER PUBLICATION supabase_realtime ADD TABLE audit_logs;
 ALTER PUBLICATION supabase_realtime ADD TABLE plans;
+ALTER PUBLICATION supabase_realtime ADD TABLE service_calls; -- Add Realtime
 
 -- Habilitar RLS (Row Level Security) em todas as tabelas
 ALTER TABLE plans ENABLE ROW LEVEL SECURITY;
@@ -163,6 +174,7 @@ ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE order_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE service_calls ENABLE ROW LEVEL SECURITY;
 
 -- Criar Políticas Permissivas (Public Access) para evitar erro 403
 -- Em produção, estas políticas devem ser restritas. Para este MVP, liberamos o acesso.
@@ -177,6 +189,7 @@ CREATE POLICY "Public Access Orders" ON orders FOR ALL USING (true);
 CREATE POLICY "Public Access Order Items" ON order_items FOR ALL USING (true);
 CREATE POLICY "Public Access Transactions" ON transactions FOR ALL USING (true);
 CREATE POLICY "Public Access Audit Logs" ON audit_logs FOR ALL USING (true);
+CREATE POLICY "Public Access Service Calls" ON service_calls FOR ALL USING (true);
 
 -- 5. SEED DATA (Dados Iniciais)
 
