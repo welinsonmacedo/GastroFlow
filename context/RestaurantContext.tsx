@@ -48,7 +48,7 @@ type Action =
   | { type: 'ADD_PRODUCT'; product: Product }
   | { type: 'DELETE_PRODUCT'; productId: string } // Nova Action
   | { type: 'UPDATE_THEME'; theme: RestaurantTheme }
-  | { type: 'PROCESS_PAYMENT'; tableId: string; amount: number; method: 'CASH' | 'CARD' | 'PIX' }
+  | { type: 'PROCESS_PAYMENT'; tableId: string; amount: number; method: 'CASH' | 'CARD' | 'PIX' | 'CREDIT' | 'DEBIT' }
   | { type: 'CALL_WAITER'; tableId: string }
   | { type: 'RESOLVE_WAITER_CALL'; callId: string }
   | { type: 'PLAY_SOUND'; soundType: 'KITCHEN' | 'WAITER' };

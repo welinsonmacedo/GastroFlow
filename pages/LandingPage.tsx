@@ -1,7 +1,100 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ChefHat, CheckCircle, Smartphone, BarChart3, ShieldCheck, MessageCircle, ArrowRight, Star, Send, Menu, X, LogIn } from 'lucide-react';
+import { ChefHat, CheckCircle, Smartphone, BarChart3, ShieldCheck, MessageCircle, ArrowRight, Star, Send, Menu, X, LogIn, Zap, Monitor, LayoutDashboard } from 'lucide-react';
 import { useSaaS } from '../context/SaaSContext';
+
+const FeatureCard = ({ icon, title, desc }: { icon: React.ReactNode, title: string, desc: string }) => (
+  <div className="bg-white p-8 rounded-2xl shadow-lg border border-slate-100 hover:shadow-xl transition-shadow flex flex-col items-center text-center h-full">
+    <div className="bg-slate-50 p-4 rounded-full mb-6">
+      {icon}
+    </div>
+    <h3 className="text-xl font-bold text-slate-900 mb-3">{title}</h3>
+    <p className="text-slate-500 leading-relaxed">{desc}</p>
+  </div>
+);
+
+const ContactForm = ({ whatsappNumber }: { whatsappNumber: string }) => {
+  const [form, setForm] = useState({ name: '', restaurant: '', phone: '' });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const message = encodeURIComponent(`Olá! Me chamo ${form.name}, do restaurante ${form.restaurant}. Gostaria de mais informações. Meu contato: ${form.phone}`);
+    window.open(`https://wa.me/${whatsappNumber}?text=${message}`, '_blank');
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div>
+        <label className="block text-sm font-medium text-slate-700 mb-1">Seu Nome</label>
+        <input 
+          required 
+          className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+          placeholder="Ex: João Silva"
+          value={form.name}
+          onChange={e => setForm({...form, name: e.target.value})}
+        />
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-slate-700 mb-1">Nome do Restaurante</label>
+        <input 
+          required 
+          className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+          placeholder="Ex: Bistro do João"
+          value={form.restaurant}
+          onChange={e => setForm({...form, restaurant: e.target.value})}
+        />
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-slate-700 mb-1">WhatsApp / Telefone</label>
+        <input 
+          required 
+          type="tel"
+          className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+          placeholder="(00) 00000-0000"
+          value={form.phone}
+          onChange={e => setForm({...form, phone: e.target.value})}
+        />
+      </div>
+      <button 
+        type="submit" 
+        className="w-full bg-blue-600 hover:bg-blue-500 text-white py-4 rounded-xl font-bold shadow-lg shadow-blue-600/20 transition-all flex items-center justify-center gap-2 mt-4"
+      >
+        <Send size={18} /> Solicitar Contato
+      </button>
+    </form>
+  );
+};
+
+const PricingCard = ({ title, price, period, features, isPopular, cta, onClick }: any) => (
+  <div className={`relative bg-white rounded-2xl p-8 border flex flex-col ${isPopular ? 'border-blue-500 shadow-2xl scale-105 z-10' : 'border-slate-200 shadow-sm'}`}>
+    {isPopular && (
+      <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-blue-600 text-white px-4 py-1 rounded-full text-sm font-bold shadow-lg">
+        Mais Popular
+      </div>
+    )}
+    <div className="text-center mb-8">
+      <h3 className="text-lg font-bold text-slate-600 mb-2">{title}</h3>
+      <div className="flex items-baseline justify-center gap-1">
+        <span className="text-4xl font-extrabold text-slate-900">{price}</span>
+        <span className="text-slate-500 text-sm">{period}</span>
+      </div>
+    </div>
+    <ul className="space-y-4 mb-8 flex-1">
+      {features.map((feature: string, idx: number) => (
+        <li key={idx} className="flex items-start gap-3 text-sm text-slate-600">
+          <CheckCircle className="text-green-500 shrink-0" size={18} />
+          {feature}
+        </li>
+      ))}
+    </ul>
+    <button 
+      onClick={onClick}
+      className={`w-full py-4 rounded-xl font-bold transition-all ${isPopular ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-500/30' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+    >
+      {cta}
+    </button>
+  </div>
+);
 
 export const LandingPage: React.FC = () => {
   const { state } = useSaaS();
@@ -45,6 +138,7 @@ export const LandingPage: React.FC = () => {
             {/* Desktop Menu */}
             <div className="hidden md:flex gap-8 items-center">
                <a href="#features" className="text-sm font-medium text-slate-600 hover:text-blue-600 transition-colors">Funcionalidades</a>
+               <a href="#showcase" className="text-sm font-medium text-slate-600 hover:text-blue-600 transition-colors">Como Funciona</a>
                <a href="#pricing" className="text-sm font-medium text-slate-600 hover:text-blue-600 transition-colors">Planos</a>
                <a href="#contact" className="text-sm font-medium text-slate-600 hover:text-blue-600 transition-colors">Contato</a>
             </div>
@@ -83,6 +177,7 @@ export const LandingPage: React.FC = () => {
              </Link>
              <hr className="border-slate-100" />
              <a href="#features" className="text-slate-600 font-medium p-2 hover:bg-gray-50 rounded" onClick={() => setIsMobileMenuOpen(false)}>Funcionalidades</a>
+             <a href="#showcase" className="text-slate-600 font-medium p-2 hover:bg-gray-50 rounded" onClick={() => setIsMobileMenuOpen(false)}>Como Funciona</a>
              <a href="#pricing" className="text-slate-600 font-medium p-2 hover:bg-gray-50 rounded" onClick={() => setIsMobileMenuOpen(false)}>Planos e Preços</a>
              <a href="#contact" className="text-slate-600 font-medium p-2 hover:bg-gray-50 rounded" onClick={() => setIsMobileMenuOpen(false)}>Contato</a>
              <button 
@@ -169,10 +264,95 @@ export const LandingPage: React.FC = () => {
         </div>
       </div>
 
+      {/* --- Visual Showcase Section (NEW) --- */}
+      <div id="showcase" className="py-24 bg-slate-50 border-t border-slate-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-32">
+            
+            {/* Block 1: QR Code */}
+            <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-24">
+                <div className="lg:w-1/2 relative group">
+                    <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 to-cyan-500 rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-1000"></div>
+                    <img 
+                        src="https://images.unsplash.com/photo-1595079676339-1534801ad6cf?auto=format&fit=crop&w=800&q=80" 
+                        alt="Cliente usando QR Code" 
+                        className="relative rounded-2xl shadow-2xl border-4 border-white w-full h-[400px] object-cover"
+                    />
+                </div>
+                <div className="lg:w-1/2">
+                    <div className="inline-flex items-center gap-2 bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-bold uppercase mb-4">
+                        <Zap size={14} /> Autoatendimento
+                    </div>
+                    <h3 className="text-3xl md:text-4xl font-extrabold text-slate-900 mb-6">O cliente pede, você fatura.</h3>
+                    <p className="text-lg text-slate-600 mb-6 leading-relaxed">
+                        Esqueça cardápios de papel engordurados. Com nosso sistema de QR Code, seu cliente acessa fotos reais dos pratos, personaliza o pedido e envia direto para a produção.
+                    </p>
+                    <ul className="space-y-3">
+                        <li className="flex items-center gap-3 text-slate-700 font-medium"><CheckCircle className="text-green-500" size={20}/> Cardápio sempre atualizado</li>
+                        <li className="flex items-center gap-3 text-slate-700 font-medium"><CheckCircle className="text-green-500" size={20}/> Aumento de 20% no ticket médio</li>
+                        <li className="flex items-center gap-3 text-slate-700 font-medium"><CheckCircle className="text-green-500" size={20}/> Redução na fila de espera</li>
+                    </ul>
+                </div>
+            </div>
+
+            {/* Block 2: KDS (Reverse Layout) */}
+            <div className="flex flex-col lg:flex-row-reverse items-center gap-12 lg:gap-24">
+                <div className="lg:w-1/2 relative group">
+                    <div className="absolute -inset-1 bg-gradient-to-r from-purple-600 to-pink-500 rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-1000"></div>
+                    <img 
+                        src="https://images.unsplash.com/photo-1556910103-1c02745a30bf?auto=format&fit=crop&w=800&q=80" 
+                        alt="Cozinha com KDS" 
+                        className="relative rounded-2xl shadow-2xl border-4 border-white w-full h-[400px] object-cover"
+                    />
+                </div>
+                <div className="lg:w-1/2">
+                    <div className="inline-flex items-center gap-2 bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-xs font-bold uppercase mb-4">
+                        <Monitor size={14} /> KDS - Tela de Cozinha
+                    </div>
+                    <h3 className="text-3xl md:text-4xl font-extrabold text-slate-900 mb-6">Cozinha sem caos, pratos no ponto.</h3>
+                    <p className="text-lg text-slate-600 mb-6 leading-relaxed">
+                        Chega de gritaria e papeizinhos perdidos. O KDS organiza os pedidos por ordem de chegada e tempo de preparo, garantindo que nada atrase.
+                    </p>
+                    <ul className="space-y-3">
+                        <li className="flex items-center gap-3 text-slate-700 font-medium"><CheckCircle className="text-green-500" size={20}/> Zero erros de comunicação</li>
+                        <li className="flex items-center gap-3 text-slate-700 font-medium"><CheckCircle className="text-green-500" size={20}/> Alertas de atraso</li>
+                        <li className="flex items-center gap-3 text-slate-700 font-medium"><CheckCircle className="text-green-500" size={20}/> Sustentável e econômico</li>
+                    </ul>
+                </div>
+            </div>
+
+            {/* Block 3: Admin Dashboard */}
+            <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-24">
+                <div className="lg:w-1/2 relative group">
+                    <div className="absolute -inset-1 bg-gradient-to-r from-emerald-500 to-teal-600 rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-1000"></div>
+                    <img 
+                        src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=800&q=80" 
+                        alt="Dashboard Administrativo" 
+                        className="relative rounded-2xl shadow-2xl border-4 border-white w-full h-[400px] object-cover"
+                    />
+                </div>
+                <div className="lg:w-1/2">
+                    <div className="inline-flex items-center gap-2 bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-xs font-bold uppercase mb-4">
+                        <LayoutDashboard size={14} /> Gestão Total
+                    </div>
+                    <h3 className="text-3xl md:text-4xl font-extrabold text-slate-900 mb-6">Seu restaurante na palma da mão.</h3>
+                    <p className="text-lg text-slate-600 mb-6 leading-relaxed">
+                        Acompanhe o faturamento em tempo real, gerencie funcionários e edite seu cardápio em segundos. Tome decisões baseadas em dados, não em "achismo".
+                    </p>
+                    <ul className="space-y-3">
+                        <li className="flex items-center gap-3 text-slate-700 font-medium"><CheckCircle className="text-green-500" size={20}/> Relatórios financeiros detalhados</li>
+                        <li className="flex items-center gap-3 text-slate-700 font-medium"><CheckCircle className="text-green-500" size={20}/> Controle de acesso de funcionários</li>
+                        <li className="flex items-center gap-3 text-slate-700 font-medium"><CheckCircle className="text-green-500" size={20}/> Edição de preços instantânea</li>
+                    </ul>
+                </div>
+            </div>
+
+        </div>
+      </div>
+
       {/* --- Lead Form Section --- */}
-      <div id="contact" className="py-24 bg-slate-50 border-y border-slate-200">
+      <div id="contact" className="py-24 bg-white border-y border-slate-200">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col md:flex-row">
+            <div className="bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col md:flex-row border border-slate-100">
                 <div className="bg-blue-700 p-8 md:w-2/5 flex flex-col justify-between text-white">
                     <div>
                         <h3 className="text-2xl font-bold mb-4">Vamos crescer juntos?</h3>
@@ -196,7 +376,7 @@ export const LandingPage: React.FC = () => {
       </div>
 
       {/* --- Pricing --- */}
-      <div id="pricing" className="py-24 bg-white">
+      <div id="pricing" className="py-24 bg-slate-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-16">
                 <h2 className="text-3xl font-extrabold text-slate-900">Planos flexíveis</h2>
@@ -238,93 +418,3 @@ export const LandingPage: React.FC = () => {
     </div>
   );
 };
-
-// --- Sub Components ---
-
-const ContactForm: React.FC<{whatsappNumber: string}> = ({ whatsappNumber }) => {
-    const [formData, setFormData] = useState({ name: '', restaurant: '', phone: '' });
-
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        const text = `Olá! Meu nome é ${formData.name}, do restaurante ${formData.restaurant}. Meu telefone é ${formData.phone}. Gostaria de uma demonstração do sistema.`;
-        window.open(`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(text)}`, '_blank');
-    };
-
-    return (
-        <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Seu Nome</label>
-                <input 
-                    required
-                    type="text" 
-                    className="w-full border border-slate-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                    placeholder="Ex: João Silva"
-                    value={formData.name}
-                    onChange={e => setFormData({...formData, name: e.target.value})}
-                />
-            </div>
-            <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Nome do Restaurante</label>
-                <input 
-                    required
-                    type="text" 
-                    className="w-full border border-slate-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                    placeholder="Ex: Bistrô do João"
-                    value={formData.restaurant}
-                    onChange={e => setFormData({...formData, restaurant: e.target.value})}
-                />
-            </div>
-            <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">WhatsApp / Telefone</label>
-                <input 
-                    required
-                    type="tel" 
-                    className="w-full border border-slate-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                    placeholder="(00) 00000-0000"
-                    value={formData.phone}
-                    onChange={e => setFormData({...formData, phone: e.target.value})}
-                />
-            </div>
-            <button type="submit" className="w-full bg-slate-900 text-white font-bold py-3 rounded-lg hover:bg-slate-800 transition-colors flex items-center justify-center gap-2 mt-2">
-                <Send size={18} /> Solicitar Acesso
-            </button>
-        </form>
-    );
-};
-
-const FeatureCard: React.FC<{icon: React.ReactNode, title: string, desc: string}> = ({ icon, title, desc }) => (
-    <div className="p-8 bg-slate-50 rounded-2xl hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border border-slate-100 group">
-        <div className="mb-6 p-4 bg-white rounded-xl w-fit shadow-sm group-hover:bg-blue-50 transition-colors">{icon}</div>
-        <h3 className="text-xl font-bold mb-3 text-slate-900">{title}</h3>
-        <p className="text-slate-600 leading-relaxed">{desc}</p>
-    </div>
-);
-
-const PricingCard: React.FC<{title: string, price: string, period: string, features: string[], isPopular?: boolean, cta: string, onClick: () => void}> = ({ title, price, period, features, isPopular, cta, onClick }) => (
-    <div className={`p-8 rounded-2xl border flex flex-col h-full relative ${isPopular ? 'bg-white border-blue-200 shadow-2xl scale-105 z-10' : 'bg-slate-50 border-slate-200 text-slate-600'}`}>
-        {isPopular && (
-            <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-1 rounded-full text-sm font-bold shadow-lg">
-                Mais Escolhido
-            </div>
-        )}
-        <h3 className={`text-lg font-bold mb-2 ${isPopular ? 'text-blue-600' : 'text-slate-500'}`}>{title}</h3>
-        <div className="mb-6">
-            <span className="text-4xl font-extrabold text-slate-900">{price}</span>
-            {period && <span className="text-sm font-medium text-slate-400"> {period}</span>}
-        </div>
-        <ul className="space-y-4 mb-8 flex-1">
-            {features.map((f, i) => (
-                <li key={i} className="flex items-center gap-3 text-sm">
-                    <CheckCircle size={18} className={isPopular ? 'text-blue-500' : 'text-slate-400'} /> 
-                    <span className="text-slate-700">{f}</span>
-                </li>
-            ))}
-        </ul>
-        <button 
-            onClick={onClick}
-            className={`w-full py-3 rounded-xl font-bold transition-all shadow-md ${isPopular ? 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-lg' : 'bg-white text-slate-700 border border-slate-200 hover:border-slate-300 hover:bg-slate-50'}`}
-        >
-            {cta}
-        </button>
-    </div>
-);

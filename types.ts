@@ -86,7 +86,7 @@ export interface Transaction {
   tableId: string;
   tableNumber: number;
   amount: number;
-  method: 'CASH' | 'CARD' | 'PIX';
+  method: 'CASH' | 'CARD' | 'PIX' | 'CREDIT' | 'DEBIT'; // Atualizado
   timestamp: Date;
   itemsSummary: string;
   cashierName: string;

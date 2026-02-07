@@ -21,9 +21,11 @@ export const CashierDashboard: React.FC = () => {
     }, 0)
   , 0);
 
-  const handlePayment = (method: 'CASH' | 'CARD' | 'PIX') => {
+  const handlePayment = (method: 'CASH' | 'CREDIT' | 'DEBIT' | 'PIX') => {
     if (!selectedTableId) return;
-    if (window.confirm(`Confirmar pagamento de R$ ${totalAmount.toFixed(2)} via ${method}?`)) {
+    const methodLabel = method === 'CREDIT' ? 'Cartão de Crédito' : method === 'DEBIT' ? 'Cartão de Débito' : method;
+    
+    if (window.confirm(`Confirmar pagamento de R$ ${totalAmount.toFixed(2)} via ${methodLabel}?`)) {
         dispatch({ 
             type: 'PROCESS_PAYMENT', 
             tableId: selectedTableId, 
@@ -128,30 +130,38 @@ export const CashierDashboard: React.FC = () => {
                                 <span className="text-3xl lg:text-4xl font-bold text-slate-800">R$ {totalAmount.toFixed(2)}</span>
                             </div>
 
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <div className="grid grid-cols-2 gap-4">
                                 <button 
                                     onClick={() => handlePayment('CASH')}
                                     disabled={totalAmount === 0}
-                                    className="flex flex-row sm:flex-col items-center justify-center gap-2 h-16 sm:h-24 bg-white border-2 border-green-100 hover:border-green-500 hover:bg-green-50 rounded-xl transition-all text-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="flex flex-col items-center justify-center gap-2 h-20 bg-white border-2 border-green-100 hover:border-green-500 hover:bg-green-50 rounded-xl transition-all text-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     <DollarSign size={24} /> 
                                     <span className="font-bold">Dinheiro</span>
                                 </button>
                                 <button 
-                                    onClick={() => handlePayment('CARD')}
-                                    disabled={totalAmount === 0}
-                                    className="flex flex-row sm:flex-col items-center justify-center gap-2 h-16 sm:h-24 bg-white border-2 border-blue-100 hover:border-blue-500 hover:bg-blue-50 rounded-xl transition-all text-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                    <CreditCard size={24} />
-                                    <span className="font-bold">Cartão</span>
-                                </button>
-                                <button 
                                     onClick={() => handlePayment('PIX')}
                                     disabled={totalAmount === 0}
-                                    className="flex flex-row sm:flex-col items-center justify-center gap-2 h-16 sm:h-24 bg-white border-2 border-purple-100 hover:border-purple-500 hover:bg-purple-50 rounded-xl transition-all text-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="flex flex-col items-center justify-center gap-2 h-20 bg-white border-2 border-purple-100 hover:border-purple-500 hover:bg-purple-50 rounded-xl transition-all text-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     <Smartphone size={24} />
                                     <span className="font-bold">Pix</span>
+                                </button>
+                                <button 
+                                    onClick={() => handlePayment('DEBIT')}
+                                    disabled={totalAmount === 0}
+                                    className="flex flex-col items-center justify-center gap-2 h-20 bg-white border-2 border-cyan-100 hover:border-cyan-500 hover:bg-cyan-50 rounded-xl transition-all text-cyan-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    <CreditCard size={24} />
+                                    <span className="font-bold">Débito</span>
+                                </button>
+                                <button 
+                                    onClick={() => handlePayment('CREDIT')}
+                                    disabled={totalAmount === 0}
+                                    className="flex flex-col items-center justify-center gap-2 h-20 bg-white border-2 border-blue-100 hover:border-blue-500 hover:bg-blue-50 rounded-xl transition-all text-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    <CreditCard size={24} />
+                                    <span className="font-bold">Crédito</span>
                                 </button>
                             </div>
                         </div>
@@ -192,12 +202,17 @@ export const CashierDashboard: React.FC = () => {
                                     <td className="p-4 text-sm text-gray-600 max-w-xs truncate" title={t.itemsSummary}>{t.itemsSummary}</td>
                                     <td className="p-4 text-sm">{t.cashierName}</td>
                                     <td className="p-4">
-                                        <span className={`px-2 py-1 rounded text-xs font-bold
+                                        <span className={`px-2 py-1 rounded text-xs font-bold whitespace-nowrap
                                             ${t.method === 'PIX' ? 'bg-purple-100 text-purple-700' : ''}
-                                            ${t.method === 'CARD' ? 'bg-blue-100 text-blue-700' : ''}
+                                            ${t.method === 'CREDIT' ? 'bg-blue-100 text-blue-700' : ''}
+                                            ${t.method === 'DEBIT' ? 'bg-cyan-100 text-cyan-700' : ''}
                                             ${t.method === 'CASH' ? 'bg-green-100 text-green-700' : ''}
+                                            ${t.method === 'CARD' ? 'bg-gray-100 text-gray-700' : ''} 
                                         `}>
-                                            {t.method}
+                                            {t.method === 'CREDIT' ? 'CRÉDITO' : 
+                                             t.method === 'DEBIT' ? 'DÉBITO' : 
+                                             t.method === 'CASH' ? 'DINHEIRO' : 
+                                             t.method === 'CARD' ? 'CARTÃO' : t.method}
                                         </span>
                                     </td>
                                     <td className="p-4 text-right font-bold text-gray-800">R$ {t.amount.toFixed(2)}</td>
