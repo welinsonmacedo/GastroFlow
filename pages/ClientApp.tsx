@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { useRestaurant } from '../context/RestaurantContext';
 import { Button } from '../components/Button';
 import { TableStatus, Product } from '../types';
-import { ShoppingCart, ChefHat, Info, Plus, Minus, X, Lock, Receipt, Loader2, Bell } from 'lucide-react';
+import { ShoppingCart, ChefHat, Info, Plus, Minus, X, Lock, Receipt, Loader2, Bell, AlertTriangle } from 'lucide-react';
 
 export const ClientApp: React.FC = () => {
   const { tableId } = useParams<{ tableId: string }>();
@@ -13,6 +13,7 @@ export const ClientApp: React.FC = () => {
   const [accessPin, setAccessPin] = useState('');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [waiterCalled, setWaiterCalled] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
 
   // Handle Loading
   if (state.isLoading) {
@@ -32,18 +33,17 @@ export const ClientApp: React.FC = () => {
   const tableOrders = state.orders.filter(o => o.tableId === tableId && !o.isPaid);
 
   const checkPin = () => {
+    setErrorMsg('');
     if (table?.accessCode === accessPin) {
       setIsAuthenticated(true);
     } else {
-      alert("Senha incorreta. Tente novamente ou chame o garçom.");
+      setErrorMsg("Código incorreto.");
     }
   };
 
   const callWaiter = () => {
-      // Simulação visual de chamado de garçom.
-      // Futuramente, isso poderia criar um registro no banco 'service_calls'.
       setWaiterCalled(true);
-      setTimeout(() => setWaiterCalled(false), 5000); // Reset visual feedback after 5s
+      setTimeout(() => setWaiterCalled(false), 5000); 
   };
 
   const addToCart = (product: Product) => {
@@ -95,22 +95,26 @@ export const ClientApp: React.FC = () => {
       <div className="flex flex-col items-center justify-center min-h-screen p-6 relative" style={{ backgroundColor: theme.backgroundColor }}>
         <div className="bg-white p-8 rounded-2xl shadow-xl text-center max-w-sm w-full">
           <ChefHat size={48} className="mx-auto mb-4" style={{ color: theme.primaryColor }} />
-          <h1 className="text-2xl font-bold mb-2">Bem-vindo ao {theme.restaurantName}</h1>
-          <p className="text-gray-600 mb-6">A Mesa #{table.number} ainda não foi aberta.</p>
+          <h1 className="text-2xl font-bold mb-2 text-gray-800">{theme.restaurantName}</h1>
           
-          <div className="bg-blue-50 text-blue-800 p-4 rounded-lg text-sm mb-6">
-            Aguarde o garçom abrir sua mesa ou solicite atendimento abaixo.
+          <div className="my-6">
+            <h2 className="text-xl font-bold text-gray-700 mb-1">Mesa #{table.number}</h2>
+            <p className="text-red-500 font-medium">Esta mesa está fechada</p>
           </div>
+          
+          <p className="text-gray-500 text-sm mb-8">
+            Para iniciar o atendimento e liberar o cardápio, por favor solicite a presença de um garçom.
+          </p>
 
           <Button 
             onClick={callWaiter} 
-            className={`w-full py-4 flex items-center justify-center gap-2 ${waiterCalled ? 'bg-green-600' : 'bg-slate-800'}`}
+            className={`w-full py-4 flex items-center justify-center gap-2 text-lg font-bold shadow-lg ${waiterCalled ? 'bg-green-600' : 'bg-slate-800'}`}
           >
-             {waiterCalled ? <><Loader2 className="animate-spin" size={20}/> Solicitando...</> : <><Bell size={20} /> Chamar Garçom</>}
+             {waiterCalled ? <><Loader2 className="animate-spin" size={24}/> Chamando...</> : <><Bell size={24} /> Chamar Garçom</>}
           </Button>
           
           {waiterCalled && (
-             <p className="text-green-600 text-sm mt-4 font-bold animate-fade-in">Solicitação enviada! Um garçom virá em breve.</p>
+             <p className="text-green-600 text-sm mt-4 font-bold animate-pulse">Garçom a caminho!</p>
           )}
         </div>
       </div>
@@ -125,45 +129,46 @@ export const ClientApp: React.FC = () => {
       <div className="flex flex-col items-center justify-center min-h-screen p-6" style={{ backgroundColor: theme.backgroundColor }}>
          <div className="bg-white p-8 rounded-2xl shadow-xl text-center max-w-sm w-full">
             <Lock size={48} className="text-gray-400 mx-auto mb-4" />
-            <h2 className="text-xl font-bold mb-2">Acesso Seguro</h2>
-            <p className="text-gray-600 mb-4 text-sm">Digite o código fornecido pelo garçom para acessar o cardápio.</p>
+            <h2 className="text-xl font-bold mb-2">Digite o Código</h2>
+            <p className="text-gray-600 mb-6 text-sm">Insira o código de 4 dígitos fornecido pelo garçom para acessar o cardápio da <strong>Mesa {table.number}</strong>.</p>
             
             <input 
-              type="text" 
+              type="tel" 
               maxLength={4}
-              className="text-center text-3xl tracking-[1em] w-full border rounded-lg py-3 mb-6 font-mono focus:border-blue-500 focus:outline-none"
+              className={`text-center text-4xl tracking-[0.5em] w-full border-2 rounded-xl py-4 mb-4 font-mono font-bold focus:outline-none transition-colors
+                  ${errorMsg ? 'border-red-500 bg-red-50 text-red-600' : 'border-gray-200 focus:border-blue-500'}
+              `}
               value={accessPin}
-              onChange={(e) => setAccessPin(e.target.value)}
+              onChange={(e) => { setAccessPin(e.target.value); setErrorMsg(''); }}
               placeholder="0000"
             />
-            
-            <div className="space-y-3">
-                <button 
-                onClick={checkPin}
-                className="w-full text-white font-bold py-3 rounded-lg shadow-md hover:opacity-90 transition-opacity"
-                style={{ backgroundColor: theme.primaryColor }}
-                >
-                Acessar Cardápio
-                </button>
 
-                <div className="relative flex py-2 items-center">
-                    <div className="flex-grow border-t border-gray-200"></div>
-                    <span className="flex-shrink-0 mx-4 text-gray-400 text-xs">Problemas com o código?</span>
-                    <div className="flex-grow border-t border-gray-200"></div>
+            {errorMsg && (
+                <div className="mb-4 text-red-500 text-sm flex items-center justify-center gap-2 font-bold animate-bounce">
+                    <AlertTriangle size={16} /> {errorMsg}
                 </div>
+            )}
+            
+            <button 
+                onClick={checkPin}
+                className="w-full text-white font-bold py-3 rounded-lg shadow-md hover:opacity-90 transition-opacity mb-6"
+                style={{ backgroundColor: theme.primaryColor }}
+            >
+                Entrar
+            </button>
 
-                <Button 
-                    onClick={callWaiter} 
-                    variant="outline"
-                    className="w-full py-2 flex items-center justify-center gap-2 text-gray-600 border-gray-300"
-                >
-                    <Bell size={18} /> Chamar Garçom
-                </Button>
-
-                {waiterCalled && (
-                    <p className="text-green-600 text-sm font-bold animate-fade-in">Solicitação enviada!</p>
-                )}
-            </div>
+            {errorMsg && (
+                <div className="animate-fade-in bg-slate-50 p-4 rounded-lg border border-slate-100">
+                    <p className="text-xs text-gray-500 mb-3">Esqueceu o código ou precisa de ajuda?</p>
+                    <Button 
+                        onClick={callWaiter} 
+                        variant="secondary"
+                        className="w-full py-2 flex items-center justify-center gap-2 text-gray-700 bg-white border border-gray-300 shadow-sm hover:bg-gray-50"
+                    >
+                        <Bell size={18} /> {waiterCalled ? 'Solicitação Enviada!' : 'Chamar Garçom'}
+                    </Button>
+                </div>
+            )}
          </div>
       </div>
     );

@@ -6,29 +6,33 @@ export const getTenantSlug = (): string | null => {
   // para permitir que o roteador do SaaS assuma o controle.
   const saasRoutes = ['/sys-admin', '/dashboard', '/register', '/login-owner'];
   
-  // Verifica se a URL começa com alguma das rotas SaaS.
-  // Nota: A rota raiz '/' é ambígua, então não a incluímos aqui. Ela é tratada pela presença do param.
   if (saasRoutes.some(route => path.startsWith(route))) {
       return null;
   }
 
-  // 1. Prioridade: Parâmetro de URL (para testes locais: localhost:3000/?restaurant=bistro)
+  // 1. Prioridade: Parâmetro de URL
   const urlParams = new URLSearchParams(window.location.search);
   const tenantParam = urlParams.get('restaurant');
   
-  if (tenantParam) {
+  if (tenantParam && tenantParam !== 'null' && tenantParam !== 'undefined') {
       // Persiste na sessão para navegação interna não perder o contexto
       sessionStorage.setItem('gastroflow_tenant_slug', tenantParam);
       return tenantParam;
   }
 
-  // 2. Análise do Host (Subdomínios)
+  // 2. Session Storage (Fallback Prioritário)
+  // Verifica o storage ANTES de validar o host para garantir persistência em Vercel/Localhost
+  const storedSlug = sessionStorage.getItem('gastroflow_tenant_slug');
+  if (storedSlug && storedSlug !== 'null' && storedSlug !== 'undefined') {
+      return storedSlug;
+  }
+
+  // 3. Análise do Host (Subdomínios)
   const host = window.location.hostname;
   
-  // Ignora localhost e IPs locais se não tiver parâmetro
+  // Ignora localhost e IPs locais se não tiver parâmetro nem sessão
   if (host.includes('localhost') || host === '127.0.0.1') {
-      // Tenta recuperar da sessão caso o parâmetro tenha sido removido pela navegação
-      return sessionStorage.getItem('gastroflow_tenant_slug');
+      return null;
   }
   
   // Ignora domínios da Vercel para evitar que o nome do projeto seja interpretado como um restaurante
@@ -37,12 +41,12 @@ export const getTenantSlug = (): string | null => {
   // Ignora www
   if (host.startsWith('www.')) return null;
 
-  // 3. Subdomínios para domínios personalizados (ex: bistro.meusite.com)
+  // 4. Subdomínios para domínios personalizados (ex: bistro.meusite.com)
   const parts = host.split('.');
   
   if (parts.length >= 3) {
     return parts[0];
   }
 
-  return sessionStorage.getItem('gastroflow_tenant_slug');
+  return null;
 };

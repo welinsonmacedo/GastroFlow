@@ -23,7 +23,8 @@ export const AdminDashboard: React.FC = () => {
   const [userForm, setUserForm] = useState<Partial<User>>({ name: '', role: Role.WAITER, pin: '', email: '' });
 
   const getTableUrl = (tableId: string) => {
-    const slug = getTenantSlug();
+    // Usa o slug do estado, ou fallback para o utilitário
+    const slug = state.tenantSlug || getTenantSlug();
     return `${window.location.origin}/client/table/${tableId}?restaurant=${slug}`;
   };
 

@@ -1,5 +1,6 @@
 import React from 'react';
 import { getTenantSlug } from '../utils/tenant';
+import { useRestaurant } from '../context/RestaurantContext';
 
 interface QRCodeGeneratorProps {
   tableId: string;
@@ -7,8 +8,19 @@ interface QRCodeGeneratorProps {
 }
 
 export const QRCodeGenerator: React.FC<QRCodeGeneratorProps> = ({ tableId, size = 150 }) => {
-  // Obtém o slug atual para incluir na URL
-  const currentSlug = getTenantSlug();
+  // Tenta obter do contexto primeiro (mais confiável se estiver dentro do App)
+  let currentSlug = '';
+  
+  try {
+      const { state } = useRestaurant();
+      if (state.tenantSlug) currentSlug = state.tenantSlug;
+  } catch (e) {
+      // Se estiver fora do provider, usa o utilitário
+      currentSlug = getTenantSlug() || '';
+  }
+
+  // Fallback final
+  if (!currentSlug) currentSlug = getTenantSlug() || '';
   
   // Constrói a URL completa. 
   // IMPORTANTE: Adiciona ?restaurant=slug para garantir que o app carregue o contexto certo
