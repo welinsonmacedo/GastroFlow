@@ -77,6 +77,14 @@ const RestaurantContext = createContext<{
   dispatch: (action: Action) => Promise<void>;
 } | undefined>(undefined);
 
+export const useRestaurant = () => {
+  const context = useContext(RestaurantContext);
+  if (context === undefined) {
+    throw new Error('useRestaurant must be used within a RestaurantProvider');
+  }
+  return context;
+};
+
 // --- Sounds Logic ---
 // Sons curtos e distintos
 const kitchenSound = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3'); 
@@ -439,6 +447,29 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   useEffect(() => {
     if (!state.tenantId) return;
 
+    // Helper to fetch orders
+    const fetchOrders = async () => {
+        const { data } = await supabase.from('orders').select(`*, items:order_items (*)`).eq('tenant_id', state.tenantId!).eq('is_paid', false);
+        if (data) {
+             const mappedOrders: Order[] = data.map((o: any) => ({
+                id: o.id,
+                tableId: o.table_id,
+                timestamp: new Date(o.created_at),
+                isPaid: o.is_paid,
+                items: (o.items || []).map((i: any) => ({
+                    id: i.id,
+                    productId: i.product_id,
+                    quantity: i.quantity,
+                    notes: i.notes,
+                    status: i.status as OrderStatus,
+                    productName: i.product_name,
+                    productType: i.product_type as ProductType
+                }))
+            }));
+            dispatchLocal({ type: 'REALTIME_UPDATE_ORDERS', orders: mappedOrders });
+        }
+    };
+
     const channel = supabase.channel('restaurant_changes')
         .on(
             'postgres_changes',
@@ -451,30 +482,17 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 }
             }
         )
+        // Listen to ITEMS changes (added, status changed to READY)
         .on(
             'postgres_changes',
             { event: '*', schema: 'public', table: 'order_items', filter: `tenant_id=eq.${state.tenantId}` },
-            async () => {
-                const { data } = await supabase.from('orders').select(`*, items:order_items (*)`).eq('tenant_id', state.tenantId!).eq('is_paid', false);
-                if (data) {
-                     const mappedOrders: Order[] = data.map((o: any) => ({
-                        id: o.id,
-                        tableId: o.table_id,
-                        timestamp: new Date(o.created_at),
-                        isPaid: o.is_paid,
-                        items: (o.items || []).map((i: any) => ({
-                            id: i.id,
-                            productId: i.product_id,
-                            quantity: i.quantity,
-                            notes: i.notes,
-                            status: i.status as OrderStatus,
-                            productName: i.product_name,
-                            productType: i.product_type as ProductType
-                        }))
-                    }));
-                    dispatchLocal({ type: 'REALTIME_UPDATE_ORDERS', orders: mappedOrders });
-                }
-            }
+            fetchOrders
+        )
+        // Listen to ORDER changes (Payment status change primarily)
+        .on(
+            'postgres_changes',
+            { event: '*', schema: 'public', table: 'orders', filter: `tenant_id=eq.${state.tenantId}` },
+            fetchOrders
         )
         .on(
             'postgres_changes',
@@ -790,10 +808,4 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       {children}
     </RestaurantContext.Provider>
   );
-};
-
-export const useRestaurant = () => {
-  const context = useContext(RestaurantContext);
-  if (!context) throw new Error("useRestaurant must be used within RestaurantProvider");
-  return context;
 };

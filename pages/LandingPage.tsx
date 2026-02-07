@@ -258,7 +258,7 @@ export const LandingPage: React.FC = () => {
                 <FeatureCard 
                     icon={<ShieldCheck className="text-green-600" size={32}/>}
                     title="Gestão Financeira"
-                    desc="Fechamento de caixa, relatórios de vendas, controle de estoque e auditoria de funcionários em tempo real."
+                    desc="Fechamento de caixa, relatórios de vendas, auditoria de funcionários e gestão de lucros em tempo real."
                 />
             </div>
         </div>
