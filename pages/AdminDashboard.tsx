@@ -4,7 +4,7 @@ import { Button } from '../components/Button';
 import { QRCodeGenerator } from '../components/QRCodeGenerator';
 import { ImageUploader } from '../components/ImageUploader';
 import { Product, ProductType, Role, User } from '../types';
-import { LayoutDashboard, Utensils, QrCode, Printer, ExternalLink, Palette, Eye, EyeOff, Save, Copy, Plus, Users, ShieldCheck, Trash2, Edit } from 'lucide-react';
+import { LayoutDashboard, Utensils, QrCode, Printer, ExternalLink, Palette, Eye, EyeOff, Save, Copy, Plus, Users, ShieldCheck, Trash2, Edit, AlertTriangle } from 'lucide-react';
 
 export const AdminDashboard: React.FC = () => {
   const { state, dispatch } = useRestaurant();
@@ -85,11 +85,12 @@ export const AdminDashboard: React.FC = () => {
 
   const handleSaveUser = (e: React.FormEvent) => {
       e.preventDefault();
-      if(userForm.name && userForm.pin && userForm.role) {
+      // Validação: Email agora é obrigatório para login Supabase
+      if(userForm.name && userForm.email && userForm.role) {
           if (editingUser) {
               dispatch({ 
                   type: 'UPDATE_USER', 
-                  user: { ...editingUser, name: userForm.name, role: userForm.role, pin: userForm.pin, email: userForm.email } 
+                  user: { ...editingUser, name: userForm.name, role: userForm.role, pin: userForm.pin || '0000', email: userForm.email } 
               });
               alert("Dados do funcionário atualizados!");
           } else {
@@ -99,14 +100,16 @@ export const AdminDashboard: React.FC = () => {
                       id: Math.random().toString(36).substr(2, 9),
                       name: userForm.name,
                       role: userForm.role,
-                      pin: userForm.pin,
+                      pin: userForm.pin || '0000',
                       email: userForm.email
                   } as User
               });
-              alert("Funcionário adicionado!");
+              alert("Funcionário adicionado! Certifique-se de que ele possua uma conta Supabase Auth com este e-mail.");
           }
           setEditingUser(null);
           setUserForm({ name: '', role: Role.WAITER, pin: '', email: '' });
+      } else {
+          alert("Nome e E-mail são obrigatórios.");
       }
   };
 
@@ -193,14 +196,18 @@ export const AdminDashboard: React.FC = () => {
                         {/* Form */}
                         <div className="bg-white p-6 rounded-xl shadow-sm h-fit">
                             <h3 className="font-bold mb-4 text-lg">{editingUser ? 'Editar Funcionário' : 'Novo Funcionário'}</h3>
+                            <div className="bg-yellow-50 p-3 rounded text-xs text-yellow-800 mb-4 border border-yellow-100 flex gap-2">
+                                <AlertTriangle size={16} className="shrink-0"/>
+                                <p>O e-mail é obrigatório para login. O funcionário deve ter uma conta Supabase Auth correspondente.</p>
+                            </div>
                             <form onSubmit={handleSaveUser} className="space-y-4">
                                 <div>
                                     <label className="block text-sm font-medium mb-1">Nome</label>
                                     <input required className="w-full border p-2 rounded" value={userForm.name} onChange={e => setUserForm({...userForm, name: e.target.value})} />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium mb-1">Email (Opcional - Login Remoto)</label>
-                                    <input type="email" className="w-full border p-2 rounded" value={userForm.email} onChange={e => setUserForm({...userForm, email: e.target.value})} placeholder="email@exemplo.com" />
+                                    <label className="block text-sm font-medium mb-1">Email (Login)</label>
+                                    <input required type="email" className="w-full border p-2 rounded" value={userForm.email} onChange={e => setUserForm({...userForm, email: e.target.value})} placeholder="email@exemplo.com" />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium mb-1">Função</label>
@@ -212,8 +219,8 @@ export const AdminDashboard: React.FC = () => {
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium mb-1">PIN de Acesso (Local)</label>
-                                    <input required type="text" maxLength={4} className="w-full border p-2 rounded" value={userForm.pin} onChange={e => setUserForm({...userForm, pin: e.target.value})} placeholder="4 dígitos" />
+                                    <label className="block text-sm font-medium mb-1">PIN (Autorização Interna)</label>
+                                    <input type="text" maxLength={4} className="w-full border p-2 rounded" value={userForm.pin} onChange={e => setUserForm({...userForm, pin: e.target.value})} placeholder="Opcional para login" />
                                 </div>
                                 <div className="flex gap-2">
                                     {editingUser && (
@@ -239,15 +246,13 @@ export const AdminDashboard: React.FC = () => {
                                         </div>
                                         <div>
                                             <div className="font-bold text-gray-800">{user.name}</div>
-                                            <div className="text-xs text-gray-500 uppercase flex gap-2">
-                                                <span>{user.role}</span>
-                                                {user.auth_user_id && <span className="text-green-600 font-bold">• Vinculado Supabase</span>}
+                                            <div className="text-xs text-gray-500 flex flex-col gap-1">
+                                                <span className="uppercase font-semibold">{user.role}</span>
+                                                <span>{user.email || 'Sem e-mail'}</span>
                                             </div>
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-2">
-                                        <span className="bg-gray-100 px-3 py-1 rounded text-sm font-mono tracking-widest text-gray-600 mr-2">PIN: ****</span>
-                                        
                                         <button onClick={() => startEditUser(user)} className="text-blue-500 hover:text-blue-700 p-2" title="Editar">
                                             <Edit size={20} />
                                         </button>
