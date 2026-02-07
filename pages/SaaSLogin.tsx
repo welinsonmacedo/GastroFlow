@@ -24,8 +24,22 @@ export const SaaSLogin: React.FC = () => {
     }
 
     try {
-        // Consulta o usuário na tabela saas_admins
-        // Usamos .maybeSingle() para evitar que o Supabase retorne erro 406 se não encontrar o usuário.
+        // 1. TENTATIVA: Supabase Auth (Usuários registrados no painel Authentication)
+        const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+            email,
+            password
+        });
+
+        if (!authError && authData.user) {
+            // Login bem-sucedido via Auth nativo
+            const adminName = authData.user.user_metadata?.name || email.split('@')[0];
+            dispatch({ type: 'LOGIN_ADMIN', name: adminName });
+            navigate('/dashboard');
+            return;
+        }
+
+        // 2. TENTATIVA: Tabela Customizada 'saas_admins' (Usuários de demonstração/legado)
+        // Se o Auth falhar, verificamos se é um usuário da tabela de demo
         const { data, error: dbError } = await supabase
             .from('saas_admins')
             .select('*')
@@ -35,12 +49,14 @@ export const SaaSLogin: React.FC = () => {
 
         if (dbError) {
             console.error("Erro no banco de dados:", dbError);
-            setError('Erro ao conectar com o banco de dados. Verifique o console.');
-        } else if (!data) {
-            setError('E-mail ou senha incorretos.');
-        } else {
+            setError('Erro ao conectar com o banco de dados.');
+        } else if (data) {
+            // Login bem-sucedido via tabela customizada
             dispatch({ type: 'LOGIN_ADMIN', name: data.name });
             navigate('/dashboard');
+        } else {
+            // Falhou nas duas tentativas
+            setError('E-mail ou senha incorretos.');
         }
     } catch (err) {
         console.error("Erro inesperado:", err);
