@@ -4,7 +4,7 @@ import { Button } from '../components/Button';
 import { QRCodeGenerator } from '../components/QRCodeGenerator';
 import { ImageUploader } from '../components/ImageUploader';
 import { Product, ProductType, Role, User } from '../types';
-import { LayoutDashboard, Utensils, QrCode, Printer, ExternalLink, Palette, Eye, EyeOff, Save, Copy, Plus, Users, ShieldCheck, Trash2, Edit, AlertTriangle, FileBarChart, X, ArrowUp, ArrowDown, LayoutGrid, List as ListIcon, Image as ImageIcon, Calendar, TrendingUp, Search, Loader2 } from 'lucide-react';
+import { LayoutDashboard, Utensils, QrCode, Printer, ExternalLink, Palette, Eye, EyeOff, Save, Copy, Plus, Users, ShieldCheck, Trash2, Edit, AlertTriangle, FileBarChart, X, ArrowUp, ArrowDown, LayoutGrid, List as ListIcon, Image as ImageIcon, Calendar, TrendingUp, Search, Loader2, Menu } from 'lucide-react';
 import { getTenantSlug } from '../utils/tenant';
 import { supabase } from '../lib/supabase';
 
@@ -12,6 +12,9 @@ export const AdminDashboard: React.FC = () => {
   const { state, dispatch } = useRestaurant();
   const [activeTab, setActiveTab] = useState<'DASHBOARD' | 'PRODUCTS' | 'TABLES' | 'CUSTOMIZATION' | 'STAFF' | 'AUDIT' | 'REPORTS'>('DASHBOARD');
   
+  // Mobile Sidebar State
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
   // Theme state
   const [localTheme, setLocalTheme] = useState(state.theme);
   
@@ -93,7 +96,6 @@ export const AdminDashboard: React.FC = () => {
               .order('created_at', { ascending: false });
 
           // 2. Fetch Order Items (Produtos) - via Orders Pagas
-          // Primeiro pegamos as orders pagas no período
           const { data: paidOrders } = await supabase
               .from('orders')
               .select('id')
@@ -113,7 +115,6 @@ export const AdminDashboard: React.FC = () => {
                   .in('order_id', orderIds);
 
               if (items) {
-                  // Agregação JS
                   const stats: Record<string, { qty: number, total: number }> = {};
                   items.forEach(item => {
                       if (!stats[item.product_name]) {
@@ -125,11 +126,10 @@ export const AdminDashboard: React.FC = () => {
 
                   topProducts = Object.entries(stats)
                       .map(([name, stat]) => ({ name, quantity: stat.qty, total: stat.total }))
-                      .sort((a, b) => b.quantity - a.quantity); // Sort by Qty Desc
+                      .sort((a, b) => b.quantity - a.quantity);
               }
           }
 
-          // Agregação Financeira
           const totalSales = transactions?.reduce((acc, t) => acc + t.amount, 0) || 0;
           const salesByMethod: Record<string, number> = {};
           transactions?.forEach(t => {
@@ -155,9 +155,6 @@ export const AdminDashboard: React.FC = () => {
           fetchReportData();
       }
   }, [activeTab, fetchReportData]);
-
-
-  // --- Product & User Handlers ---
 
   const handleAddProduct = () => {
       setIsCreatingNew(true);
@@ -264,62 +261,91 @@ export const AdminDashboard: React.FC = () => {
   
   const sortedProducts = [...state.products].sort((a,b) => (a.sortOrder || 0) - (b.sortOrder || 0));
 
+  const Sidebar = () => (
+      <div className={`
+        bg-slate-900 text-white p-6 shrink-0 h-screen overflow-y-auto print:hidden transition-transform duration-300 z-50
+        fixed inset-y-0 left-0 w-64 md:relative md:translate-x-0
+        ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+      `}>
+          <div className="flex justify-between items-center mb-10">
+              <h1 className="text-xl font-bold">Admin Panel</h1>
+              <button onClick={() => setIsSidebarOpen(false)} className="md:hidden text-gray-400 hover:text-white">
+                  <X size={24} />
+              </button>
+          </div>
+          <nav className="space-y-2">
+              <button onClick={() => { setActiveTab('DASHBOARD'); setIsSidebarOpen(false); }} className={`flex items-center gap-3 w-full p-3 rounded transition-colors ${activeTab === 'DASHBOARD' ? 'bg-blue-600' : 'hover:bg-slate-800'}`}>
+                  <LayoutDashboard size={20} /> Visão Geral
+              </button>
+              <button onClick={() => { setActiveTab('REPORTS'); setIsSidebarOpen(false); }} className={`flex items-center gap-3 w-full p-3 rounded transition-colors ${activeTab === 'REPORTS' ? 'bg-blue-600' : 'hover:bg-slate-800'}`}>
+                  <FileBarChart size={20} /> Relatórios
+              </button>
+              <button onClick={() => { setActiveTab('PRODUCTS'); setIsSidebarOpen(false); }} className={`flex items-center gap-3 w-full p-3 rounded transition-colors ${activeTab === 'PRODUCTS' ? 'bg-blue-600' : 'hover:bg-slate-800'}`}>
+                  <Utensils size={20} /> Cardápio
+              </button>
+              <button onClick={() => { setActiveTab('TABLES'); setIsSidebarOpen(false); }} className={`flex items-center gap-3 w-full p-3 rounded transition-colors ${activeTab === 'TABLES' ? 'bg-blue-600' : 'hover:bg-slate-800'}`}>
+                  <QrCode size={20} /> Mesas & QR
+              </button>
+              <button onClick={() => { setActiveTab('STAFF'); setIsSidebarOpen(false); }} className={`flex items-center gap-3 w-full p-3 rounded transition-colors ${activeTab === 'STAFF' ? 'bg-blue-600' : 'hover:bg-slate-800'}`}>
+                  <Users size={20} /> Funcionários
+              </button>
+              <div className="border-t border-slate-700 my-2"></div>
+              <button onClick={() => { setActiveTab('AUDIT'); setIsSidebarOpen(false); }} className={`flex items-center gap-3 w-full p-3 rounded transition-colors ${activeTab === 'AUDIT' ? 'bg-blue-600' : 'hover:bg-slate-800'}`}>
+                  <ShieldCheck size={20} /> Auditoria
+              </button>
+              <button onClick={() => { setActiveTab('CUSTOMIZATION'); setIsSidebarOpen(false); }} className={`flex items-center gap-3 w-full p-3 rounded transition-colors ${activeTab === 'CUSTOMIZATION' ? 'bg-blue-600' : 'hover:bg-slate-800'}`}>
+                  <Palette size={20} /> Personalizar
+              </button>
+          </nav>
+      </div>
+  );
+
   return (
-    <div className="min-h-screen bg-gray-100 flex">
-        {/* Sidebar */}
-        <div className="w-64 bg-slate-900 text-white p-6 shrink-0 h-screen sticky top-0 overflow-y-auto print:hidden">
-            <h1 className="text-xl font-bold mb-10">Admin Panel</h1>
-            <nav className="space-y-2">
-                <button onClick={() => setActiveTab('DASHBOARD')} className={`flex items-center gap-3 w-full p-3 rounded transition-colors ${activeTab === 'DASHBOARD' ? 'bg-blue-600' : 'hover:bg-slate-800'}`}>
-                    <LayoutDashboard size={20} /> Visão Geral
-                </button>
-                <button onClick={() => setActiveTab('REPORTS')} className={`flex items-center gap-3 w-full p-3 rounded transition-colors ${activeTab === 'REPORTS' ? 'bg-blue-600' : 'hover:bg-slate-800'}`}>
-                    <FileBarChart size={20} /> Relatórios
-                </button>
-                <button onClick={() => setActiveTab('PRODUCTS')} className={`flex items-center gap-3 w-full p-3 rounded transition-colors ${activeTab === 'PRODUCTS' ? 'bg-blue-600' : 'hover:bg-slate-800'}`}>
-                    <Utensils size={20} /> Cardápio
-                </button>
-                <button onClick={() => setActiveTab('TABLES')} className={`flex items-center gap-3 w-full p-3 rounded transition-colors ${activeTab === 'TABLES' ? 'bg-blue-600' : 'hover:bg-slate-800'}`}>
-                    <QrCode size={20} /> Mesas & QR
-                </button>
-                <button onClick={() => setActiveTab('STAFF')} className={`flex items-center gap-3 w-full p-3 rounded transition-colors ${activeTab === 'STAFF' ? 'bg-blue-600' : 'hover:bg-slate-800'}`}>
-                    <Users size={20} /> Funcionários
-                </button>
-                <div className="border-t border-slate-700 my-2"></div>
-                <button onClick={() => setActiveTab('AUDIT')} className={`flex items-center gap-3 w-full p-3 rounded transition-colors ${activeTab === 'AUDIT' ? 'bg-blue-600' : 'hover:bg-slate-800'}`}>
-                    <ShieldCheck size={20} /> Auditoria
-                </button>
-                <button onClick={() => setActiveTab('CUSTOMIZATION')} className={`flex items-center gap-3 w-full p-3 rounded transition-colors ${activeTab === 'CUSTOMIZATION' ? 'bg-blue-600' : 'hover:bg-slate-800'}`}>
-                    <Palette size={20} /> Personalizar
-                </button>
-            </nav>
-        </div>
+    <div className="min-h-screen bg-gray-100 flex relative">
+        {/* Mobile Sidebar Overlay */}
+        {isSidebarOpen && (
+            <div 
+                className="fixed inset-0 bg-black/50 z-40 md:hidden"
+                onClick={() => setIsSidebarOpen(false)}
+            />
+        )}
+        
+        <Sidebar />
 
         {/* Content */}
-        <div className="flex-1 p-8 overflow-y-auto">
-            {activeTab === 'DASHBOARD' && (
-                <div>
-                    <h2 className="text-2xl font-bold mb-6 text-gray-800">Visão Geral (Hoje)</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                        <div className="bg-white p-6 rounded-xl shadow-sm border-l-4 border-blue-500">
-                            <div className="text-gray-500 text-sm mb-1 uppercase tracking-wider">Vendas Hoje</div>
-                            <div className="text-3xl font-bold text-gray-800">
-                                R$ {state.transactions.reduce((acc, t) => acc + t.amount, 0).toFixed(2)}
+        <div className="flex-1 h-screen overflow-y-auto">
+            {/* Mobile Header for Sidebar Toggle */}
+            <div className="md:hidden bg-white p-4 border-b flex items-center justify-between sticky top-0 z-30">
+                <div className="font-bold text-lg">Admin</div>
+                <button onClick={() => setIsSidebarOpen(true)} className="p-2 bg-gray-100 rounded">
+                    <Menu size={24} />
+                </button>
+            </div>
+
+            <div className="p-4 md:p-8">
+                {activeTab === 'DASHBOARD' && (
+                    <div>
+                        <h2 className="text-2xl font-bold mb-6 text-gray-800">Visão Geral (Hoje)</h2>
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                            <div className="bg-white p-6 rounded-xl shadow-sm border-l-4 border-blue-500">
+                                <div className="text-gray-500 text-sm mb-1 uppercase tracking-wider">Vendas Hoje</div>
+                                <div className="text-3xl font-bold text-gray-800">
+                                    R$ {state.transactions.reduce((acc, t) => acc + t.amount, 0).toFixed(2)}
+                                </div>
+                            </div>
+                            <div className="bg-white p-6 rounded-xl shadow-sm border-l-4 border-green-500">
+                                <div className="text-gray-500 text-sm mb-1 uppercase tracking-wider">Pedidos Ativos</div>
+                                <div className="text-3xl font-bold text-gray-800">{state.orders.length}</div>
+                            </div>
+                            <div className="bg-white p-6 rounded-xl shadow-sm border-l-4 border-purple-500">
+                                <div className="text-gray-500 text-sm mb-1 uppercase tracking-wider">Funcionários</div>
+                                <div className="text-3xl font-bold text-gray-800">{state.users.length}</div>
                             </div>
                         </div>
-                        <div className="bg-white p-6 rounded-xl shadow-sm border-l-4 border-green-500">
-                            <div className="text-gray-500 text-sm mb-1 uppercase tracking-wider">Pedidos Ativos</div>
-                            <div className="text-3xl font-bold text-gray-800">{state.orders.length}</div>
-                        </div>
-                        <div className="bg-white p-6 rounded-xl shadow-sm border-l-4 border-purple-500">
-                            <div className="text-gray-500 text-sm mb-1 uppercase tracking-wider">Funcionários</div>
-                            <div className="text-3xl font-bold text-gray-800">{state.users.length}</div>
-                        </div>
                     </div>
-                </div>
-            )}
-            
-            {activeTab === 'REPORTS' && (
+                )}
+                
+                {activeTab === 'REPORTS' && (
                 <div className="space-y-8">
                      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 no-print bg-white p-4 rounded-xl shadow-sm border">
                         <div>
@@ -375,11 +401,11 @@ export const AdminDashboard: React.FC = () => {
                             </div>
 
                             {/* Produtos Mais Vendidos */}
-                            <div className="bg-white rounded-xl shadow-sm border overflow-hidden print:shadow-none print:border-black">
+                            <div className="bg-white rounded-xl shadow-sm border overflow-hidden print:shadow-none print:border-black overflow-x-auto">
                                 <div className="p-4 bg-gray-50 border-b print:bg-gray-200">
                                     <h3 className="font-bold flex items-center gap-2"><Utensils size={18}/> Produtos Mais Vendidos</h3>
                                 </div>
-                                <table className="w-full text-left text-sm">
+                                <table className="w-full text-left text-sm min-w-[500px]">
                                     <thead className="bg-gray-100 print:bg-gray-50">
                                         <tr>
                                             <th className="p-3 w-10">#</th>
@@ -407,11 +433,11 @@ export const AdminDashboard: React.FC = () => {
                             </div>
 
                             {/* Transações Detalhadas */}
-                            <div className="bg-white rounded-xl shadow-sm border overflow-hidden print:shadow-none print:border-black break-before-page">
+                            <div className="bg-white rounded-xl shadow-sm border overflow-hidden print:shadow-none print:border-black break-before-page overflow-x-auto">
                                 <div className="p-4 bg-gray-50 border-b print:bg-gray-200">
                                     <h3 className="font-bold flex items-center gap-2"><ListIcon size={18}/> Histórico de Transações</h3>
                                 </div>
-                                <table className="w-full text-left text-sm">
+                                <table className="w-full text-left text-sm min-w-[600px]">
                                     <thead className="bg-gray-100 print:bg-gray-50">
                                         <tr>
                                             <th className="p-3">Data</th>
@@ -516,16 +542,16 @@ export const AdminDashboard: React.FC = () => {
                     </div>
                 </div>
             )}
-
+            
             {activeTab === 'PRODUCTS' && (
                 <div>
-                    <div className="flex justify-between items-center mb-6">
+                     <div className="flex justify-between items-center mb-6">
                         <div>
                             <h2 className="text-2xl font-bold text-gray-800">Gerenciar Cardápio</h2>
                             <p className="text-sm text-gray-500">Adicione produtos e organize a ordem de exibição.</p>
                         </div>
                         <Button onClick={handleAddProduct}>
-                            <Plus size={16} /> Adicionar Produto
+                            <Plus size={16} /> Adicionar
                         </Button>
                     </div>
 
@@ -591,8 +617,8 @@ export const AdminDashboard: React.FC = () => {
                         </div>
                     )}
                     
-                    <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-                        <table className="w-full text-left">
+                    <div className="bg-white rounded-xl shadow-sm overflow-hidden overflow-x-auto">
+                        <table className="w-full text-left min-w-[600px]">
                             <thead className="bg-gray-50 border-b">
                                 <tr>
                                     <th className="p-4 w-24 text-center">Ordem</th>
@@ -662,11 +688,11 @@ export const AdminDashboard: React.FC = () => {
                 </div>
             )}
             
-             {activeTab === 'CUSTOMIZATION' && (
+            {activeTab === 'CUSTOMIZATION' && (
                  <div className="max-w-3xl">
                     <h2 className="text-2xl font-bold mb-6 text-gray-800">Personalizar App do Cliente</h2>
                     <div className="bg-white p-6 rounded-xl shadow-sm space-y-8">
-                        {/* Customization Form (unchanged from previous step, kept for context) */}
+                        {/* Customization Form */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                             <div className="space-y-4">
                                 <h3 className="font-bold text-gray-700 flex items-center gap-2"><Palette size={18} /> Identidade Visual</h3>
@@ -679,14 +705,14 @@ export const AdminDashboard: React.FC = () => {
                                         <label className="block text-sm font-medium mb-1">Cor Principal</label>
                                         <div className="flex gap-2 items-center">
                                             <input type="color" className="h-10 w-10 cursor-pointer border rounded" value={localTheme.primaryColor} onChange={e => setLocalTheme({...localTheme, primaryColor: e.target.value})} />
-                                            <input type="text" className="flex-1 border p-2 rounded uppercase" value={localTheme.primaryColor} onChange={e => setLocalTheme({...localTheme, primaryColor: e.target.value})} />
+                                            <input type="text" className="flex-1 border p-2 rounded uppercase min-w-0" value={localTheme.primaryColor} onChange={e => setLocalTheme({...localTheme, primaryColor: e.target.value})} />
                                         </div>
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium mb-1">Cor de Fundo</label>
                                         <div className="flex gap-2 items-center">
                                             <input type="color" className="h-10 w-10 cursor-pointer border rounded" value={localTheme.backgroundColor} onChange={e => setLocalTheme({...localTheme, backgroundColor: e.target.value})} />
-                                            <input type="text" className="flex-1 border p-2 rounded uppercase" value={localTheme.backgroundColor} onChange={e => setLocalTheme({...localTheme, backgroundColor: e.target.value})} />
+                                            <input type="text" className="flex-1 border p-2 rounded uppercase min-w-0" value={localTheme.backgroundColor} onChange={e => setLocalTheme({...localTheme, backgroundColor: e.target.value})} />
                                         </div>
                                     </div>
                                 </div>
@@ -765,6 +791,7 @@ export const AdminDashboard: React.FC = () => {
                      </div>
                 </div>
             )}
+            </div>
         </div>
     </div>
   );

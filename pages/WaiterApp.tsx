@@ -101,13 +101,13 @@ export const WaiterApp: React.FC = () => {
       {/* Left Column: Tables Management */}
       <div className="lg:col-span-2 space-y-6">
         <h1 className="text-2xl font-bold text-gray-800">Mesas</h1>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
           {state.tables.map(table => {
             const hasCall = pendingCalls.find(c => c.tableId === table.id);
             return (
             <div 
               key={table.id} 
-              className={`p-4 rounded-xl shadow-sm border-2 transition-all cursor-pointer flex flex-col items-center justify-center min-h-[160px] relative
+              className={`p-4 rounded-xl shadow-sm border-2 transition-all cursor-pointer flex flex-col items-center justify-center min-h-[140px] relative
                 ${hasCall ? 'bg-red-50 border-red-500 animate-pulse' : ''}
                 ${!hasCall && table.status === TableStatus.OCCUPIED ? 'bg-white border-blue-500' : ''}
                 ${!hasCall && table.status === TableStatus.AVAILABLE ? 'bg-gray-50 border-transparent hover:border-gray-300' : ''}
@@ -153,16 +153,16 @@ export const WaiterApp: React.FC = () => {
         </div>
       </div>
 
-      {/* Right Column: Action Center (Ready to Serve) */}
-      <div className="bg-white rounded-xl shadow-lg p-4 h-fit sticky top-4">
-        <div className="flex items-center gap-2 mb-6 pb-4 border-b">
+      {/* Right Column: Action Center (Ready to Serve) - Stacks on bottom on mobile */}
+      <div className="bg-white rounded-xl shadow-lg p-4 h-fit sticky lg:top-4 z-10 border border-gray-100">
+        <div className="flex items-center gap-2 mb-4 pb-4 border-b">
             <div className="bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold">
                 {readyToServeItems.length}
             </div>
-            <h2 className="text-xl font-bold text-gray-800">Para Servir / Bar</h2>
+            <h2 className="text-xl font-bold text-gray-800">Para Servir</h2>
         </div>
 
-        <div className="space-y-4 max-h-[80vh] overflow-y-auto">
+        <div className="space-y-4 max-h-[50vh] lg:max-h-[80vh] overflow-y-auto">
             {readyToServeItems.length === 0 && (
                 <div className="text-center text-gray-400 py-10">Tudo entregue!</div>
             )}

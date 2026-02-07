@@ -15,7 +15,7 @@ import { RegisterRestaurant } from './pages/RegisterRestaurant';
 import { OwnerLogin } from './pages/OwnerLogin';
 import { PrivacyPolicy } from './pages/PrivacyPolicy';
 import { TermsOfService } from './pages/TermsOfService';
-import { ChefHat, Coffee, Monitor, DollarSign, Settings, LogOut, User as UserIcon } from 'lucide-react';
+import { ChefHat, Coffee, Monitor, DollarSign, Settings, LogOut, User as UserIcon, Menu } from 'lucide-react';
 import { Role } from './types';
 import { getTenantSlug } from './utils/tenant';
 
@@ -51,37 +51,67 @@ const TenantNavigation = () => {
     if (location.pathname.startsWith('/client') || location.pathname === '/login') return null;
     if (!state.currentUser) return null;
 
+    const navLinks = [
+        { to: "/waiter", icon: <Coffee size={20}/>, label: "Garçom" },
+        { to: "/kitchen", icon: <Monitor size={20}/>, label: "Cozinha" },
+        { to: "/cashier", icon: <DollarSign size={20}/>, label: "Caixa" },
+        { to: "/admin", icon: <Settings size={20}/>, label: "Admin" },
+    ];
+
     return (
-        <div className="bg-white border-b px-6 py-3 flex justify-between items-center sticky top-0 z-50 shadow-sm">
-            <div className="font-bold text-xl flex items-center gap-2 text-blue-600">
-                {state.theme.logoUrl && <img src={state.theme.logoUrl} className="h-8 w-8 object-contain" />}
-                {!state.theme.logoUrl && <ChefHat />} 
-                {state.theme.restaurantName}
+        <>
+            {/* Desktop Navigation (Top Bar) */}
+            <div className="hidden md:flex bg-white border-b px-6 py-3 justify-between items-center sticky top-0 z-50 shadow-sm">
+                <div className="font-bold text-xl flex items-center gap-2 text-blue-600">
+                    {state.theme.logoUrl && <img src={state.theme.logoUrl} className="h-8 w-8 object-contain" />}
+                    {!state.theme.logoUrl && <ChefHat />} 
+                    {state.theme.restaurantName}
+                </div>
+                <div className="flex gap-1 bg-gray-100 p-1 rounded-lg">
+                    {navLinks.map(link => (
+                        <Link 
+                            key={link.to}
+                            to={link.to} 
+                            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2 ${location.pathname === link.to ? 'bg-white shadow text-blue-600' : 'text-gray-600 hover:text-gray-900'}`}
+                        >
+                            {React.cloneElement(link.icon as React.ReactElement<any>, { size: 16 })} {link.label}
+                        </Link>
+                    ))}
+                </div>
+                 <div className="flex items-center gap-4">
+                     <div className="flex items-center gap-2 text-sm font-medium text-gray-700 bg-gray-50 px-3 py-1.5 rounded-full border">
+                        <UserIcon size={14} className="text-blue-500" />
+                        {state.currentUser.name}
+                     </div>
+                     <button onClick={() => dispatch({ type: 'LOGOUT' })} className="text-red-500 hover:text-red-700" title="Sair">
+                        <LogOut size={20} />
+                     </button>
+                </div>
             </div>
-            <div className="flex gap-1 bg-gray-100 p-1 rounded-lg">
-                <Link to="/waiter" className={`px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2 ${location.pathname === '/waiter' ? 'bg-white shadow text-blue-600' : 'text-gray-600 hover:text-gray-900'}`}>
-                    <Coffee size={16}/> Garçom
-                </Link>
-                <Link to="/kitchen" className={`px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2 ${location.pathname === '/kitchen' ? 'bg-white shadow text-blue-600' : 'text-gray-600 hover:text-gray-900'}`}>
-                    <Monitor size={16}/> Cozinha
-                </Link>
-                <Link to="/cashier" className={`px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2 ${location.pathname === '/cashier' ? 'bg-white shadow text-blue-600' : 'text-gray-600 hover:text-gray-900'}`}>
-                    <DollarSign size={16}/> Caixa
-                </Link>
-                <Link to="/admin" className={`px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2 ${location.pathname === '/admin' ? 'bg-white shadow text-blue-600' : 'text-gray-600 hover:text-gray-900'}`}>
-                    <Settings size={16}/> Admin
-                </Link>
+
+            {/* Mobile Navigation (Bottom Bar) */}
+            <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50 safe-area-bottom pb-1 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
+                <div className="flex justify-around items-center">
+                    {navLinks.map(link => (
+                        <Link 
+                            key={link.to}
+                            to={link.to}
+                            className={`flex flex-col items-center justify-center py-3 px-2 w-full transition-colors ${location.pathname === link.to ? 'text-blue-600' : 'text-gray-400 hover:text-gray-600'}`}
+                        >
+                            {link.icon}
+                            <span className="text-[10px] font-medium mt-1">{link.label}</span>
+                        </Link>
+                    ))}
+                    <button 
+                        onClick={() => dispatch({ type: 'LOGOUT' })} 
+                        className="flex flex-col items-center justify-center py-3 px-2 w-full text-red-400 hover:text-red-600"
+                    >
+                        <LogOut size={20} />
+                        <span className="text-[10px] font-medium mt-1">Sair</span>
+                    </button>
+                </div>
             </div>
-             <div className="flex items-center gap-4">
-                 <div className="flex items-center gap-2 text-sm font-medium text-gray-700 bg-gray-50 px-3 py-1.5 rounded-full border">
-                    <UserIcon size={14} className="text-blue-500" />
-                    {state.currentUser.name}
-                 </div>
-                 <button onClick={() => dispatch({ type: 'LOGOUT' })} className="text-red-500 hover:text-red-700" title="Sair">
-                    <LogOut size={20} />
-                 </button>
-            </div>
-        </div>
+        </>
     );
 }
 
@@ -103,21 +133,22 @@ const TenantApp = () => {
     }
 
     return (
-        <>
+        <div className="pb-16 md:pb-0 min-h-screen flex flex-col"> {/* Padding bottom for mobile nav */}
             <TenantNavigation />
-            <Routes>
-                <Route path="/" element={<Navigate to={`/login${window.location.search}`} replace />} />
-                <Route path="/login" element={<Login />} />
-                <Route path="/client/table/:tableId" element={<ClientApp />} />
-                
-                <Route path="/waiter" element={<ProtectedRestaurantRoute allowedRoles={[Role.WAITER, Role.ADMIN]}><WaiterApp /></ProtectedRestaurantRoute>} />
-                <Route path="/kitchen" element={<ProtectedRestaurantRoute allowedRoles={[Role.KITCHEN, Role.ADMIN]}><KitchenDisplay /></ProtectedRestaurantRoute>} />
-                <Route path="/cashier" element={<ProtectedRestaurantRoute allowedRoles={[Role.CASHIER, Role.ADMIN]}><CashierDashboard /></ProtectedRestaurantRoute>} />
-                <Route path="/admin" element={<ProtectedRestaurantRoute allowedRoles={[Role.ADMIN]}><AdminDashboard /></ProtectedRestaurantRoute>} />
-                {/* Catch-all para rotas não definidas dentro do TenantApp, redireciona para login */}
-                <Route path="*" element={<Navigate to={`/login${window.location.search}`} replace />} />
-            </Routes>
-        </>
+            <div className="flex-1 overflow-auto">
+                <Routes>
+                    <Route path="/" element={<Navigate to={`/login${window.location.search}`} replace />} />
+                    <Route path="/login" element={<Login />} />
+                    <Route path="/client/table/:tableId" element={<ClientApp />} />
+                    
+                    <Route path="/waiter" element={<ProtectedRestaurantRoute allowedRoles={[Role.WAITER, Role.ADMIN]}><WaiterApp /></ProtectedRestaurantRoute>} />
+                    <Route path="/kitchen" element={<ProtectedRestaurantRoute allowedRoles={[Role.KITCHEN, Role.ADMIN]}><KitchenDisplay /></ProtectedRestaurantRoute>} />
+                    <Route path="/cashier" element={<ProtectedRestaurantRoute allowedRoles={[Role.CASHIER, Role.ADMIN]}><CashierDashboard /></ProtectedRestaurantRoute>} />
+                    <Route path="/admin" element={<ProtectedRestaurantRoute allowedRoles={[Role.ADMIN]}><AdminDashboard /></ProtectedRestaurantRoute>} />
+                    <Route path="*" element={<Navigate to={`/login${window.location.search}`} replace />} />
+                </Routes>
+            </div>
+        </div>
     );
 };
 

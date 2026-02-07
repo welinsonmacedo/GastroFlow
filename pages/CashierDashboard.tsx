@@ -36,9 +36,9 @@ export const CashierDashboard: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-        {/* Sidebar Mini */}
-        <div className="w-20 bg-slate-900 text-white flex flex-col items-center py-6 gap-6">
+    <div className="min-h-screen bg-gray-50 flex flex-col lg:flex-row">
+        {/* Sidebar Mini (Horizontal on mobile, Vertical on desktop) */}
+        <div className="w-full lg:w-20 bg-slate-900 text-white flex flex-row lg:flex-col items-center justify-center lg:justify-start py-4 lg:py-6 gap-6 sticky top-0 lg:h-screen shrink-0 z-10">
             <button 
                 onClick={() => setActiveTab('ACTIVE')}
                 className={`p-3 rounded-xl transition-all ${activeTab === 'ACTIVE' ? 'bg-blue-600 shadow-lg' : 'hover:bg-slate-800 text-slate-400'}`}
@@ -56,9 +56,9 @@ export const CashierDashboard: React.FC = () => {
         </div>
 
       {activeTab === 'ACTIVE' && (
-          <div className="flex-1 flex gap-6 p-6">
+          <div className="flex-1 flex flex-col lg:flex-row gap-6 p-4 lg:p-6 overflow-hidden">
             {/* Table List */}
-            <div className="w-1/3 bg-white rounded-xl shadow-sm overflow-hidden flex flex-col">
+            <div className="w-full lg:w-1/3 bg-white rounded-xl shadow-sm overflow-hidden flex flex-col max-h-[300px] lg:max-h-none lg:h-auto">
                 <div className="p-4 bg-gray-800 text-white font-bold flex justify-between items-center">
                     <span>Mesas Abertas</span>
                     <span className="text-xs bg-red-500 px-2 py-1 rounded-full">{occupiedTables.length}</span>
@@ -86,11 +86,11 @@ export const CashierDashboard: React.FC = () => {
             </div>
 
             {/* Bill Details */}
-            <div className="flex-1 bg-white rounded-xl shadow-sm p-6 flex flex-col border border-gray-100">
+            <div className="flex-1 bg-white rounded-xl shadow-sm p-4 lg:p-6 flex flex-col border border-gray-100 min-h-[500px]">
                 {selectedTable ? (
                     <>
                         <div className="flex justify-between items-center border-b pb-4 mb-4">
-                            <h2 className="text-2xl font-bold text-gray-800">Checkout - Mesa {selectedTable.number}</h2>
+                            <h2 className="text-xl lg:text-2xl font-bold text-gray-800">Checkout - Mesa {selectedTable.number}</h2>
                             <span className="text-sm text-gray-500">{new Date().toLocaleDateString()}</span>
                         </div>
                         
@@ -100,7 +100,7 @@ export const CashierDashboard: React.FC = () => {
                                     <tr>
                                         <th className="p-3 rounded-tl-lg">Item</th>
                                         <th className="p-3 text-right">Qtd</th>
-                                        <th className="p-3 text-right">Unitário</th>
+                                        <th className="p-3 text-right hidden sm:table-cell">Unitário</th>
                                         <th className="p-3 text-right rounded-tr-lg">Total</th>
                                     </tr>
                                 </thead>
@@ -112,7 +112,7 @@ export const CashierDashboard: React.FC = () => {
                                             <tr key={`${item.id}-${idx}`} className="border-b hover:bg-gray-50">
                                                 <td className="p-3 font-medium text-gray-700">{product.name}</td>
                                                 <td className="p-3 text-right">{item.quantity}</td>
-                                                <td className="p-3 text-right">R$ {product.price.toFixed(2)}</td>
+                                                <td className="p-3 text-right hidden sm:table-cell">R$ {product.price.toFixed(2)}</td>
                                                 <td className="p-3 text-right font-bold">R$ {(product.price * item.quantity).toFixed(2)}</td>
                                             </tr>
                                         );
@@ -122,35 +122,35 @@ export const CashierDashboard: React.FC = () => {
                             {tableOrders.length === 0 && <div className="text-center py-10 text-gray-400">Nenhum pedido lançado nesta mesa.</div>}
                         </div>
 
-                        <div className="bg-slate-50 p-6 rounded-xl border border-slate-100">
+                        <div className="bg-slate-50 p-4 lg:p-6 rounded-xl border border-slate-100">
                             <div className="flex justify-between items-center mb-6">
                                 <span className="text-gray-500 font-medium">Total a Pagar</span>
-                                <span className="text-4xl font-bold text-slate-800">R$ {totalAmount.toFixed(2)}</span>
+                                <span className="text-3xl lg:text-4xl font-bold text-slate-800">R$ {totalAmount.toFixed(2)}</span>
                             </div>
 
-                            <div className="grid grid-cols-3 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                 <button 
                                     onClick={() => handlePayment('CASH')}
                                     disabled={totalAmount === 0}
-                                    className="flex flex-col items-center justify-center gap-2 h-24 bg-white border-2 border-green-100 hover:border-green-500 hover:bg-green-50 rounded-xl transition-all text-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="flex flex-row sm:flex-col items-center justify-center gap-2 h-16 sm:h-24 bg-white border-2 border-green-100 hover:border-green-500 hover:bg-green-50 rounded-xl transition-all text-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
-                                    <DollarSign size={28} /> 
+                                    <DollarSign size={24} /> 
                                     <span className="font-bold">Dinheiro</span>
                                 </button>
                                 <button 
                                     onClick={() => handlePayment('CARD')}
                                     disabled={totalAmount === 0}
-                                    className="flex flex-col items-center justify-center gap-2 h-24 bg-white border-2 border-blue-100 hover:border-blue-500 hover:bg-blue-50 rounded-xl transition-all text-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="flex flex-row sm:flex-col items-center justify-center gap-2 h-16 sm:h-24 bg-white border-2 border-blue-100 hover:border-blue-500 hover:bg-blue-50 rounded-xl transition-all text-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
-                                    <CreditCard size={28} />
+                                    <CreditCard size={24} />
                                     <span className="font-bold">Cartão</span>
                                 </button>
                                 <button 
                                     onClick={() => handlePayment('PIX')}
                                     disabled={totalAmount === 0}
-                                    className="flex flex-col items-center justify-center gap-2 h-24 bg-white border-2 border-purple-100 hover:border-purple-500 hover:bg-purple-50 rounded-xl transition-all text-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="flex flex-row sm:flex-col items-center justify-center gap-2 h-16 sm:h-24 bg-white border-2 border-purple-100 hover:border-purple-500 hover:bg-purple-50 rounded-xl transition-all text-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
-                                    <Smartphone size={28} />
+                                    <Smartphone size={24} />
                                     <span className="font-bold">Pix</span>
                                 </button>
                             </div>
@@ -167,11 +167,11 @@ export const CashierDashboard: React.FC = () => {
       )}
 
       {activeTab === 'HISTORY' && (
-          <div className="flex-1 p-8 h-screen overflow-y-auto">
+          <div className="flex-1 p-4 lg:p-8 h-screen overflow-y-auto">
               <h2 className="text-2xl font-bold text-gray-800 mb-6">Histórico de Transações</h2>
               
-              <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
-                   <table className="w-full text-left">
+              <div className="bg-white rounded-xl shadow-sm border overflow-hidden overflow-x-auto">
+                   <table className="w-full text-left min-w-[700px]">
                         <thead className="bg-gray-100 text-gray-600 text-sm">
                             <tr>
                                 <th className="p-4">ID</th>
@@ -186,7 +186,7 @@ export const CashierDashboard: React.FC = () => {
                         <tbody>
                             {[...state.transactions].reverse().map(t => (
                                 <tr key={t.id} className="border-b hover:bg-gray-50">
-                                    <td className="p-4 font-mono text-xs text-gray-500">{t.id}</td>
+                                    <td className="p-4 font-mono text-xs text-gray-500">{t.id.slice(0, 8)}...</td>
                                     <td className="p-4 text-sm">{t.timestamp.toLocaleString()}</td>
                                     <td className="p-4 font-bold">Mesa {t.tableNumber}</td>
                                     <td className="p-4 text-sm text-gray-600 max-w-xs truncate" title={t.itemsSummary}>{t.itemsSummary}</td>
