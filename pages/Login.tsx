@@ -5,6 +5,7 @@ import { ChefHat, Lock, Loader2, Mail, AlertCircle } from 'lucide-react';
 import { Role } from '../types';
 import { supabase } from '../lib/supabase';
 import { Button } from '../components/Button';
+import { getTenantSlug } from '../utils/tenant';
 
 export const Login: React.FC = () => {
   const { state, dispatch } = useRestaurant();
@@ -33,67 +34,98 @@ export const Login: React.FC = () => {
       setError('');
 
       try {
+          const currentSlug = getTenantSlug();
+
           // 1. Autentica no Supabase Auth
-          const { data, error } = await supabase.auth.signInWithPassword({
+          const { data, error: signInError } = await supabase.auth.signInWithPassword({
               email,
               password
           });
 
-          if (error || !data.user) throw new Error("Email ou senha inválidos.");
+          if (signInError || !data.user) throw new Error("Email ou senha inválidos.");
 
-          // 2. Verifica vínculo com o restaurante atual
           const userId = data.user.id;
-          
-          // Verifica se o usuário existe na tabela 'staff' deste tenant
-          // Nota: Usamos maybeSingle direto no banco para garantir dados frescos, 
-          // caso o state.users ainda não tenha carregado via realtime.
-          const { data: localStaff } = await supabase
+          const userEmail = data.user.email;
+
+          // 2. Tenta encontrar o staff vinculado pelo ID (Cenário Ideal)
+          let { data: staffData, error: staffError } = await supabase
               .from('staff')
-              .select('*')
-              .eq('tenant_id', state.tenantId)
+              .select('*, tenants!inner(slug)')
               .eq('auth_user_id', userId)
+              .eq('tenants.slug', currentSlug)
               .maybeSingle();
 
-          if (localStaff) {
-              // Sucesso: O usuário pertence a este restaurante.
-              // O listener onAuthStateChange no Context vai pegar o evento de login,
-              // mas disparamos aqui para feedback imediato na UI se necessário.
-              dispatch({ type: 'LOGIN', user: {
-                  id: localStaff.id,
-                  name: localStaff.name,
-                  role: localStaff.role,
-                  pin: localStaff.pin,
-                  email: localStaff.email,
-                  auth_user_id: localStaff.auth_user_id
-              }});
-              return;
+          // 3. Vínculo Automático (Auto-Link)
+          // Se não achou pelo ID, tenta achar pelo EMAIL neste restaurante e atualiza o registro.
+          // Isso resolve o caso onde o Admin criou o funcionário no painel (sem auth_id) e o funcionário logou depois.
+          if (!staffData && userEmail) {
+               // Busca primeiro o tenantId correto baseado no slug atual para garantir segurança
+               const { data: tenantRef } = await supabase.from('tenants').select('id').eq('slug', currentSlug).single();
+               
+               if (tenantRef) {
+                   const { data: staffByEmail } = await supabase
+                        .from('staff')
+                        .select('*')
+                        .eq('tenant_id', tenantRef.id)
+                        .eq('email', userEmail)
+                        .is('auth_user_id', null) // Só vincula se estiver livre
+                        .maybeSingle();
+
+                   if (staffByEmail) {
+                       // Realiza o vínculo
+                       const { data: updatedStaff, error: updateError } = await supabase
+                           .from('staff')
+                           .update({ auth_user_id: userId })
+                           .eq('id', staffByEmail.id)
+                           .select('*, tenants!inner(slug)')
+                           .single();
+                       
+                       if (!updateError && updatedStaff) {
+                           staffData = updatedStaff;
+                       }
+                   }
+               }
           }
 
-          // 3. Se não pertence a este, tenta redirecionar para o correto
-          const { data: correctTenantData } = await supabase
+          if (staffData) {
+              // Sucesso: Login válido neste restaurante
+              dispatch({ type: 'LOGIN', user: {
+                  id: staffData.id,
+                  name: staffData.name,
+                  role: staffData.role,
+                  pin: staffData.pin,
+                  email: staffData.email,
+                  auth_user_id: staffData.auth_user_id
+              }});
+              return; // O useEffect vai redirecionar
+          }
+
+          // 4. Se chegou aqui, o usuário existe no Auth, mas não neste restaurante.
+          // Vamos tentar redirecionar para o restaurante correto dele.
+          const { data: otherTenantData } = await supabase
               .from('staff')
               .select('tenants ( slug )')
               .eq('auth_user_id', userId)
+              .limit(1)
               .maybeSingle();
           
           let targetSlug = '';
-          if (correctTenantData && correctTenantData.tenants) {
+          if (otherTenantData && otherTenantData.tenants) {
                // @ts-ignore
-               targetSlug = Array.isArray(correctTenantData.tenants) ? correctTenantData.tenants[0]?.slug : correctTenantData.tenants.slug;
+               targetSlug = Array.isArray(otherTenantData.tenants) ? otherTenantData.tenants[0]?.slug : otherTenantData.tenants.slug;
           }
 
-          if (targetSlug && targetSlug !== state.tenantSlug) {
-              // Redireciona
+          if (targetSlug && targetSlug !== currentSlug) {
               window.location.href = `/?restaurant=${targetSlug}`;
               return;
           }
 
-          throw new Error("Usuário autenticado, mas sem permissão de acesso neste restaurante.");
+          throw new Error("Usuário não cadastrado na equipe deste restaurante.");
 
       } catch (err: any) {
           console.error(err);
           setError(err.message || "Erro de autenticação.");
-          await supabase.auth.signOut(); // Limpa sessão inválida
+          await supabase.auth.signOut();
       } finally {
           setLoading(false);
       }

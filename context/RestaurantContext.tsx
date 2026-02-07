@@ -232,9 +232,23 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             let autoLoggedUser: User | null = null;
             const { data: { session } } = await supabase.auth.getSession();
             if (session?.user) {
+                // Tenta achar na lista carregada
                 const authenticatedStaff = mappedUsers.find(u => u.auth_user_id === session.user.id);
                 if (authenticatedStaff) {
                     autoLoggedUser = authenticatedStaff;
+                } else {
+                    // Se não achou (talvez paginação ou RLS), tenta buscar individualmente para garantir
+                    const { data: staffData } = await supabase.from('staff').select('*').eq('auth_user_id', session.user.id).eq('tenant_id', tenant.id).maybeSingle();
+                    if(staffData) {
+                         autoLoggedUser = {
+                             id: staffData.id,
+                             name: staffData.name,
+                             role: staffData.role,
+                             pin: staffData.pin,
+                             auth_user_id: staffData.auth_user_id,
+                             email: staffData.email
+                         };
+                    }
                 }
             }
 
@@ -265,7 +279,7 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   // 2. Auth Listener Change (Detecta logins feitos em outras partes, como Login.tsx ou OwnerLogin.tsx)
   useEffect(() => {
-    if (!state.users.length) return; // Só roda se os usuários já estiverem carregados
+    if (!state.tenantId) return; // Só roda se o tenant já foi identificado
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event: any, session: any) => {
         if (event === 'SIGNED_IN' && session?.user) {
@@ -273,6 +287,25 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             const authenticatedStaff = state.users.find(u => u.auth_user_id === session.user.id);
             if (authenticatedStaff) {
                 dispatchLocal({ type: 'LOGIN', user: authenticatedStaff });
+            } else {
+                 // Fallback: busca no banco se não estiver na lista local (ex: acabou de ser vinculado no login)
+                 const { data: staffData } = await supabase
+                    .from('staff')
+                    .select('*')
+                    .eq('auth_user_id', session.user.id)
+                    .eq('tenant_id', state.tenantId)
+                    .maybeSingle();
+                
+                 if(staffData) {
+                     dispatchLocal({ type: 'LOGIN', user: {
+                         id: staffData.id,
+                         name: staffData.name,
+                         role: staffData.role,
+                         pin: staffData.pin,
+                         auth_user_id: staffData.auth_user_id,
+                         email: staffData.email
+                     }});
+                 }
             }
         } else if (event === 'SIGNED_OUT') {
             dispatchLocal({ type: 'LOGOUT' });
@@ -282,7 +315,7 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     return () => {
         subscription.unsubscribe();
     };
-  }, [state.users]); // Recria o listener se a lista de usuários mudar
+  }, [state.tenantId, state.users]); 
 
   // 3. Realtime Subscription (Dados do Banco)
   useEffect(() => {
