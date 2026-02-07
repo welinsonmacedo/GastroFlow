@@ -1,16 +1,14 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Access environment variables safely handling the missing type definitions for import.meta.env
-// We cast to any to avoid "Property 'env' does not exist on type 'ImportMeta'" errors if types are missing.
+// ATENÇÃO: Em projetos Vite, utilize import.meta.env diretamente.
+// O acesso dinâmico (ex: import.meta.env[key]) pode falhar no build de produção dependendo da configuração.
+// Adicionamos um fallback "|| {}" para garantir que o código não quebre se .env for undefined.
 const env = (import.meta as any).env || {};
 
-// ATENÇÃO: Em projetos Vite, utilize import.meta.env.
-// O process.env não existe no navegador e causará erro na Vercel.
-const supabaseUrl = env.VITE_SUPABASE_URL || '';
-const supabaseKey = env.VITE_SUPABASE_ANON_KEY || '';
+const supabaseUrl = env.VITE_SUPABASE_URL;
+const supabaseKey = env.VITE_SUPABASE_ANON_KEY;
 
 // Inicializa o cliente Supabase
-// Se as URLs estiverem vazias, usa valores placeholder para não quebrar o createClient na inicialização.
 export const supabase = createClient(
   supabaseUrl || 'https://placeholder.supabase.co', 
   supabaseKey || 'placeholder'
@@ -18,7 +16,7 @@ export const supabase = createClient(
 
 // Helper para verificar se o Supabase está configurado corretamente
 export const isSupabaseConfigured = () => {
-    return supabaseUrl.length > 0 && 
-           supabaseKey.length > 0 && 
+    return !!supabaseUrl && 
+           !!supabaseKey && 
            supabaseUrl !== 'https://placeholder.supabase.co';
 };

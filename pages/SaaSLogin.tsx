@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useSaaS } from '../context/SaaSContext';
-import { Activity, Lock, ArrowLeft } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { Activity, Lock, ArrowLeft, AlertCircle } from 'lucide-react';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
 export const SaaSLogin: React.FC = () => {
   const navigate = useNavigate();
@@ -17,11 +17,15 @@ export const SaaSLogin: React.FC = () => {
     setLoading(true);
     setError('');
 
+    if (!isSupabaseConfigured()) {
+        setError('Erro de configuração: Variáveis de ambiente do Supabase ausentes.');
+        setLoading(false);
+        return;
+    }
+
     try {
         // Consulta o usuário na tabela saas_admins
-        // ALTERAÇÃO: Uso de .maybeSingle() em vez de .single()
-        // .single() retorna erro 406 se não encontrar nada.
-        // .maybeSingle() retorna null se não encontrar nada, o que permite tratarmos o erro.
+        // Usamos .maybeSingle() para evitar que o Supabase retorne erro 406 se não encontrar o usuário.
         const { data, error: dbError } = await supabase
             .from('saas_admins')
             .select('*')
@@ -30,8 +34,8 @@ export const SaaSLogin: React.FC = () => {
             .maybeSingle();
 
         if (dbError) {
-            console.error(dbError);
-            setError('Erro ao verificar credenciais.');
+            console.error("Erro no banco de dados:", dbError);
+            setError('Erro ao conectar com o banco de dados. Verifique o console.');
         } else if (!data) {
             setError('E-mail ou senha incorretos.');
         } else {
@@ -39,8 +43,8 @@ export const SaaSLogin: React.FC = () => {
             navigate('/dashboard');
         }
     } catch (err) {
-        console.error(err);
-        setError('Erro ao conectar ao servidor.');
+        console.error("Erro inesperado:", err);
+        setError('Ocorreu um erro inesperado ao tentar fazer login.');
     } finally {
         setLoading(false);
     }
@@ -90,14 +94,19 @@ export const SaaSLogin: React.FC = () => {
                 </div>
             </div>
 
-            {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+            {error && (
+                <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm flex items-center gap-2">
+                    <AlertCircle size={16} />
+                    <span>{error}</span>
+                </div>
+            )}
 
             <button 
                 type="submit" 
                 disabled={loading}
-                className="w-full bg-slate-900 text-white py-3 rounded-lg font-bold hover:bg-slate-800 transition-colors shadow-lg disabled:opacity-50"
+                className="w-full bg-slate-900 text-white py-3 rounded-lg font-bold hover:bg-slate-800 transition-colors shadow-lg disabled:opacity-50 flex justify-center"
             >
-                {loading ? 'Entrando...' : 'Acessar Painel'}
+                {loading ? <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : 'Acessar Painel'}
             </button>
         </form>
       </div>
