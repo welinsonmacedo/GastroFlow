@@ -23,7 +23,8 @@ export const isSupabaseConfigured = () => {
 
 // Se as variáveis não estiverem definidas, cria um cliente com valores placeholder
 // para evitar crash imediato, mas isSupabaseConfigured() retornará false.
-export const supabase = createClient(
+// Cast to any to avoid type errors with mismatched supabase-js versions
+export const supabase: any = createClient(
   supabaseUrl || 'https://placeholder.supabase.co',
   supabaseAnonKey || 'placeholder-key'
 );

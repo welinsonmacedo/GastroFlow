@@ -2,7 +2,6 @@ import React, { createContext, useContext, useReducer, useEffect } from 'react';
 import { Table, Order, Product, TableStatus, OrderStatus, ProductType, OrderItem, RestaurantTheme, User, AuditLog, Transaction, Role } from '../types';
 import { getTenantSlug } from '../utils/tenant';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
-import { RealtimeChannel } from '@supabase/supabase-js';
 
 // --- Types ---
 interface State {
@@ -229,8 +228,7 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 timestamp: new Date(l.created_at)
             }));
 
-            // C. AUTO-LOGIN via Supabase Auth (Pré-Verificação para evitar flicker)
-            // Verifica se o usuário já está autenticado no Supabase e se pertence a este Tenant
+            // C. AUTO-LOGIN via Supabase Auth Check (Initial Load)
             let autoLoggedUser: User | null = null;
             const { data: { session } } = await supabase.auth.getSession();
             if (session?.user) {
@@ -252,7 +250,7 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                     orders: mappedOrders,
                     transactions: mappedTransactions,
                     auditLogs: mappedAuditLogs,
-                    currentUser: autoLoggedUser // Injeta o usuário logado diretamente
+                    currentUser: autoLoggedUser
                 }
             });
 
@@ -265,7 +263,28 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     initTenant();
   }, []);
 
-  // 2. Realtime Subscription
+  // 2. Auth Listener Change (Detecta logins feitos em outras partes, como Login.tsx ou OwnerLogin.tsx)
+  useEffect(() => {
+    if (!state.users.length) return; // Só roda se os usuários já estiverem carregados
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event: any, session: any) => {
+        if (event === 'SIGNED_IN' && session?.user) {
+            // Tenta encontrar o usuário na lista de staff deste restaurante
+            const authenticatedStaff = state.users.find(u => u.auth_user_id === session.user.id);
+            if (authenticatedStaff) {
+                dispatchLocal({ type: 'LOGIN', user: authenticatedStaff });
+            }
+        } else if (event === 'SIGNED_OUT') {
+            dispatchLocal({ type: 'LOGOUT' });
+        }
+    });
+
+    return () => {
+        subscription.unsubscribe();
+    };
+  }, [state.users]); // Recria o listener se a lista de usuários mudar
+
+  // 3. Realtime Subscription (Dados do Banco)
   useEffect(() => {
     if (!state.tenantId) return;
 
@@ -277,7 +296,7 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             async () => {
                 const { data } = await supabase.from('restaurant_tables').select('*').eq('tenant_id', state.tenantId!).order('number');
                 if (data) {
-                    const mapped = data.map(t => ({ id: t.id, number: t.number, status: t.status, customerName: t.customer_name, accessCode: t.access_code }));
+                    const mapped = data.map((t: any) => ({ id: t.id, number: t.number, status: t.status, customerName: t.customer_name, accessCode: t.access_code }));
                     dispatchLocal({ type: 'REALTIME_UPDATE_TABLES', tables: mapped as Table[] });
                 }
             }
@@ -289,7 +308,7 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             async () => {
                 const { data } = await supabase.from('orders').select(`*, items:order_items (*)`).eq('tenant_id', state.tenantId!).eq('is_paid', false);
                 if (data) {
-                     const mappedOrders: Order[] = data.map(o => ({
+                     const mappedOrders: Order[] = data.map((o: any) => ({
                         id: o.id,
                         tableId: o.table_id,
                         timestamp: new Date(o.created_at),
@@ -315,7 +334,7 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             async () => {
                 const { data } = await supabase.from('transactions').select('*').eq('tenant_id', state.tenantId!).order('created_at', { ascending: false }).limit(50);
                 if (data) {
-                    const mapped = data.map(t => ({
+                    const mapped = data.map((t: any) => ({
                         id: t.id, tableId: t.table_id || '', tableNumber: t.table_number || 0, amount: t.amount, method: t.method as any, timestamp: new Date(t.created_at), itemsSummary: t.items_summary || '', cashierName: t.cashier_name || ''
                     }));
                     dispatchLocal({ type: 'REALTIME_UPDATE_TRANSACTIONS', transactions: mapped });
@@ -329,7 +348,7 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             async () => {
                 const { data } = await supabase.from('audit_logs').select('*').eq('tenant_id', state.tenantId!).order('created_at', { ascending: false }).limit(50);
                 if (data) {
-                    const mapped = data.map(l => ({
+                    const mapped = data.map((l: any) => ({
                         id: l.id, userId: l.user_id || '', userName: l.user_name || '', action: l.action, details: l.details || '', timestamp: new Date(l.created_at)
                     }));
                     dispatchLocal({ type: 'REALTIME_UPDATE_AUDIT_LOGS', auditLogs: mapped });
@@ -343,7 +362,7 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             async () => {
                  const { data } = await supabase.from('products').select('*').eq('tenant_id', state.tenantId!);
                  if (data) {
-                     const mapped = data.map(p => ({
+                     const mapped = data.map((p: any) => ({
                         id: p.id, name: p.name, description: p.description, price: p.price, category: p.category, type: p.type as ProductType, image: p.image, isVisible: p.is_visible, sortOrder: p.sort_order
                     }));
                     dispatchLocal({ type: 'REALTIME_UPDATE_PRODUCTS', products: mapped });
@@ -358,7 +377,7 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   }, [state.tenantId]);
 
 
-  // 3. Intercept Dispatch para Side-Effects (Mutations)
+  // 4. Intercept Dispatch para Side-Effects (Mutations)
   const dispatch = async (action: Action) => {
     const { tenantId } = state;
 

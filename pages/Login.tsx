@@ -64,7 +64,7 @@ export const Login: React.FC = () => {
       setError('');
 
       try {
-          // Autentica direto no Supabase
+          // 1. Tenta autenticar no Supabase Auth
           const { data, error } = await supabase.auth.signInWithPassword({
               email,
               password
@@ -72,39 +72,44 @@ export const Login: React.FC = () => {
 
           if (error || !data.user) throw new Error("Email ou senha inválidos.");
 
-          // 1. Tenta encontrar o usuário no contexto atual (Restaurante Atual)
-          const staffUser = state.users.find(u => u.auth_user_id === data.user?.id);
-
-          if (staffUser) {
-              performLogin(staffUser);
-          } else {
-              // 2. Se não encontrou, verifica se ele pertence a OUTRO restaurante
-              // Consulta a tabela staff para descobrir o tenant correto desse usuário
-              const { data: correctTenantData } = await supabase
-                  .from('staff')
-                  .select('tenants ( slug )')
-                  .eq('auth_user_id', data.user.id)
-                  .maybeSingle();
-              
-              let targetSlug = '';
-              if (correctTenantData && correctTenantData.tenants) {
-                   // @ts-ignore
-                   targetSlug = Array.isArray(correctTenantData.tenants) ? correctTenantData.tenants[0]?.slug : correctTenantData.tenants.slug;
-              }
-
-              // Se encontrou outro slug, redireciona o usuário
-              if (targetSlug && targetSlug !== state.tenantSlug) {
-                  setLoading(true); // Mantém loading visual
-                  window.location.href = `/?restaurant=${targetSlug}`;
-                  return;
-              }
-
-              throw new Error("Este usuário não tem permissão de acesso neste restaurante.");
+          // 2. Verifica se o usuário autenticado pertence a ESTE restaurante
+          // Nota: O 'state.users' pode não estar sincronizado instantaneamente, então forçamos uma verificação.
+          const userId = data.user.id;
+          
+          // Verifica staff LOCAL no contexto
+          const localStaff = state.users.find(u => u.auth_user_id === userId);
+          if (localStaff) {
+              performLogin(localStaff);
+              return;
           }
+
+          // Se não achou localmente, consulta no banco para redirecionar
+          const { data: correctTenantData } = await supabase
+              .from('staff')
+              .select('tenants ( slug )')
+              .eq('auth_user_id', userId)
+              .maybeSingle();
+          
+          let targetSlug = '';
+          if (correctTenantData && correctTenantData.tenants) {
+               // @ts-ignore
+               targetSlug = Array.isArray(correctTenantData.tenants) ? correctTenantData.tenants[0]?.slug : correctTenantData.tenants.slug;
+          }
+
+          if (targetSlug && targetSlug !== state.tenantSlug) {
+              // Redireciona para o restaurante correto
+              window.location.href = `/?restaurant=${targetSlug}`;
+              return;
+          }
+
+          // Se chegou aqui, logou no Auth mas não tem vínculo com nenhum restaurante ou este
+          throw new Error("Usuário sem permissão de acesso neste restaurante.");
 
       } catch (err: any) {
           setError(err.message || "Erro de autenticação.");
           setLoading(false);
+          // Importante: Deslogar se falhou a validação de negócio, mas passou na auth
+          await supabase.auth.signOut();
       }
   };
 

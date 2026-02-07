@@ -262,7 +262,7 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     throw new Error("Configuração do Supabase (URL/Key) não encontrada para criar usuário Auth.");
                 }
 
-                const tempClient = createClient(supabaseUrl, supabaseKey, {
+                const tempClient: any = createClient(supabaseUrl, supabaseKey, {
                     auth: {
                         persistSession: false, // Importante: não salvar no localStorage
                         autoRefreshToken: false,
