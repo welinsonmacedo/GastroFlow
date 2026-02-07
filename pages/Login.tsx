@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRestaurant } from '../context/RestaurantContext';
 import { useNavigate } from 'react-router-dom';
 import { ChefHat, Lock, Loader2, Mail, KeyRound } from 'lucide-react';
@@ -22,6 +22,19 @@ export const Login: React.FC = () => {
 
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Redireciona automaticamente se o usuário já estiver autenticado (ex: vindo do OwnerLogin)
+  useEffect(() => {
+    if (state.currentUser) {
+        switch (state.currentUser.role) {
+            case Role.ADMIN: navigate('/admin'); break;
+            case Role.WAITER: navigate('/waiter'); break;
+            case Role.KITCHEN: navigate('/kitchen'); break;
+            case Role.CASHIER: navigate('/cashier'); break;
+            default: navigate('/waiter');
+        }
+    }
+  }, [state.currentUser, navigate]);
 
   if (state.isLoading) {
       return (
@@ -77,15 +90,7 @@ export const Login: React.FC = () => {
 
   const performLogin = (user: any) => {
       dispatch({ type: 'LOGIN', user });
-      
-      // Redirecionamento baseado em função
-      switch (user.role) {
-        case Role.ADMIN: navigate('/admin'); break;
-        case Role.WAITER: navigate('/waiter'); break;
-        case Role.KITCHEN: navigate('/kitchen'); break;
-        case Role.CASHIER: navigate('/cashier'); break;
-        default: navigate('/waiter');
-      }
+      // Redirecionamento é tratado pelo useEffect ou aqui como fallback
   };
 
   return (

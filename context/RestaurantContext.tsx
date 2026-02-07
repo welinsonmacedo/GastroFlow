@@ -35,8 +35,8 @@ type Action =
   | { type: 'ADD_USER'; user: User }
   | { type: 'UPDATE_USER'; user: User }
   | { type: 'DELETE_USER'; userId: string }
-  | { type: 'ADD_TABLE' } // Novo
-  | { type: 'DELETE_TABLE'; tableId: string } // Novo
+  | { type: 'ADD_TABLE' }
+  | { type: 'DELETE_TABLE'; tableId: string }
   | { type: 'OPEN_TABLE'; tableId: string; customerName: string; accessCode: string }
   | { type: 'CLOSE_TABLE'; tableId: string }
   | { type: 'PLACE_ORDER'; tableId: string; items: { productId: string; quantity: number; notes: string }[] }
@@ -229,6 +229,17 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 timestamp: new Date(l.created_at)
             }));
 
+            // C. AUTO-LOGIN via Supabase Auth (Pré-Verificação para evitar flicker)
+            // Verifica se o usuário já está autenticado no Supabase e se pertence a este Tenant
+            let autoLoggedUser: User | null = null;
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session?.user) {
+                const authenticatedStaff = mappedUsers.find(u => u.auth_user_id === session.user.id);
+                if (authenticatedStaff) {
+                    autoLoggedUser = authenticatedStaff;
+                }
+            }
+
             dispatchLocal({
                 type: 'INIT_DATA',
                 payload: {
@@ -240,19 +251,10 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                     tables: mappedTables,
                     orders: mappedOrders,
                     transactions: mappedTransactions,
-                    auditLogs: mappedAuditLogs
+                    auditLogs: mappedAuditLogs,
+                    currentUser: autoLoggedUser // Injeta o usuário logado diretamente
                 }
             });
-
-            // C. AUTO-LOGIN via Supabase Auth
-            // Verifica se o usuário já está autenticado no Supabase e se pertence a este Tenant
-            const { data: { session } } = await supabase.auth.getSession();
-            if (session?.user) {
-                const authenticatedStaff = mappedUsers.find(u => u.auth_user_id === session.user.id);
-                if (authenticatedStaff) {
-                    dispatchLocal({ type: 'LOGIN', user: authenticatedStaff });
-                }
-            }
 
         } catch (error) {
             console.error("Erro ao inicializar:", error);

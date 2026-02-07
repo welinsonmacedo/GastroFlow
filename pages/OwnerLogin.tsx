@@ -37,14 +37,24 @@ export const OwnerLogin: React.FC = () => {
                 .eq('auth_user_id', userId)
                 .maybeSingle();
 
-            // Se não encontrou staff, tenta verificar se é um "Dono Legado" direto na tabela tenants (fallback)
+            // Lógica robusta para encontrar o slug
             let tenantSlug = '';
             
+            // Verifica se veio do Staff
             if (staffData && staffData.tenants) {
-                // @ts-ignore - Supabase join types inferidos
-                tenantSlug = staffData.tenants.slug;
-            } else {
-                // Fallback: Verifica owner_auth_id direto na tabela tenants
+                 const tenantInfo = staffData.tenants;
+                 // @ts-ignore - Supabase pode retornar array ou objeto dependendo da inferência
+                 if (Array.isArray(tenantInfo)) {
+                     // @ts-ignore
+                     tenantSlug = tenantInfo[0]?.slug;
+                 } else {
+                     // @ts-ignore
+                     tenantSlug = tenantInfo.slug;
+                 }
+            } 
+            
+            // Fallback: Verifica owner_auth_id direto na tabela tenants se não achou via staff
+            if (!tenantSlug) {
                 const { data: tenantData } = await supabase
                     .from('tenants')
                     .select('slug')
