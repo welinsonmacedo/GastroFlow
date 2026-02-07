@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRestaurant } from '../context/RestaurantContext';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { ChefHat, Lock, Loader2, Mail, AlertCircle, UserPlus, ArrowLeft } from 'lucide-react';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
+import { ChefHat, Lock, Loader2, Mail, AlertCircle, UserPlus, ArrowLeft, BookOpen } from 'lucide-react';
 import { Role } from '../types';
 import { supabase } from '../lib/supabase';
 import { Button } from '../components/Button';
@@ -294,18 +294,20 @@ export const Login: React.FC = () => {
                 {loading ? <Loader2 className="animate-spin mx-auto" /> : (isRegistering ? 'Cadastrar e Entrar' : 'Entrar')}
             </Button>
             
-            {!isRegistering && (
-                <div className="text-center mt-4 pt-4 border-t border-gray-100">
-                    <p className="text-xs text-gray-400 mb-2">Foi cadastrado pelo gerente, mas não tem senha?</p>
+            <div className="flex items-center justify-center gap-4 mt-4 pt-4 border-t border-gray-100">
+                {!isRegistering && (
                     <button 
                         type="button"
                         onClick={() => { setIsRegistering(true); setError(''); }}
-                        className="text-sm font-bold text-blue-600 hover:underline flex items-center justify-center gap-1 mx-auto"
+                        className="text-sm font-bold text-blue-600 hover:underline flex items-center justify-center gap-1"
                     >
-                        <UserPlus size={16} /> Primeiro Acesso / Criar Senha
+                        <UserPlus size={16} /> Primeiro Acesso
                     </button>
-                </div>
-            )}
+                )}
+                <Link to="/manual" className="text-sm font-bold text-slate-500 hover:text-slate-700 hover:underline flex items-center justify-center gap-1">
+                    <BookOpen size={16} /> Ajuda / Manual
+                </Link>
+            </div>
         </form>
       </div>
     </div>

@@ -16,6 +16,7 @@ import { RegisterRestaurant } from './pages/RegisterRestaurant';
 import { OwnerLogin } from './pages/OwnerLogin';
 import { PrivacyPolicy } from './pages/PrivacyPolicy';
 import { TermsOfService } from './pages/TermsOfService';
+import { ManualPage } from './pages/ManualPage';
 import { InstallPWA } from './components/InstallPWA';
 import { ChefHat, Coffee, Monitor, DollarSign, Settings, LogOut, User as UserIcon, Menu, AlertCircle, Lock } from 'lucide-react';
 import { Role } from './types';
@@ -85,7 +86,7 @@ const TenantNavigation = () => {
     const { state, dispatch } = useRestaurant();
     const { showConfirm } = useUI();
     
-    if (location.pathname.startsWith('/client') || location.pathname === '/login') return null;
+    if (location.pathname.startsWith('/client') || location.pathname === '/login' || location.pathname === '/manual') return null;
     if (!state.currentUser) return null;
 
     // Filtra links baseado nas permissões do usuário E nos limites do plano
@@ -217,6 +218,7 @@ const TenantApp = () => {
                 <Routes>
                     <Route path="/" element={<Navigate to={`/login${window.location.search}`} replace />} />
                     <Route path="/login" element={<Login />} />
+                    <Route path="/manual" element={<ManualPage />} />
                     <Route path="/client/table/:tableId" element={<ClientApp />} />
                     
                     {/* ROTAS PROTEGIDAS COM LIMITES DE PLANO */}

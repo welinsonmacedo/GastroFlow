@@ -5,9 +5,10 @@ import { Button } from '../components/Button';
 import { QRCodeGenerator } from '../components/QRCodeGenerator';
 import { ImageUploader } from '../components/ImageUploader';
 import { Product, ProductType, Role, User } from '../types';
-import { LayoutDashboard, Utensils, QrCode, Printer, ExternalLink, Palette, Eye, EyeOff, Save, Copy, Plus, Users, ShieldCheck, Trash2, Edit, AlertTriangle, FileBarChart, X, ArrowUp, ArrowDown, LayoutGrid, List as ListIcon, Image as ImageIcon, Calendar, TrendingUp, Search, Loader2, Menu, Activity, CheckSquare, GripVertical, Link as LinkIcon, Share2, Lock } from 'lucide-react';
+import { LayoutDashboard, Utensils, QrCode, Printer, ExternalLink, Palette, Eye, EyeOff, Save, Copy, Plus, Users, ShieldCheck, Trash2, Edit, AlertTriangle, FileBarChart, X, ArrowUp, ArrowDown, LayoutGrid, List as ListIcon, Image as ImageIcon, Calendar, TrendingUp, Search, Loader2, Menu, Activity, CheckSquare, GripVertical, Link as LinkIcon, Share2, Lock, BookOpen } from 'lucide-react';
 import { getTenantSlug } from '../utils/tenant';
 import { supabase } from '../lib/supabase';
+import { Link } from 'react-router-dom';
 
 export const AdminDashboard: React.FC = () => {
   const { state, dispatch } = useRestaurant();
@@ -370,6 +371,10 @@ export const AdminDashboard: React.FC = () => {
               <button onClick={() => { setActiveTab('CUSTOMIZATION'); setIsSidebarOpen(false); }} className={`flex items-center gap-3 w-full p-3 rounded transition-colors ${activeTab === 'CUSTOMIZATION' ? 'bg-blue-600' : 'hover:bg-slate-800'}`}>
                   <Palette size={20} /> Personalizar
               </button>
+              <div className="border-t border-slate-700 my-2"></div>
+              <Link to="/manual" className="flex items-center gap-3 w-full p-3 rounded transition-colors text-gray-400 hover:text-white hover:bg-slate-800">
+                  <BookOpen size={20} /> Ajuda / Manual
+              </Link>
           </nav>
       </div>
   );
