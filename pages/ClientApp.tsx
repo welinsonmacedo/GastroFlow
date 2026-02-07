@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { useRestaurant } from '../context/RestaurantContext';
 import { Button } from '../components/Button';
 import { TableStatus, Product } from '../types';
-import { ShoppingCart, ChefHat, Info, Plus, Minus, X, Lock, Receipt } from 'lucide-react';
+import { ShoppingCart, ChefHat, Info, Plus, Minus, X, Lock, Receipt, Loader2 } from 'lucide-react';
 
 export const ClientApp: React.FC = () => {
   const { tableId } = useParams<{ tableId: string }>();
@@ -12,6 +12,16 @@ export const ClientApp: React.FC = () => {
   const [view, setView] = useState<'MENU' | 'CART' | 'STATUS' | 'BILL'>('MENU');
   const [accessPin, setAccessPin] = useState('');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  // Handle Loading
+  if (state.isLoading) {
+      return (
+          <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 text-gray-500">
+              <Loader2 className="animate-spin mb-2 text-blue-600" size={32} />
+              <p>Carregando cardápio...</p>
+          </div>
+      );
+  }
 
   const table = state.tables.find(t => t.id === tableId);
   const theme = state.theme;

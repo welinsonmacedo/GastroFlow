@@ -19,17 +19,19 @@ export const SaaSLogin: React.FC = () => {
 
     try {
         // Consulta o usuário na tabela saas_admins
-        // Nota: Em produção, use Supabase Auth (GoTrue) ou hash de senha. 
-        // Esta tabela customizada é para demonstração.
+        // Usa maybeSingle() para evitar erro 406/PGRST116 quando não encontra resultados
         const { data, error: dbError } = await supabase
             .from('saas_admins')
             .select('*')
             .eq('email', email)
             .eq('password', password)
-            .single();
+            .maybeSingle();
 
-        if (dbError || !data) {
-            setError('Credenciais inválidas.');
+        if (dbError) {
+            console.error(dbError);
+            setError('Erro ao verificar credenciais.');
+        } else if (!data) {
+            setError('E-mail ou senha incorretos.');
         } else {
             dispatch({ type: 'LOGIN_ADMIN', name: data.name });
             navigate('/dashboard');

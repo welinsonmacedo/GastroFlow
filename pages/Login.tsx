@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useRestaurant } from '../context/RestaurantContext';
 import { useNavigate, Link } from 'react-router-dom';
-import { ChefHat, Lock, ArrowLeft } from 'lucide-react';
+import { ChefHat, Lock, ArrowLeft, Loader2 } from 'lucide-react';
 import { Role } from '../types';
 
 export const Login: React.FC = () => {
@@ -10,6 +10,17 @@ export const Login: React.FC = () => {
   const [selectedUserId, setSelectedUserId] = useState<string>('');
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
+
+  if (state.isLoading) {
+      return (
+          <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800 flex items-center justify-center">
+             <div className="text-white flex flex-col items-center">
+                 <Loader2 size={40} className="animate-spin mb-4" />
+                 <p>Carregando sistema...</p>
+             </div>
+          </div>
+      );
+  }
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -68,6 +79,11 @@ export const Login: React.FC = () => {
                             <span className="text-xs text-gray-400 uppercase">{user.role}</span>
                         </div>
                     ))}
+                    {state.users.length === 0 && (
+                        <div className="p-4 text-center text-gray-400 border border-dashed rounded-lg">
+                            Nenhum usuário encontrado.
+                        </div>
+                    )}
                 </div>
             </div>
 
