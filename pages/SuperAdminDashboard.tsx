@@ -13,6 +13,9 @@ export const SuperAdminDashboard: React.FC = () => {
   const [activeView, setActiveView] = useState<ViewMode>('RESTAURANTS');
   const [filter, setFilter] = useState('');
   
+  // Logout Modal
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+
   // Modal State (Create)
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newTenantForm, setNewTenantForm] = useState({
@@ -151,6 +154,36 @@ export const SuperAdminDashboard: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 flex">
+        
+       {/* LOGOUT MODAL */}
+       {showLogoutConfirm && (
+            <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
+                <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm">
+                    <div className="flex flex-col items-center text-center mb-6">
+                        <div className="bg-red-100 p-3 rounded-full mb-3 text-red-600">
+                            <LogOut size={32} />
+                        </div>
+                        <h3 className="text-xl font-bold text-gray-800">Sair do Painel?</h3>
+                        <p className="text-gray-500 text-sm mt-1">Você precisará fazer login novamente.</p>
+                    </div>
+                    <div className="flex gap-3">
+                        <button 
+                            onClick={() => setShowLogoutConfirm(false)}
+                            className="flex-1 py-3 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-lg transition-colors"
+                        >
+                            Cancelar
+                        </button>
+                        <button 
+                            onClick={handleLogout}
+                            className="flex-1 py-3 px-4 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg transition-colors"
+                        >
+                            Sair Agora
+                        </button>
+                    </div>
+                </div>
+            </div>
+       )}
+
        {/* Sidebar */}
        <div className="w-64 bg-slate-900 text-white p-6 sticky top-0 h-screen flex flex-col justify-between shrink-0 z-20">
           <div>
@@ -172,7 +205,7 @@ export const SuperAdminDashboard: React.FC = () => {
                 </button>
             </nav>
           </div>
-          <button onClick={handleLogout} className="flex items-center gap-3 w-full p-3 rounded text-red-400 hover:bg-slate-800 mt-auto">
+          <button onClick={() => setShowLogoutConfirm(true)} className="flex items-center gap-3 w-full p-3 rounded text-red-400 hover:bg-slate-800 mt-auto">
               <LogOut size={20} /> Sair
           </button>
        </div>

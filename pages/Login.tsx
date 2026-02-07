@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useRestaurant } from '../context/RestaurantContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { ChefHat, Lock, Loader2, Mail, AlertCircle, UserPlus, ArrowLeft } from 'lucide-react';
 import { Role } from '../types';
 import { supabase } from '../lib/supabase';
@@ -10,6 +10,7 @@ import { getTenantSlug } from '../utils/tenant';
 export const Login: React.FC = () => {
   const { state, dispatch } = useRestaurant();
   const navigate = useNavigate();
+  const location = useLocation();
   
   const [isRegistering, setIsRegistering] = useState(false); // Alternar entre Login e Cadastro de Senha
   const [email, setEmail] = useState('');
@@ -30,6 +31,21 @@ export const Login: React.FC = () => {
         else navigate('/waiter');
     }
   }, [state.currentUser, navigate]);
+
+  // Efeito para processar parâmetros de URL (Link de Convite)
+  useEffect(() => {
+      const params = new URLSearchParams(location.search);
+      const emailParam = params.get('email');
+      const registerParam = params.get('register');
+
+      if (emailParam) {
+          setEmail(emailParam);
+      }
+      
+      if (registerParam === 'true') {
+          setIsRegistering(true);
+      }
+  }, [location.search]);
 
   const handleAuthAction = async (e: React.FormEvent) => {
       e.preventDefault();

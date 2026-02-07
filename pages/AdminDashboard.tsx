@@ -4,7 +4,7 @@ import { Button } from '../components/Button';
 import { QRCodeGenerator } from '../components/QRCodeGenerator';
 import { ImageUploader } from '../components/ImageUploader';
 import { Product, ProductType, Role, User } from '../types';
-import { LayoutDashboard, Utensils, QrCode, Printer, ExternalLink, Palette, Eye, EyeOff, Save, Copy, Plus, Users, ShieldCheck, Trash2, Edit, AlertTriangle, FileBarChart, X, ArrowUp, ArrowDown, LayoutGrid, List as ListIcon, Image as ImageIcon, Calendar, TrendingUp, Search, Loader2, Menu, Activity, CheckSquare, GripVertical } from 'lucide-react';
+import { LayoutDashboard, Utensils, QrCode, Printer, ExternalLink, Palette, Eye, EyeOff, Save, Copy, Plus, Users, ShieldCheck, Trash2, Edit, AlertTriangle, FileBarChart, X, ArrowUp, ArrowDown, LayoutGrid, List as ListIcon, Image as ImageIcon, Calendar, TrendingUp, Search, Loader2, Menu, Activity, CheckSquare, GripVertical, Link as LinkIcon, Share2 } from 'lucide-react';
 import { getTenantSlug } from '../utils/tenant';
 import { supabase } from '../lib/supabase';
 
@@ -76,6 +76,20 @@ export const AdminDashboard: React.FC = () => {
   
   const handlePrintReport = () => {
       window.print();
+  };
+
+  const copyInviteLink = (userEmail?: string) => {
+      if (!userEmail) {
+          alert("Este usuário não possui e-mail cadastrado.");
+          return;
+      }
+      const slug = state.tenantSlug || getTenantSlug();
+      // Cria um link que vai direto para o login com email preenchido e modo de cadastro ativo
+      const link = `${window.location.origin}/login?restaurant=${slug}&email=${encodeURIComponent(userEmail)}&register=true`;
+      
+      navigator.clipboard.writeText(link).then(() => {
+          alert("Link de primeiro acesso copiado! Envie para o funcionário criar a senha.");
+      });
   };
 
   // --- Report Logic ---
@@ -628,6 +642,13 @@ export const AdminDashboard: React.FC = () => {
                                     </div>
 
                                     <div className="flex items-center gap-2">
+                                        <button 
+                                            onClick={() => copyInviteLink(user.email)} 
+                                            className="text-green-600 hover:text-green-800 p-2 bg-green-50 rounded-lg" 
+                                            title="Copiar Link de Convite (Primeiro Acesso)"
+                                        >
+                                            <Share2 size={20} />
+                                        </button>
                                         <button onClick={() => startEditUser(user)} className="text-blue-500 hover:text-blue-700 p-2 bg-blue-50 rounded-lg" title="Editar">
                                             <Edit size={20} />
                                         </button>
