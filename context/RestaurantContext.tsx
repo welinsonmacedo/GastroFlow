@@ -35,6 +35,8 @@ type Action =
   | { type: 'ADD_USER'; user: User }
   | { type: 'UPDATE_USER'; user: User }
   | { type: 'DELETE_USER'; userId: string }
+  | { type: 'ADD_TABLE' } // Novo
+  | { type: 'DELETE_TABLE'; tableId: string } // Novo
   | { type: 'OPEN_TABLE'; tableId: string; customerName: string; accessCode: string }
   | { type: 'CLOSE_TABLE'; tableId: string }
   | { type: 'PLACE_ORDER'; tableId: string; items: { productId: string; quantity: number; notes: string }[] }
@@ -372,6 +374,34 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             dispatchLocal(action);
             break;
         
+        case 'ADD_TABLE':
+            if (tenantId) {
+                // Calcula o próximo número de mesa
+                const maxNumber = state.tables.reduce((max, t) => Math.max(max, t.number), 0);
+                const nextNumber = maxNumber + 1;
+                
+                await supabase.from('restaurant_tables').insert({
+                    tenant_id: tenantId,
+                    number: nextNumber,
+                    status: 'AVAILABLE'
+                });
+                logAudit(tenantId, 'ADD_TABLE', `Mesa ${nextNumber} criada`);
+            }
+            break;
+
+        case 'DELETE_TABLE':
+            if (tenantId) {
+                // Verifica se há pedidos abertos
+                const hasOrders = state.orders.some(o => o.tableId === action.tableId && !o.isPaid);
+                if (hasOrders) {
+                    alert("Não é possível excluir uma mesa com pedidos em aberto.");
+                    return;
+                }
+                await supabase.from('restaurant_tables').delete().eq('id', action.tableId);
+                logAudit(tenantId, 'DELETE_TABLE', `Mesa ID ${action.tableId} excluída`);
+            }
+            break;
+
         case 'OPEN_TABLE':
             if (tenantId) {
                 await supabase.from('restaurant_tables').update({

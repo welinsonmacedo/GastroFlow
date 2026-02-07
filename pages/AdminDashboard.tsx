@@ -120,6 +120,19 @@ export const AdminDashboard: React.FC = () => {
       setUserForm({ name: '', role: Role.WAITER, pin: '', email: '' });
   };
 
+  // --- Handlers para Mesas ---
+  const handleAddTable = () => {
+      if(window.confirm('Adicionar uma nova mesa?')) {
+          dispatch({ type: 'ADD_TABLE' });
+      }
+  };
+
+  const handleDeleteTable = (tableId: string) => {
+      if(window.confirm('Tem certeza que deseja excluir esta mesa?')) {
+          dispatch({ type: 'DELETE_TABLE', tableId });
+      }
+  };
+
   return (
     <div className="min-h-screen bg-gray-100 flex">
         {/* Sidebar */}
@@ -446,15 +459,36 @@ export const AdminDashboard: React.FC = () => {
             )}
              {activeTab === 'TABLES' && (
                 <div>
-                     <h2 className="text-2xl font-bold mb-6 text-gray-800">Mesas & QR Codes</h2>
+                     <div className="flex justify-between items-center mb-6">
+                        <div>
+                            <h2 className="text-2xl font-bold text-gray-800">Mesas & QR Codes</h2>
+                            <p className="text-sm text-gray-500">Gerencie a quantidade de mesas e imprima os QR Codes.</p>
+                        </div>
+                        <Button onClick={handleAddTable}>
+                            <Plus size={16} /> Nova Mesa
+                        </Button>
+                    </div>
+
+                    <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-8 rounded-r text-sm text-blue-800">
+                        <strong>Como funciona:</strong> O QR Code gera um link <em>exclusivo da mesa</em>. Quando o cliente escaneia, ele verá uma tela de "Mesa Aguardando Liberação". O cardápio só é exibido após o garçom "Abrir a Mesa" e fornecer o código de acesso.
+                    </div>
+
                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                         {state.tables.map(table => (
-                            <div key={table.id} className="bg-white p-6 rounded-xl shadow-sm flex flex-col items-center gap-4 border border-gray-100">
+                            <div key={table.id} className="bg-white p-6 rounded-xl shadow-sm flex flex-col items-center gap-4 border border-gray-100 relative group">
+                                <button 
+                                    onClick={() => handleDeleteTable(table.id)}
+                                    className="absolute top-2 right-2 p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors"
+                                    title="Excluir Mesa"
+                                >
+                                    <Trash2 size={16} />
+                                </button>
+                                
                                 <h3 className="text-xl font-bold text-gray-800">Mesa {table.number}</h3>
                                 <QRCodeGenerator tableId={table.id} size={150} />
                                 <div className="w-full flex gap-1">
-                                    <a href={getTableUrl(table.id)} target="_blank" className="flex-1 text-xs bg-blue-50 text-blue-600 hover:bg-blue-100 py-2 rounded text-center flex items-center justify-center gap-1 font-medium"><ExternalLink size={12} /> Abrir</a>
-                                    <button onClick={() => navigator.clipboard.writeText(getTableUrl(table.id))} className="px-3 bg-gray-100 text-gray-600 hover:bg-gray-200 rounded text-xs flex items-center justify-center"><Copy size={12} /></button>
+                                    <a href={getTableUrl(table.id)} target="_blank" className="flex-1 text-xs bg-blue-50 text-blue-600 hover:bg-blue-100 py-2 rounded text-center flex items-center justify-center gap-1 font-medium"><ExternalLink size={12} /> Testar Link</a>
+                                    <button onClick={() => navigator.clipboard.writeText(getTableUrl(table.id))} className="px-3 bg-gray-100 text-gray-600 hover:bg-gray-200 rounded text-xs flex items-center justify-center" title="Copiar Link"><Copy size={12} /></button>
                                 </div>
                                 <Button variant="secondary" size="sm" className="w-full" onClick={() => handlePrint(table.id)}><Printer size={16} /> Imprimir</Button>
                             </div>
