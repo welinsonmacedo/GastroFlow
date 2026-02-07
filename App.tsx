@@ -103,7 +103,7 @@ const TenantApp = () => {
         <>
             <TenantNavigation />
             <Routes>
-                <Route path="/" element={<Navigate to="/login" />} />
+                <Route path="/" element={<Navigate to="/login" replace />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/client/table/:tableId" element={<ClientApp />} />
                 

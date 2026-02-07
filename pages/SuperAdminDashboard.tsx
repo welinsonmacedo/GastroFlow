@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useSaaS } from '../context/SaaSContext';
-import { Plan, PlanType } from '../types';
+import { Plan, PlanType, RestaurantTenant } from '../types';
 import { Button } from '../components/Button';
-import { Building2, Users, DollarSign, Activity, Settings, Search, MoreHorizontal, ExternalLink, LogOut, Plus, X, List, Edit } from 'lucide-react';
+import { Building2, Users, DollarSign, Activity, Settings, Search, MoreHorizontal, ExternalLink, LogOut, Plus, X, List, Edit, Key } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 type ViewMode = 'RESTAURANTS' | 'FINANCIAL' | 'PLANS' | 'SETTINGS';
@@ -13,7 +13,7 @@ export const SuperAdminDashboard: React.FC = () => {
   const [activeView, setActiveView] = useState<ViewMode>('RESTAURANTS');
   const [filter, setFilter] = useState('');
   
-  // Modal State
+  // Modal State (Create)
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newTenantForm, setNewTenantForm] = useState({
       name: '',
@@ -22,6 +22,12 @@ export const SuperAdminDashboard: React.FC = () => {
       email: '',
       plan: 'FREE' as PlanType
   });
+
+  // Modal State (Edit & Admin Create)
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingTenant, setEditingTenant] = useState<RestaurantTenant | null>(null);
+  const [editTab, setEditTab] = useState<'DETAILS' | 'ADMIN'>('DETAILS');
+  const [newAdminForm, setNewAdminForm] = useState({ name: 'Admin', email: '', pin: '1234' });
 
   // Settings State
   const [settingsForm, setSettingsForm] = useState({
@@ -69,6 +75,50 @@ export const SuperAdminDashboard: React.FC = () => {
       setIsModalOpen(false);
       setNewTenantForm({ name: '', slug: '', ownerName: '', email: '', plan: 'FREE' });
   };
+
+  // --- Handlers para Edição ---
+
+  const openEditModal = (tenant: RestaurantTenant) => {
+      setEditingTenant(tenant);
+      setEditTab('DETAILS');
+      setNewAdminForm({ name: 'Admin', email: tenant.email, pin: '1234' });
+      setIsEditModalOpen(true);
+  };
+
+  const handleUpdateTenant = (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!editingTenant) return;
+      dispatch({ 
+          type: 'UPDATE_TENANT', 
+          payload: {
+              id: editingTenant.id,
+              name: editingTenant.name,
+              slug: editingTenant.slug,
+              ownerName: editingTenant.ownerName,
+              email: editingTenant.email
+          } 
+      });
+      setIsEditModalOpen(false);
+      alert("Restaurante atualizado!");
+  };
+
+  const handleCreateAdmin = (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!editingTenant) return;
+      dispatch({ 
+          type: 'CREATE_TENANT_ADMIN', 
+          payload: {
+              tenantId: editingTenant.id,
+              name: newAdminForm.name,
+              email: newAdminForm.email,
+              pin: newAdminForm.pin
+          } 
+      });
+      setNewAdminForm({ name: 'Admin', email: '', pin: '1234' });
+      // Mantém modal aberto
+  };
+
+  // -----------------------------
 
   const handleUpdateProfile = (e: React.FormEvent) => {
       e.preventDefault();
@@ -186,7 +236,15 @@ export const SuperAdminDashboard: React.FC = () => {
                                         </select>
                                     </td>
                                     <td className="p-4"><button onClick={() => dispatch({ type: 'TOGGLE_STATUS', tenantId: tenant.id })} className={`px-3 py-1 rounded-full text-xs font-bold transition-colors border ${tenant.status === 'ACTIVE' ? 'bg-green-100 text-green-700 border-green-200' : 'bg-red-100 text-red-700 border-red-200'}`}>{tenant.status === 'ACTIVE' ? 'ATIVO' : 'INATIVO'}</button></td>
-                                    <td className="p-4 text-right"><button className="text-gray-400 hover:text-gray-600 p-2 hover:bg-gray-100 rounded-full"><MoreHorizontal size={20} /></button></td>
+                                    <td className="p-4 text-right">
+                                        <button 
+                                            onClick={() => openEditModal(tenant)}
+                                            className="text-gray-400 hover:text-blue-600 p-2 hover:bg-blue-50 rounded-full transition-colors"
+                                            title="Editar Restaurante"
+                                        >
+                                            <Edit size={20} />
+                                        </button>
+                                    </td>
                                 </tr>
                             ))}
                         </tbody>
@@ -288,7 +346,7 @@ export const SuperAdminDashboard: React.FC = () => {
            )}
        </div>
 
-       {/* --- MODAL: NEW TENANT --- */}
+       {/* --- MODAL: CREATE TENANT --- */}
        {isModalOpen && (
            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
                <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6">
@@ -299,6 +357,85 @@ export const SuperAdminDashboard: React.FC = () => {
                        <input type="text" required className="w-full border p-2.5 rounded-lg" placeholder="Dono" value={newTenantForm.ownerName} onChange={(e) => setNewTenantForm({...newTenantForm, ownerName: e.target.value})} />
                        <Button type="submit" className="w-full">Criar</Button>
                    </form>
+               </div>
+           </div>
+       )}
+
+       {/* --- MODAL: EDIT TENANT & ADMIN --- */}
+       {isEditModalOpen && editingTenant && (
+           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+               <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6 flex flex-col max-h-[90vh]">
+                   <div className="flex justify-between items-center mb-6">
+                       <h3 className="text-xl font-bold text-gray-800">Gerenciar {editingTenant.name}</h3>
+                       <button onClick={() => setIsEditModalOpen(false)} className="p-2 hover:bg-gray-100 rounded-full"><X size={20} /></button>
+                   </div>
+                   
+                   <div className="flex gap-2 mb-6 border-b">
+                       <button 
+                         onClick={() => setEditTab('DETAILS')} 
+                         className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${editTab === 'DETAILS' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                       >
+                           Dados Principais
+                       </button>
+                       <button 
+                         onClick={() => setEditTab('ADMIN')} 
+                         className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${editTab === 'ADMIN' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                       >
+                           Criar Admin
+                       </button>
+                   </div>
+
+                   <div className="overflow-y-auto flex-1 px-1">
+                       {editTab === 'DETAILS' && (
+                           <form onSubmit={handleUpdateTenant} className="space-y-4">
+                               <div>
+                                   <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Nome do Restaurante</label>
+                                   <input className="w-full border p-2.5 rounded-lg" value={editingTenant.name} onChange={(e) => setEditingTenant({...editingTenant, name: e.target.value})} />
+                               </div>
+                               <div>
+                                   <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Slug (URL)</label>
+                                   <input className="w-full border p-2.5 rounded-lg" value={editingTenant.slug} onChange={(e) => setEditingTenant({...editingTenant, slug: e.target.value})} />
+                               </div>
+                               <div>
+                                   <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Nome do Dono</label>
+                                   <input className="w-full border p-2.5 rounded-lg" value={editingTenant.ownerName} onChange={(e) => setEditingTenant({...editingTenant, ownerName: e.target.value})} />
+                               </div>
+                               <div>
+                                   <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Email de Contato</label>
+                                   <input className="w-full border p-2.5 rounded-lg" value={editingTenant.email} onChange={(e) => setEditingTenant({...editingTenant, email: e.target.value})} />
+                               </div>
+                               <Button type="submit" className="w-full mt-4">Salvar Alterações</Button>
+                           </form>
+                       )}
+
+                       {editTab === 'ADMIN' && (
+                           <div className="space-y-4">
+                               <div className="bg-blue-50 p-4 rounded-lg text-sm text-blue-800 mb-4">
+                                   Adicione um usuário com acesso total (ADMIN) para este restaurante. Útil para resetar acesso ou criar contas manuais.
+                               </div>
+                               <form onSubmit={handleCreateAdmin} className="space-y-4">
+                                   <div>
+                                       <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Nome</label>
+                                       <input className="w-full border p-2.5 rounded-lg" placeholder="Ex: Gerente" value={newAdminForm.name} onChange={(e) => setNewAdminForm({...newAdminForm, name: e.target.value})} />
+                                   </div>
+                                   <div>
+                                       <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Email (Login)</label>
+                                       <input type="email" className="w-full border p-2.5 rounded-lg" placeholder="gerente@restaurante.com" value={newAdminForm.email} onChange={(e) => setNewAdminForm({...newAdminForm, email: e.target.value})} />
+                                   </div>
+                                   <div>
+                                       <label className="block text-xs font-bold text-gray-500 uppercase mb-1">PIN de Acesso</label>
+                                       <div className="relative">
+                                           <Key size={16} className="absolute left-3 top-3 text-gray-400" />
+                                           <input className="w-full border p-2.5 pl-10 rounded-lg font-mono" placeholder="1234" maxLength={4} value={newAdminForm.pin} onChange={(e) => setNewAdminForm({...newAdminForm, pin: e.target.value})} />
+                                       </div>
+                                   </div>
+                                   <Button type="submit" variant="secondary" className="w-full mt-4 border border-gray-300">
+                                       <Plus size={16} /> Criar Usuário Admin
+                                   </Button>
+                               </form>
+                           </div>
+                       )}
+                   </div>
                </div>
            </div>
        )}

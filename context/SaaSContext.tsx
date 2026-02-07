@@ -17,6 +17,8 @@ type SaaSAction =
   | { type: 'SET_TENANTS'; payload: RestaurantTenant[] }
   | { type: 'SET_PLANS'; payload: Plan[] }
   | { type: 'CREATE_TENANT'; payload: { name: string; slug: string; ownerName: string; email: string; plan: PlanType } }
+  | { type: 'UPDATE_TENANT'; payload: { id: string; name: string; slug: string; ownerName: string; email: string } }
+  | { type: 'CREATE_TENANT_ADMIN'; payload: { tenantId: string; name: string; email: string; pin: string } }
   | { type: 'ADD_TENANT_TO_LIST'; tenant: RestaurantTenant }
   | { type: 'TOGGLE_STATUS'; tenantId: string }
   | { type: 'CHANGE_PLAN'; tenantId: string; plan: PlanType }
@@ -76,6 +78,16 @@ const saasReducer = (state: SaaSState, action: SaaSAction): SaaSState => {
         tenants: state.tenants.map(t => 
           t.id === action.tenantId 
             ? { ...t, plan: action.plan } 
+            : t
+        )
+      };
+    
+    case 'UPDATE_TENANT':
+      return {
+        ...state,
+        tenants: state.tenants.map(t => 
+          t.id === action.payload.id
+            ? { ...t, name: action.payload.name, slug: action.payload.slug, ownerName: action.payload.ownerName, email: action.payload.email } 
             : t
         )
       };
@@ -211,6 +223,43 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
         }
         return; // Retorna para não chamar o dispatch default com payload incorreto
+    }
+
+    if (action.type === 'UPDATE_TENANT') {
+        try {
+            const { error } = await supabase.from('tenants').update({
+                name: action.payload.name,
+                slug: action.payload.slug,
+                owner_name: action.payload.ownerName,
+                email: action.payload.email
+            }).eq('id', action.payload.id);
+
+            if (error) throw error;
+            dispatch(action); // Atualiza UI
+        } catch (error) {
+            console.error("Erro ao atualizar tenant:", error);
+            alert("Erro ao atualizar dados do restaurante.");
+        }
+        return;
+    }
+
+    if (action.type === 'CREATE_TENANT_ADMIN') {
+        try {
+            const { error } = await supabase.from('staff').insert({
+                tenant_id: action.payload.tenantId,
+                name: action.payload.name,
+                email: action.payload.email,
+                role: 'ADMIN',
+                pin: action.payload.pin
+            });
+
+            if (error) throw error;
+            alert("Usuário Admin criado com sucesso!");
+        } catch (error) {
+             console.error("Erro ao criar admin:", error);
+             alert("Erro ao criar usuário admin.");
+        }
+        return;
     }
 
     if (action.type === 'UPDATE_PROFILE') {
