@@ -28,7 +28,8 @@ type Action =
   | { type: 'SET_LOADING'; isLoading: boolean }
   | { type: 'INIT_DATA'; payload: Partial<State> }
   | { type: 'TENANT_NOT_FOUND' }
-  | { type: 'TENANT_INACTIVE' } // Nova ação
+  | { type: 'TENANT_INACTIVE' } 
+  | { type: 'UPDATE_PLAN_LIMITS'; limits: PlanLimits; status?: string } // Nova Ação
   | { type: 'LOGIN'; user: User }
   | { type: 'LOGOUT' }
   | { type: 'REALTIME_UPDATE_TABLES'; tables: Table[] }
@@ -114,6 +115,14 @@ const restaurantReducer = (state: State, action: Action): State => {
 
     case 'TENANT_INACTIVE':
         return { ...state, isLoading: false, isValidTenant: true, isInactiveTenant: true };
+
+    case 'UPDATE_PLAN_LIMITS':
+        return { 
+            ...state, 
+            planLimits: action.limits,
+            isInactiveTenant: action.status === 'INACTIVE',
+            isValidTenant: action.status !== 'INACTIVE'
+        };
 
     case 'INIT_DATA':
         return { ...state, ...action.payload, isLoading: false, isValidTenant: true, isInactiveTenant: false };
@@ -528,13 +537,37 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
          }
     };
 
+    // --- Fetcher para Atualização de Plano (CRÍTICO) ---
+    const fetchTenantPlan = async (payload: any) => {
+        if (!payload.new) return;
+        
+        const newPlanKey = payload.new.plan;
+        const newStatus = payload.new.status;
+
+        // Busca os limites do novo plano
+        const { data: planData } = await supabase
+            .from('plans')
+            .select('limits')
+            .eq('key', newPlanKey)
+            .maybeSingle();
+        
+        if (planData && planData.limits) {
+            dispatchLocal({ type: 'UPDATE_PLAN_LIMITS', limits: planData.limits, status: newStatus });
+            if (newStatus === 'INACTIVE') {
+                alert("ATENÇÃO: A conta deste restaurante foi suspensa pelo administrador.");
+            }
+        }
+    };
+
     // --- Configurando Canal Único de Assinatura ---
     const channel = supabase.channel(`restaurant_updates:${tenantId}`)
+        // Tenant Info (Plano, Status, Tema)
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'tenants', filter: `id=eq.${tenantId}` }, fetchTenantPlan)
         // Mesas
         .on('postgres_changes', { event: '*', schema: 'public', table: 'restaurant_tables', filter: `tenant_id=eq.${tenantId}` }, fetchTables)
-        // Pedidos (Atualiza a lista inteira se um pedido for criado ou pago)
+        // Pedidos
         .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `tenant_id=eq.${tenantId}` }, fetchOrders)
-        // Itens de Pedido (Atualiza a lista de PEDIDOS se um item mudar status na cozinha)
+        // Itens de Pedido
         .on('postgres_changes', { event: '*', schema: 'public', table: 'order_items', filter: `tenant_id=eq.${tenantId}` }, fetchOrders)
         // Chamados de Serviço
         .on('postgres_changes', { event: '*', schema: 'public', table: 'service_calls', filter: `tenant_id=eq.${tenantId}` }, fetchServiceCalls)

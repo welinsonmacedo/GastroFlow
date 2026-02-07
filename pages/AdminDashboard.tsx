@@ -4,7 +4,7 @@ import { Button } from '../components/Button';
 import { QRCodeGenerator } from '../components/QRCodeGenerator';
 import { ImageUploader } from '../components/ImageUploader';
 import { Product, ProductType, Role, User } from '../types';
-import { LayoutDashboard, Utensils, QrCode, Printer, ExternalLink, Palette, Eye, EyeOff, Save, Copy, Plus, Users, ShieldCheck, Trash2, Edit, AlertTriangle, FileBarChart, X, ArrowUp, ArrowDown, LayoutGrid, List as ListIcon, Image as ImageIcon, Calendar, TrendingUp, Search, Loader2, Menu, Activity, CheckSquare, GripVertical, Link as LinkIcon, Share2 } from 'lucide-react';
+import { LayoutDashboard, Utensils, QrCode, Printer, ExternalLink, Palette, Eye, EyeOff, Save, Copy, Plus, Users, ShieldCheck, Trash2, Edit, AlertTriangle, FileBarChart, X, ArrowUp, ArrowDown, LayoutGrid, List as ListIcon, Image as ImageIcon, Calendar, TrendingUp, Search, Loader2, Menu, Activity, CheckSquare, GripVertical, Link as LinkIcon, Share2, Lock } from 'lucide-react';
 import { getTenantSlug } from '../utils/tenant';
 import { supabase } from '../lib/supabase';
 
@@ -95,6 +95,8 @@ export const AdminDashboard: React.FC = () => {
   // --- Report Logic ---
   const fetchReportData = useCallback(async () => {
       if (!state.tenantId) return;
+      if (!state.planLimits.allowReports) return; // Segurança extra
+
       setLoadingReport(true);
 
       const start = reportDateStart + ' 00:00:00';
@@ -163,7 +165,7 @@ export const AdminDashboard: React.FC = () => {
       } finally {
           setLoadingReport(false);
       }
-  }, [state.tenantId, reportDateStart, reportDateEnd]);
+  }, [state.tenantId, reportDateStart, reportDateEnd, state.planLimits.allowReports]);
 
   useEffect(() => {
       if (activeTab === 'REPORTS') {
@@ -325,9 +327,21 @@ export const AdminDashboard: React.FC = () => {
               <button onClick={() => { setActiveTab('DASHBOARD'); setIsSidebarOpen(false); }} className={`flex items-center gap-3 w-full p-3 rounded transition-colors ${activeTab === 'DASHBOARD' ? 'bg-blue-600' : 'hover:bg-slate-800'}`}>
                   <LayoutDashboard size={20} /> Visão Geral
               </button>
-              <button onClick={() => { setActiveTab('REPORTS'); setIsSidebarOpen(false); }} className={`flex items-center gap-3 w-full p-3 rounded transition-colors ${activeTab === 'REPORTS' ? 'bg-blue-600' : 'hover:bg-slate-800'}`}>
-                  <FileBarChart size={20} /> Relatórios
-              </button>
+              
+              {/* FEATURE LOCK UI FOR REPORTS */}
+              <div className="relative group">
+                  <button 
+                    onClick={() => { if(state.planLimits.allowReports) { setActiveTab('REPORTS'); setIsSidebarOpen(false); } }} 
+                    className={`flex items-center gap-3 w-full p-3 rounded transition-colors 
+                        ${activeTab === 'REPORTS' ? 'bg-blue-600' : 'hover:bg-slate-800'}
+                        ${!state.planLimits.allowReports ? 'opacity-50 cursor-not-allowed bg-transparent hover:bg-transparent' : ''}
+                    `}
+                  >
+                      <FileBarChart size={20} /> Relatórios
+                      {!state.planLimits.allowReports && <Lock size={14} className="ml-auto text-gray-400" />}
+                  </button>
+              </div>
+
               <button onClick={() => { setActiveTab('PRODUCTS'); setIsSidebarOpen(false); }} className={`flex items-center gap-3 w-full p-3 rounded transition-colors ${activeTab === 'PRODUCTS' ? 'bg-blue-600' : 'hover:bg-slate-800'}`}>
                   <Utensils size={20} /> Cardápio
               </button>
@@ -428,127 +442,142 @@ export const AdminDashboard: React.FC = () => {
                 )}
                 
                 {activeTab === 'REPORTS' && (
-                <div className="space-y-8">
-                     <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 no-print bg-white p-4 rounded-xl shadow-sm border">
-                        <div>
-                            <h2 className="text-xl md:text-2xl font-bold text-gray-800">Relatórios Gerenciais</h2>
-                            <p className="text-xs md:text-sm text-gray-500">Analise o desempenho do seu restaurante por período.</p>
-                        </div>
-                        <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-3 w-full xl:w-auto">
-                            <div className="flex items-center gap-2 bg-gray-50 p-2 rounded border w-full sm:w-auto justify-between">
-                                <Calendar size={16} className="text-gray-500 shrink-0"/>
-                                <input 
-                                    type="date" 
-                                    value={reportDateStart} 
-                                    onChange={(e) => setReportDateStart(e.target.value)} 
-                                    className="bg-transparent text-sm outline-none flex-1 min-w-[100px]"
-                                />
-                                <span className="text-gray-400">-</span>
-                                <input 
-                                    type="date" 
-                                    value={reportDateEnd} 
-                                    onChange={(e) => setReportDateEnd(e.target.value)} 
-                                    className="bg-transparent text-sm outline-none flex-1 min-w-[100px]"
-                                />
+                    <>
+                    {!state.planLimits.allowReports ? (
+                        <div className="flex flex-col items-center justify-center py-20 text-center bg-white rounded-xl shadow-sm border">
+                            <div className="bg-orange-100 p-6 rounded-full mb-6 text-orange-600">
+                                <Lock size={64} />
                             </div>
-                            <Button onClick={fetchReportData} disabled={loadingReport} className="w-full sm:w-auto">
-                                {loadingReport ? <Loader2 className="animate-spin" size={16}/> : <Search size={16}/>} Filtrar
-                            </Button>
-                            <Button variant="secondary" onClick={handlePrintReport} className="w-full sm:w-auto"><Printer size={16}/> Imprimir</Button>
+                            <h2 className="text-2xl font-bold text-gray-800 mb-2">Funcionalidade Premium</h2>
+                            <p className="text-gray-600 max-w-md mb-6">
+                                Relatórios avançados estão disponíveis apenas nos planos PRO e ENTERPRISE.
+                            </p>
+                            <p className="text-sm text-gray-500">Entre em contato com o suporte para fazer um upgrade.</p>
                         </div>
-                     </div>
-
-                     {loadingReport ? (
-                         <div className="text-center py-20">
-                             <Loader2 size={40} className="animate-spin mx-auto text-blue-600"/>
-                             <p className="text-gray-500 mt-2">Carregando dados...</p>
-                         </div>
-                     ) : (
-                        <>
-                            {/* Resumo Financeiro */}
-                            <div className="bg-white p-6 rounded-xl shadow-sm border print:shadow-none print:border-black">
-                                <h3 className="text-lg font-bold mb-4 border-b pb-2 flex items-center gap-2"><TrendingUp size={20}/> Resumo Financeiro</h3>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                                    <div className="p-3 bg-gray-50 rounded-lg">
-                                        <p className="text-sm text-gray-500">Vendas Totais</p>
-                                        <p className="text-2xl lg:text-3xl font-bold text-green-600">R$ {reportData.totalSales.toFixed(2)}</p>
+                    ) : (
+                        <div className="space-y-8">
+                            <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 no-print bg-white p-4 rounded-xl shadow-sm border">
+                                <div>
+                                    <h2 className="text-xl md:text-2xl font-bold text-gray-800">Relatórios Gerenciais</h2>
+                                    <p className="text-xs md:text-sm text-gray-500">Analise o desempenho do seu restaurante por período.</p>
+                                </div>
+                                <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-3 w-full xl:w-auto">
+                                    <div className="flex items-center gap-2 bg-gray-50 p-2 rounded border w-full sm:w-auto justify-between">
+                                        <Calendar size={16} className="text-gray-500 shrink-0"/>
+                                        <input 
+                                            type="date" 
+                                            value={reportDateStart} 
+                                            onChange={(e) => setReportDateStart(e.target.value)} 
+                                            className="bg-transparent text-sm outline-none flex-1 min-w-[100px]"
+                                        />
+                                        <span className="text-gray-400">-</span>
+                                        <input 
+                                            type="date" 
+                                            value={reportDateEnd} 
+                                            onChange={(e) => setReportDateEnd(e.target.value)} 
+                                            className="bg-transparent text-sm outline-none flex-1 min-w-[100px]"
+                                        />
                                     </div>
-                                    {Object.entries(reportData.salesByMethod).map(([method, amount]: any) => (
-                                        <div key={method} className="p-3 bg-gray-50 rounded-lg">
-                                            <p className="text-sm text-gray-500">Via {method}</p>
-                                            <p className="text-xl lg:text-2xl font-bold text-gray-800">R$ {amount.toFixed(2)}</p>
+                                    <Button onClick={fetchReportData} disabled={loadingReport} className="w-full sm:w-auto">
+                                        {loadingReport ? <Loader2 className="animate-spin" size={16}/> : <Search size={16}/>} Filtrar
+                                    </Button>
+                                    <Button variant="secondary" onClick={handlePrintReport} className="w-full sm:w-auto"><Printer size={16}/> Imprimir</Button>
+                                </div>
+                            </div>
+
+                            {loadingReport ? (
+                                <div className="text-center py-20">
+                                    <Loader2 size={40} className="animate-spin mx-auto text-blue-600"/>
+                                    <p className="text-gray-500 mt-2">Carregando dados...</p>
+                                </div>
+                            ) : (
+                                <>
+                                    {/* Resumo Financeiro */}
+                                    <div className="bg-white p-6 rounded-xl shadow-sm border print:shadow-none print:border-black">
+                                        <h3 className="text-lg font-bold mb-4 border-b pb-2 flex items-center gap-2"><TrendingUp size={20}/> Resumo Financeiro</h3>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                                            <div className="p-3 bg-gray-50 rounded-lg">
+                                                <p className="text-sm text-gray-500">Vendas Totais</p>
+                                                <p className="text-2xl lg:text-3xl font-bold text-green-600">R$ {reportData.totalSales.toFixed(2)}</p>
+                                            </div>
+                                            {Object.entries(reportData.salesByMethod).map(([method, amount]: any) => (
+                                                <div key={method} className="p-3 bg-gray-50 rounded-lg">
+                                                    <p className="text-sm text-gray-500">Via {method}</p>
+                                                    <p className="text-xl lg:text-2xl font-bold text-gray-800">R$ {amount.toFixed(2)}</p>
+                                                </div>
+                                            ))}
                                         </div>
-                                    ))}
-                                </div>
-                            </div>
+                                    </div>
 
-                            {/* Produtos Mais Vendidos */}
-                            <div className="bg-white rounded-xl shadow-sm border overflow-hidden print:shadow-none print:border-black overflow-x-auto">
-                                <div className="p-4 bg-gray-50 border-b print:bg-gray-200">
-                                    <h3 className="font-bold flex items-center gap-2"><Utensils size={18}/> Produtos Mais Vendidos</h3>
-                                </div>
-                                <table className="w-full text-left text-sm min-w-[500px]">
-                                    <thead className="bg-gray-100 print:bg-gray-50">
-                                        <tr>
-                                            <th className="p-3 w-10">#</th>
-                                            <th className="p-3">Produto</th>
-                                            <th className="p-3 text-right">Qtd. Vendida</th>
-                                            <th className="p-3 text-right">Ticket Médio</th>
-                                            <th className="p-3 text-right">Receita Total</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {reportData.topProducts.length === 0 && (
-                                            <tr><td colSpan={5} className="p-4 text-center text-gray-500">Nenhum produto vendido neste período.</td></tr>
-                                        )}
-                                        {reportData.topProducts.map((prod, index) => (
-                                            <tr key={prod.name} className="border-b">
-                                                <td className="p-3 font-bold text-gray-500">{index + 1}</td>
-                                                <td className="p-3 font-medium">{prod.name}</td>
-                                                <td className="p-3 text-right">{prod.quantity}</td>
-                                                <td className="p-3 text-right text-gray-500">R$ {(prod.total / (prod.quantity || 1)).toFixed(2)}</td>
-                                                <td className="p-3 text-right font-bold text-green-700">R$ {prod.total.toFixed(2)}</td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
+                                    {/* Produtos Mais Vendidos */}
+                                    <div className="bg-white rounded-xl shadow-sm border overflow-hidden print:shadow-none print:border-black overflow-x-auto">
+                                        <div className="p-4 bg-gray-50 border-b print:bg-gray-200">
+                                            <h3 className="font-bold flex items-center gap-2"><Utensils size={18}/> Produtos Mais Vendidos</h3>
+                                        </div>
+                                        <table className="w-full text-left text-sm min-w-[500px]">
+                                            <thead className="bg-gray-100 print:bg-gray-50">
+                                                <tr>
+                                                    <th className="p-3 w-10">#</th>
+                                                    <th className="p-3">Produto</th>
+                                                    <th className="p-3 text-right">Qtd. Vendida</th>
+                                                    <th className="p-3 text-right">Ticket Médio</th>
+                                                    <th className="p-3 text-right">Receita Total</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {reportData.topProducts.length === 0 && (
+                                                    <tr><td colSpan={5} className="p-4 text-center text-gray-500">Nenhum produto vendido neste período.</td></tr>
+                                                )}
+                                                {reportData.topProducts.map((prod, index) => (
+                                                    <tr key={prod.name} className="border-b">
+                                                        <td className="p-3 font-bold text-gray-500">{index + 1}</td>
+                                                        <td className="p-3 font-medium">{prod.name}</td>
+                                                        <td className="p-3 text-right">{prod.quantity}</td>
+                                                        <td className="p-3 text-right text-gray-500">R$ {(prod.total / (prod.quantity || 1)).toFixed(2)}</td>
+                                                        <td className="p-3 text-right font-bold text-green-700">R$ {prod.total.toFixed(2)}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
 
-                            {/* Transações Detalhadas */}
-                            <div className="bg-white rounded-xl shadow-sm border overflow-hidden print:shadow-none print:border-black break-before-page overflow-x-auto">
-                                <div className="p-4 bg-gray-50 border-b print:bg-gray-200">
-                                    <h3 className="font-bold flex items-center gap-2"><ListIcon size={18}/> Histórico de Transações</h3>
-                                </div>
-                                <table className="w-full text-left text-sm min-w-[600px]">
-                                    <thead className="bg-gray-100 print:bg-gray-50">
-                                        <tr>
-                                            <th className="p-3">Data</th>
-                                            <th className="p-3">Mesa</th>
-                                            <th className="p-3">Método</th>
-                                            <th className="p-3">Caixa</th>
-                                            <th className="p-3 text-right">Valor</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {reportData.transactions.length === 0 && (
-                                            <tr><td colSpan={5} className="p-4 text-center text-gray-500">Nenhuma transação encontrada.</td></tr>
-                                        )}
-                                        {reportData.transactions.map(t => (
-                                            <tr key={t.id} className="border-b">
-                                                <td className="p-3">{new Date(t.created_at).toLocaleString()}</td>
-                                                <td className="p-3">Mesa {t.table_number}</td>
-                                                <td className="p-3">{t.method}</td>
-                                                <td className="p-3">{t.cashier_name}</td>
-                                                <td className="p-3 text-right font-bold">R$ {t.amount.toFixed(2)}</td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </>
-                     )}
-                </div>
-            )}
+                                    {/* Transações Detalhadas */}
+                                    <div className="bg-white rounded-xl shadow-sm border overflow-hidden print:shadow-none print:border-black break-before-page overflow-x-auto">
+                                        <div className="p-4 bg-gray-50 border-b print:bg-gray-200">
+                                            <h3 className="font-bold flex items-center gap-2"><ListIcon size={18}/> Histórico de Transações</h3>
+                                        </div>
+                                        <table className="w-full text-left text-sm min-w-[600px]">
+                                            <thead className="bg-gray-100 print:bg-gray-50">
+                                                <tr>
+                                                    <th className="p-3">Data</th>
+                                                    <th className="p-3">Mesa</th>
+                                                    <th className="p-3">Método</th>
+                                                    <th className="p-3">Caixa</th>
+                                                    <th className="p-3 text-right">Valor</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {reportData.transactions.length === 0 && (
+                                                    <tr><td colSpan={5} className="p-4 text-center text-gray-500">Nenhuma transação encontrada.</td></tr>
+                                                )}
+                                                {reportData.transactions.map(t => (
+                                                    <tr key={t.id} className="border-b">
+                                                        <td className="p-3">{new Date(t.created_at).toLocaleString()}</td>
+                                                        <td className="p-3">Mesa {t.table_number}</td>
+                                                        <td className="p-3">{t.method}</td>
+                                                        <td className="p-3">{t.cashier_name}</td>
+                                                        <td className="p-3 text-right font-bold">R$ {t.amount.toFixed(2)}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    )}
+                    </>
+                )}
 
             {activeTab === 'STAFF' && (
                 <div>

@@ -25,10 +25,11 @@ import { getTenantSlug } from './utils/tenant';
 interface ProtectedRouteProps {
     children: React.ReactElement;
     allowedRoles?: Role[];
-    requiredRoute?: string; // Nova prop para rota específica
+    requiredRoute?: string; // Rota específica para permissão de Staff
+    requiredFeature?: 'allowKds' | 'allowCashier' | 'allowReports'; // Nova prop para limites do plano
 }
 
-const ProtectedRestaurantRoute = ({ children, allowedRoles, requiredRoute }: ProtectedRouteProps) => {
+const ProtectedRestaurantRoute = ({ children, allowedRoles, requiredRoute, requiredFeature }: ProtectedRouteProps) => {
     const { state } = useRestaurant();
     
     if (state.isLoading) return <div className="p-10 text-center">Carregando...</div>;
@@ -37,14 +38,33 @@ const ProtectedRestaurantRoute = ({ children, allowedRoles, requiredRoute }: Pro
         return <Navigate to={`/login${window.location.search}`} replace />;
     }
 
-    // 1. Verificação por Permissão Explícita (Nova Lógica)
+    // 1. Verificação de Limites do Plano (Bloqueio Global da Funcionalidade)
+    if (requiredFeature && state.planLimits) {
+        if (!state.planLimits[requiredFeature]) {
+            return (
+                <div className="flex flex-col items-center justify-center min-h-screen p-6 text-center bg-gray-50">
+                    <div className="bg-orange-100 p-4 rounded-full mb-4 text-orange-600">
+                        <Lock size={48} />
+                    </div>
+                    <h2 className="text-2xl font-bold text-gray-800 mb-2">Funcionalidade Bloqueada</h2>
+                    <p className="text-gray-600 max-w-md mb-6">
+                        O plano atual do seu restaurante não inclui acesso a esta funcionalidade ({requiredFeature}).
+                    </p>
+                    <p className="text-sm text-gray-500">Entre em contato com o administrador para fazer um upgrade.</p>
+                    <Link to="/admin" className="mt-6 text-blue-600 font-bold hover:underline">Voltar ao Painel</Link>
+                </div>
+            );
+        }
+    }
+
+    // 2. Verificação por Permissão Explícita do Usuário (Staff)
     if (requiredRoute && state.currentUser.allowedRoutes && state.currentUser.allowedRoutes.length > 0) {
         if (!state.currentUser.allowedRoutes.includes(requiredRoute) && state.currentUser.role !== Role.ADMIN) {
              return <div className="p-10 text-center text-red-500">Acesso Negado: Você não tem permissão para acessar esta tela.</div>;
         }
     }
 
-    // 2. Verificação por Role (Compatibilidade e Admin)
+    // 3. Verificação por Role (Compatibilidade e Admin)
     if (allowedRoles && !allowedRoles.includes(state.currentUser.role)) {
          return <div className="p-10 text-center text-red-500">Acesso Negado: Permissão insuficiente.</div>;
     }
@@ -67,16 +87,21 @@ const TenantNavigation = () => {
     if (location.pathname.startsWith('/client') || location.pathname === '/login') return null;
     if (!state.currentUser) return null;
 
-    // Filtra links baseado nas permissões do usuário
+    // Filtra links baseado nas permissões do usuário E nos limites do plano
     const allLinks = [
-        { to: "/waiter", icon: <Coffee size={20}/>, label: "Garçom" },
-        { to: "/kitchen", icon: <Monitor size={20}/>, label: "Cozinha" },
-        { to: "/cashier", icon: <DollarSign size={20}/>, label: "Caixa" },
-        { to: "/admin", icon: <Settings size={20}/>, label: "Admin" },
+        { to: "/waiter", icon: <Coffee size={20}/>, label: "Garçom", requires: null },
+        { to: "/kitchen", icon: <Monitor size={20}/>, label: "Cozinha", requires: 'allowKds' },
+        { to: "/cashier", icon: <DollarSign size={20}/>, label: "Caixa", requires: 'allowCashier' },
+        { to: "/admin", icon: <Settings size={20}/>, label: "Admin", requires: null },
     ];
 
     const navLinks = allLinks.filter(link => {
-        // Admin vê tudo
+        // 1. Verifica Limites do Plano
+        if (link.requires === 'allowKds' && !state.planLimits.allowKds) return false;
+        if (link.requires === 'allowCashier' && !state.planLimits.allowCashier) return false;
+
+        // 2. Verifica Permissões do Usuário
+        // Admin vê tudo (que o plano permite)
         if (state.currentUser?.role === Role.ADMIN) return true;
         // Outros veem se estiver no allowedRoutes
         return state.currentUser?.allowedRoutes?.includes(link.to);
@@ -217,9 +242,10 @@ const TenantApp = () => {
                     <Route path="/login" element={<Login />} />
                     <Route path="/client/table/:tableId" element={<ClientApp />} />
                     
+                    {/* ROTAS PROTEGIDAS COM LIMITES DE PLANO */}
                     <Route path="/waiter" element={<ProtectedRestaurantRoute allowedRoles={[Role.WAITER, Role.ADMIN]} requiredRoute="/waiter"><WaiterApp /></ProtectedRestaurantRoute>} />
-                    <Route path="/kitchen" element={<ProtectedRestaurantRoute allowedRoles={[Role.KITCHEN, Role.ADMIN]} requiredRoute="/kitchen"><KitchenDisplay /></ProtectedRestaurantRoute>} />
-                    <Route path="/cashier" element={<ProtectedRestaurantRoute allowedRoles={[Role.CASHIER, Role.ADMIN]} requiredRoute="/cashier"><CashierDashboard /></ProtectedRestaurantRoute>} />
+                    <Route path="/kitchen" element={<ProtectedRestaurantRoute allowedRoles={[Role.KITCHEN, Role.ADMIN]} requiredRoute="/kitchen" requiredFeature="allowKds"><KitchenDisplay /></ProtectedRestaurantRoute>} />
+                    <Route path="/cashier" element={<ProtectedRestaurantRoute allowedRoles={[Role.CASHIER, Role.ADMIN]} requiredRoute="/cashier" requiredFeature="allowCashier"><CashierDashboard /></ProtectedRestaurantRoute>} />
                     <Route path="/admin" element={<ProtectedRestaurantRoute allowedRoles={[Role.ADMIN]} requiredRoute="/admin"><AdminDashboard /></ProtectedRestaurantRoute>} />
                     <Route path="*" element={<Navigate to={`/login${window.location.search}`} replace />} />
                 </Routes>
