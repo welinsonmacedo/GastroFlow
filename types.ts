@@ -31,13 +31,23 @@ export enum OrderStatus {
 // --- SaaS Types ---
 export type PlanType = 'FREE' | 'PRO' | 'ENTERPRISE';
 
+export interface PlanLimits {
+    maxTables: number;   // -1 para infinito
+    maxProducts: number; // -1 para infinito
+    maxStaff: number;    // -1 para infinito
+    allowKds: boolean;
+    allowCashier: boolean;
+    allowReports?: boolean;
+}
+
 export interface Plan {
     id: string;
     key: PlanType;
     name: string;
     price: string;
     period: string;
-    features: string[];
+    features: string[]; // Texto de exibição
+    limits?: PlanLimits; // Configuração real
     is_popular: boolean;
     button_text: string;
 }

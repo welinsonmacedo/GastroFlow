@@ -26,7 +26,8 @@ CREATE TABLE plans (
     name TEXT NOT NULL,
     price TEXT NOT NULL,
     period TEXT DEFAULT '/mês',
-    features JSONB DEFAULT '[]'::jsonb,
+    features JSONB DEFAULT '[]'::jsonb, -- Texto para exibir na Landing Page
+    limits JSONB DEFAULT '{}'::jsonb,   -- Configurações reais (max_tables, max_products, modules...)
     is_popular BOOLEAN DEFAULT FALSE,
     button_text TEXT DEFAULT 'Assinar Agora',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
@@ -204,9 +205,19 @@ CREATE POLICY "Public Access" ON service_calls FOR ALL USING (true);
 INSERT INTO saas_admins (name, email, password) VALUES ('Super Admin', 'admin@gastroflow.com', 'admin');
 
 -- Seed Plans (Planos disponíveis)
-INSERT INTO plans (key, name, price, features, is_popular, button_text) VALUES 
-('FREE', 'Starter', 'Grátis', '["Até 5 mesas", "Cardápio Digital QR", "1 Usuário Admin", "Suporte por Email"]'::jsonb, FALSE, 'Começar Agora'),
-('PRO', 'Profissional', 'R$ 99', '["Mesas Ilimitadas", "KDS (Tela Cozinha)", "Relatórios Financeiros", "5 Usuários", "Suporte Prioritário"]'::jsonb, TRUE, 'Assinar Pro'),
-('ENTERPRISE', 'Enterprise', 'Sob Consulta', '["Múltiplas Filiais", "API de Integração", "Gerente de Contas", "Usuários Ilimitados", "Treinamento Equipe"]'::jsonb, FALSE, 'Falar com Consultor');
+-- Agora com a coluna LIMITS populada
+INSERT INTO plans (key, name, price, features, limits, is_popular, button_text) VALUES 
+('FREE', 'Starter', 'Grátis', 
+ '["Até 5 mesas", "Cardápio Digital QR", "1 Usuário Admin", "Suporte por Email"]'::jsonb, 
+ '{"maxTables": 5, "maxProducts": 20, "maxStaff": 1, "allowKds": false, "allowCashier": false}'::jsonb,
+ FALSE, 'Começar Agora'),
 
--- Nenhum restaurante ou produto é criado automaticamente agora.
+('PRO', 'Profissional', 'R$ 99', 
+ '["Mesas Ilimitadas", "KDS (Tela Cozinha)", "Relatórios Financeiros", "5 Usuários", "Suporte Prioritário"]'::jsonb, 
+ '{"maxTables": -1, "maxProducts": -1, "maxStaff": 5, "allowKds": true, "allowCashier": true}'::jsonb,
+ TRUE, 'Assinar Pro'),
+
+('ENTERPRISE', 'Enterprise', 'Sob Consulta', 
+ '["Múltiplas Filiais", "API de Integração", "Gerente de Contas", "Usuários Ilimitados", "Treinamento Equipe"]'::jsonb, 
+ '{"maxTables": -1, "maxProducts": -1, "maxStaff": -1, "allowKds": true, "allowCashier": true}'::jsonb,
+ FALSE, 'Falar com Consultor');

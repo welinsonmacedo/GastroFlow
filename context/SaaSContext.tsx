@@ -154,7 +154,8 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
                  name: p.name,
                  price: p.price,
                  period: p.period,
-                 features: p.features,
+                 features: p.features || [],
+                 limits: p.limits || { maxTables: 10, maxProducts: 30, maxStaff: 2, allowKds: false, allowCashier: false }, // Fallback
                  is_popular: p.is_popular,
                  button_text: p.button_text
              }));
@@ -196,7 +197,6 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     dispatch({ type: 'SET_TENANTS', payload: mapped });
 
                     // Passo 2: Busca Estatísticas (Logs) separadamente para não bloquear
-                    // Isso evita o erro de AbortError bloquear a lista inteira
                     fetchTenantStats(mapped.map(t => t.id));
                 }
             } catch (err: any) {
@@ -206,7 +206,6 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 const isAbort = err.name === 'AbortError' || err.message?.includes('AbortError') || err.message?.includes('signal is aborted');
                 
                 if (isAbort && retryCount < 3 && isMounted) {
-                    // Tenta novamente após 500ms
                     setTimeout(() => fetchTenants(retryCount + 1), 500);
                 }
             }
@@ -215,10 +214,6 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const fetchTenantStats = async (tenantIds: string[]) => {
             if (tenantIds.length === 0) return;
             try {
-                // Infelizmente Supabase não tem um "count group by" fácil via JS Client puro sem Views ou RPC
-                // Vamos fazer uma query simplificada ou iterar (para admin panel ok, volume baixo)
-                // Ou usar a query complexa agora que a UI já está renderizada
-                
                 const { data, error } = await supabase
                     .from('tenants')
                     .select('id, audit_logs(count)');
@@ -245,7 +240,6 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // INACTIVITY LOGOUT TIMER (30 Minutes for CEO/Admin)
   useEffect(() => {
-      // Se não está autenticado como admin do SaaS, não faz nada
       if (!state.isAuthenticated) return;
 
       const TIMEOUT_MS = 30 * 60 * 1000; // 30 Minutos
@@ -262,11 +256,9 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
           timeoutId = setTimeout(handleLogout, TIMEOUT_MS);
       };
 
-      // Eventos para detectar atividade
       const events = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'];
       events.forEach(event => window.addEventListener(event, resetTimer));
 
-      // Inicia timer inicial
       resetTimer();
 
       return () => {
@@ -280,7 +272,7 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     if (action.type === 'CREATE_TENANT') {
         try {
-            // 0. Verificar Disponibilidade do Slug ANTES de tentar inserir
+            // 0. Verificar Disponibilidade do Slug
             const { data: existing } = await supabase
                 .from('tenants')
                 .select('id')
@@ -314,12 +306,12 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
             if (error) throw error;
 
             if (newTenant) {
-                // 2. Criar Staff ADMIN padrão para o tenant conseguir logar (Local PIN)
+                // 2. Criar Staff ADMIN padrão
                 await supabase.from('staff').insert({
                     tenant_id: newTenant.id,
                     name: 'Admin',
                     role: 'ADMIN',
-                    pin: '1234' // Pin padrão
+                    pin: '1234'
                 });
 
                 // 3. Atualizar UI
@@ -346,7 +338,7 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
                  alert("Erro ao criar restaurante. Verifique o console para mais detalhes.");
             }
         }
-        return; // Retorna para não chamar o dispatch default com payload incorreto
+        return;
     }
 
     if (action.type === 'UPDATE_TENANT') {
@@ -371,17 +363,14 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
         try {
             let authUserId = null;
 
-            // Se senha foi fornecida, tenta criar usuário no Auth
             if (action.payload.password) {
-                // TRUQUE: Cria um cliente Supabase "descartável" em memória para não sobrescrever a sessão do Admin atual
-                // Garante que a URL e Key estão disponíveis
                 if (!supabaseUrl || !supabaseKey) {
                     throw new Error("Configuração do Supabase (URL/Key) não encontrada para criar usuário Auth.");
                 }
 
                 const tempClient: any = createClient(supabaseUrl, supabaseKey, {
                     auth: {
-                        persistSession: false, // Importante: não salvar no localStorage
+                        persistSession: false,
                         autoRefreshToken: false,
                         detectSessionInUrl: false
                     }
@@ -398,20 +387,18 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 if (authError) {
                     console.error("Erro Auth:", authError);
                     alert(`Erro ao criar login Auth: ${authError.message}`);
-                    // Não retorna, tenta criar o staff local mesmo assim
                 } else if (authData.user) {
                     authUserId = authData.user.id;
                 }
             }
 
-            // Cria o registro na tabela staff (com ou sem vinculo Auth)
             const { error } = await supabase.from('staff').insert({
                 tenant_id: action.payload.tenantId,
                 name: action.payload.name,
                 email: action.payload.email,
                 role: 'ADMIN',
                 pin: action.payload.pin,
-                auth_user_id: authUserId // Vincula se tiver criado com sucesso
+                auth_user_id: authUserId
             });
 
             if (error) throw error;
@@ -419,7 +406,7 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
             if (authUserId) {
                 alert("Usuário Admin criado com sucesso! Login Auth e PIN configurados.");
             } else {
-                alert("Usuário Admin criado apenas localmente (PIN). Login remoto falhou ou senha não fornecida.");
+                alert("Usuário Admin criado apenas localmente (PIN).");
             }
 
         } catch (error: any) {
@@ -431,14 +418,12 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     if (action.type === 'UPDATE_PROFILE') {
         if (state.adminId) {
-            // Se for login via Supabase Auth
             const { error } = await supabase.auth.updateUser({ 
                 email: action.email,
                 data: { name: action.name }
             });
             if (!error) dispatch(action);
             
-            // Fallback para tabela saas_admins (legado/demo)
             await supabase.from('saas_admins').update({
                 name: action.name,
                 email: action.email
@@ -452,6 +437,7 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
             name: action.plan.name,
             price: action.plan.price,
             features: action.plan.features,
+            limits: action.plan.limits, // Salva os limites no banco
             button_text: action.plan.button_text
         }).eq('id', action.plan.id);
 
@@ -464,10 +450,8 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return;
     }
 
-    // Default dispatcher para outras ações
     dispatch(action);
 
-    // Side effects pós-dispatch otimista
     if (action.type === 'CHANGE_PLAN') {
         await supabase.from('tenants').update({ plan: action.plan }).eq('id', action.tenantId);
     }

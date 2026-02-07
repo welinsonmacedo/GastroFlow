@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, useEffect, useState, useCallback } from 'react';
-import { Table, Order, Product, TableStatus, OrderStatus, ProductType, OrderItem, RestaurantTheme, User, AuditLog, Transaction, Role, ServiceCall, OnlineUser } from '../types';
+import { Table, Order, Product, TableStatus, OrderStatus, ProductType, OrderItem, RestaurantTheme, User, AuditLog, Transaction, Role, ServiceCall, OnlineUser, PlanLimits } from '../types';
 import { getTenantSlug } from '../utils/tenant';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
@@ -10,6 +10,7 @@ interface State {
   tenantId: string | null; // ID UUID do Supabase
   isValidTenant: boolean;
   isInactiveTenant: boolean; // Novo estado para bloqueio
+  planLimits: PlanLimits; // Limites do plano atual
   tables: Table[];
   products: Product[];
   orders: Order[];
@@ -62,6 +63,7 @@ const initialState: State = {
   tenantId: null,
   isValidTenant: false,
   isInactiveTenant: false,
+  planLimits: { maxTables: -1, maxProducts: -1, maxStaff: -1, allowKds: true, allowCashier: true }, // Default aberto
   tables: [],
   products: [],
   orders: [],
@@ -224,6 +226,18 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 dispatchLocal({ type: 'TENANT_INACTIVE' });
                 return;
             }
+            
+            // --- CARREGAR LIMITES DO PLANO ---
+            let currentLimits = initialState.planLimits;
+            const { data: planData } = await supabase
+                .from('plans')
+                .select('limits')
+                .eq('key', tenant.plan)
+                .maybeSingle();
+            
+            if (planData && planData.limits) {
+                currentLimits = planData.limits;
+            }
 
             const yesterday = new Date();
             yesterday.setHours(yesterday.getHours() - 24);
@@ -347,7 +361,8 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                     transactions: mappedTransactions,
                     auditLogs: mappedAuditLogs,
                     serviceCalls: mappedCalls,
-                    currentUser: autoLoggedUser
+                    currentUser: autoLoggedUser,
+                    planLimits: currentLimits
                 }
             });
 
@@ -568,7 +583,7 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   // 5. Intercept Dispatch
   const dispatch = async (action: Action) => {
-    const { tenantId } = state;
+    const { tenantId, planLimits } = state;
 
     switch (action.type) {
         case 'UNLOCK_AUDIO':
@@ -590,6 +605,12 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         
         case 'ADD_TABLE':
             if (tenantId) {
+                // VERIFICA LIMITES DO PLANO
+                if (planLimits.maxTables !== -1 && state.tables.length >= planLimits.maxTables) {
+                    alert(`Limite de mesas atingido para o seu plano (${planLimits.maxTables}). Faça um upgrade para adicionar mais.`);
+                    return;
+                }
+
                 const maxNumber = state.tables.reduce((max, t) => Math.max(max, t.number), 0);
                 const nextNumber = maxNumber + 1;
                 
@@ -729,6 +750,12 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
         case 'ADD_PRODUCT':
              if (tenantId) {
+                 // VERIFICA LIMITES DO PLANO
+                 if (planLimits.maxProducts !== -1 && state.products.length >= planLimits.maxProducts) {
+                    alert(`Limite de produtos atingido para o seu plano (${planLimits.maxProducts}). Faça um upgrade para adicionar mais.`);
+                    return;
+                 }
+
                  await supabase.from('products').insert({
                      tenant_id: tenantId,
                      name: action.product.name,
@@ -776,6 +803,13 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             
         case 'ADD_USER':
             if(tenantId) {
+                // VERIFICA LIMITES DO PLANO
+                // Subtrai 1 se quisermos excluir o admin principal, mas geralmente conta todos
+                if (planLimits.maxStaff !== -1 && state.users.length >= planLimits.maxStaff) {
+                    alert(`Limite de funcionários atingido para o seu plano (${planLimits.maxStaff}). Faça um upgrade para adicionar mais.`);
+                    return;
+                }
+
                 await supabase.from('staff').insert({
                     tenant_id: tenantId,
                     name: action.user.name,

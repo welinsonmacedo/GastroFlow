@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useSaaS } from '../context/SaaSContext';
-import { Plan, PlanType, RestaurantTenant } from '../types';
+import { Plan, PlanType, RestaurantTenant, PlanLimits } from '../types';
 import { Button } from '../components/Button';
-import { Building2, Users, DollarSign, Activity, Settings, Search, MoreHorizontal, ExternalLink, LogOut, Plus, X, List, Edit, Key, Lock, BarChart2, Unlock } from 'lucide-react';
+import { Building2, Users, DollarSign, Activity, Settings, Search, MoreHorizontal, ExternalLink, LogOut, Plus, X, List, Edit, Key, Lock, BarChart2, Unlock, AlertTriangle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 type ViewMode = 'RESTAURANTS' | 'FINANCIAL' | 'PLANS' | 'SETTINGS';
@@ -42,6 +42,9 @@ export const SuperAdminDashboard: React.FC = () => {
   // Plans Edit State
   const [editingPlan, setEditingPlan] = useState<Plan | null>(null);
   const [editingFeatures, setEditingFeatures] = useState<string>('');
+  const [editingLimits, setEditingLimits] = useState<PlanLimits>({
+      maxTables: 10, maxProducts: 30, maxStaff: 2, allowKds: false, allowCashier: false, allowReports: false
+  });
 
   // Derived Metrics
   const filteredTenants = state.tenants.filter(t => 
@@ -119,10 +122,7 @@ export const SuperAdminDashboard: React.FC = () => {
           } 
       });
       setNewAdminForm({ name: 'Admin', email: '', pin: '1234', password: '' });
-      // Mantém modal aberto
   };
-
-  // -----------------------------
 
   const handleUpdateProfile = (e: React.FormEvent) => {
       e.preventDefault();
@@ -133,13 +133,21 @@ export const SuperAdminDashboard: React.FC = () => {
   const handleEditPlan = (plan: Plan) => {
       setEditingPlan(plan);
       setEditingFeatures(plan.features.join('\n'));
+      // Carrega limites ou usa defaults se não existir
+      setEditingLimits(plan.limits || {
+          maxTables: -1, maxProducts: -1, maxStaff: -1, allowKds: true, allowCashier: true, allowReports: true
+      });
   }
   
   const handleSavePlan = (e: React.FormEvent) => {
       e.preventDefault();
       if(editingPlan) {
           const featuresArray = editingFeatures.split('\n').filter(line => line.trim() !== '');
-          const updatedPlan = { ...editingPlan, features: featuresArray };
+          const updatedPlan: Plan = { 
+              ...editingPlan, 
+              features: featuresArray,
+              limits: editingLimits // Salva os novos limites
+          };
           
           dispatch({ type: 'UPDATE_PLAN_DETAILS', plan: updatedPlan });
           setEditingPlan(null);
@@ -308,36 +316,87 @@ export const SuperAdminDashboard: React.FC = () => {
 
            {/* --- VIEW: PLANS --- */}
            {activeView === 'PLANS' && (
-               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-fade-in">
+               <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 animate-fade-in">
                    {state.plans.map(plan => (
                        <div key={plan.id} className="bg-white rounded-xl shadow-sm border p-6 flex flex-col h-full hover:shadow-md transition-shadow">
                            {editingPlan?.id === plan.id ? (
                                <form onSubmit={handleSavePlan} className="space-y-4 flex-1 flex flex-col">
-                                   <div>
-                                       <label className="text-xs font-bold text-gray-500 uppercase">Nome do Plano</label>
-                                       <input className="w-full border p-2 rounded" value={editingPlan.name} onChange={e => setEditingPlan({...editingPlan, name: e.target.value})} />
+                                   <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="text-xs font-bold text-gray-500 uppercase">Nome</label>
+                                            <input className="w-full border p-2 rounded text-sm" value={editingPlan.name} onChange={e => setEditingPlan({...editingPlan, name: e.target.value})} />
+                                        </div>
+                                        <div>
+                                            <label className="text-xs font-bold text-gray-500 uppercase">Preço</label>
+                                            <input className="w-full border p-2 rounded text-sm" value={editingPlan.price} onChange={e => setEditingPlan({...editingPlan, price: e.target.value})} />
+                                        </div>
                                    </div>
-                                   <div>
-                                       <label className="text-xs font-bold text-gray-500 uppercase">Preço (Display)</label>
-                                       <input className="w-full border p-2 rounded" value={editingPlan.price} onChange={e => setEditingPlan({...editingPlan, price: e.target.value})} />
+                                   
+                                   {/* LIMITS CONFIGURATION */}
+                                   <div className="bg-gray-50 p-3 rounded-lg border border-gray-200 space-y-3">
+                                        <h4 className="text-xs font-bold text-gray-700 flex items-center gap-1"><Settings size={12}/> Limites do Plano</h4>
+                                        <div className="grid grid-cols-3 gap-2">
+                                            <div>
+                                                <label className="text-[10px] font-bold text-gray-500">Max Mesas</label>
+                                                <input 
+                                                    type="number" 
+                                                    className="w-full border p-1 rounded text-sm" 
+                                                    value={editingLimits.maxTables} 
+                                                    onChange={e => setEditingLimits({...editingLimits, maxTables: parseInt(e.target.value)})} 
+                                                    placeholder="-1 para ilimitado"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] font-bold text-gray-500">Max Produtos</label>
+                                                <input 
+                                                    type="number" 
+                                                    className="w-full border p-1 rounded text-sm" 
+                                                    value={editingLimits.maxProducts} 
+                                                    onChange={e => setEditingLimits({...editingLimits, maxProducts: parseInt(e.target.value)})} 
+                                                    placeholder="-1 para ilimitado"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="text-[10px] font-bold text-gray-500">Max Staff</label>
+                                                <input 
+                                                    type="number" 
+                                                    className="w-full border p-1 rounded text-sm" 
+                                                    value={editingLimits.maxStaff} 
+                                                    onChange={e => setEditingLimits({...editingLimits, maxStaff: parseInt(e.target.value)})} 
+                                                    placeholder="-1 para ilimitado"
+                                                />
+                                            </div>
+                                        </div>
+                                        <p className="text-[10px] text-gray-400 text-center">-1 significa Ilimitado</p>
+                                        
+                                        <div className="flex flex-col gap-2 pt-2 border-t border-gray-200">
+                                            <label className="flex items-center gap-2 cursor-pointer">
+                                                <input type="checkbox" checked={editingLimits.allowKds} onChange={e => setEditingLimits({...editingLimits, allowKds: e.target.checked})} />
+                                                <span className="text-xs font-medium">Permitir KDS (Cozinha)</span>
+                                            </label>
+                                            <label className="flex items-center gap-2 cursor-pointer">
+                                                <input type="checkbox" checked={editingLimits.allowCashier} onChange={e => setEditingLimits({...editingLimits, allowCashier: e.target.checked})} />
+                                                <span className="text-xs font-medium">Permitir Módulo Caixa</span>
+                                            </label>
+                                            <label className="flex items-center gap-2 cursor-pointer">
+                                                <input type="checkbox" checked={editingLimits.allowReports} onChange={e => setEditingLimits({...editingLimits, allowReports: e.target.checked})} />
+                                                <span className="text-xs font-medium">Permitir Relatórios</span>
+                                            </label>
+                                        </div>
                                    </div>
-                                   <div>
-                                       <label className="text-xs font-bold text-gray-500 uppercase">Botão CTA</label>
-                                       <input className="w-full border p-2 rounded" value={editingPlan.button_text} onChange={e => setEditingPlan({...editingPlan, button_text: e.target.value})} />
-                                   </div>
+
                                    <div className="flex-1">
-                                       <label className="text-xs font-bold text-gray-500 uppercase">Funcionalidades</label>
+                                       <label className="text-xs font-bold text-gray-500 uppercase">Lista de Features (Marketing)</label>
                                        <textarea 
-                                          className="w-full border p-2 rounded h-40 text-sm" 
+                                          className="w-full border p-2 rounded h-24 text-sm resize-none" 
                                           value={editingFeatures}
                                           onChange={e => setEditingFeatures(e.target.value)}
-                                          placeholder="Digite uma funcionalidade por linha..."
+                                          placeholder="Uma por linha..."
                                        />
-                                       <p className="text-xs text-gray-400">Uma funcionalidade por linha.</p>
                                    </div>
-                                   <div className="flex gap-2 pt-4">
-                                       <Button type="button" variant="secondary" onClick={() => setEditingPlan(null)} className="flex-1">Cancelar</Button>
-                                       <Button type="submit" className="flex-1">Salvar</Button>
+                                   <div className="flex gap-2 pt-2">
+                                       <Button type="button" variant="secondary" onClick={() => setEditingPlan(null)} className="flex-1 text-xs">Cancelar</Button>
+                                       <Button type="submit" className="flex-1 text-xs">Salvar Config</Button>
                                    </div>
                                </form>
                            ) : (
@@ -347,7 +406,19 @@ export const SuperAdminDashboard: React.FC = () => {
                                        <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded font-mono border">{plan.key}</span>
                                    </div>
                                    <div className="text-3xl font-bold text-blue-600 mb-6">{plan.price} <span className="text-sm text-gray-400 font-normal">{plan.period}</span></div>
-                                   <div className="flex-1 overflow-y-auto max-h-60 mb-6">
+                                   
+                                   {/* LIMITS DISPLAY */}
+                                   <div className="mb-4 bg-slate-50 p-3 rounded-lg border border-slate-100 text-xs text-gray-600 space-y-1">
+                                       <div className="flex justify-between"><span>Mesas:</span> <span className="font-bold">{plan.limits?.maxTables === -1 ? '∞' : plan.limits?.maxTables}</span></div>
+                                       <div className="flex justify-between"><span>Produtos:</span> <span className="font-bold">{plan.limits?.maxProducts === -1 ? '∞' : plan.limits?.maxProducts}</span></div>
+                                       <div className="flex justify-between"><span>Staff:</span> <span className="font-bold">{plan.limits?.maxStaff === -1 ? '∞' : plan.limits?.maxStaff}</span></div>
+                                       <div className="pt-1 mt-1 border-t border-slate-200 flex gap-2 flex-wrap">
+                                           {plan.limits?.allowKds ? <span className="text-green-600 font-bold">KDS</span> : <span className="text-red-400 line-through">KDS</span>}
+                                           {plan.limits?.allowCashier ? <span className="text-green-600 font-bold">Caixa</span> : <span className="text-red-400 line-through">Caixa</span>}
+                                       </div>
+                                   </div>
+
+                                   <div className="flex-1 overflow-y-auto max-h-40 mb-6">
                                        <ul className="space-y-2">
                                            {plan.features.map((feat, i) => (
                                                <li key={i} className="text-sm text-gray-600 flex items-start gap-2">
@@ -357,7 +428,7 @@ export const SuperAdminDashboard: React.FC = () => {
                                        </ul>
                                    </div>
                                    <Button variant="outline" onClick={() => handleEditPlan(plan)} className="w-full mt-auto">
-                                       <Edit size={16} /> Editar Detalhes
+                                       <Edit size={16} /> Editar Limites & Detalhes
                                    </Button>
                                </>
                            )}
