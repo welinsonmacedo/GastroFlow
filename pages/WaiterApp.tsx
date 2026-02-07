@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useRestaurant } from '../context/RestaurantContext';
 import { TableStatus, OrderStatus, ProductType, Product } from '../types';
 import { Button } from '../components/Button';
-import { CheckCircle, Coffee, User, Key, X, Bell, Plus, Minus, Search, ShoppingCart, ChevronRight, Utensils, Trash2, ArrowLeft } from 'lucide-react';
+import { CheckCircle, Coffee, User, Key, X, Bell, Plus, Minus, Search, ShoppingCart, ChevronRight, Utensils, Trash2, ArrowLeft, Volume2 } from 'lucide-react';
 
 export const WaiterApp: React.FC = () => {
   const { state, dispatch } = useRestaurant();
@@ -30,6 +30,10 @@ export const WaiterApp: React.FC = () => {
   );
   
   const pendingCalls = state.serviceCalls.filter(c => c.status === 'PENDING');
+
+  const enableAudio = () => {
+      dispatch({ type: 'UNLOCK_AUDIO' });
+  };
 
   // --- Handlers ---
 
@@ -114,6 +118,29 @@ export const WaiterApp: React.FC = () => {
   const resolveCall = (callId: string) => {
       dispatch({ type: 'RESOLVE_WAITER_CALL', callId });
   };
+
+  // --- AUDIO UNLOCK SCREEN ---
+  if (!state.audioUnlocked) {
+    return (
+        <div className="min-h-screen bg-white flex items-center justify-center p-4">
+            <div className="text-center space-y-6 max-w-sm">
+                <div className="bg-blue-100 p-8 rounded-full inline-block mb-4 shadow-lg animate-pulse">
+                    <Bell size={64} className="text-blue-600" />
+                </div>
+                <h1 className="text-3xl font-bold text-gray-800">App do Garçom</h1>
+                <p className="text-gray-500">
+                    Toque no botão abaixo para ativar os sons de notificação e começar a atender.
+                </p>
+                <button 
+                  onClick={enableAudio}
+                  className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 px-10 rounded-xl shadow-lg w-full flex items-center justify-center gap-3 text-lg"
+                >
+                    <Volume2 size={24} /> ATIVAR SOM
+                </button>
+            </div>
+        </div>
+    );
+  }
 
   // --- Render Views ---
 
@@ -253,6 +280,21 @@ export const WaiterApp: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-100 p-4 lg:p-6 grid grid-cols-1 lg:grid-cols-3 gap-6 relative">
       
+      {/* Alert Overlay for Service Calls - Shows on top if any call exists */}
+      {pendingCalls.length > 0 && (
+          <div className="fixed top-20 left-0 right-0 z-30 flex justify-center px-4 pointer-events-none">
+              <div className="bg-red-600 text-white px-6 py-3 rounded-full shadow-2xl animate-bounce flex items-center gap-3 pointer-events-auto cursor-pointer" onClick={() => resolveCall(pendingCalls[0].id)}>
+                  <Bell size={24} className="fill-white"/>
+                  <span className="font-bold text-lg">
+                      MESA {state.tables.find(t => t.id === pendingCalls[0].tableId)?.number} CHAMANDO!
+                  </span>
+                  <div className="bg-white text-red-600 text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center">
+                      {pendingCalls.length}
+                  </div>
+              </div>
+          </div>
+      )}
+
       {/* Modal de Abertura de Mesa */}
       {selectedTableForOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -320,7 +362,12 @@ export const WaiterApp: React.FC = () => {
 
       {/* Left Column: Tables Management */}
       <div className="lg:col-span-2 space-y-6">
-        <h1 className="text-2xl font-bold text-gray-800">Mesas</h1>
+        <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+            Mesas 
+            <span className="text-xs font-normal bg-green-100 text-green-700 px-2 py-1 rounded-full flex items-center gap-1">
+                <Volume2 size={12}/> Som Ativo
+            </span>
+        </h1>
         <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
           {state.tables.map(table => {
             const hasCall = pendingCalls.find(c => c.tableId === table.id);
@@ -328,7 +375,7 @@ export const WaiterApp: React.FC = () => {
             <div 
               key={table.id} 
               className={`p-4 rounded-xl shadow-sm border-2 transition-all cursor-pointer flex flex-col items-center justify-center min-h-[140px] relative
-                ${hasCall ? 'bg-red-50 border-red-500 animate-pulse' : ''}
+                ${hasCall ? 'bg-red-50 border-red-500 animate-[pulse_1s_infinite]' : ''}
                 ${!hasCall && table.status === TableStatus.OCCUPIED ? 'bg-white border-blue-500 hover:shadow-md' : ''}
                 ${!hasCall && table.status === TableStatus.AVAILABLE ? 'bg-gray-50 border-transparent hover:border-gray-300' : ''}
                 ${!hasCall && table.status === TableStatus.WAITING_PAYMENT ? 'bg-yellow-50 border-yellow-400' : ''}

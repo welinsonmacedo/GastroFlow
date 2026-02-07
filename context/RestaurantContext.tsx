@@ -18,7 +18,8 @@ interface State {
   auditLogs: AuditLog[];
   transactions: Transaction[];
   serviceCalls: ServiceCall[];
-  onlineUsers: OnlineUser[]; // Novo estado para realtime
+  onlineUsers: OnlineUser[]; 
+  audioUnlocked: boolean; // Novo estado para controlar permissão de áudio
 }
 
 type Action =
@@ -34,7 +35,7 @@ type Action =
   | { type: 'REALTIME_UPDATE_AUDIT_LOGS'; auditLogs: AuditLog[] }
   | { type: 'REALTIME_UPDATE_SERVICE_CALLS'; calls: ServiceCall[] }
   | { type: 'UPDATE_ONLINE_USERS'; users: OnlineUser[] }
-  // Ações que disparam side-effects no Supabase (interceptadas)
+  | { type: 'UNLOCK_AUDIO' } // Nova Action
   | { type: 'ADD_USER'; user: User }
   | { type: 'UPDATE_USER'; user: User }
   | { type: 'DELETE_USER'; userId: string }
@@ -46,7 +47,7 @@ type Action =
   | { type: 'UPDATE_ITEM_STATUS'; orderId: string; itemId: string; status: OrderStatus }
   | { type: 'UPDATE_PRODUCT'; product: Product }
   | { type: 'ADD_PRODUCT'; product: Product }
-  | { type: 'DELETE_PRODUCT'; productId: string } // Nova Action
+  | { type: 'DELETE_PRODUCT'; productId: string }
   | { type: 'UPDATE_THEME'; theme: RestaurantTheme }
   | { type: 'PROCESS_PAYMENT'; tableId: string; amount: number; method: 'CASH' | 'CARD' | 'PIX' | 'CREDIT' | 'DEBIT' }
   | { type: 'CALL_WAITER'; tableId: string }
@@ -67,7 +68,8 @@ const initialState: State = {
   auditLogs: [],
   transactions: [],
   serviceCalls: [],
-  onlineUsers: []
+  onlineUsers: [],
+  audioUnlocked: false
 };
 
 const RestaurantContext = createContext<{
@@ -76,6 +78,7 @@ const RestaurantContext = createContext<{
 } | undefined>(undefined);
 
 // --- Sounds Logic ---
+// Sons curtos e distintos
 const kitchenSound = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3'); 
 const waiterSound = new Audio('https://assets.mixkit.co/active_storage/sfx/2346/2346-preview.mp3');
 
@@ -84,11 +87,11 @@ const playSoundSafely = async (audio: HTMLAudioElement) => {
         audio.currentTime = 0;
         await audio.play();
     } catch (e) {
-        console.warn("Autoplay blocked or audio error", e);
+        console.warn("Autoplay bloqueado. O usuário precisa interagir com a página primeiro.", e);
     }
 };
 
-// --- Reducer (Gerencia apenas estado local e atualizações via Realtime) ---
+// --- Reducer ---
 const restaurantReducer = (state: State, action: Action): State => {
   switch (action.type) {
     case 'SET_LOADING':
@@ -106,15 +109,24 @@ const restaurantReducer = (state: State, action: Action): State => {
     case 'LOGOUT':
       return { ...state, currentUser: null };
 
-    // Atualizações vindas do Realtime ou Fetch
+    case 'UNLOCK_AUDIO':
+        // Toca um som mudo ou pausa/play para desbloquear o AudioContext do navegador
+        kitchenSound.play().then(() => kitchenSound.pause()).catch(() => {});
+        waiterSound.play().then(() => waiterSound.pause()).catch(() => {});
+        return { ...state, audioUnlocked: true };
+
     case 'REALTIME_UPDATE_TABLES':
         return { ...state, tables: action.tables };
     
     case 'REALTIME_UPDATE_ORDERS':
-        // Detectar se há novos itens de cozinha para tocar som
+        // Lógica inteligente de som para Cozinha
         if (state.currentUser?.role === Role.KITCHEN || state.currentUser?.role === Role.ADMIN) {
-             // Lógica simplificada: Se o numero de ordens aumentou, toca som. 
-             if (action.orders.length > state.orders.length) {
+             // Conta quantos itens PENDING (Cozinha) existem no estado novo vs antigo
+             const countNewPending = action.orders.reduce((acc, order) => acc + order.items.filter(i => i.status === OrderStatus.PENDING && i.productType === ProductType.KITCHEN).length, 0);
+             const countOldPending = state.orders.reduce((acc, order) => acc + order.items.filter(i => i.status === OrderStatus.PENDING && i.productType === ProductType.KITCHEN).length, 0);
+             
+             // Se aumentou o número de pendentes, toca o sino
+             if (countNewPending > countOldPending) {
                  playSoundSafely(kitchenSound);
              }
         }
@@ -130,7 +142,7 @@ const restaurantReducer = (state: State, action: Action): State => {
         return { ...state, auditLogs: action.auditLogs };
 
     case 'REALTIME_UPDATE_SERVICE_CALLS':
-        // Se houver novos chamados pendentes e o usuário for Garçom/Admin
+        // Lógica inteligente de som para Garçom
         const newPending = action.calls.filter(c => c.status === 'PENDING').length;
         const oldPending = state.serviceCalls.filter(c => c.status === 'PENDING').length;
         
@@ -145,7 +157,7 @@ const restaurantReducer = (state: State, action: Action): State => {
     case 'UPDATE_THEME':
         return { ...state, theme: action.theme };
     
-    case 'PLAY_SOUND': // Action manual se necessário
+    case 'PLAY_SOUND': 
         if (action.soundType === 'KITCHEN') playSoundSafely(kitchenSound);
         if (action.soundType === 'WAITER') playSoundSafely(waiterSound);
         return state;
@@ -160,7 +172,6 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [state, dispatchLocal] = useReducer(restaurantReducer, initialState);
   const [presenceChannel, setPresenceChannel] = useState<any>(null);
 
-  // Helper para logging
   const logAudit = async (tenantId: string, action: string, details: string) => {
       try {
           await supabase.from('audit_logs').insert({
@@ -189,7 +200,6 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
     const initTenant = async () => {
         try {
-            // A. Buscar Tenant
             const { data: tenant, error: tenantError } = await supabase
                 .from('tenants')
                 .select('*')
@@ -201,18 +211,16 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 return;
             }
 
-            // B. Buscar Dados Relacionados
             const [usersRes, productsRes, tablesRes, ordersRes, transactionsRes, auditRes, callsRes] = await Promise.all([
                 supabase.from('staff').select('*').eq('tenant_id', tenant.id),
                 supabase.from('products').select('*').eq('tenant_id', tenant.id),
                 supabase.from('restaurant_tables').select('*').eq('tenant_id', tenant.id).order('number'),
-                supabase.from('orders').select(`*, items:order_items (*)`).eq('tenant_id', tenant.id).eq('is_paid', false), // Apenas pedidos ativos
+                supabase.from('orders').select(`*, items:order_items (*)`).eq('tenant_id', tenant.id).eq('is_paid', false),
                 supabase.from('transactions').select('*').eq('tenant_id', tenant.id).order('created_at', { ascending: false }).limit(50),
                 supabase.from('audit_logs').select('*').eq('tenant_id', tenant.id).order('created_at', { ascending: false }).limit(50),
                 supabase.from('service_calls').select('*').eq('tenant_id', tenant.id).eq('status', 'PENDING')
             ]);
 
-            // Mapeamento de dados SQL -> App Types
             const mappedUsers: User[] = (usersRes.data || []).map(u => ({ 
                 id: u.id, 
                 name: u.name, 
@@ -220,7 +228,7 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 pin: u.pin,
                 auth_user_id: u.auth_user_id,
                 email: u.email,
-                allowedRoutes: u.allowed_routes || [] // Busca rotas permitidas
+                allowedRoutes: u.allowed_routes || []
             }));
             
             const mappedProducts: Product[] = (productsRes.data || []).map(p => ({
@@ -286,16 +294,13 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 timestamp: new Date(c.created_at)
             }));
 
-            // C. AUTO-LOGIN via Supabase Auth Check (Initial Load)
             let autoLoggedUser: User | null = null;
             const { data: { session } } = await supabase.auth.getSession();
             if (session?.user) {
-                // Tenta achar na lista carregada
                 const authenticatedStaff = mappedUsers.find(u => u.auth_user_id === session.user.id);
                 if (authenticatedStaff) {
                     autoLoggedUser = authenticatedStaff;
                 } else {
-                    // Se não achou (talvez paginação ou RLS), tenta buscar individualmente para garantir
                     const { data: staffData } = await supabase.from('staff').select('*').eq('auth_user_id', session.user.id).eq('tenant_id', tenant.id).maybeSingle();
                     if(staffData) {
                          autoLoggedUser = {
@@ -337,9 +342,8 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     initTenant();
   }, []);
 
-  // 2. Presence Logic (Monitoramento Online)
+  // 2. Presence Logic
   useEffect(() => {
-      // Só ativa se tiver tenant e usuário logado
       if (!state.tenantId || !state.currentUser) {
           if (presenceChannel) {
               presenceChannel.unsubscribe();
@@ -348,7 +352,6 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           return;
       }
 
-      // Cria canal para tracking de presença
       const channel = supabase.channel(`presence:${state.tenantId}`, {
           config: {
               presence: {
@@ -363,7 +366,7 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             const users: OnlineUser[] = [];
             
             Object.keys(newState).forEach(key => {
-                const presence = newState[key][0]; // Pega a última sessão
+                const presence = newState[key][0];
                 if (presence) {
                     users.push({
                         id: presence.user_id,
@@ -391,20 +394,18 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       return () => {
           channel.unsubscribe();
       };
-  }, [state.tenantId, state.currentUser?.id]); // Re-executa se mudar o usuário logado
+  }, [state.tenantId, state.currentUser?.id]);
 
-  // 3. Auth Listener Change (Detecta logins feitos em outras partes, como Login.tsx ou OwnerLogin.tsx)
+  // 3. Auth Listener
   useEffect(() => {
-    if (!state.tenantId) return; // Só roda se o tenant já foi identificado
+    if (!state.tenantId) return;
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event: any, session: any) => {
         if (event === 'SIGNED_IN' && session?.user) {
-            // Tenta encontrar o usuário na lista de staff deste restaurante
             const authenticatedStaff = state.users.find(u => u.auth_user_id === session.user.id);
             if (authenticatedStaff) {
                 dispatchLocal({ type: 'LOGIN', user: authenticatedStaff });
             } else {
-                 // Fallback: busca no banco se não estiver na lista local
                  const { data: staffData } = await supabase
                     .from('staff')
                     .select('*')
@@ -434,12 +435,11 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     };
   }, [state.tenantId, state.users]); 
 
-  // 4. Realtime Subscription (Dados do Banco)
+  // 4. Realtime Subscription
   useEffect(() => {
     if (!state.tenantId) return;
 
     const channel = supabase.channel('restaurant_changes')
-        // Mesas
         .on(
             'postgres_changes',
             { event: '*', schema: 'public', table: 'restaurant_tables', filter: `tenant_id=eq.${state.tenantId}` },
@@ -451,7 +451,6 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 }
             }
         )
-        // Pedidos (Itens)
         .on(
             'postgres_changes',
             { event: '*', schema: 'public', table: 'order_items', filter: `tenant_id=eq.${state.tenantId}` },
@@ -477,7 +476,6 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 }
             }
         )
-        // Chamados (Service Calls)
         .on(
             'postgres_changes',
             { event: '*', schema: 'public', table: 'service_calls', filter: `tenant_id=eq.${state.tenantId}` },
@@ -494,7 +492,6 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                  }
             }
         )
-        // Transações
         .on(
             'postgres_changes',
             { event: 'INSERT', schema: 'public', table: 'transactions', filter: `tenant_id=eq.${state.tenantId}` },
@@ -508,7 +505,6 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 }
             }
         )
-        // Logs de Auditoria
         .on(
             'postgres_changes',
             { event: 'INSERT', schema: 'public', table: 'audit_logs', filter: `tenant_id=eq.${state.tenantId}` },
@@ -522,7 +518,6 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 }
             }
         )
-        // Produtos
         .on(
             'postgres_changes',
             { event: '*', schema: 'public', table: 'products', filter: `tenant_id=eq.${state.tenantId}` },
@@ -543,18 +538,18 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   }, [state.tenantId]);
 
-
-  // 5. Intercept Dispatch para Side-Effects (Mutations)
+  // 5. Intercept Dispatch
   const dispatch = async (action: Action) => {
     const { tenantId } = state;
 
     switch (action.type) {
+        case 'UNLOCK_AUDIO':
+             dispatchLocal(action);
+             break;
         case 'LOGIN':
-            // Log de login
             dispatchLocal(action);
             break;
         case 'LOGOUT':
-            // Deslogar também do Supabase Auth para garantir segurança
             await supabase.auth.signOut();
             dispatchLocal(action);
             break;
@@ -567,7 +562,6 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         
         case 'ADD_TABLE':
             if (tenantId) {
-                // Calcula o próximo número de mesa
                 const maxNumber = state.tables.reduce((max, t) => Math.max(max, t.number), 0);
                 const nextNumber = maxNumber + 1;
                 
@@ -582,7 +576,6 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
         case 'DELETE_TABLE':
             if (tenantId) {
-                // Verifica se há pedidos abertos
                 const hasOrders = state.orders.some(o => o.tableId === action.tableId && !o.isPaid);
                 if (hasOrders) {
                     alert("Não é possível excluir uma mesa com pedidos em aberto.");
@@ -617,7 +610,6 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
         case 'PLACE_ORDER':
             if (tenantId) {
-                // 1. Criar Ordem
                 const { data: orderData, error } = await supabase.from('orders').insert({
                     tenant_id: tenantId,
                     table_id: action.tableId,
@@ -626,11 +618,10 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 }).select().single();
 
                 if (orderData && !error) {
-                    // 2. Inserir Itens
                     const itemsToInsert = action.items.map(item => {
                         const product = state.products.find(p => p.id === item.productId);
                         return {
-                            tenant_id: tenantId, // Importante para RLS/Filtro
+                            tenant_id: tenantId,
                             order_id: orderData.id,
                             product_id: item.productId,
                             product_name: product?.name || 'Unknown',
@@ -642,7 +633,6 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                         };
                     });
                     await supabase.from('order_items').insert(itemsToInsert);
-                    // Não precisa logar audit aqui, é ação do cliente
                 }
             }
             break;
@@ -655,28 +645,24 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         
         case 'PROCESS_PAYMENT':
             if (tenantId) {
-                // Buscar número da mesa
                 const table = state.tables.find(t => t.id === action.tableId);
                 
-                // 1. Registrar Transação
                 await supabase.from('transactions').insert({
                     tenant_id: tenantId,
                     table_id: action.tableId,
                     table_number: table?.number || 0,
                     amount: action.amount,
                     method: action.method,
-                    items_summary: 'Pedido processado via sistema', // Melhoria futura: listar itens
+                    items_summary: 'Pedido processado via sistema',
                     cashier_name: state.currentUser?.name || 'Sistema'
                 });
 
-                // 2. Marcar Ordens como Pagas
                 const tableOrders = state.orders.filter(o => o.tableId === action.tableId);
                 const orderIds = tableOrders.map(o => o.id);
                 if (orderIds.length > 0) {
                     await supabase.from('orders').update({ is_paid: true, status: 'COMPLETED' }).in('id', orderIds);
                 }
 
-                // 3. Liberar Mesa
                 await supabase.from('restaurant_tables').update({
                     status: 'AVAILABLE',
                     customer_name: null,
@@ -689,7 +675,6 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
         case 'CALL_WAITER':
             if (tenantId) {
-                // Verifica se já existe chamado pendente para evitar spam
                 const { data: existing } = await supabase.from('service_calls')
                     .select('id')
                     .eq('table_id', action.tableId)
@@ -743,7 +728,6 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                      is_visible: action.product.isVisible,
                      sort_order: action.product.sortOrder
                 }).eq('id', action.product.id);
-                // Auditoria opcional para updates frequentes
             }
             break;
         
@@ -770,7 +754,7 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                     role: action.user.role,
                     pin: action.user.pin,
                     email: action.user.email,
-                    allowed_routes: action.user.allowedRoutes // Salva permissões
+                    allowed_routes: action.user.allowedRoutes
                 });
                 window.location.reload();
                 logAudit(tenantId, 'ADD_USER', `Usuário ${action.user.name} criado`);
@@ -792,7 +776,7 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                     role: action.user.role,
                     pin: action.user.pin,
                     email: action.user.email,
-                    allowed_routes: action.user.allowedRoutes // Atualiza permissões
+                    allowed_routes: action.user.allowedRoutes
                 }).eq('id', action.user.id);
                 window.location.reload();
                 logAudit(tenantId, 'UPDATE_USER', `Usuário ${action.user.name} atualizado`);

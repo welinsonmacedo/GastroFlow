@@ -1,10 +1,14 @@
 import React from 'react';
 import { useRestaurant } from '../context/RestaurantContext';
 import { OrderStatus, ProductType } from '../types';
-import { Clock, Check, ChefHat, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Clock, Check, ChefHat, CheckCircle, AlertTriangle, Volume2 } from 'lucide-react';
 
 export const KitchenDisplay: React.FC = () => {
   const { state, dispatch } = useRestaurant();
+
+  const enableAudio = () => {
+      dispatch({ type: 'UNLOCK_AUDIO' });
+  };
 
   // Get only KITCHEN items that are not yet Delivered/Cancelled
   const activeOrders = state.orders.filter(order => 
@@ -29,6 +33,28 @@ export const KitchenDisplay: React.FC = () => {
       });
   };
 
+  if (!state.audioUnlocked) {
+      return (
+          <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
+              <div className="text-center text-white space-y-6">
+                  <div className="bg-slate-800 p-8 rounded-full inline-block mb-4 shadow-2xl animate-pulse">
+                      <ChefHat size={64} className="text-yellow-500" />
+                  </div>
+                  <h1 className="text-4xl font-bold">KDS - Cozinha</h1>
+                  <p className="text-slate-400 max-w-md mx-auto">
+                      Clique abaixo para iniciar o turno e ativar os alertas sonoros de novos pedidos.
+                  </p>
+                  <button 
+                    onClick={enableAudio}
+                    className="bg-green-600 hover:bg-green-500 text-white font-bold py-4 px-10 rounded-xl shadow-lg transition-transform hover:scale-105 flex items-center gap-3 mx-auto text-xl"
+                  >
+                      <Volume2 size={28} /> INICIAR TURNO
+                  </button>
+              </div>
+          </div>
+      );
+  }
+
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 p-4">
       <header className="mb-6 flex justify-between items-center">
@@ -36,8 +62,13 @@ export const KitchenDisplay: React.FC = () => {
             <ChefHat className="text-yellow-500" /> 
             Cozinha (KDS)
         </h1>
-        <div className="text-xl font-mono text-yellow-400">
-            {new Date().toLocaleTimeString()}
+        <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 text-sm bg-slate-800 px-3 py-1 rounded-full text-green-400 border border-green-900">
+                <Volume2 size={14} /> Som Ativado
+            </div>
+            <div className="text-xl font-mono text-yellow-400">
+                {new Date().toLocaleTimeString()}
+            </div>
         </div>
       </header>
 
@@ -52,12 +83,12 @@ export const KitchenDisplay: React.FC = () => {
         
         {activeOrders.map(order => {
           const table = state.tables.find(t => t.id === order.tableId);
-          // Calculate time elapsed (mock)
+          // Calculate time elapsed
           const elapsedMinutes = Math.floor((new Date().getTime() - new Date(order.timestamp).getTime()) / 60000);
           const isLate = elapsedMinutes > 20;
           
           return (
-            <div key={order.id} className="min-w-[320px] max-w-[320px] bg-slate-800 rounded-xl overflow-hidden border border-slate-700 flex flex-col shadow-xl">
+            <div key={order.id} className="min-w-[320px] max-w-[320px] bg-slate-800 rounded-xl overflow-hidden border border-slate-700 flex flex-col shadow-xl animate-fade-in">
               {/* Card Header */}
               <div className={`p-4 flex justify-between items-center ${isLate ? 'bg-red-700 animate-pulse' : 'bg-slate-700'}`}>
                 <div>
@@ -89,7 +120,7 @@ export const KitchenDisplay: React.FC = () => {
                     <div 
                         key={item.id} 
                         className={`p-3 rounded-lg border-l-4 transition-all relative
-                            ${item.status === OrderStatus.PENDING ? 'bg-slate-700 border-yellow-500' : ''}
+                            ${item.status === OrderStatus.PENDING ? 'bg-slate-700 border-yellow-500 animate-[pulse_2s_infinite]' : ''}
                             ${item.status === OrderStatus.PREPARING ? 'bg-blue-900/40 border-blue-500' : ''}
                             ${item.status === OrderStatus.READY ? 'bg-green-900/40 border-green-500 opacity-60 grayscale' : ''}
                         `}
