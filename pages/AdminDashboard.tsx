@@ -4,7 +4,7 @@ import { Button } from '../components/Button';
 import { QRCodeGenerator } from '../components/QRCodeGenerator';
 import { ImageUploader } from '../components/ImageUploader';
 import { Product, ProductType, Role, User } from '../types';
-import { LayoutDashboard, Utensils, QrCode, Printer, ExternalLink, Palette, Eye, EyeOff, Save, Copy, Plus, Users, ShieldCheck, Trash2, Edit, AlertTriangle, FileBarChart, X, ArrowUp, ArrowDown, LayoutGrid, List as ListIcon, Image as ImageIcon, Calendar, TrendingUp, Search, Loader2, Menu, Activity, CheckSquare } from 'lucide-react';
+import { LayoutDashboard, Utensils, QrCode, Printer, ExternalLink, Palette, Eye, EyeOff, Save, Copy, Plus, Users, ShieldCheck, Trash2, Edit, AlertTriangle, FileBarChart, X, ArrowUp, ArrowDown, LayoutGrid, List as ListIcon, Image as ImageIcon, Calendar, TrendingUp, Search, Loader2, Menu, Activity, CheckSquare, GripVertical } from 'lucide-react';
 import { getTenantSlug } from '../utils/tenant';
 import { supabase } from '../lib/supabase';
 
@@ -21,6 +21,7 @@ export const AdminDashboard: React.FC = () => {
   // Product state
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isCreatingNew, setIsCreatingNew] = useState(false);
+  const [draggedItemIndex, setDraggedItemIndex] = useState<number | null>(null);
 
   // Staff state
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -183,23 +184,31 @@ export const AdminDashboard: React.FC = () => {
      }
   };
 
-  const handleMoveProduct = (index: number, direction: 'UP' | 'DOWN', sortedList: Product[]) => {
-      const targetIndex = direction === 'UP' ? index - 1 : index + 1;
-      if (targetIndex < 0 || targetIndex >= sortedList.length) return;
+  // Drag and Drop Handlers
+  const handleDragStart = (index: number) => {
+      setDraggedItemIndex(index);
+  };
 
-      const current = sortedList[index];
-      const target = sortedList[targetIndex];
+  const handleDragOver = (e: React.DragEvent) => {
+      e.preventDefault(); // Necessary to allow dropping
+  };
 
-      let currentOrder = current.sortOrder || 0;
-      let targetOrder = target.sortOrder || 0;
+  const handleDrop = (targetIndex: number, sortedList: Product[]) => {
+      if (draggedItemIndex === null || draggedItemIndex === targetIndex) return;
 
-      if (currentOrder === targetOrder) {
-          currentOrder = (index + 1) * 10;
-          targetOrder = (targetIndex + 1) * 10;
-      }
+      const updatedList = [...sortedList];
+      const [movedItem] = updatedList.splice(draggedItemIndex, 1);
+      updatedList.splice(targetIndex, 0, movedItem);
 
-      dispatch({ type: 'UPDATE_PRODUCT', product: { ...current, sortOrder: targetOrder } });
-      dispatch({ type: 'UPDATE_PRODUCT', product: { ...target, sortOrder: currentOrder } });
+      // Re-assign sort orders based on new index
+      updatedList.forEach((product, index) => {
+          const newSortOrder = (index + 1) * 10;
+          if (product.sortOrder !== newSortOrder) {
+               dispatch({ type: 'UPDATE_PRODUCT', product: { ...product, sortOrder: newSortOrder } });
+          }
+      });
+
+      setDraggedItemIndex(null);
   };
 
   const handleDeleteProduct = (product: Product) => {
@@ -231,7 +240,7 @@ export const AdminDashboard: React.FC = () => {
                       id: Math.random().toString(36).substr(2, 9),
                       name: userForm.name,
                       role: userForm.role,
-                      pin: userForm.pin || '0000',
+                      pin: userForm.pin || '0000', 
                       email: userForm.email,
                       allowedRoutes: userForm.allowedRoutes
                   } as User
@@ -715,7 +724,7 @@ export const AdminDashboard: React.FC = () => {
                         <table className="w-full text-left min-w-[600px]">
                             <thead className="bg-gray-50 border-b">
                                 <tr>
-                                    <th className="p-4 w-24 text-center">Ordem</th>
+                                    <th className="p-4 w-16 text-center"></th>
                                     <th className="p-4 w-16">Foto</th>
                                     <th className="p-4">Nome</th>
                                     <th className="p-4">Categoria</th>
@@ -726,32 +735,24 @@ export const AdminDashboard: React.FC = () => {
                             </thead>
                             <tbody>
                                 {sortedProducts.map((product, index) => (
-                                    <tr key={product.id} className="border-b hover:bg-gray-50">
-                                        <td className="p-4">
-                                            <div className="flex items-center justify-center gap-1">
-                                                <div className="flex flex-col gap-1">
-                                                    <button 
-                                                        onClick={() => handleMoveProduct(index, 'UP', sortedProducts)} 
-                                                        disabled={index === 0}
-                                                        className="p-1 hover:bg-gray-200 rounded disabled:opacity-30"
-                                                    >
-                                                        <ArrowUp size={14} />
-                                                    </button>
-                                                    <button 
-                                                        onClick={() => handleMoveProduct(index, 'DOWN', sortedProducts)} 
-                                                        disabled={index === sortedProducts.length - 1}
-                                                        className="p-1 hover:bg-gray-200 rounded disabled:opacity-30"
-                                                    >
-                                                        <ArrowDown size={14} />
-                                                    </button>
-                                                </div>
-                                                <span className="text-sm font-mono w-6 text-center">{product.sortOrder}</span>
-                                            </div>
+                                    <tr 
+                                        key={product.id} 
+                                        className={`border-b hover:bg-gray-50 transition-colors ${draggedItemIndex === index ? 'opacity-50 bg-blue-50' : ''}`}
+                                        draggable
+                                        onDragStart={() => handleDragStart(index)}
+                                        onDragOver={handleDragOver}
+                                        onDrop={() => handleDrop(index, sortedProducts)}
+                                    >
+                                        <td className="p-4 text-center cursor-move text-gray-400 hover:text-gray-600" title="Arrastar para reordenar">
+                                            <GripVertical size={20} className="mx-auto" />
                                         </td>
                                         <td className="p-4">
                                             <img src={product.image} alt="" className="w-10 h-10 rounded object-cover bg-gray-200" />
                                         </td>
-                                        <td className="p-4 font-medium">{product.name}</td>
+                                        <td className="p-4 font-medium">
+                                            {product.name}
+                                            <div className="text-[10px] text-gray-400 font-mono">Ordem: {product.sortOrder}</div>
+                                        </td>
                                         <td className="p-4"><span className="px-2 py-1 bg-gray-100 rounded text-sm">{product.category}</span></td>
                                         <td className="p-4">R$ {product.price.toFixed(2)}</td>
                                         <td className="p-4">

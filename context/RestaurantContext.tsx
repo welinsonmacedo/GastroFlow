@@ -219,11 +219,18 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 return;
             }
 
+            // Define o período de busca (últimas 24h para garantir que tudo do dia apareça)
+            const yesterday = new Date();
+            yesterday.setHours(yesterday.getHours() - 24);
+            const isoDate = yesterday.toISOString();
+
             const [usersRes, productsRes, tablesRes, ordersRes, transactionsRes, auditRes, callsRes] = await Promise.all([
                 supabase.from('staff').select('*').eq('tenant_id', tenant.id),
                 supabase.from('products').select('*').eq('tenant_id', tenant.id),
                 supabase.from('restaurant_tables').select('*').eq('tenant_id', tenant.id).order('number'),
-                supabase.from('orders').select(`*, items:order_items (*)`).eq('tenant_id', tenant.id).eq('is_paid', false),
+                // Mudança Crítica: Busca pedidos recentes (24h), independente de estarem pagos ou não.
+                // Isso evita que pedidos sumam da cozinha quando pagos.
+                supabase.from('orders').select(`*, items:order_items (*)`).eq('tenant_id', tenant.id).gte('created_at', isoDate),
                 supabase.from('transactions').select('*').eq('tenant_id', tenant.id).order('created_at', { ascending: false }).limit(50),
                 supabase.from('audit_logs').select('*').eq('tenant_id', tenant.id).order('created_at', { ascending: false }).limit(50),
                 supabase.from('service_calls').select('*').eq('tenant_id', tenant.id).eq('status', 'PENDING')
@@ -449,7 +456,15 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
     // Helper to fetch orders
     const fetchOrders = async () => {
-        const { data } = await supabase.from('orders').select(`*, items:order_items (*)`).eq('tenant_id', state.tenantId!).eq('is_paid', false);
+        const yesterday = new Date();
+        yesterday.setHours(yesterday.getHours() - 24);
+        const isoDate = yesterday.toISOString();
+
+        // Busca pedidos recentes, INDEPENDENTE de status de pagamento
+        // Isso é crucial para que a cozinha veja pedidos mesmo após pagos
+        const { data } = await supabase.from('orders')
+            .select(`*, items:order_items (*)`).eq('tenant_id', state.tenantId!).gte('created_at', isoDate);
+            
         if (data) {
              const mappedOrders: Order[] = data.map((o: any) => ({
                 id: o.id,

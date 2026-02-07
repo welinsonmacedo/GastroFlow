@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useRestaurant } from '../context/RestaurantContext';
 import { TableStatus, OrderStatus, ProductType, Product } from '../types';
 import { Button } from '../components/Button';
-import { CheckCircle, Coffee, User, Key, X, Bell, Plus, Minus, Search, ShoppingCart, ChevronRight, Utensils, Trash2, ArrowLeft, Volume2 } from 'lucide-react';
+import { CheckCircle, Coffee, User, Key, X, Bell, Plus, Minus, Search, ShoppingCart, ChevronRight, Utensils, Trash2, ArrowLeft, Volume2, Edit3, MessageSquare } from 'lucide-react';
 
 export const WaiterApp: React.FC = () => {
   const { state, dispatch } = useRestaurant();
@@ -18,6 +18,9 @@ export const WaiterApp: React.FC = () => {
   const [cart, setCart] = useState<{ product: Product; quantity: number; notes: string }[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('Todos');
+
+  // Modal para Adição com Observação
+  const [quickAddModal, setQuickAddModal] = useState<{ product: Product; qty: number; note: string } | null>(null);
 
   // Active items ready to serve (Kitchen Ready OR Bar Pending)
   const readyToServeItems = state.orders.flatMap(order => 
@@ -80,14 +83,26 @@ export const WaiterApp: React.FC = () => {
 
   // --- Cart Logic ---
 
-  const addToCart = (product: Product) => {
+  const addToCart = (product: Product, quantity = 1, notes = '') => {
     setCart(prev => {
-      const existing = prev.find(item => item.product.id === product.id);
-      if (existing) {
-        return prev.map(item => item.product.id === product.id ? { ...item, quantity: item.quantity + 1 } : item);
+      // Se tiver nota, sempre cria item novo (não agrupa)
+      if (notes) {
+          return [...prev, { product, quantity, notes }];
       }
-      return [...prev, { product, quantity: 1, notes: '' }];
+      
+      const existing = prev.find(item => item.product.id === product.id && !item.notes);
+      if (existing) {
+        return prev.map(item => item.product.id === product.id && !item.notes ? { ...item, quantity: item.quantity + quantity } : item);
+      }
+      return [...prev, { product, quantity, notes: '' }];
     });
+  };
+
+  const confirmQuickAdd = () => {
+      if (quickAddModal) {
+          addToCart(quickAddModal.product, quickAddModal.qty, quickAddModal.note);
+          setQuickAddModal(null);
+      }
   };
 
   const updateQuantity = (productId: string, delta: number) => {
@@ -157,6 +172,43 @@ export const WaiterApp: React.FC = () => {
 
       return (
           <div className="min-h-screen bg-gray-50 flex flex-col h-screen overflow-hidden">
+              
+              {/* MODAL DE OBSERVAÇÃO RÁPIDA */}
+              {quickAddModal && (
+                  <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+                      <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm overflow-hidden animate-fade-in">
+                          <div className="bg-slate-900 text-white p-4 flex justify-between items-center">
+                              <h3 className="font-bold">{quickAddModal.product.name}</h3>
+                              <button onClick={() => setQuickAddModal(null)}><X size={20}/></button>
+                          </div>
+                          <div className="p-6 space-y-4">
+                              <div>
+                                  <label className="block text-sm font-bold text-gray-700 mb-2">Quantidade</label>
+                                  <div className="flex items-center gap-4 bg-gray-100 p-2 rounded-lg justify-center">
+                                      <button onClick={() => setQuickAddModal({...quickAddModal, qty: Math.max(1, quickAddModal.qty - 1)})} className="p-2 bg-white rounded shadow-sm hover:bg-gray-50"><Minus size={20}/></button>
+                                      <span className="text-xl font-bold w-8 text-center">{quickAddModal.qty}</span>
+                                      <button onClick={() => setQuickAddModal({...quickAddModal, qty: quickAddModal.qty + 1})} className="p-2 bg-white rounded shadow-sm hover:bg-gray-50"><Plus size={20}/></button>
+                                  </div>
+                              </div>
+                              <div>
+                                  <label className="block text-sm font-bold text-gray-700 mb-2">Observação</label>
+                                  <textarea 
+                                      className="w-full border rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                                      rows={3}
+                                      placeholder="Ex: Sem cebola, ponto da carne..."
+                                      value={quickAddModal.note}
+                                      onChange={(e) => setQuickAddModal({...quickAddModal, note: e.target.value})}
+                                      autoFocus
+                                  />
+                              </div>
+                              <Button onClick={confirmQuickAdd} className="w-full py-3 text-lg">
+                                  Adicionar ao Pedido
+                              </Button>
+                          </div>
+                      </div>
+                  </div>
+              )}
+
               {/* Header */}
               <header className="bg-white border-b p-4 shadow-sm flex items-center justify-between shrink-0">
                   <div className="flex items-center gap-2">
@@ -215,20 +267,32 @@ export const WaiterApp: React.FC = () => {
                                           <div className="text-sm text-gray-500">R$ {product.price.toFixed(2)}</div>
                                       </div>
                                       
-                                      {inCart ? (
-                                          <div className="flex items-center gap-3 bg-white px-2 py-1 rounded-lg border shadow-sm">
-                                              <button onClick={() => updateQuantity(product.id, -1)} className="p-1 hover:text-red-500"><Minus size={18}/></button>
-                                              <span className="font-bold w-4 text-center">{inCart.quantity}</span>
-                                              <button onClick={() => updateQuantity(product.id, 1)} className="p-1 hover:text-green-500"><Plus size={18}/></button>
-                                          </div>
-                                      ) : (
+                                      <div className="flex items-center gap-2">
+                                          {/* Botão de Observação/Edição */}
                                           <button 
-                                              onClick={() => addToCart(product)}
-                                              className="bg-gray-100 p-2 rounded-lg text-gray-600 hover:bg-blue-600 hover:text-white transition-colors"
+                                              onClick={() => setQuickAddModal({ product, qty: 1, note: '' })}
+                                              className="bg-gray-100 p-2 rounded-lg text-gray-600 hover:bg-yellow-100 hover:text-yellow-700 transition-colors"
+                                              title="Adicionar com Observação"
                                           >
-                                              <Plus size={20} />
+                                              <Edit3 size={20} />
                                           </button>
-                                      )}
+
+                                          {/* Botão Adicionar Rápido */}
+                                          {inCart && !inCart.notes ? (
+                                              <div className="flex items-center gap-3 bg-white px-2 py-1 rounded-lg border shadow-sm">
+                                                  <button onClick={() => updateQuantity(product.id, -1)} className="p-1 hover:text-red-500"><Minus size={18}/></button>
+                                                  <span className="font-bold w-4 text-center">{inCart.quantity}</span>
+                                                  <button onClick={() => updateQuantity(product.id, 1)} className="p-1 hover:text-green-500"><Plus size={18}/></button>
+                                              </div>
+                                          ) : (
+                                              <button 
+                                                  onClick={() => addToCart(product)}
+                                                  className="bg-blue-600 p-2 rounded-lg text-white hover:bg-blue-700 transition-colors shadow-sm"
+                                              >
+                                                  <Plus size={20} />
+                                              </button>
+                                          )}
+                                      </div>
                                   </div>
                               );
                           })}
@@ -244,18 +308,29 @@ export const WaiterApp: React.FC = () => {
                           </div>
                           
                           <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                              {cart.map(item => (
-                                  <div key={item.product.id} className="text-sm">
+                              {cart.map((item, idx) => (
+                                  <div key={`${item.product.id}-${idx}`} className="text-sm border-b pb-3 last:border-0">
                                       <div className="flex justify-between items-start mb-1">
                                           <span className="font-medium text-gray-800">{item.quantity}x {item.product.name}</span>
                                           <span className="font-bold">R$ {(item.product.price * item.quantity).toFixed(2)}</span>
                                       </div>
-                                      <input 
-                                          placeholder="Obs: Sem cebola..."
-                                          className="w-full text-xs border-b border-dashed bg-transparent focus:outline-none focus:border-blue-500 text-gray-500"
-                                          value={item.notes}
-                                          onChange={(e) => setCart(prev => prev.map(p => p.product.id === item.product.id ? { ...p, notes: e.target.value } : p))}
-                                      />
+                                      {item.notes ? (
+                                          <div className="text-xs bg-yellow-50 text-yellow-800 p-2 rounded flex items-start gap-1 mt-1 border border-yellow-100">
+                                              <MessageSquare size={12} className="mt-0.5 shrink-0"/> {item.notes}
+                                          </div>
+                                      ) : (
+                                          <input 
+                                              placeholder="Adicionar obs..."
+                                              className="w-full text-xs border-b border-dashed bg-transparent focus:outline-none focus:border-blue-500 text-gray-400 mt-1"
+                                              onBlur={(e) => {
+                                                  // Opcional: Atualizar nota ao sair do campo
+                                                  const val = e.target.value;
+                                                  if(val) {
+                                                      setCart(prev => prev.map((p, i) => i === idx ? { ...p, notes: val } : p));
+                                                  }
+                                              }}
+                                          />
+                                      )}
                                   </div>
                               ))}
                           </div>
