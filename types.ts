@@ -134,7 +134,9 @@ export interface RestaurantTheme {
   backgroundColor: string;
   fontColor: string;
   logoUrl: string;
+  bannerUrl?: string; // Novo: Imagem de capa
   restaurantName: string;
+  viewMode?: 'LIST' | 'GRID'; // Novo: Layout do cardápio
 }
 
 export interface DailyStats {

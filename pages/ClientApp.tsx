@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { useRestaurant } from '../context/RestaurantContext';
 import { Button } from '../components/Button';
 import { TableStatus, Product } from '../types';
-import { ShoppingCart, ChefHat, Info, Plus, Minus, X, Lock, Receipt, Loader2, Bell, AlertTriangle } from 'lucide-react';
+import { ShoppingCart, ChefHat, Info, Plus, Minus, X, Lock, Receipt, Loader2, Bell, AlertTriangle, ArrowLeft } from 'lucide-react';
 
 export const ClientApp: React.FC = () => {
   const { tableId } = useParams<{ tableId: string }>();
@@ -99,26 +99,20 @@ export const ClientApp: React.FC = () => {
         <div className="bg-white p-8 rounded-2xl shadow-xl text-center max-w-sm w-full">
           <ChefHat size={48} className="mx-auto mb-4" style={{ color: theme.primaryColor }} />
           <h1 className="text-2xl font-bold mb-2 text-gray-800">{theme.restaurantName}</h1>
-          
           <div className="my-6">
             <h2 className="text-xl font-bold text-gray-700 mb-1">Mesa #{table.number}</h2>
             <p className="text-red-500 font-medium">Esta mesa está fechada</p>
           </div>
-          
           <p className="text-gray-500 text-sm mb-8">
             Para iniciar o atendimento e liberar o cardápio, por favor solicite a presença de um garçom.
           </p>
-
           <Button 
             onClick={callWaiter} 
             className={`w-full py-4 flex items-center justify-center gap-2 text-lg font-bold shadow-lg ${waiterCalled ? 'bg-green-600' : 'bg-slate-800'}`}
           >
              {waiterCalled ? <><Loader2 className="animate-spin" size={24}/> Chamando...</> : <><Bell size={24} /> Chamar Garçom</>}
           </Button>
-          
-          {waiterCalled && (
-             <p className="text-green-600 text-sm mt-4 font-bold animate-pulse">Garçom a caminho!</p>
-          )}
+          {waiterCalled && <p className="text-green-600 text-sm mt-4 font-bold animate-pulse">Garçom a caminho!</p>}
         </div>
       </div>
     );
@@ -134,24 +128,15 @@ export const ClientApp: React.FC = () => {
             <Lock size={48} className="text-gray-400 mx-auto mb-4" />
             <h2 className="text-xl font-bold mb-2">Digite o Código</h2>
             <p className="text-gray-600 mb-6 text-sm">Insira o código de 4 dígitos fornecido pelo garçom para acessar o cardápio da <strong>Mesa {table.number}</strong>.</p>
-            
             <input 
               type="tel" 
               maxLength={4}
-              className={`text-center text-4xl tracking-[0.5em] w-full border-2 rounded-xl py-4 mb-4 font-mono font-bold focus:outline-none transition-colors
-                  ${errorMsg ? 'border-red-500 bg-red-50 text-red-600' : 'border-gray-200 focus:border-blue-500'}
-              `}
+              className={`text-center text-4xl tracking-[0.5em] w-full border-2 rounded-xl py-4 mb-4 font-mono font-bold focus:outline-none transition-colors ${errorMsg ? 'border-red-500 bg-red-50 text-red-600' : 'border-gray-200 focus:border-blue-500'}`}
               value={accessPin}
               onChange={(e) => { setAccessPin(e.target.value); setErrorMsg(''); }}
               placeholder="0000"
             />
-
-            {errorMsg && (
-                <div className="mb-4 text-red-500 text-sm flex items-center justify-center gap-2 font-bold animate-bounce">
-                    <AlertTriangle size={16} /> {errorMsg}
-                </div>
-            )}
-            
+            {errorMsg && <div className="mb-4 text-red-500 text-sm flex items-center justify-center gap-2 font-bold animate-bounce"><AlertTriangle size={16} /> {errorMsg}</div>}
             <button 
                 onClick={checkPin}
                 className="w-full text-white font-bold py-3 rounded-lg shadow-md hover:opacity-90 transition-opacity mb-6"
@@ -159,15 +144,10 @@ export const ClientApp: React.FC = () => {
             >
                 Entrar
             </button>
-
             {errorMsg && (
                 <div className="animate-fade-in bg-slate-50 p-4 rounded-lg border border-slate-100">
                     <p className="text-xs text-gray-500 mb-3">Esqueceu o código ou precisa de ajuda?</p>
-                    <Button 
-                        onClick={callWaiter} 
-                        variant="secondary"
-                        className="w-full py-2 flex items-center justify-center gap-2 text-gray-700 bg-white border border-gray-300 shadow-sm hover:bg-gray-50"
-                    >
+                    <Button onClick={callWaiter} variant="secondary" className="w-full py-2 flex items-center justify-center gap-2 text-gray-700 bg-white border border-gray-300 shadow-sm hover:bg-gray-50">
                         <Bell size={18} /> {waiterCalled ? 'Solicitação Enviada!' : 'Chamar Garçom'}
                     </Button>
                 </div>
@@ -180,84 +160,104 @@ export const ClientApp: React.FC = () => {
   // --- CENÁRIO 3: Autenticado (Cardápio e Pedidos) ---
 
   const cartTotal = cart.reduce((acc, item) => acc + (item.product.price * item.quantity), 0);
-
-  // Produtos visíveis e ordenados
   const visibleProducts = state.products
     .filter(p => p.isVisible)
     .sort((a, b) => (a.sortOrder || 99) - (b.sortOrder || 99));
 
   return (
     <div className="min-h-screen pb-24" style={{ backgroundColor: theme.backgroundColor, color: theme.fontColor }}>
-      {/* Header */}
-      <header className="bg-white p-4 shadow-sm sticky top-0 z-10 flex justify-between items-center">
-        <div>
-           {theme.logoUrl ? (
-             <img src={theme.logoUrl} alt="Logo" className="h-8 mb-1" />
-           ) : (
-             <h1 className="font-bold text-lg" style={{ color: theme.primaryColor }}>{theme.restaurantName}</h1>
-           )}
-          <p className="text-xs text-gray-500">Mesa #{table.number} - {table.customerName}</p>
-        </div>
-        <div className="flex gap-2">
-            <button 
-                onClick={() => setView('BILL')}
-                className={`p-2 rounded-full ${view === 'BILL' ? 'bg-blue-100' : ''}`}
-                style={{ color: view === 'BILL' ? theme.primaryColor : '#4b5563' }}
-                title="Ver Conta"
-            >
-                <Receipt size={24} />
-            </button>
-            <button 
-                onClick={() => setView('STATUS')}
-                className={`p-2 rounded-full ${view === 'STATUS' ? 'bg-blue-100' : ''}`}
-                style={{ color: view === 'STATUS' ? theme.primaryColor : '#4b5563' }}
-                title="Status do Pedido"
-            >
-                <Info size={24} />
-            </button>
-            <button 
-                onClick={() => setView(view === 'CART' ? 'MENU' : 'CART')}
-                className="relative p-2"
-                style={{ color: theme.primaryColor }}
-                title="Carrinho"
-            >
-            <ShoppingCart size={24} />
-            {cart.length > 0 && (
-                <span className="absolute top-0 right-0 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                {cart.reduce((a, b) => a + b.quantity, 0)}
-                </span>
-            )}
-            </button>
-        </div>
+      {/* Header Fixo */}
+      <header className="bg-white shadow-sm sticky top-0 z-20">
+          <div className="flex justify-between items-center p-4">
+            <div>
+               {view !== 'MENU' ? (
+                   <button onClick={() => setView('MENU')} className="flex items-center gap-2 text-gray-600 font-bold hover:text-gray-900 transition-colors">
+                       <ArrowLeft size={20} /> Voltar ao Menu
+                   </button>
+               ) : (
+                   <div className="flex items-center gap-2">
+                       {theme.logoUrl ? (
+                         <img src={theme.logoUrl} alt="Logo" className="h-10 w-10 object-contain rounded-full bg-gray-50 p-1" />
+                       ) : (
+                         <ChefHat size={32} style={{ color: theme.primaryColor }} />
+                       )}
+                       <div>
+                           <h1 className="font-bold text-lg leading-tight" style={{ color: theme.primaryColor }}>{theme.restaurantName}</h1>
+                           <p className="text-xs text-gray-500">Mesa #{table.number} - {table.customerName}</p>
+                       </div>
+                   </div>
+               )}
+            </div>
+            
+            <div className="flex gap-2">
+                {view !== 'BILL' && (
+                    <button onClick={() => setView('BILL')} className="p-2 rounded-full text-gray-600 hover:bg-gray-100" title="Ver Conta">
+                        <Receipt size={24} />
+                    </button>
+                )}
+                {view !== 'STATUS' && (
+                    <button onClick={() => setView('STATUS')} className="p-2 rounded-full text-gray-600 hover:bg-gray-100" title="Status do Pedido">
+                        <Info size={24} />
+                    </button>
+                )}
+                {view !== 'CART' && (
+                    <button onClick={() => setView('CART')} className="relative p-2 rounded-full text-gray-600 hover:bg-gray-100" style={{ color: theme.primaryColor }} title="Carrinho">
+                        <ShoppingCart size={24} />
+                        {cart.length > 0 && <span className="absolute top-0 right-0 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">{cart.reduce((a, b) => a + b.quantity, 0)}</span>}
+                    </button>
+                )}
+            </div>
+          </div>
       </header>
 
+      {/* Banner Area (Only on Menu View) */}
+      {view === 'MENU' && theme.bannerUrl && (
+          <div className="w-full h-48 md:h-64 bg-gray-200 overflow-hidden relative">
+              <img src={theme.bannerUrl} className="w-full h-full object-cover" alt="Banner do Restaurante" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end p-6">
+                  <h2 className="text-white text-2xl font-bold shadow-sm">{theme.restaurantName}</h2>
+              </div>
+          </div>
+      )}
+
       {/* Main Content */}
-      <main className="p-4 max-w-2xl mx-auto">
+      <main className="p-4 max-w-2xl mx-auto min-h-[calc(100vh-160px)]">
+        
         {view === 'MENU' && (
-          <div className="space-y-6">
-            {['Lanches', 'Pratos Principais', 'Acompanhamentos', 'Bebidas', 'Sobremesas', 'Pizzas'].map(category => {
+          <div className="space-y-8 mt-2">
+            {['Promocoes', 'Lanches', 'Pizzas', 'Pratos Principais', 'Acompanhamentos', 'Bebidas', 'Sobremesas'].map(category => {
               const items = visibleProducts.filter(p => p.category === category);
               if (items.length === 0) return null;
+              
+              // Verifica o modo de visualização (Lista vs Grade)
+              const isGrid = theme.viewMode === 'GRID';
+
               return (
                 <div key={category}>
-                  <h2 className="text-xl font-bold mb-3" style={{ color: theme.fontColor }}>{category}</h2>
-                  <div className="grid gap-4">
+                  <h2 className="text-xl font-bold mb-4 sticky top-16 bg-white/95 backdrop-blur py-2 z-10 px-2 rounded-lg shadow-sm border-l-4" style={{ borderColor: theme.primaryColor, color: theme.fontColor }}>{category}</h2>
+                  <div className={isGrid ? "grid grid-cols-2 gap-4" : "flex flex-col gap-4"}>
                     {items.map(product => (
-                      <div key={product.id} className="bg-white rounded-xl p-3 shadow-sm flex gap-4">
-                        <img src={product.image} alt={product.name} className="w-24 h-24 object-cover rounded-lg bg-gray-200" />
-                        <div className="flex-1 flex flex-col justify-between">
+                      <div key={product.id} className={`bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100 flex ${isGrid ? 'flex-col' : 'flex-row p-3 gap-4'}`}>
+                        
+                        {/* Imagem */}
+                        <div className={`${isGrid ? 'w-full h-32' : 'w-24 h-24 shrink-0'}`}>
+                            <img src={product.image} alt={product.name} className="w-full h-full object-cover bg-gray-100" />
+                        </div>
+
+                        {/* Conteúdo */}
+                        <div className={`flex-1 flex flex-col justify-between ${isGrid ? 'p-3' : ''}`}>
                           <div>
-                            <h3 className="font-semibold">{product.name}</h3>
-                            <p className="text-xs text-gray-500 line-clamp-2">{product.description}</p>
+                            <h3 className="font-bold text-gray-800 leading-tight mb-1">{product.name}</h3>
+                            <p className="text-xs text-gray-500 line-clamp-2 mb-2">{product.description}</p>
                           </div>
-                          <div className="flex justify-between items-center mt-2">
-                            <span className="font-bold" style={{ color: theme.primaryColor }}>R$ {product.price.toFixed(2)}</span>
+                          <div className="flex justify-between items-center mt-auto">
+                            <span className="font-bold text-lg" style={{ color: theme.primaryColor }}>R$ {product.price.toFixed(2)}</span>
                             <button 
-                                className="px-3 py-1.5 text-sm rounded-lg text-white"
+                                className="w-8 h-8 rounded-full flex items-center justify-center text-white shadow-md active:scale-95 transition-transform"
                                 style={{ backgroundColor: theme.primaryColor }}
                                 onClick={() => addToCart(product)}
                             >
-                                Adicionar
+                                <Plus size={20} />
                             </button>
                           </div>
                         </div>
@@ -271,134 +271,157 @@ export const ClientApp: React.FC = () => {
         )}
 
         {view === 'CART' && (
-          <div className="bg-white rounded-xl shadow-sm p-4 min-h-[50vh]">
-            <h2 className="text-xl font-bold mb-4">Seu Pedido</h2>
-            {cart.length === 0 ? (
-                <div className="text-center text-gray-500 py-10">Seu carrinho está vazio</div>
-            ) : (
-                <div className="space-y-4">
-                {cart.map(item => (
-                    <div key={item.product.id} className="flex justify-between items-start border-b pb-4">
-                    <div className="flex-1">
-                        <h4 className="font-medium">{item.product.name}</h4>
-                        <p className="text-sm text-gray-500">R$ {item.product.price.toFixed(2)}</p>
-                        <input 
-                            type="text" 
-                            placeholder="Observações (ex: sem cebola)..."
-                            className="text-xs mt-1 w-full border-b border-gray-200 focus:border-blue-500 focus:outline-none py-1"
-                            value={item.notes}
-                            onChange={(e) => {
-                                setCart(prev => prev.map(p => p.product.id === item.product.id ? { ...p, notes: e.target.value } : p));
-                            }}
-                        />
+          <div className="bg-white rounded-xl shadow-lg border overflow-hidden animate-fade-in relative">
+            <div className="bg-gray-50 p-4 border-b flex justify-between items-center">
+                <h2 className="text-xl font-bold text-gray-800">Seu Pedido</h2>
+                <button onClick={() => setView('MENU')} className="text-gray-400 hover:text-red-500"><X size={24}/></button>
+            </div>
+            
+            <div className="p-4 min-h-[50vh]">
+                {cart.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-64 text-gray-400">
+                        <ShoppingCart size={48} className="mb-4 opacity-50"/>
+                        <p>Seu carrinho está vazio</p>
+                        <button onClick={() => setView('MENU')} className="mt-4 text-blue-600 font-bold text-sm">Voltar ao Cardápio</button>
                     </div>
-                    <div className="flex items-center gap-3 ml-4">
-                        <button onClick={() => updateQuantity(item.product.id, -1)} className="p-1 rounded bg-gray-100"><Minus size={16}/></button>
-                        <span className="w-6 text-center font-medium">{item.quantity}</span>
-                        <button onClick={() => updateQuantity(item.product.id, 1)} className="p-1 rounded bg-gray-100"><Plus size={16}/></button>
-                        <button onClick={() => removeFromCart(item.product.id)} className="text-red-500 ml-2"><X size={18}/></button>
+                ) : (
+                    <div className="space-y-4">
+                    {cart.map(item => (
+                        <div key={item.product.id} className="flex justify-between items-start border-b pb-4 last:border-0">
+                        <div className="flex-1">
+                            <h4 className="font-medium text-gray-800">{item.product.name}</h4>
+                            <p className="text-sm text-gray-500 font-medium">R$ {item.product.price.toFixed(2)}</p>
+                            <input 
+                                type="text" 
+                                placeholder="Observações (ex: sem cebola)..."
+                                className="text-xs mt-2 w-full bg-gray-50 border border-gray-200 rounded px-2 py-1 focus:border-blue-500 focus:outline-none"
+                                value={item.notes}
+                                onChange={(e) => {
+                                    setCart(prev => prev.map(p => p.product.id === item.product.id ? { ...p, notes: e.target.value } : p));
+                                }}
+                            />
+                        </div>
+                        <div className="flex items-center gap-3 ml-4">
+                            <button onClick={() => updateQuantity(item.product.id, -1)} className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600"><Minus size={16}/></button>
+                            <span className="w-6 text-center font-bold text-lg">{item.quantity}</span>
+                            <button onClick={() => updateQuantity(item.product.id, 1)} className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600"><Plus size={16}/></button>
+                            <button onClick={() => removeFromCart(item.product.id)} className="text-red-400 ml-2 hover:text-red-600"><X size={20}/></button>
+                        </div>
+                        </div>
+                    ))}
                     </div>
-                    </div>
-                ))}
-                
-                <div className="mt-6 pt-4 border-t">
-                    <div className="flex justify-between text-lg font-bold mb-4">
+                )}
+            </div>
+            
+            {cart.length > 0 && (
+                <div className="bg-gray-50 p-4 border-t sticky bottom-0">
+                    <div className="flex justify-between text-xl font-bold mb-4 text-gray-800">
                         <span>Total</span>
                         <span>R$ {cartTotal.toFixed(2)}</span>
                     </div>
                     <button 
-                        className="w-full py-3 rounded-lg text-white font-bold text-lg hover:opacity-90"
-                        style={{ backgroundColor: '#16a34a' }} // Green fixed for buy button
+                        className="w-full py-4 rounded-xl text-white font-bold text-lg hover:opacity-90 shadow-lg transform active:scale-95 transition-all flex items-center justify-center gap-2"
+                        style={{ backgroundColor: '#16a34a' }}
                         onClick={submitOrder}
                     >
-                        Enviar Pedido para Cozinha
+                        Enviar Pedido <ArrowLeft className="rotate-180" size={20} />
                     </button>
-                </div>
                 </div>
             )}
           </div>
         )}
 
         {view === 'BILL' && (
-          <div className="bg-white rounded-xl shadow-sm p-6 min-h-[50vh]">
-              <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Conta Parcial</h2>
-              
-              <div className="space-y-4 mb-6">
-                  {tableOrders.flatMap(o => o.items).map((item, idx) => {
-                      const product = state.products.find(p => p.id === item.productId);
-                      if(!product) return null;
-                      return (
-                          <div key={`${item.id}-${idx}`} className="flex justify-between text-sm border-b border-dashed border-gray-200 pb-2">
-                              <span className="text-gray-700 font-medium">{item.quantity}x {product.name}</span>
-                              <span className="font-bold text-gray-900">R$ {(product.price * item.quantity).toFixed(2)}</span>
-                          </div>
-                      );
-                  })}
-                  {tableOrders.length === 0 && <p className="text-center text-gray-400 py-4">Nenhum pedido realizado ainda.</p>}
+          <div className="bg-white rounded-xl shadow-lg border overflow-hidden animate-fade-in">
+              <div className="bg-gray-50 p-4 border-b flex justify-between items-center">
+                <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2"><Receipt size={20}/> Conta Parcial</h2>
+                <button onClick={() => setView('MENU')} className="text-gray-400 hover:text-red-500"><X size={24}/></button>
               </div>
-
-              {tableOrders.length > 0 && (
-                <div className="flex justify-between items-center text-xl font-bold border-t-2 border-gray-800 pt-4 mb-8">
-                    <span>Total</span>
-                    <span style={{ color: theme.primaryColor }}>R$ {billTotal.toFixed(2)}</span>
-                </div>
-              )}
               
-              <div className="bg-yellow-50 border border-yellow-100 p-4 rounded-lg text-sm text-yellow-800 text-center">
-                 <p className="font-bold mb-1">Deseja fechar a conta?</p>
-                 <p>Chame o garçom ou dirija-se ao caixa informando o número da sua mesa.</p>
-              </div>
+              <div className="p-6">
+                  <div className="space-y-3 mb-6">
+                      {tableOrders.flatMap(o => o.items).map((item, idx) => {
+                          const product = state.products.find(p => p.id === item.productId);
+                          if(!product) return null;
+                          return (
+                              <div key={`${item.id}-${idx}`} className="flex justify-between text-sm border-b border-dashed border-gray-200 pb-2">
+                                  <span className="text-gray-700 font-medium">{item.quantity}x {product.name}</span>
+                                  <span className="font-bold text-gray-900">R$ {(product.price * item.quantity).toFixed(2)}</span>
+                              </div>
+                          );
+                      })}
+                      {tableOrders.length === 0 && <p className="text-center text-gray-400 py-10">Nenhum pedido realizado ainda.</p>}
+                  </div>
 
-               <Button 
-                variant="outline" 
-                className="w-full mt-4 bg-white border-blue-200 text-blue-600"
-                onClick={callWaiter}
-               >
-                 <Bell size={18} /> {waiterCalled ? 'Solicitação Enviada' : 'Chamar Garçom'}
-               </Button>
+                  {tableOrders.length > 0 && (
+                    <div className="flex justify-between items-center text-2xl font-bold border-t-2 border-gray-800 pt-4 mb-8">
+                        <span>Total</span>
+                        <span style={{ color: theme.primaryColor }}>R$ {billTotal.toFixed(2)}</span>
+                    </div>
+                  )}
+                  
+                  <div className="bg-yellow-50 border border-yellow-100 p-4 rounded-lg text-sm text-yellow-800 text-center mb-4">
+                     <p className="font-bold mb-1">Deseja fechar a conta?</p>
+                     <p>Chame o garçom ou dirija-se ao caixa informando o número da sua mesa.</p>
+                  </div>
+
+                   <Button 
+                    variant="outline" 
+                    className="w-full bg-white border-blue-200 text-blue-600 hover:bg-blue-50"
+                    onClick={callWaiter}
+                   >
+                     <Bell size={18} /> {waiterCalled ? 'Solicitação Enviada' : 'Chamar Garçom'}
+                   </Button>
+              </div>
           </div>
         )}
 
         {view === 'STATUS' && (
-            <div className="space-y-4">
-                <h2 className="text-xl font-bold">Histórico de Pedidos</h2>
-                {tableOrders.length === 0 && <p className="text-gray-500">Nenhum pedido ativo encontrado.</p>}
-                {[...tableOrders].reverse().map(order => (
-                    <div key={order.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-                        <div className="flex justify-between text-sm text-gray-500 mb-2">
-                            <span>Pedido #{order.id.substr(0,8)}</span>
-                            <span>{order.timestamp.toLocaleTimeString()}</span>
+            <div className="bg-white rounded-xl shadow-lg border overflow-hidden animate-fade-in">
+                <div className="bg-gray-50 p-4 border-b flex justify-between items-center">
+                    <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2"><Info size={20}/> Status dos Pedidos</h2>
+                    <button onClick={() => setView('MENU')} className="text-gray-400 hover:text-red-500"><X size={24}/></button>
+                </div>
+                
+                <div className="p-4 space-y-4">
+                    {tableOrders.length === 0 && <p className="text-gray-500 text-center py-10">Nenhum pedido ativo encontrado.</p>}
+                    {[...tableOrders].reverse().map(order => (
+                        <div key={order.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+                            <div className="flex justify-between text-xs text-gray-500 mb-3 border-b pb-2">
+                                <span>PEDIDO #{order.id.substr(0,6).toUpperCase()}</span>
+                                <span>{order.timestamp.toLocaleTimeString()}</span>
+                            </div>
+                            <div className="space-y-3">
+                                {order.items.map(item => (
+                                    <div key={item.id} className="flex justify-between items-center">
+                                        <span className="text-gray-800 font-medium">{item.quantity}x {item.productName}</span>
+                                        <span className={`text-[10px] px-2 py-1 rounded-full font-bold uppercase tracking-wider
+                                            ${item.status === 'PENDING' ? 'bg-gray-100 text-gray-600' : ''}
+                                            ${item.status === 'PREPARING' ? 'bg-yellow-100 text-yellow-700 animate-pulse' : ''}
+                                            ${item.status === 'READY' ? 'bg-green-100 text-green-700' : ''}
+                                            ${item.status === 'DELIVERED' ? 'bg-blue-50 text-blue-600' : ''}
+                                        `}>
+                                            {item.status === 'PENDING' && 'Aguardando'}
+                                            {item.status === 'PREPARING' && 'Preparando'}
+                                            {item.status === 'READY' && 'Pronto'}
+                                            {item.status === 'DELIVERED' && 'Entregue'}
+                                            {item.status === 'CANCELLED' && 'Cancelado'}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
-                        <div className="space-y-2">
-                            {order.items.map(item => (
-                                <div key={item.id} className="flex justify-between items-center">
-                                    <span className="text-gray-800">{item.quantity}x {item.productName}</span>
-                                    <span className={`text-xs px-2 py-1 rounded-full font-medium
-                                        ${item.status === 'PENDING' ? 'bg-gray-100 text-gray-600' : ''}
-                                        ${item.status === 'PREPARING' ? 'bg-yellow-100 text-yellow-700' : ''}
-                                        ${item.status === 'READY' ? 'bg-green-100 text-green-700' : ''}
-                                        ${item.status === 'DELIVERED' ? 'bg-blue-50 text-blue-600' : ''}
-                                    `}>
-                                        {item.status === 'PENDING' && 'PENDENTE'}
-                                        {item.status === 'PREPARING' && 'PREPARANDO'}
-                                        {item.status === 'READY' && 'PRONTO'}
-                                        {item.status === 'DELIVERED' && 'ENTREGUE'}
-                                        {item.status === 'CANCELLED' && 'CANCELADO'}
-                                    </span>
-                                </div>
-                            ))}
-                        </div>
+                    ))}
+                    <div className="mt-8 bg-blue-50 p-4 rounded-lg text-center">
+                        <p className="text-blue-800 text-sm mb-2 font-medium">Precisa de algo mais?</p>
+                        <Button 
+                            variant="outline" 
+                            className="w-full bg-white border-blue-200 text-blue-600 hover:bg-blue-50"
+                            onClick={callWaiter}
+                        >
+                            {waiterCalled ? 'Solicitação Enviada' : 'Chamar Garçom'}
+                        </Button>
                     </div>
-                ))}
-                <div className="mt-8 bg-blue-50 p-4 rounded-lg">
-                    <p className="text-center text-blue-800 text-sm">Precisa de ajuda?</p>
-                    <Button 
-                        variant="outline" 
-                        className="w-full mt-2 bg-white border-blue-200 text-blue-600"
-                        onClick={callWaiter}
-                    >
-                        {waiterCalled ? 'Solicitação Enviada' : 'Chamar Garçom'}
-                    </Button>
                 </div>
             </div>
         )}
