@@ -11,6 +11,8 @@ import { SuperAdminDashboard } from './pages/SuperAdminDashboard';
 import { LandingPage } from './pages/LandingPage';
 import { Login } from './pages/Login';
 import { SaaSLogin } from './pages/SaaSLogin';
+import { RegisterRestaurant } from './pages/RegisterRestaurant';
+import { OwnerLogin } from './pages/OwnerLogin';
 import { ChefHat, Coffee, Monitor, DollarSign, Settings, LogOut, User as UserIcon } from 'lucide-react';
 import { Role } from './types';
 import { getTenantSlug } from './utils/tenant';
@@ -119,7 +121,10 @@ const SaaSApp = () => {
         <SaaSProvider>
              <Routes>
                 <Route path="/" element={<LandingPage />} />
-                {/* Rota específica para o DONO do sistema */}
+                <Route path="/register" element={<RegisterRestaurant />} />
+                <Route path="/login-owner" element={<OwnerLogin />} />
+                
+                {/* Rota específica para o DONO do sistema SaaS */}
                 <Route path="/sys-admin" element={<SaaSLogin />} /> 
                 <Route path="/dashboard" element={<ProtectedSaaSRoute><SuperAdminDashboard /></ProtectedSaaSRoute>} /> 
                 <Route path="*" element={<Navigate to="/" />} />

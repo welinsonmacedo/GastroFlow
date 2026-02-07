@@ -23,6 +23,7 @@ CREATE TABLE tenants (
     name TEXT NOT NULL,
     owner_name TEXT,
     email TEXT,
+    owner_auth_id UUID, -- Vinculo com auth.users do dono
     plan TEXT DEFAULT 'FREE', -- 'FREE', 'PRO', 'ENTERPRISE'
     status TEXT DEFAULT 'ACTIVE', -- 'ACTIVE', 'INACTIVE'
     theme_config JSONB DEFAULT '{}'::jsonb,
@@ -34,7 +35,7 @@ CREATE TABLE saas_admins (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
     name TEXT NOT NULL,
     email TEXT UNIQUE NOT NULL,
-    password TEXT NOT NULL, -- Em produção, use hash/salt ou Auth do Supabase. Aqui simplificado para demo.
+    password TEXT NOT NULL, -- Legacy/Demo only
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
 );
 
@@ -42,7 +43,9 @@ CREATE TABLE saas_admins (
 CREATE TABLE staff (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
     tenant_id UUID REFERENCES tenants(id) ON DELETE CASCADE NOT NULL,
+    auth_user_id UUID, -- Vinculo com auth.users para login via Supabase
     name TEXT NOT NULL,
+    email TEXT, -- Email para login/convite
     role TEXT NOT NULL, -- 'ADMIN', 'WAITER', 'KITCHEN', 'CASHIER'
     pin TEXT NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
@@ -126,7 +129,6 @@ CREATE TABLE audit_logs (
 
 -- 4. CONFIGURAÇÃO DE REALTIME (Essencial para o funcionamento do App)
 
--- Adiciona as tabelas na publicação do supabase_realtime
 ALTER PUBLICATION supabase_realtime ADD TABLE restaurant_tables;
 ALTER PUBLICATION supabase_realtime ADD TABLE orders;
 ALTER PUBLICATION supabase_realtime ADD TABLE order_items;
@@ -146,16 +148,16 @@ BEGIN
     INSERT INTO saas_admins (name, email, password) VALUES ('CEO GastroFlow', 'admin@gastroflow.com', 'admin');
 
     -- --- RESTAURANTE 1: BISTRÔ DO CHEF ---
-    INSERT INTO tenants (slug, name, theme_config, plan) 
-    VALUES ('bistro', 'Bistrô do Chef', '{"primaryColor": "#ea580c", "backgroundColor": "#fff7ed", "fontColor": "#1c1917", "restaurantName": "Bistrô do Chef", "logoUrl": "https://cdn-icons-png.flaticon.com/512/1996/1996068.png"}', 'PRO')
+    INSERT INTO tenants (slug, name, email, theme_config, plan) 
+    VALUES ('bistro', 'Bistrô do Chef', 'bistro@demo.com', '{"primaryColor": "#ea580c", "backgroundColor": "#fff7ed", "fontColor": "#1c1917", "restaurantName": "Bistrô do Chef", "logoUrl": "https://cdn-icons-png.flaticon.com/512/1996/1996068.png"}', 'PRO')
     RETURNING id INTO t_id_bistro;
 
     -- Staff Bistrô
-    INSERT INTO staff (tenant_id, name, role, pin) VALUES 
-    (t_id_bistro, 'Admin', 'ADMIN', '1234'),
-    (t_id_bistro, 'Garçom Carlos', 'WAITER', '0000'),
-    (t_id_bistro, 'Chef Jacquin', 'KITCHEN', '1111'),
-    (t_id_bistro, 'Ana Caixa', 'CASHIER', '2222');
+    INSERT INTO staff (tenant_id, name, email, role, pin) VALUES 
+    (t_id_bistro, 'Admin', 'admin@bistro.com', 'ADMIN', '1234'),
+    (t_id_bistro, 'Garçom Carlos', 'carlos@bistro.com', 'WAITER', '0000'),
+    (t_id_bistro, 'Chef Jacquin', 'jacquin@bistro.com', 'KITCHEN', '1111'),
+    (t_id_bistro, 'Ana Caixa', 'ana@bistro.com', 'CASHIER', '2222');
 
     -- Produtos Bistrô
     INSERT INTO products (tenant_id, name, description, price, category, type, image, sort_order) VALUES
@@ -170,15 +172,15 @@ BEGIN
 
 
     -- --- RESTAURANTE 2: BURGER KINGO ---
-    INSERT INTO tenants (slug, name, theme_config, plan) 
-    VALUES ('burger', 'Burger Kingo', '{"primaryColor": "#dc2626", "backgroundColor": "#fef2f2", "fontColor": "#1f2937", "restaurantName": "Burger Kingo", "logoUrl": "https://cdn-icons-png.flaticon.com/512/3075/3075977.png"}', 'ENTERPRISE')
+    INSERT INTO tenants (slug, name, email, theme_config, plan) 
+    VALUES ('burger', 'Burger Kingo', 'burger@demo.com', '{"primaryColor": "#dc2626", "backgroundColor": "#fef2f2", "fontColor": "#1f2937", "restaurantName": "Burger Kingo", "logoUrl": "https://cdn-icons-png.flaticon.com/512/3075/3075977.png"}', 'ENTERPRISE')
     RETURNING id INTO t_id_burger;
 
     -- Staff Burger
-    INSERT INTO staff (tenant_id, name, role, pin) VALUES 
-    (t_id_burger, 'Gerente', 'ADMIN', '1234'),
-    (t_id_burger, 'Atendente', 'WAITER', '0000'),
-    (t_id_burger, 'Chapeiro', 'KITCHEN', '1111');
+    INSERT INTO staff (tenant_id, name, email, role, pin) VALUES 
+    (t_id_burger, 'Gerente', 'gerente@burger.com', 'ADMIN', '1234'),
+    (t_id_burger, 'Atendente', NULL, 'WAITER', '0000'),
+    (t_id_burger, 'Chapeiro', NULL, 'KITCHEN', '1111');
 
     -- Produtos Burger
     INSERT INTO products (tenant_id, name, description, price, category, type, image, sort_order) VALUES
@@ -192,8 +194,8 @@ BEGIN
     
     
     -- --- RESTAURANTE 3: PIZZARIA EXPRESS ---
-    INSERT INTO tenants (slug, name, theme_config, plan) 
-    VALUES ('pizza', 'Pizzaria Express', '{"primaryColor": "#16a34a", "backgroundColor": "#f0fdf4", "fontColor": "#1f2937", "restaurantName": "Pizzaria Express", "logoUrl": "https://cdn-icons-png.flaticon.com/512/3132/3132693.png"}', 'FREE')
+    INSERT INTO tenants (slug, name, email, theme_config, plan) 
+    VALUES ('pizza', 'Pizzaria Express', 'pizza@demo.com', '{"primaryColor": "#16a34a", "backgroundColor": "#f0fdf4", "fontColor": "#1f2937", "restaurantName": "Pizzaria Express", "logoUrl": "https://cdn-icons-png.flaticon.com/512/3132/3132693.png"}', 'FREE')
     RETURNING id INTO t_id_pizza;
     
     INSERT INTO staff (tenant_id, name, role, pin) VALUES (t_id_pizza, 'Dono', 'ADMIN', '1234');

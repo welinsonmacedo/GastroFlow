@@ -140,7 +140,6 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const initTenant = async () => {
         try {
             // A. Buscar Tenant
-            // Utiliza maybeSingle() para evitar erro 406 se o tenant não for encontrado
             const { data: tenant, error: tenantError } = await supabase
                 .from('tenants')
                 .select('*')
@@ -163,7 +162,14 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             ]);
 
             // Mapeamento de dados SQL -> App Types
-            const mappedUsers: User[] = (usersRes.data || []).map(u => ({ id: u.id, name: u.name, role: u.role as Role, pin: u.pin }));
+            const mappedUsers: User[] = (usersRes.data || []).map(u => ({ 
+                id: u.id, 
+                name: u.name, 
+                role: u.role as Role, 
+                pin: u.pin,
+                auth_user_id: u.auth_user_id,
+                email: u.email
+            }));
             
             const mappedProducts: Product[] = (productsRes.data || []).map(p => ({
                 id: p.id,
@@ -235,6 +241,16 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                     auditLogs: mappedAuditLogs
                 }
             });
+
+            // C. AUTO-LOGIN via Supabase Auth
+            // Verifica se o usuário já está autenticado no Supabase e se pertence a este Tenant
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session?.user) {
+                const authenticatedStaff = mappedUsers.find(u => u.auth_user_id === session.user.id);
+                if (authenticatedStaff) {
+                    dispatchLocal({ type: 'LOGIN', user: authenticatedStaff });
+                }
+            }
 
         } catch (error) {
             console.error("Erro ao inicializar:", error);
@@ -345,14 +361,13 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     switch (action.type) {
         case 'LOGIN':
             // Log de login
-            if (action.user) {
-                // Pequeno hack: como login é local state, não temos user ID no context ainda. 
-                // Mas a action tem o user.
-                // Não logamos no DB login pois é "local session", mas poderíamos.
-            }
             dispatchLocal(action);
             break;
         case 'LOGOUT':
+            // Deslogar também do Supabase Auth para garantir segurança
+            await supabase.auth.signOut();
+            dispatchLocal(action);
+            break;
         case 'SET_LOADING':
             dispatchLocal(action);
             break;
@@ -498,14 +513,10 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                     tenant_id: tenantId,
                     name: action.user.name,
                     role: action.user.role,
-                    pin: action.user.pin
+                    pin: action.user.pin,
+                    email: action.user.email // Adicionado email
                 });
-                // Recarrega usuarios
-                const { data } = await supabase.from('staff').select('*').eq('tenant_id', tenantId);
-                if(data) {
-                    // Hack rápido, idealmente usaria um reducer action SET_USERS
-                    window.location.reload();
-                }
+                window.location.reload();
                 logAudit(tenantId, 'ADD_USER', `Usuário ${action.user.name} criado`);
             }
             break;
@@ -523,7 +534,8 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 await supabase.from('staff').update({
                     name: action.user.name,
                     role: action.user.role,
-                    pin: action.user.pin
+                    pin: action.user.pin,
+                    email: action.user.email
                 }).eq('id', action.user.id);
                 window.location.reload();
                 logAudit(tenantId, 'UPDATE_USER', `Usuário ${action.user.name} atualizado`);

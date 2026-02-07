@@ -45,7 +45,9 @@ export interface RestaurantTenant {
 
 export interface User {
   id: string;
+  auth_user_id?: string; // ID do Supabase Auth
   name: string;
+  email?: string; // Email opcional para contato/login
   role: Role;
   pin: string; 
 }

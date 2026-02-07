@@ -19,7 +19,7 @@ export const AdminDashboard: React.FC = () => {
 
   // Staff state
   const [editingUser, setEditingUser] = useState<User | null>(null);
-  const [userForm, setUserForm] = useState<Partial<User>>({ name: '', role: Role.WAITER, pin: '' });
+  const [userForm, setUserForm] = useState<Partial<User>>({ name: '', role: Role.WAITER, pin: '', email: '' });
 
   const getTableUrl = (tableId: string) => {
     return `${window.location.origin}/client/table/${tableId}`;
@@ -89,7 +89,7 @@ export const AdminDashboard: React.FC = () => {
           if (editingUser) {
               dispatch({ 
                   type: 'UPDATE_USER', 
-                  user: { ...editingUser, name: userForm.name, role: userForm.role, pin: userForm.pin } 
+                  user: { ...editingUser, name: userForm.name, role: userForm.role, pin: userForm.pin, email: userForm.email } 
               });
               alert("Dados do funcionário atualizados!");
           } else {
@@ -99,24 +99,25 @@ export const AdminDashboard: React.FC = () => {
                       id: Math.random().toString(36).substr(2, 9),
                       name: userForm.name,
                       role: userForm.role,
-                      pin: userForm.pin
+                      pin: userForm.pin,
+                      email: userForm.email
                   } as User
               });
               alert("Funcionário adicionado!");
           }
           setEditingUser(null);
-          setUserForm({ name: '', role: Role.WAITER, pin: '' });
+          setUserForm({ name: '', role: Role.WAITER, pin: '', email: '' });
       }
   };
 
   const startEditUser = (user: User) => {
       setEditingUser(user);
-      setUserForm({ name: user.name, role: user.role, pin: user.pin });
+      setUserForm({ name: user.name, role: user.role, pin: user.pin, email: user.email || '' });
   };
 
   const cancelEditUser = () => {
       setEditingUser(null);
-      setUserForm({ name: '', role: Role.WAITER, pin: '' });
+      setUserForm({ name: '', role: Role.WAITER, pin: '', email: '' });
   };
 
   return (
@@ -185,6 +186,10 @@ export const AdminDashboard: React.FC = () => {
                                     <input required className="w-full border p-2 rounded" value={userForm.name} onChange={e => setUserForm({...userForm, name: e.target.value})} />
                                 </div>
                                 <div>
+                                    <label className="block text-sm font-medium mb-1">Email (Opcional - Login Remoto)</label>
+                                    <input type="email" className="w-full border p-2 rounded" value={userForm.email} onChange={e => setUserForm({...userForm, email: e.target.value})} placeholder="email@exemplo.com" />
+                                </div>
+                                <div>
                                     <label className="block text-sm font-medium mb-1">Função</label>
                                     <select className="w-full border p-2 rounded" value={userForm.role} onChange={e => setUserForm({...userForm, role: e.target.value as Role})}>
                                         <option value={Role.WAITER}>Garçom</option>
@@ -194,7 +199,7 @@ export const AdminDashboard: React.FC = () => {
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium mb-1">PIN de Acesso</label>
+                                    <label className="block text-sm font-medium mb-1">PIN de Acesso (Local)</label>
                                     <input required type="text" maxLength={4} className="w-full border p-2 rounded" value={userForm.pin} onChange={e => setUserForm({...userForm, pin: e.target.value})} placeholder="4 dígitos" />
                                 </div>
                                 <div className="flex gap-2">
@@ -221,7 +226,10 @@ export const AdminDashboard: React.FC = () => {
                                         </div>
                                         <div>
                                             <div className="font-bold text-gray-800">{user.name}</div>
-                                            <div className="text-xs text-gray-500 uppercase">{user.role}</div>
+                                            <div className="text-xs text-gray-500 uppercase flex gap-2">
+                                                <span>{user.role}</span>
+                                                {user.auth_user_id && <span className="text-green-600 font-bold">• Vinculado Supabase</span>}
+                                            </div>
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-2">
@@ -244,6 +252,7 @@ export const AdminDashboard: React.FC = () => {
                 </div>
             )}
 
+            {/* Rest of the component unchanged */}
             {activeTab === 'AUDIT' && (
                 <div>
                      <h2 className="text-2xl font-bold mb-6 text-gray-800">Log de Auditoria</h2>
@@ -359,7 +368,7 @@ export const AdminDashboard: React.FC = () => {
                         </div>
                     )}
                     
-                    {/* Tabela de Produtos (mesmo código anterior, sem mudanças drásticas além de integrar estado) */}
+                    {/* Tabela de Produtos */}
                     <div className="bg-white rounded-xl shadow-sm overflow-hidden">
                         <table className="w-full text-left">
                             <thead className="bg-gray-50 border-b">
@@ -401,7 +410,6 @@ export const AdminDashboard: React.FC = () => {
                 </div>
             )}
             
-             {/* Customization and Tables (Omited detailed repetition but logically present) */}
              {activeTab === 'CUSTOMIZATION' && (
                  <div className="max-w-2xl">
                     <h2 className="text-2xl font-bold mb-6 text-gray-800">Personalizar App do Cliente</h2>
