@@ -19,7 +19,9 @@ export const SaaSLogin: React.FC = () => {
 
     try {
         // Consulta o usuário na tabela saas_admins
-        // Usa maybeSingle() para evitar erro 406/PGRST116 quando não encontra resultados
+        // ALTERAÇÃO: Uso de .maybeSingle() em vez de .single()
+        // .single() retorna erro 406 se não encontrar nada.
+        // .maybeSingle() retorna null se não encontrar nada, o que permite tratarmos o erro.
         const { data, error: dbError } = await supabase
             .from('saas_admins')
             .select('*')

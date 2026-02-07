@@ -135,18 +135,18 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
     if (!isSupabaseConfigured()) {
         console.warn("Supabase não configurado. Verifique o arquivo .env");
-        alert("Por favor configure as chaves VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY no arquivo .env");
-        return;
+        // Não bloqueamos totalmente se não configurado para evitar crash em dev, mas avisamos
     }
 
     const initTenant = async () => {
         try {
             // A. Buscar Tenant
+            // Usa maybeSingle para evitar erro 406 no console se slug não existir
             const { data: tenant, error: tenantError } = await supabase
                 .from('tenants')
                 .select('*')
                 .eq('slug', slug)
-                .single();
+                .maybeSingle();
 
             if (tenantError || !tenant) {
                 dispatchLocal({ type: 'TENANT_NOT_FOUND' });
