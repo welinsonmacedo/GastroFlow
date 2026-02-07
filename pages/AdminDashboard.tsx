@@ -5,6 +5,7 @@ import { QRCodeGenerator } from '../components/QRCodeGenerator';
 import { ImageUploader } from '../components/ImageUploader';
 import { Product, ProductType, Role, User } from '../types';
 import { LayoutDashboard, Utensils, QrCode, Printer, ExternalLink, Palette, Eye, EyeOff, Save, Copy, Plus, Users, ShieldCheck, Trash2, Edit, AlertTriangle } from 'lucide-react';
+import { getTenantSlug } from '../utils/tenant';
 
 export const AdminDashboard: React.FC = () => {
   const { state, dispatch } = useRestaurant();
@@ -22,7 +23,8 @@ export const AdminDashboard: React.FC = () => {
   const [userForm, setUserForm] = useState<Partial<User>>({ name: '', role: Role.WAITER, pin: '', email: '' });
 
   const getTableUrl = (tableId: string) => {
-    return `${window.location.origin}/client/table/${tableId}`;
+    const slug = getTenantSlug();
+    return `${window.location.origin}/client/table/${tableId}?restaurant=${slug}`;
   };
 
   const handlePrint = (tableId: string) => {
@@ -270,7 +272,6 @@ export const AdminDashboard: React.FC = () => {
                 </div>
             )}
 
-            {/* Rest of the component unchanged */}
             {activeTab === 'AUDIT' && (
                 <div>
                      <h2 className="text-2xl font-bold mb-6 text-gray-800">Log de Auditoria</h2>

@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { useRestaurant } from '../context/RestaurantContext';
 import { Button } from '../components/Button';
 import { TableStatus, Product } from '../types';
-import { ShoppingCart, ChefHat, Info, Plus, Minus, X, Lock, Receipt, Loader2 } from 'lucide-react';
+import { ShoppingCart, ChefHat, Info, Plus, Minus, X, Lock, Receipt, Loader2, Bell } from 'lucide-react';
 
 export const ClientApp: React.FC = () => {
   const { tableId } = useParams<{ tableId: string }>();
@@ -12,6 +12,7 @@ export const ClientApp: React.FC = () => {
   const [view, setView] = useState<'MENU' | 'CART' | 'STATUS' | 'BILL'>('MENU');
   const [accessPin, setAccessPin] = useState('');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [waiterCalled, setWaiterCalled] = useState(false);
 
   // Handle Loading
   if (state.isLoading) {
@@ -34,8 +35,15 @@ export const ClientApp: React.FC = () => {
     if (table?.accessCode === accessPin) {
       setIsAuthenticated(true);
     } else {
-      alert("Senha incorreta. Solicite ao garçom.");
+      alert("Senha incorreta. Tente novamente ou chame o garçom.");
     }
+  };
+
+  const callWaiter = () => {
+      // Simulação visual de chamado de garçom.
+      // Futuramente, isso poderia criar um registro no banco 'service_calls'.
+      setWaiterCalled(true);
+      setTimeout(() => setWaiterCalled(false), 5000); // Reset visual feedback after 5s
   };
 
   const addToCart = (product: Product) => {
@@ -81,24 +89,35 @@ export const ClientApp: React.FC = () => {
 
   if (!table) return <div className="p-8 text-center text-red-500">QR Code da Mesa Inválido</div>;
 
-  // Tela 1: Mesa não liberada pelo garçom
+  // --- CENÁRIO 1: Mesa Fechada / Disponível ---
   if (!isTableActive) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-6" style={{ backgroundColor: theme.backgroundColor }}>
+      <div className="flex flex-col items-center justify-center min-h-screen p-6 relative" style={{ backgroundColor: theme.backgroundColor }}>
         <div className="bg-white p-8 rounded-2xl shadow-xl text-center max-w-sm w-full">
           <ChefHat size={48} className="mx-auto mb-4" style={{ color: theme.primaryColor }} />
           <h1 className="text-2xl font-bold mb-2">Bem-vindo ao {theme.restaurantName}</h1>
-          <p className="text-gray-600 mb-6">A Mesa #{table.number} aguarda liberação.</p>
-          <div className="bg-blue-50 text-blue-800 p-4 rounded-lg text-sm">
-            Peça ao garçom para liberar sua mesa.
+          <p className="text-gray-600 mb-6">A Mesa #{table.number} ainda não foi aberta.</p>
+          
+          <div className="bg-blue-50 text-blue-800 p-4 rounded-lg text-sm mb-6">
+            Aguarde o garçom abrir sua mesa ou solicite atendimento abaixo.
           </div>
+
+          <Button 
+            onClick={callWaiter} 
+            className={`w-full py-4 flex items-center justify-center gap-2 ${waiterCalled ? 'bg-green-600' : 'bg-slate-800'}`}
+          >
+             {waiterCalled ? <><Loader2 className="animate-spin" size={20}/> Solicitando...</> : <><Bell size={20} /> Chamar Garçom</>}
+          </Button>
+          
+          {waiterCalled && (
+             <p className="text-green-600 text-sm mt-4 font-bold animate-fade-in">Solicitação enviada! Um garçom virá em breve.</p>
+          )}
         </div>
       </div>
     );
   }
 
-  // Tela 2: Mesa liberada, mas requer senha (segurança)
-  // Se já estiver autenticado OU se a mesa não tiver senha (demo antigo), libera.
+  // --- CENÁRIO 2: Mesa Aberta, mas não autenticada (Pede Senha) ---
   const requiresAuth = table.accessCode && table.accessCode.length > 0;
   
   if (requiresAuth && !isAuthenticated) {
@@ -106,8 +125,8 @@ export const ClientApp: React.FC = () => {
       <div className="flex flex-col items-center justify-center min-h-screen p-6" style={{ backgroundColor: theme.backgroundColor }}>
          <div className="bg-white p-8 rounded-2xl shadow-xl text-center max-w-sm w-full">
             <Lock size={48} className="text-gray-400 mx-auto mb-4" />
-            <h2 className="text-xl font-bold mb-2">Segurança</h2>
-            <p className="text-gray-600 mb-4 text-sm">Digite a senha fornecida pelo garçom para acessar o cardápio.</p>
+            <h2 className="text-xl font-bold mb-2">Acesso Seguro</h2>
+            <p className="text-gray-600 mb-4 text-sm">Digite o código fornecido pelo garçom para acessar o cardápio.</p>
             
             <input 
               type="text" 
@@ -118,17 +137,39 @@ export const ClientApp: React.FC = () => {
               placeholder="0000"
             />
             
-            <button 
-              onClick={checkPin}
-              className="w-full text-white font-bold py-3 rounded-lg shadow-md hover:opacity-90 transition-opacity"
-              style={{ backgroundColor: theme.primaryColor }}
-            >
-              Acessar Cardápio
-            </button>
+            <div className="space-y-3">
+                <button 
+                onClick={checkPin}
+                className="w-full text-white font-bold py-3 rounded-lg shadow-md hover:opacity-90 transition-opacity"
+                style={{ backgroundColor: theme.primaryColor }}
+                >
+                Acessar Cardápio
+                </button>
+
+                <div className="relative flex py-2 items-center">
+                    <div className="flex-grow border-t border-gray-200"></div>
+                    <span className="flex-shrink-0 mx-4 text-gray-400 text-xs">Problemas com o código?</span>
+                    <div className="flex-grow border-t border-gray-200"></div>
+                </div>
+
+                <Button 
+                    onClick={callWaiter} 
+                    variant="outline"
+                    className="w-full py-2 flex items-center justify-center gap-2 text-gray-600 border-gray-300"
+                >
+                    <Bell size={18} /> Chamar Garçom
+                </Button>
+
+                {waiterCalled && (
+                    <p className="text-green-600 text-sm font-bold animate-fade-in">Solicitação enviada!</p>
+                )}
+            </div>
          </div>
       </div>
     );
   }
+
+  // --- CENÁRIO 3: Autenticado (Cardápio e Pedidos) ---
 
   const cartTotal = cart.reduce((acc, item) => acc + (item.product.price * item.quantity), 0);
 
@@ -186,7 +227,7 @@ export const ClientApp: React.FC = () => {
       <main className="p-4 max-w-2xl mx-auto">
         {view === 'MENU' && (
           <div className="space-y-6">
-            {['Lanches', 'Pratos Principais', 'Acompanhamentos', 'Bebidas'].map(category => {
+            {['Lanches', 'Pratos Principais', 'Acompanhamentos', 'Bebidas', 'Sobremesas', 'Pizzas'].map(category => {
               const items = visibleProducts.filter(p => p.category === category);
               if (items.length === 0) return null;
               return (
@@ -303,9 +344,9 @@ export const ClientApp: React.FC = () => {
                <Button 
                 variant="outline" 
                 className="w-full mt-4 bg-white border-blue-200 text-blue-600"
-                onClick={() => setView('STATUS')} // Or specific call waiter function if available
+                onClick={callWaiter}
                >
-                 Chamar Garçom
+                 <Bell size={18} /> {waiterCalled ? 'Solicitação Enviada' : 'Chamar Garçom'}
                </Button>
           </div>
         )}
@@ -317,7 +358,7 @@ export const ClientApp: React.FC = () => {
                 {[...tableOrders].reverse().map(order => (
                     <div key={order.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
                         <div className="flex justify-between text-sm text-gray-500 mb-2">
-                            <span>Pedido #{order.id}</span>
+                            <span>Pedido #{order.id.substr(0,8)}</span>
                             <span>{order.timestamp.toLocaleTimeString()}</span>
                         </div>
                         <div className="space-y-2">
@@ -342,8 +383,14 @@ export const ClientApp: React.FC = () => {
                     </div>
                 ))}
                 <div className="mt-8 bg-blue-50 p-4 rounded-lg">
-                    <p className="text-center text-blue-800 text-sm">Precisa de ajuda? Chame o garçom pelo botão abaixo.</p>
-                    <Button variant="outline" className="w-full mt-2 bg-white border-blue-200 text-blue-600">Chamar Garçom</Button>
+                    <p className="text-center text-blue-800 text-sm">Precisa de ajuda?</p>
+                    <Button 
+                        variant="outline" 
+                        className="w-full mt-2 bg-white border-blue-200 text-blue-600"
+                        onClick={callWaiter}
+                    >
+                        {waiterCalled ? 'Solicitação Enviada' : 'Chamar Garçom'}
+                    </Button>
                 </div>
             </div>
         )}
