@@ -1,5 +1,5 @@
 import React from 'react';
-import { HashRouter, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
 import { RestaurantProvider, useRestaurant } from './context/RestaurantContext';
 import { SaaSProvider, useSaaS } from './context/SaaSContext';
 import { ClientApp } from './pages/ClientApp';
@@ -132,7 +132,7 @@ const App: React.FC = () => {
   const tenantSlug = getTenantSlug();
 
   return (
-    <HashRouter>
+    <BrowserRouter>
         {tenantSlug ? (
             <RestaurantProvider>
                 <TenantApp />
@@ -140,7 +140,7 @@ const App: React.FC = () => {
         ) : (
             <SaaSApp />
         )}
-    </HashRouter>
+    </BrowserRouter>
   );
 };
 

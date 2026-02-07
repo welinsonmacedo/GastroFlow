@@ -6,9 +6,9 @@ interface QRCodeGeneratorProps {
 }
 
 export const QRCodeGenerator: React.FC<QRCodeGeneratorProps> = ({ tableId, size = 150 }) => {
-  // Constrói a URL completa baseada na localização atual do navegador + HashRouter
-  const baseUrl = `${window.location.protocol}//${window.location.host}${window.location.pathname}`;
-  const targetUrl = `${baseUrl}#/client/table/${tableId}`;
+  // Constrói a URL completa baseada na localização atual
+  // BrowserRouter usa URLs limpas, sem o hash #
+  const targetUrl = `${window.location.origin}/client/table/${tableId}`;
   
   // Codifica a URL para ser passada como parâmetro para a API de QR Code
   const encodedUrl = encodeURIComponent(targetUrl);

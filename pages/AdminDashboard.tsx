@@ -22,7 +22,7 @@ export const AdminDashboard: React.FC = () => {
   const [userForm, setUserForm] = useState<Partial<User>>({ name: '', role: Role.WAITER, pin: '' });
 
   const getTableUrl = (tableId: string) => {
-    return `${window.location.origin}${window.location.pathname}#/client/table/${tableId}`;
+    return `${window.location.origin}/client/table/${tableId}`;
   };
 
   const handlePrint = (tableId: string) => {
