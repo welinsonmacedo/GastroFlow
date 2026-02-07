@@ -15,6 +15,7 @@ import { RegisterRestaurant } from './pages/RegisterRestaurant';
 import { OwnerLogin } from './pages/OwnerLogin';
 import { PrivacyPolicy } from './pages/PrivacyPolicy';
 import { TermsOfService } from './pages/TermsOfService';
+import { InstallPWA } from './components/InstallPWA';
 import { ChefHat, Coffee, Monitor, DollarSign, Settings, LogOut, User as UserIcon, Menu } from 'lucide-react';
 import { Role } from './types';
 import { getTenantSlug } from './utils/tenant';
@@ -176,6 +177,7 @@ const App: React.FC = () => {
 
   return (
     <BrowserRouter>
+        <InstallPWA />
         {tenantSlug ? (
             <RestaurantProvider>
                 <TenantApp />

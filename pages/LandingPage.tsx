@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ChefHat, CheckCircle, Smartphone, BarChart3, ShieldCheck, MessageCircle, ArrowRight, Star, Send } from 'lucide-react';
+import { ChefHat, CheckCircle, Smartphone, BarChart3, ShieldCheck, MessageCircle, ArrowRight, Star, Send, Menu, X, LogIn } from 'lucide-react';
 import { useSaaS } from '../context/SaaSContext';
 
 export const LandingPage: React.FC = () => {
   const { state } = useSaaS();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const whatsappNumber = "5534991448794";
   const defaultMessage = encodeURIComponent("Olá! Gostaria de conhecer melhor os planos do GastroFlow.");
 
@@ -18,7 +19,7 @@ export const LandingPage: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-white font-sans text-slate-900">
+    <div className="min-h-screen bg-white font-sans text-slate-900 relative">
       
       {/* --- Floating WhatsApp Button --- */}
       <button 
@@ -33,20 +34,25 @@ export const LandingPage: React.FC = () => {
       <nav className="sticky top-0 bg-white/90 backdrop-blur-md z-40 border-b border-slate-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-20">
-            <div className="flex items-center gap-2 text-blue-700 font-extrabold text-2xl tracking-tighter">
+            {/* Logo */}
+            <div className="flex items-center gap-2 text-blue-700 font-extrabold text-2xl tracking-tighter cursor-pointer" onClick={() => window.scrollTo({top:0, behavior:'smooth'})}>
               <div className="bg-blue-600 text-white p-1.5 rounded-lg">
                 <ChefHat size={24} /> 
               </div>
               GastroFlow
             </div>
+
+            {/* Desktop Menu */}
             <div className="hidden md:flex gap-8 items-center">
                <a href="#features" className="text-sm font-medium text-slate-600 hover:text-blue-600 transition-colors">Funcionalidades</a>
                <a href="#pricing" className="text-sm font-medium text-slate-600 hover:text-blue-600 transition-colors">Planos</a>
                <a href="#contact" className="text-sm font-medium text-slate-600 hover:text-blue-600 transition-colors">Contato</a>
             </div>
-            <div className="flex gap-4">
-              <Link to="/login-owner" className="hidden md:block text-slate-600 hover:text-blue-700 px-3 py-2 font-semibold text-sm transition-colors">
-                Área do Cliente
+
+            {/* Desktop Actions */}
+            <div className="hidden md:flex gap-4">
+              <Link to="/login-owner" className="text-slate-600 hover:text-blue-700 px-3 py-2 font-semibold text-sm transition-colors flex items-center gap-2">
+                <LogIn size={16} /> Área do Cliente
               </Link>
               <button 
                 onClick={openWhatsApp}
@@ -55,8 +61,38 @@ export const LandingPage: React.FC = () => {
                 <MessageCircle size={16} /> Falar com Consultor
               </button>
             </div>
+
+            {/* Mobile Menu Button */}
+            <div className="md:hidden">
+              <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="text-slate-600 p-2">
+                {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+              </button>
+            </div>
           </div>
         </div>
+
+        {/* Mobile Menu Dropdown */}
+        {isMobileMenuOpen && (
+          <div className="md:hidden absolute top-20 left-0 w-full bg-white border-b shadow-xl animate-fade-in flex flex-col p-4 gap-4 z-50">
+             <Link 
+                to="/login-owner" 
+                className="bg-blue-50 text-blue-700 px-4 py-3 rounded-lg font-bold text-center flex items-center justify-center gap-2 border border-blue-100"
+                onClick={() => setIsMobileMenuOpen(false)}
+             >
+                <LogIn size={18} /> Acessar Área do Cliente
+             </Link>
+             <hr className="border-slate-100" />
+             <a href="#features" className="text-slate-600 font-medium p-2 hover:bg-gray-50 rounded" onClick={() => setIsMobileMenuOpen(false)}>Funcionalidades</a>
+             <a href="#pricing" className="text-slate-600 font-medium p-2 hover:bg-gray-50 rounded" onClick={() => setIsMobileMenuOpen(false)}>Planos e Preços</a>
+             <a href="#contact" className="text-slate-600 font-medium p-2 hover:bg-gray-50 rounded" onClick={() => setIsMobileMenuOpen(false)}>Contato</a>
+             <button 
+                onClick={() => { openWhatsApp(); setIsMobileMenuOpen(false); }}
+                className="bg-slate-900 text-white px-4 py-3 rounded-lg font-bold text-center mt-2 flex items-center justify-center gap-2"
+             >
+                <MessageCircle size={18} /> Falar no WhatsApp
+             </button>
+          </div>
+        )}
       </nav>
 
       {/* --- Hero Section --- */}
@@ -96,7 +132,7 @@ export const LandingPage: React.FC = () => {
              </a>
           </div>
 
-          <div className="mt-12 flex gap-8 text-slate-500 text-sm font-medium">
+          <div className="mt-12 flex flex-wrap justify-center gap-4 sm:gap-8 text-slate-500 text-sm font-medium">
              <div className="flex items-center gap-2"><CheckCircle size={16} className="text-green-500" /> Sem taxa de adesão</div>
              <div className="flex items-center gap-2"><CheckCircle size={16} className="text-green-500" /> Suporte 24/7</div>
              <div className="flex items-center gap-2"><CheckCircle size={16} className="text-green-500" /> Cancelamento grátis</div>

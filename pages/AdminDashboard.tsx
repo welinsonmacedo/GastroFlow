@@ -347,32 +347,32 @@ export const AdminDashboard: React.FC = () => {
                 
                 {activeTab === 'REPORTS' && (
                 <div className="space-y-8">
-                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 no-print bg-white p-4 rounded-xl shadow-sm border">
+                     <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 no-print bg-white p-4 rounded-xl shadow-sm border">
                         <div>
-                            <h2 className="text-2xl font-bold text-gray-800">Relatórios Gerenciais</h2>
-                            <p className="text-sm text-gray-500">Analise o desempenho do seu restaurante por período.</p>
+                            <h2 className="text-xl md:text-2xl font-bold text-gray-800">Relatórios Gerenciais</h2>
+                            <p className="text-xs md:text-sm text-gray-500">Analise o desempenho do seu restaurante por período.</p>
                         </div>
-                        <div className="flex flex-wrap items-center gap-3">
-                            <div className="flex items-center gap-2 bg-gray-50 p-2 rounded border">
-                                <Calendar size={16} className="text-gray-500"/>
+                        <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-3 w-full xl:w-auto">
+                            <div className="flex items-center gap-2 bg-gray-50 p-2 rounded border w-full sm:w-auto justify-between">
+                                <Calendar size={16} className="text-gray-500 shrink-0"/>
                                 <input 
                                     type="date" 
                                     value={reportDateStart} 
                                     onChange={(e) => setReportDateStart(e.target.value)} 
-                                    className="bg-transparent text-sm outline-none"
+                                    className="bg-transparent text-sm outline-none flex-1 min-w-[100px]"
                                 />
                                 <span className="text-gray-400">-</span>
                                 <input 
                                     type="date" 
                                     value={reportDateEnd} 
                                     onChange={(e) => setReportDateEnd(e.target.value)} 
-                                    className="bg-transparent text-sm outline-none"
+                                    className="bg-transparent text-sm outline-none flex-1 min-w-[100px]"
                                 />
                             </div>
-                            <Button onClick={fetchReportData} disabled={loadingReport}>
+                            <Button onClick={fetchReportData} disabled={loadingReport} className="w-full sm:w-auto">
                                 {loadingReport ? <Loader2 className="animate-spin" size={16}/> : <Search size={16}/>} Filtrar
                             </Button>
-                            <Button variant="secondary" onClick={handlePrintReport}><Printer size={16}/> Imprimir</Button>
+                            <Button variant="secondary" onClick={handlePrintReport} className="w-full sm:w-auto"><Printer size={16}/> Imprimir</Button>
                         </div>
                      </div>
 
@@ -386,15 +386,15 @@ export const AdminDashboard: React.FC = () => {
                             {/* Resumo Financeiro */}
                             <div className="bg-white p-6 rounded-xl shadow-sm border print:shadow-none print:border-black">
                                 <h3 className="text-lg font-bold mb-4 border-b pb-2 flex items-center gap-2"><TrendingUp size={20}/> Resumo Financeiro</h3>
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                    <div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                                    <div className="p-3 bg-gray-50 rounded-lg">
                                         <p className="text-sm text-gray-500">Vendas Totais</p>
-                                        <p className="text-3xl font-bold text-green-600">R$ {reportData.totalSales.toFixed(2)}</p>
+                                        <p className="text-2xl lg:text-3xl font-bold text-green-600">R$ {reportData.totalSales.toFixed(2)}</p>
                                     </div>
                                     {Object.entries(reportData.salesByMethod).map(([method, amount]: any) => (
-                                        <div key={method}>
+                                        <div key={method} className="p-3 bg-gray-50 rounded-lg">
                                             <p className="text-sm text-gray-500">Via {method}</p>
-                                            <p className="text-xl font-bold">R$ {amount.toFixed(2)}</p>
+                                            <p className="text-xl lg:text-2xl font-bold text-gray-800">R$ {amount.toFixed(2)}</p>
                                         </div>
                                     ))}
                                 </div>
