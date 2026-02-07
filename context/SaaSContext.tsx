@@ -116,11 +116,26 @@ const saasReducer = (state: SaaSState, action: SaaSAction): SaaSState => {
 export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(saasReducer, initialState);
 
-  // Efeito para carregar planos e tenants
+  // 1. Restaurar Sessão ao Carregar (Persistência)
   useEffect(() => {
-    // Busca Planos Publicamente (para Landing Page usar context se necessário, ou admin)
+      const restoreSession = async () => {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.user && !state.isAuthenticated) {
+              // Se existe uma sessão válida, restaura o estado de login
+              dispatch({ 
+                  type: 'LOGIN_ADMIN', 
+                  name: session.user.user_metadata?.name || 'Admin', 
+                  id: session.user.id, 
+                  email: session.user.email || ''
+              });
+          }
+      };
+      restoreSession();
+  }, []);
+
+  // 2. Carregar Dados Iniciais (Planos)
+  useEffect(() => {
     const fetchPlans = async () => {
-         // Ordena por created_at para manter ordem lógica (Free -> Pro -> Enterprise)
          const { data } = await supabase.from('plans').select('*').order('created_at', { ascending: true });
          if(data) {
              const mappedPlans: Plan[] = data.map(p => ({
@@ -137,29 +152,51 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
          }
     };
     fetchPlans();
+  }, []);
 
+  // 3. Carregar Tenants (Depende de Auth)
+  useEffect(() => {
     if (state.isAuthenticated) {
         const fetchTenants = async () => {
-            // Busca tenants E contagem de logs de auditoria
-            // audit_logs(count) retorna a quantidade de registros ligados ao tenant
-            const { data, error } = await supabase
-                .from('tenants')
-                .select('*, audit_logs(count)') 
-                .order('created_at', { ascending: false });
+            try {
+                // Tentativa 1: Busca Completa com Join
+                // audit_logs(count) retorna a quantidade de registros ligados ao tenant
+                let { data, error } = await supabase
+                    .from('tenants')
+                    .select('*, audit_logs(count)') 
+                    .order('created_at', { ascending: false });
 
-            if (data && !error) {
-                const mapped: RestaurantTenant[] = data.map((t: any) => ({
-                    id: t.id,
-                    name: t.name,
-                    slug: t.slug || '',
-                    ownerName: t.owner_name || '',
-                    email: t.email || '',
-                    status: t.status as 'ACTIVE' | 'INACTIVE',
-                    plan: t.plan as PlanType,
-                    joinedAt: new Date(t.created_at),
-                    requestCount: t.audit_logs?.[0]?.count || 0 // Mapeia o count
-                }));
-                dispatch({ type: 'SET_TENANTS', payload: mapped });
+                // Tentativa 2: Fallback para busca simples se a relação de logs falhar
+                if (error) {
+                    console.warn("Aviso: Falha ao buscar contagem de logs. Tentando busca simples de restaurantes...", error.message);
+                    const simpleRes = await supabase
+                        .from('tenants')
+                        .select('*')
+                        .order('created_at', { ascending: false });
+                    
+                    data = simpleRes.data;
+                    error = simpleRes.error;
+                }
+
+                if (data && !error) {
+                    const mapped: RestaurantTenant[] = data.map((t: any) => ({
+                        id: t.id,
+                        name: t.name,
+                        slug: t.slug || '',
+                        ownerName: t.owner_name || '',
+                        email: t.email || '',
+                        status: t.status as 'ACTIVE' | 'INACTIVE',
+                        plan: t.plan as PlanType,
+                        joinedAt: new Date(t.created_at),
+                        // Verifica se audit_logs é array e pega o count, ou usa 0
+                        requestCount: (t.audit_logs && t.audit_logs[0] && t.audit_logs[0].count) || 0
+                    }));
+                    dispatch({ type: 'SET_TENANTS', payload: mapped });
+                } else if (error) {
+                    console.error("Erro crítico ao buscar restaurantes:", error);
+                }
+            } catch (err) {
+                console.error("Exceção ao buscar restaurantes:", err);
             }
         };
         fetchTenants();
