@@ -1,3 +1,4 @@
+
 export enum Role {
   CLIENT = 'CLIENT',
   WAITER = 'WAITER',
@@ -33,6 +34,7 @@ export type PlanType = 'FREE' | 'PRO' | 'ENTERPRISE';
 export interface RestaurantTenant {
   id: string;
   name: string;
+  slug: string;
   ownerName: string;
   email: string;
   status: 'ACTIVE' | 'INACTIVE';

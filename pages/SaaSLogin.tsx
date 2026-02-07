@@ -54,7 +54,6 @@ export const SaaSLogin: React.FC = () => {
 
     try {
         // 1. TENTATIVA PRINCIPAL: Supabase Auth (Painel Authentication)
-        // Se você registrou o usuário manualmente no Supabase Auth, é aqui que ele entra.
         const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
             email,
             password
@@ -62,21 +61,31 @@ export const SaaSLogin: React.FC = () => {
 
         if (!authError && authData.user) {
             const adminName = authData.user.user_metadata?.name || email.split('@')[0];
-            dispatch({ type: 'LOGIN_ADMIN', name: adminName });
+            dispatch({ 
+                type: 'LOGIN_ADMIN', 
+                name: adminName,
+                id: authData.user.id,
+                email: authData.user.email || email
+            });
             navigate('/dashboard');
             return;
         }
 
-        // 2. FALLBACK: Tabela Customizada 'saas_admins' (Apenas para garantir compatibilidade com scripts SQL antigos)
+        // 2. FALLBACK: Tabela Customizada 'saas_admins'
         const { data, error: dbError } = await supabase
             .from('saas_admins')
             .select('*')
             .eq('email', email)
-            .eq('password', password) // Nota: Em produção real, senhas em tabelas devem ser hash
+            .eq('password', password)
             .maybeSingle();
 
         if (data) {
-            dispatch({ type: 'LOGIN_ADMIN', name: data.name });
+            dispatch({ 
+                type: 'LOGIN_ADMIN', 
+                name: data.name,
+                id: data.id,
+                email: data.email
+            });
             navigate('/dashboard');
         } else {
             // Se falhou no Auth e na Tabela

@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
 import { RestaurantTenant, PlanType } from '../types';
 import { supabase } from '../lib/supabase';
@@ -5,21 +6,27 @@ import { supabase } from '../lib/supabase';
 interface SaaSState {
   isAuthenticated: boolean; 
   adminName: string | null;
+  adminId: string | null;
+  adminEmail: string | null;
   tenants: RestaurantTenant[];
 }
 
 type SaaSAction =
-  | { type: 'LOGIN_ADMIN'; name: string }
+  | { type: 'LOGIN_ADMIN'; name: string; id: string; email: string }
   | { type: 'LOGOUT_ADMIN' }
-  | { type: 'SET_TENANTS'; payload: RestaurantTenant[] } // Nova ação
-  | { type: 'ADD_TENANT'; tenant: RestaurantTenant }
+  | { type: 'SET_TENANTS'; payload: RestaurantTenant[] }
+  | { type: 'CREATE_TENANT'; payload: { name: string; slug: string; ownerName: string; email: string; plan: PlanType } }
+  | { type: 'ADD_TENANT_TO_LIST'; tenant: RestaurantTenant }
   | { type: 'TOGGLE_STATUS'; tenantId: string }
-  | { type: 'CHANGE_PLAN'; tenantId: string; plan: PlanType };
+  | { type: 'CHANGE_PLAN'; tenantId: string; plan: PlanType }
+  | { type: 'UPDATE_PROFILE'; name: string; email: string };
 
 const initialState: SaaSState = {
   isAuthenticated: false,
   adminName: null,
-  tenants: [], // Inicializa vazio, carrega do DB
+  adminId: null,
+  adminEmail: null,
+  tenants: [],
 };
 
 const SaaSContext = createContext<{
@@ -30,16 +37,22 @@ const SaaSContext = createContext<{
 const saasReducer = (state: SaaSState, action: SaaSAction): SaaSState => {
   switch (action.type) {
     case 'LOGIN_ADMIN':
-      return { ...state, isAuthenticated: true, adminName: action.name };
+      return { 
+          ...state, 
+          isAuthenticated: true, 
+          adminName: action.name,
+          adminId: action.id,
+          adminEmail: action.email
+      };
     
     case 'LOGOUT_ADMIN':
-      return { ...state, isAuthenticated: false, adminName: null, tenants: [] };
+      return { ...state, isAuthenticated: false, adminName: null, adminId: null, adminEmail: null, tenants: [] };
 
     case 'SET_TENANTS':
         return { ...state, tenants: action.payload };
 
-    case 'ADD_TENANT':
-      return { ...state, tenants: [...state.tenants, action.tenant] };
+    case 'ADD_TENANT_TO_LIST':
+      return { ...state, tenants: [action.tenant, ...state.tenants] };
     
     case 'TOGGLE_STATUS':
       return {
@@ -60,6 +73,9 @@ const saasReducer = (state: SaaSState, action: SaaSAction): SaaSState => {
             : t
         )
       };
+    
+    case 'UPDATE_PROFILE':
+        return { ...state, adminName: action.name, adminEmail: action.email };
 
     default:
       return state;
@@ -78,6 +94,7 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 const mapped: RestaurantTenant[] = data.map(t => ({
                     id: t.id,
                     name: t.name,
+                    slug: t.slug || '',
                     ownerName: t.owner_name || '',
                     email: t.email || '',
                     status: t.status as 'ACTIVE' | 'INACTIVE',
@@ -93,17 +110,87 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Intercepta ações de mutação para atualizar o Supabase também
   const dispatchWithSideEffects = async (action: SaaSAction) => {
-    dispatch(action); // Atualiza UI otimisticamente
+    
+    if (action.type === 'CREATE_TENANT') {
+        try {
+            // 1. Criar Tenant
+            const defaultTheme = {
+                primaryColor: '#2563eb',
+                backgroundColor: '#ffffff',
+                fontColor: '#1f2937',
+                restaurantName: action.payload.name,
+                logoUrl: ''
+            };
 
+            const { data: newTenant, error } = await supabase.from('tenants').insert({
+                name: action.payload.name,
+                slug: action.payload.slug,
+                owner_name: action.payload.ownerName,
+                email: action.payload.email,
+                plan: action.payload.plan,
+                status: 'ACTIVE',
+                theme_config: defaultTheme
+            }).select().single();
+
+            if (error) throw error;
+
+            if (newTenant) {
+                // 2. Criar Staff ADMIN padrão para o tenant conseguir logar
+                await supabase.from('staff').insert({
+                    tenant_id: newTenant.id,
+                    name: 'Admin',
+                    role: 'ADMIN',
+                    pin: '1234' // Pin padrão
+                });
+
+                // 3. Atualizar UI
+                dispatch({
+                    type: 'ADD_TENANT_TO_LIST',
+                    tenant: {
+                        id: newTenant.id,
+                        name: newTenant.name,
+                        slug: newTenant.slug,
+                        ownerName: newTenant.owner_name,
+                        email: newTenant.email,
+                        status: newTenant.status,
+                        plan: newTenant.plan,
+                        joinedAt: new Date(newTenant.created_at)
+                    }
+                });
+            }
+        } catch (error) {
+            console.error("Erro ao criar tenant:", error);
+            alert("Erro ao criar restaurante. Verifique se o SLUG já existe.");
+        }
+        return; // Retorna para não chamar o dispatch default com payload incorreto
+    }
+
+    if (action.type === 'UPDATE_PROFILE') {
+        if (state.adminId) {
+            // Se for login via Supabase Auth
+            const { error } = await supabase.auth.updateUser({ 
+                email: action.email,
+                data: { name: action.name }
+            });
+            if (!error) dispatch(action);
+            
+            // Fallback para tabela saas_admins (legado/demo)
+            await supabase.from('saas_admins').update({
+                name: action.name,
+                email: action.email
+            }).eq('id', state.adminId);
+        }
+        return;
+    }
+
+    // Default dispatcher para outras ações
+    dispatch(action);
+
+    // Side effects pós-dispatch otimista
     if (action.type === 'CHANGE_PLAN') {
         await supabase.from('tenants').update({ plan: action.plan }).eq('id', action.tenantId);
     }
     if (action.type === 'TOGGLE_STATUS') {
-        // Precisamos saber o status atual para inverter, mas aqui estamos otimistas.
-        // O ideal seria pegar do state.tenants atualizado, mas como dispatch é assíncrono no React batching, 
-        // vamos simplificar fazendo a lógica inversa da UI:
-        // Essa simplificação assume que o reducer roda antes ou pegamos o dado atual.
-        // Melhor: Apenas disparamos update se tivermos o dado.
         const tenant = state.tenants.find(t => t.id === action.tenantId);
         if (tenant) {
             const newStatus = tenant.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
