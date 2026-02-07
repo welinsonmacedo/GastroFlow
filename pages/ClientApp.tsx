@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { useRestaurant } from '../context/RestaurantContext';
 import { Button } from '../components/Button';
 import { TableStatus, Product } from '../types';
-import { ShoppingCart, ChefHat, Info, Plus, Minus, X, Lock, Receipt, Loader2, Bell, AlertTriangle, ArrowLeft } from 'lucide-react';
+import { ShoppingCart, ChefHat, Info, Plus, Minus, X, Lock, Receipt, Loader2, Bell, AlertTriangle, ArrowLeft, Search } from 'lucide-react';
 
 export const ClientApp: React.FC = () => {
   const { tableId } = useParams<{ tableId: string }>();
@@ -14,6 +14,7 @@ export const ClientApp: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [waiterCalled, setWaiterCalled] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Handle Loading
   if (state.isLoading) {
@@ -211,13 +212,40 @@ export const ClientApp: React.FC = () => {
       </header>
 
       {/* Banner Area (Only on Menu View) */}
-      {view === 'MENU' && theme.bannerUrl && (
-          <div className="w-full h-48 md:h-64 bg-gray-200 overflow-hidden relative">
-              <img src={theme.bannerUrl} className="w-full h-full object-cover" alt="Banner do Restaurante" />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end p-6">
-                  <h2 className="text-white text-2xl font-bold shadow-sm">{theme.restaurantName}</h2>
-              </div>
-          </div>
+      {view === 'MENU' && (
+          <>
+            {theme.bannerUrl && (
+                <div className="w-full h-48 md:h-64 bg-gray-200 overflow-hidden relative">
+                    <img src={theme.bannerUrl} className="w-full h-full object-cover" alt="Banner do Restaurante" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end p-6">
+                        <h2 className="text-white text-2xl font-bold shadow-sm">{theme.restaurantName}</h2>
+                    </div>
+                </div>
+            )}
+            
+            {/* Search Bar */}
+            <div className="p-4 pb-0 max-w-2xl mx-auto">
+                <div className="relative">
+                    <Search className="absolute left-3 top-3 text-gray-400" size={20} />
+                    <input 
+                        type="text" 
+                        placeholder="Buscar no cardápio..." 
+                        className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-opacity-50 transition-shadow"
+                        style={{ '--tw-ring-color': theme.primaryColor } as React.CSSProperties}
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                     {searchQuery && (
+                        <button 
+                            onClick={() => setSearchQuery('')}
+                            className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
+                        >
+                            <X size={20} />
+                        </button>
+                    )}
+                </div>
+            </div>
+          </>
       )}
 
       {/* Main Content */}
@@ -226,7 +254,12 @@ export const ClientApp: React.FC = () => {
         {view === 'MENU' && (
           <div className="space-y-8 mt-2">
             {['Promocoes', 'Lanches', 'Pizzas', 'Pratos Principais', 'Acompanhamentos', 'Bebidas', 'Sobremesas'].map(category => {
-              const items = visibleProducts.filter(p => p.category === category);
+              // Filter logic updated to include search query
+              const items = visibleProducts.filter(p => 
+                  p.category === category && 
+                  p.name.toLowerCase().includes(searchQuery.toLowerCase())
+              );
+              
               if (items.length === 0) return null;
               
               // Verifica o modo de visualização (Lista vs Grade)
@@ -267,6 +300,13 @@ export const ClientApp: React.FC = () => {
                 </div>
               );
             })}
+             {/* No Results Message */}
+             {visibleProducts.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase())).length === 0 && searchQuery && (
+                 <div className="text-center py-10 text-gray-400">
+                     <Search size={48} className="mx-auto mb-2 opacity-20"/>
+                     <p>Nenhum produto encontrado para "{searchQuery}"</p>
+                 </div>
+             )}
           </div>
         )}
 

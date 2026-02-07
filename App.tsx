@@ -13,6 +13,8 @@ import { Login } from './pages/Login';
 import { SaaSLogin } from './pages/SaaSLogin';
 import { RegisterRestaurant } from './pages/RegisterRestaurant';
 import { OwnerLogin } from './pages/OwnerLogin';
+import { PrivacyPolicy } from './pages/PrivacyPolicy';
+import { TermsOfService } from './pages/TermsOfService';
 import { ChefHat, Coffee, Monitor, DollarSign, Settings, LogOut, User as UserIcon } from 'lucide-react';
 import { Role } from './types';
 import { getTenantSlug } from './utils/tenant';
@@ -126,6 +128,8 @@ const SaaSApp = () => {
                 <Route path="/" element={<LandingPage />} />
                 <Route path="/register" element={<RegisterRestaurant />} />
                 <Route path="/login-owner" element={<OwnerLogin />} />
+                <Route path="/privacy" element={<PrivacyPolicy />} />
+                <Route path="/terms" element={<TermsOfService />} />
                 
                 {/* Rota específica para o DONO do sistema SaaS */}
                 <Route path="/sys-admin" element={<SaaSLogin />} /> 

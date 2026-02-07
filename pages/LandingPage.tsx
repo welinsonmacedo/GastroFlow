@@ -191,11 +191,11 @@ export const LandingPage: React.FC = () => {
                  <ChefHat className="text-blue-500"/> GastroFlow
             </div>
             <div className="text-sm">
-                &copy; 2024 GastroFlow Systems. Todos os direitos reservados.
+                &copy; 2026 GastroFlow Systems. Todos os direitos reservados.
             </div>
             <div className="flex gap-4">
-                <a href="#" className="hover:text-white transition-colors">Termos</a>
-                <a href="#" className="hover:text-white transition-colors">Privacidade</a>
+                <Link to="/terms" className="hover:text-white transition-colors">Termos</Link>
+                <Link to="/privacy" className="hover:text-white transition-colors">Privacidade</Link>
             </div>
          </div>
       </footer>
