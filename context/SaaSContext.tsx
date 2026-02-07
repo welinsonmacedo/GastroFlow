@@ -22,6 +22,7 @@ type SaaSAction =
   | { type: 'LOGIN_ADMIN'; name: string; id: string; email: string }
   | { type: 'LOGOUT_ADMIN' }
   | { type: 'SET_TENANTS'; payload: RestaurantTenant[] }
+  | { type: 'UPDATE_TENANT_STATS'; payload: { id: string; count: number }[] } // Nova action
   | { type: 'SET_PLANS'; payload: Plan[] }
   | { type: 'CREATE_TENANT'; payload: { name: string; slug: string; ownerName: string; email: string; plan: PlanType } }
   | { type: 'UPDATE_TENANT'; payload: { id: string; name: string; slug: string; ownerName: string; email: string } }
@@ -62,6 +63,15 @@ const saasReducer = (state: SaaSState, action: SaaSAction): SaaSState => {
 
     case 'SET_TENANTS':
         return { ...state, tenants: action.payload };
+
+    case 'UPDATE_TENANT_STATS':
+        return {
+            ...state,
+            tenants: state.tenants.map(t => {
+                const stat = action.payload.find(s => s.id === t.id);
+                return stat ? { ...t, requestCount: stat.count } : t;
+            })
+        };
     
     case 'SET_PLANS':
         return { ...state, plans: action.payload };
@@ -154,31 +164,24 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
     fetchPlans();
   }, []);
 
-  // 3. Carregar Tenants (Depende de Auth)
+  // 3. Carregar Tenants (Depende de Auth) - Refatorado para Resiliência
   useEffect(() => {
+    let isMounted = true;
+
     if (state.isAuthenticated) {
-        const fetchTenants = async () => {
+        const fetchTenants = async (retryCount = 0) => {
             try {
-                // Tentativa 1: Busca Completa com Join
-                // audit_logs(count) retorna a quantidade de registros ligados ao tenant
-                let { data, error } = await supabase
+                // Passo 1: Busca SIMPLES (Garante que a lista apareça rápido)
+                const { data, error } = await supabase
                     .from('tenants')
-                    .select('*, audit_logs(count)') 
+                    .select('*')
                     .order('created_at', { ascending: false });
 
-                // Tentativa 2: Fallback para busca simples se a relação de logs falhar
-                if (error) {
-                    console.warn("Aviso: Falha ao buscar contagem de logs. Tentando busca simples de restaurantes...", error.message);
-                    const simpleRes = await supabase
-                        .from('tenants')
-                        .select('*')
-                        .order('created_at', { ascending: false });
-                    
-                    data = simpleRes.data;
-                    error = simpleRes.error;
-                }
+                if (!isMounted) return;
 
-                if (data && !error) {
+                if (error) throw error;
+
+                if (data) {
                     const mapped: RestaurantTenant[] = data.map((t: any) => ({
                         id: t.id,
                         name: t.name,
@@ -188,19 +191,56 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
                         status: t.status as 'ACTIVE' | 'INACTIVE',
                         plan: t.plan as PlanType,
                         joinedAt: new Date(t.created_at),
-                        // Verifica se audit_logs é array e pega o count, ou usa 0
-                        requestCount: (t.audit_logs && t.audit_logs[0] && t.audit_logs[0].count) || 0
+                        requestCount: 0 // Placeholder inicial
                     }));
                     dispatch({ type: 'SET_TENANTS', payload: mapped });
-                } else if (error) {
-                    console.error("Erro crítico ao buscar restaurantes:", error);
+
+                    // Passo 2: Busca Estatísticas (Logs) separadamente para não bloquear
+                    // Isso evita o erro de AbortError bloquear a lista inteira
+                    fetchTenantStats(mapped.map(t => t.id));
                 }
-            } catch (err) {
-                console.error("Exceção ao buscar restaurantes:", err);
+            } catch (err: any) {
+                console.error(`Erro ao buscar restaurantes (Tentativa ${retryCount + 1}):`, err);
+                
+                // Retry logic para AbortError ou falhas de rede
+                const isAbort = err.name === 'AbortError' || err.message?.includes('AbortError') || err.message?.includes('signal is aborted');
+                
+                if (isAbort && retryCount < 3 && isMounted) {
+                    // Tenta novamente após 500ms
+                    setTimeout(() => fetchTenants(retryCount + 1), 500);
+                }
             }
         };
+
+        const fetchTenantStats = async (tenantIds: string[]) => {
+            if (tenantIds.length === 0) return;
+            try {
+                // Infelizmente Supabase não tem um "count group by" fácil via JS Client puro sem Views ou RPC
+                // Vamos fazer uma query simplificada ou iterar (para admin panel ok, volume baixo)
+                // Ou usar a query complexa agora que a UI já está renderizada
+                
+                const { data, error } = await supabase
+                    .from('tenants')
+                    .select('id, audit_logs(count)');
+                
+                if (!isMounted) return;
+
+                if (data && !error) {
+                    const stats = data.map((t: any) => ({
+                        id: t.id,
+                        count: (t.audit_logs && t.audit_logs[0] && t.audit_logs[0].count) || 0
+                    }));
+                    dispatch({ type: 'UPDATE_TENANT_STATS', payload: stats });
+                }
+            } catch (e) {
+                console.warn("Falha ao carregar estatísticas secundárias (não crítico)", e);
+            }
+        };
+
         fetchTenants();
     }
+
+    return () => { isMounted = false; };
   }, [state.isAuthenticated]);
 
   // INACTIVITY LOGOUT TIMER (30 Minutes for CEO/Admin)
