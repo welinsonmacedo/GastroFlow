@@ -1,11 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 
-// Acesso seguro às variáveis de ambiente no Vite/Vercel
-// O cast (import.meta as any) evita erros de tipagem se o TS não reconhecer o .env
-const env = (import.meta as any).env || {};
-
 // Tenta buscar VITE_API_KEY (padrão Vite) ou API_KEY
-const apiKey = env.VITE_API_KEY || env.API_KEY || '';
+const apiKey = import.meta.env.VITE_API_KEY || import.meta.env.API_KEY || '';
 
 const ai = new GoogleGenAI({ apiKey });
 

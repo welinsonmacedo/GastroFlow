@@ -1,11 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Access environment variables safely to avoid "Cannot read properties of undefined"
-// This handles cases where import.meta.env might be undefined in certain environments
-const env = (import.meta as any).env || {};
-
-const supabaseUrl = env.VITE_SUPABASE_URL;
-const supabaseAnonKey = env.VITE_SUPABASE_ANON_KEY;
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 export const isSupabaseConfigured = () => {
   return Boolean(supabaseUrl && supabaseAnonKey);
