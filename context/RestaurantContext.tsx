@@ -44,6 +44,7 @@ type Action =
   | { type: 'UPDATE_ITEM_STATUS'; orderId: string; itemId: string; status: OrderStatus }
   | { type: 'UPDATE_PRODUCT'; product: Product }
   | { type: 'ADD_PRODUCT'; product: Product }
+  | { type: 'DELETE_PRODUCT'; productId: string } // Nova Action
   | { type: 'UPDATE_THEME'; theme: RestaurantTheme }
   | { type: 'PROCESS_PAYMENT'; tableId: string; amount: number; method: 'CASH' | 'CARD' | 'PIX' }
   | { type: 'CALL_WAITER'; tableId: string }
@@ -677,7 +678,14 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                      is_visible: action.product.isVisible,
                      sort_order: action.product.sortOrder
                 }).eq('id', action.product.id);
-                logAudit(tenantId, 'UPDATE_PRODUCT', `Produto ${action.product.name} atualizado`);
+                // Auditoria opcional para updates frequentes
+            }
+            break;
+        
+        case 'DELETE_PRODUCT':
+            if (tenantId) {
+                await supabase.from('products').delete().eq('id', action.productId);
+                logAudit(tenantId, 'DELETE_PRODUCT', `Produto ID ${action.productId} removido`);
             }
             break;
         

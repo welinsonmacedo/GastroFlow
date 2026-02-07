@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRestaurant } from '../context/RestaurantContext';
 import { Button } from '../components/Button';
 import { QRCodeGenerator } from '../components/QRCodeGenerator';
 import { ImageUploader } from '../components/ImageUploader';
 import { Product, ProductType, Role, User } from '../types';
-import { LayoutDashboard, Utensils, QrCode, Printer, ExternalLink, Palette, Eye, EyeOff, Save, Copy, Plus, Users, ShieldCheck, Trash2, Edit, AlertTriangle, FileBarChart, X, ArrowUp, ArrowDown, LayoutGrid, List as ListIcon, Image as ImageIcon } from 'lucide-react';
+import { LayoutDashboard, Utensils, QrCode, Printer, ExternalLink, Palette, Eye, EyeOff, Save, Copy, Plus, Users, ShieldCheck, Trash2, Edit, AlertTriangle, FileBarChart, X, ArrowUp, ArrowDown, LayoutGrid, List as ListIcon, Image as ImageIcon, Calendar, TrendingUp, Search, Loader2 } from 'lucide-react';
 import { getTenantSlug } from '../utils/tenant';
+import { supabase } from '../lib/supabase';
 
 export const AdminDashboard: React.FC = () => {
   const { state, dispatch } = useRestaurant();
@@ -21,6 +22,17 @@ export const AdminDashboard: React.FC = () => {
   // Staff state
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [userForm, setUserForm] = useState<Partial<User>>({ name: '', role: Role.WAITER, pin: '', email: '' });
+
+  // Report State
+  const [reportDateStart, setReportDateStart] = useState(new Date().toISOString().split('T')[0]);
+  const [reportDateEnd, setReportDateEnd] = useState(new Date().toISOString().split('T')[0]);
+  const [reportData, setReportData] = useState<{
+      transactions: any[];
+      topProducts: { name: string; quantity: number; total: number }[];
+      totalSales: number;
+      salesByMethod: Record<string, number>;
+  }>({ transactions: [], topProducts: [], totalSales: 0, salesByMethod: {} });
+  const [loadingReport, setLoadingReport] = useState(false);
 
   const getTableUrl = (tableId: string) => {
     const slug = state.tenantSlug || getTenantSlug();
@@ -62,6 +74,91 @@ export const AdminDashboard: React.FC = () => {
       window.print();
   };
 
+  // --- Report Logic ---
+  const fetchReportData = useCallback(async () => {
+      if (!state.tenantId) return;
+      setLoadingReport(true);
+
+      const start = reportDateStart + ' 00:00:00';
+      const end = reportDateEnd + ' 23:59:59';
+
+      try {
+          // 1. Fetch Transactions (Financeiro)
+          const { data: transactions } = await supabase
+              .from('transactions')
+              .select('*')
+              .eq('tenant_id', state.tenantId)
+              .gte('created_at', start)
+              .lte('created_at', end)
+              .order('created_at', { ascending: false });
+
+          // 2. Fetch Order Items (Produtos) - via Orders Pagas
+          // Primeiro pegamos as orders pagas no período
+          const { data: paidOrders } = await supabase
+              .from('orders')
+              .select('id')
+              .eq('tenant_id', state.tenantId)
+              .eq('is_paid', true)
+              .gte('created_at', start)
+              .lte('created_at', end);
+          
+          const orderIds = paidOrders?.map(o => o.id) || [];
+          
+          let topProducts: any[] = [];
+
+          if (orderIds.length > 0) {
+              const { data: items } = await supabase
+                  .from('order_items')
+                  .select('product_name, quantity, product_price')
+                  .in('order_id', orderIds);
+
+              if (items) {
+                  // Agregação JS
+                  const stats: Record<string, { qty: number, total: number }> = {};
+                  items.forEach(item => {
+                      if (!stats[item.product_name]) {
+                          stats[item.product_name] = { qty: 0, total: 0 };
+                      }
+                      stats[item.product_name].qty += item.quantity;
+                      stats[item.product_name].total += (item.quantity * item.product_price);
+                  });
+
+                  topProducts = Object.entries(stats)
+                      .map(([name, stat]) => ({ name, quantity: stat.qty, total: stat.total }))
+                      .sort((a, b) => b.quantity - a.quantity); // Sort by Qty Desc
+              }
+          }
+
+          // Agregação Financeira
+          const totalSales = transactions?.reduce((acc, t) => acc + t.amount, 0) || 0;
+          const salesByMethod: Record<string, number> = {};
+          transactions?.forEach(t => {
+              salesByMethod[t.method] = (salesByMethod[t.method] || 0) + t.amount;
+          });
+
+          setReportData({
+              transactions: transactions || [],
+              topProducts,
+              totalSales,
+              salesByMethod
+          });
+
+      } catch (error) {
+          console.error("Erro ao buscar relatório", error);
+      } finally {
+          setLoadingReport(false);
+      }
+  }, [state.tenantId, reportDateStart, reportDateEnd]);
+
+  useEffect(() => {
+      if (activeTab === 'REPORTS') {
+          fetchReportData();
+      }
+  }, [activeTab, fetchReportData]);
+
+
+  // --- Product & User Handlers ---
+
   const handleAddProduct = () => {
       setIsCreatingNew(true);
       setEditingProduct({
@@ -91,19 +188,27 @@ export const AdminDashboard: React.FC = () => {
 
   const handleMoveProduct = (index: number, direction: 'UP' | 'DOWN', sortedList: Product[]) => {
       const targetIndex = direction === 'UP' ? index - 1 : index + 1;
-      
       if (targetIndex < 0 || targetIndex >= sortedList.length) return;
 
       const current = sortedList[index];
       const target = sortedList[targetIndex];
 
-      // Troca os valores de sortOrder
-      const tempOrder = current.sortOrder || 0;
-      const newCurrent = { ...current, sortOrder: target.sortOrder || 0 };
-      const newTarget = { ...target, sortOrder: tempOrder };
+      let currentOrder = current.sortOrder || 0;
+      let targetOrder = target.sortOrder || 0;
 
-      dispatch({ type: 'UPDATE_PRODUCT', product: newCurrent });
-      dispatch({ type: 'UPDATE_PRODUCT', product: newTarget });
+      if (currentOrder === targetOrder) {
+          currentOrder = (index + 1) * 10;
+          targetOrder = (targetIndex + 1) * 10;
+      }
+
+      dispatch({ type: 'UPDATE_PRODUCT', product: { ...current, sortOrder: targetOrder } });
+      dispatch({ type: 'UPDATE_PRODUCT', product: { ...target, sortOrder: currentOrder } });
+  };
+
+  const handleDeleteProduct = (product: Product) => {
+      if (window.confirm(`Tem certeza que deseja excluir "${product.name}"?`)) {
+          dispatch({ type: 'DELETE_PRODUCT', productId: product.id });
+      }
   };
 
   const handleSaveUser = (e: React.FormEvent) => {
@@ -157,15 +262,6 @@ export const AdminDashboard: React.FC = () => {
       }
   };
   
-  const calculateTotalSales = () => state.transactions.reduce((acc, t) => acc + t.amount, 0);
-  const calculateSalesByMethod = () => {
-      const data: any = {};
-      state.transactions.forEach(t => {
-          data[t.method] = (data[t.method] || 0) + t.amount;
-      });
-      return data;
-  };
-
   const sortedProducts = [...state.products].sort((a,b) => (a.sortOrder || 0) - (b.sortOrder || 0));
 
   return (
@@ -203,7 +299,7 @@ export const AdminDashboard: React.FC = () => {
         <div className="flex-1 p-8 overflow-y-auto">
             {activeTab === 'DASHBOARD' && (
                 <div>
-                    <h2 className="text-2xl font-bold mb-6 text-gray-800">Visão Geral</h2>
+                    <h2 className="text-2xl font-bold mb-6 text-gray-800">Visão Geral (Hoje)</h2>
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                         <div className="bg-white p-6 rounded-xl shadow-sm border-l-4 border-blue-500">
                             <div className="text-gray-500 text-sm mb-1 uppercase tracking-wider">Vendas Hoje</div>
@@ -225,54 +321,124 @@ export const AdminDashboard: React.FC = () => {
             
             {activeTab === 'REPORTS' && (
                 <div className="space-y-8">
-                     <div className="flex justify-between items-center no-print">
-                        <h2 className="text-2xl font-bold text-gray-800">Relatórios Gerenciais</h2>
-                        <Button onClick={handlePrintReport}><Printer size={16}/> Imprimir Relatório</Button>
-                     </div>
-
-                     <div className="bg-white p-6 rounded-xl shadow-sm border">
-                         <h3 className="text-lg font-bold mb-4 border-b pb-2">Resumo Financeiro</h3>
-                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                             <div>
-                                 <p className="text-sm text-gray-500">Vendas Totais</p>
-                                 <p className="text-2xl font-bold text-green-600">R$ {calculateTotalSales().toFixed(2)}</p>
-                             </div>
-                             {Object.entries(calculateSalesByMethod()).map(([method, amount]: any) => (
-                                 <div key={method}>
-                                     <p className="text-sm text-gray-500">{method}</p>
-                                     <p className="text-xl font-bold">R$ {amount.toFixed(2)}</p>
-                                 </div>
-                             ))}
-                         </div>
-                     </div>
-
-                     <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
-                        <div className="p-4 bg-gray-50 border-b">
-                            <h3 className="font-bold">Histórico de Transações</h3>
+                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 no-print bg-white p-4 rounded-xl shadow-sm border">
+                        <div>
+                            <h2 className="text-2xl font-bold text-gray-800">Relatórios Gerenciais</h2>
+                            <p className="text-sm text-gray-500">Analise o desempenho do seu restaurante por período.</p>
                         </div>
-                        <table className="w-full text-left text-sm">
-                            <thead className="bg-gray-100">
-                                <tr>
-                                    <th className="p-3">Data</th>
-                                    <th className="p-3">Mesa</th>
-                                    <th className="p-3">Método</th>
-                                    <th className="p-3">Caixa</th>
-                                    <th className="p-3 text-right">Valor</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {state.transactions.map(t => (
-                                    <tr key={t.id} className="border-b">
-                                        <td className="p-3">{t.timestamp.toLocaleString()}</td>
-                                        <td className="p-3">Mesa {t.tableNumber}</td>
-                                        <td className="p-3">{t.method}</td>
-                                        <td className="p-3">{t.cashierName}</td>
-                                        <td className="p-3 text-right font-bold">R$ {t.amount.toFixed(2)}</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                        <div className="flex flex-wrap items-center gap-3">
+                            <div className="flex items-center gap-2 bg-gray-50 p-2 rounded border">
+                                <Calendar size={16} className="text-gray-500"/>
+                                <input 
+                                    type="date" 
+                                    value={reportDateStart} 
+                                    onChange={(e) => setReportDateStart(e.target.value)} 
+                                    className="bg-transparent text-sm outline-none"
+                                />
+                                <span className="text-gray-400">-</span>
+                                <input 
+                                    type="date" 
+                                    value={reportDateEnd} 
+                                    onChange={(e) => setReportDateEnd(e.target.value)} 
+                                    className="bg-transparent text-sm outline-none"
+                                />
+                            </div>
+                            <Button onClick={fetchReportData} disabled={loadingReport}>
+                                {loadingReport ? <Loader2 className="animate-spin" size={16}/> : <Search size={16}/>} Filtrar
+                            </Button>
+                            <Button variant="secondary" onClick={handlePrintReport}><Printer size={16}/> Imprimir</Button>
+                        </div>
                      </div>
+
+                     {loadingReport ? (
+                         <div className="text-center py-20">
+                             <Loader2 size={40} className="animate-spin mx-auto text-blue-600"/>
+                             <p className="text-gray-500 mt-2">Carregando dados...</p>
+                         </div>
+                     ) : (
+                        <>
+                            {/* Resumo Financeiro */}
+                            <div className="bg-white p-6 rounded-xl shadow-sm border print:shadow-none print:border-black">
+                                <h3 className="text-lg font-bold mb-4 border-b pb-2 flex items-center gap-2"><TrendingUp size={20}/> Resumo Financeiro</h3>
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                    <div>
+                                        <p className="text-sm text-gray-500">Vendas Totais</p>
+                                        <p className="text-3xl font-bold text-green-600">R$ {reportData.totalSales.toFixed(2)}</p>
+                                    </div>
+                                    {Object.entries(reportData.salesByMethod).map(([method, amount]: any) => (
+                                        <div key={method}>
+                                            <p className="text-sm text-gray-500">Via {method}</p>
+                                            <p className="text-xl font-bold">R$ {amount.toFixed(2)}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Produtos Mais Vendidos */}
+                            <div className="bg-white rounded-xl shadow-sm border overflow-hidden print:shadow-none print:border-black">
+                                <div className="p-4 bg-gray-50 border-b print:bg-gray-200">
+                                    <h3 className="font-bold flex items-center gap-2"><Utensils size={18}/> Produtos Mais Vendidos</h3>
+                                </div>
+                                <table className="w-full text-left text-sm">
+                                    <thead className="bg-gray-100 print:bg-gray-50">
+                                        <tr>
+                                            <th className="p-3 w-10">#</th>
+                                            <th className="p-3">Produto</th>
+                                            <th className="p-3 text-right">Qtd. Vendida</th>
+                                            <th className="p-3 text-right">Ticket Médio</th>
+                                            <th className="p-3 text-right">Receita Total</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {reportData.topProducts.length === 0 && (
+                                            <tr><td colSpan={5} className="p-4 text-center text-gray-500">Nenhum produto vendido neste período.</td></tr>
+                                        )}
+                                        {reportData.topProducts.map((prod, index) => (
+                                            <tr key={prod.name} className="border-b">
+                                                <td className="p-3 font-bold text-gray-500">{index + 1}</td>
+                                                <td className="p-3 font-medium">{prod.name}</td>
+                                                <td className="p-3 text-right">{prod.quantity}</td>
+                                                <td className="p-3 text-right text-gray-500">R$ {(prod.total / (prod.quantity || 1)).toFixed(2)}</td>
+                                                <td className="p-3 text-right font-bold text-green-700">R$ {prod.total.toFixed(2)}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            {/* Transações Detalhadas */}
+                            <div className="bg-white rounded-xl shadow-sm border overflow-hidden print:shadow-none print:border-black break-before-page">
+                                <div className="p-4 bg-gray-50 border-b print:bg-gray-200">
+                                    <h3 className="font-bold flex items-center gap-2"><ListIcon size={18}/> Histórico de Transações</h3>
+                                </div>
+                                <table className="w-full text-left text-sm">
+                                    <thead className="bg-gray-100 print:bg-gray-50">
+                                        <tr>
+                                            <th className="p-3">Data</th>
+                                            <th className="p-3">Mesa</th>
+                                            <th className="p-3">Método</th>
+                                            <th className="p-3">Caixa</th>
+                                            <th className="p-3 text-right">Valor</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {reportData.transactions.length === 0 && (
+                                            <tr><td colSpan={5} className="p-4 text-center text-gray-500">Nenhuma transação encontrada.</td></tr>
+                                        )}
+                                        {reportData.transactions.map(t => (
+                                            <tr key={t.id} className="border-b">
+                                                <td className="p-3">{new Date(t.created_at).toLocaleString()}</td>
+                                                <td className="p-3">Mesa {t.table_number}</td>
+                                                <td className="p-3">{t.method}</td>
+                                                <td className="p-3">{t.cashier_name}</td>
+                                                <td className="p-3 text-right font-bold">R$ {t.amount.toFixed(2)}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </>
+                     )}
                 </div>
             )}
 
@@ -336,11 +502,13 @@ export const AdminDashboard: React.FC = () => {
                                         <button onClick={() => startEditUser(user)} className="text-blue-500 hover:text-blue-700 p-2 bg-blue-50 rounded-lg" title="Editar">
                                             <Edit size={20} />
                                         </button>
-                                        {user.role !== Role.ADMIN && (
-                                            <button onClick={() => { if(window.confirm('Remover funcionário?')) dispatch({type: 'DELETE_USER', userId: user.id}) }} className="text-red-500 hover:text-red-700 p-2 bg-red-50 rounded-lg" title="Excluir">
-                                                <Trash2 size={20} />
-                                            </button>
-                                        )}
+                                        <button 
+                                            onClick={() => { if(window.confirm(`Tem certeza que deseja excluir o funcionário ${user.name}?`)) dispatch({type: 'DELETE_USER', userId: user.id}) }} 
+                                            className="text-red-500 hover:text-red-700 p-2 bg-red-50 rounded-lg hover:bg-red-100 transition-colors" 
+                                            title="Excluir Funcionário"
+                                        >
+                                            <Trash2 size={20} />
+                                        </button>
                                     </div>
                                 </div>
                             ))}
@@ -472,9 +640,19 @@ export const AdminDashboard: React.FC = () => {
                                             </div>
                                         </td>
                                         <td className="p-4 text-right">
-                                            <Button size="sm" variant="outline" onClick={() => { setIsCreatingNew(false); setEditingProduct(product); }}>
-                                                Editar
-                                            </Button>
+                                            <div className="flex justify-end gap-2">
+                                                <Button size="sm" variant="outline" onClick={() => { setIsCreatingNew(false); setEditingProduct(product); }}>
+                                                    <Edit size={16} />
+                                                </Button>
+                                                <Button 
+                                                    size="sm" 
+                                                    variant="danger" 
+                                                    className="bg-red-50 text-red-600 hover:bg-red-100 border-red-200 border"
+                                                    onClick={() => handleDeleteProduct(product)}
+                                                >
+                                                    <Trash2 size={16} />
+                                                </Button>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}
@@ -488,7 +666,7 @@ export const AdminDashboard: React.FC = () => {
                  <div className="max-w-3xl">
                     <h2 className="text-2xl font-bold mb-6 text-gray-800">Personalizar App do Cliente</h2>
                     <div className="bg-white p-6 rounded-xl shadow-sm space-y-8">
-                        
+                        {/* Customization Form (unchanged from previous step, kept for context) */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                             <div className="space-y-4">
                                 <h3 className="font-bold text-gray-700 flex items-center gap-2"><Palette size={18} /> Identidade Visual</h3>
