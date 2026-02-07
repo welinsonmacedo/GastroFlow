@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useSaaS } from '../context/SaaSContext';
 import { Activity, Lock, ArrowLeft } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 
 export const SaaSLogin: React.FC = () => {
   const navigate = useNavigate();
@@ -9,16 +10,35 @@ export const SaaSLogin: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Mock simples de autenticação do Dono
-    if (email === 'admin@gastroflow.com' && password === 'admin') {
-      dispatch({ type: 'LOGIN_ADMIN', name: 'CEO GastroFlow' });
-      navigate('/dashboard');
-    } else {
-      setError('Credenciais inválidas. (Dica: admin@gastroflow.com / admin)');
+    setLoading(true);
+    setError('');
+
+    try {
+        // Consulta o usuário na tabela saas_admins
+        // Nota: Em produção, use Supabase Auth (GoTrue) ou hash de senha. 
+        // Esta tabela customizada é para demonstração.
+        const { data, error: dbError } = await supabase
+            .from('saas_admins')
+            .select('*')
+            .eq('email', email)
+            .eq('password', password)
+            .single();
+
+        if (dbError || !data) {
+            setError('Credenciais inválidas.');
+        } else {
+            dispatch({ type: 'LOGIN_ADMIN', name: data.name });
+            navigate('/dashboard');
+        }
+    } catch (err) {
+        console.error(err);
+        setError('Erro ao conectar ao servidor.');
+    } finally {
+        setLoading(false);
     }
   };
 
@@ -47,6 +67,7 @@ export const SaaSLogin: React.FC = () => {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     autoFocus
+                    disabled={loading}
                 />
             </div>
 
@@ -60,6 +81,7 @@ export const SaaSLogin: React.FC = () => {
                         placeholder="Senha"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
+                        disabled={loading}
                     />
                 </div>
             </div>
@@ -68,9 +90,10 @@ export const SaaSLogin: React.FC = () => {
 
             <button 
                 type="submit" 
-                className="w-full bg-slate-900 text-white py-3 rounded-lg font-bold hover:bg-slate-800 transition-colors shadow-lg"
+                disabled={loading}
+                className="w-full bg-slate-900 text-white py-3 rounded-lg font-bold hover:bg-slate-800 transition-colors shadow-lg disabled:opacity-50"
             >
-                Acessar Painel
+                {loading ? 'Entrando...' : 'Acessar Painel'}
             </button>
         </form>
       </div>

@@ -1,121 +1,192 @@
--- ATENÇÃO: Rode este script no "SQL Editor" do seu painel Supabase
+-- ⚠️ ATENÇÃO: RODE ESTE SCRIPT NO "SQL EDITOR" DO SUPABASE ⚠️
 
--- 1. Habilitar UUIDs
-create extension if not exists "uuid-ossp";
+-- 1. LIMPEZA (Cuidado: Isso apaga dados existentes para recriar a estrutura correta)
+DROP TABLE IF EXISTS transactions CASCADE;
+DROP TABLE IF EXISTS order_items CASCADE;
+DROP TABLE IF EXISTS orders CASCADE;
+DROP TABLE IF EXISTS restaurant_tables CASCADE;
+DROP TABLE IF EXISTS products CASCADE;
+DROP TABLE IF EXISTS staff CASCADE;
+DROP TABLE IF EXISTS tenants CASCADE;
+DROP TABLE IF EXISTS saas_admins CASCADE;
 
--- 2. Tabela de Tenants (Restaurantes)
-create table tenants (
-  id uuid default uuid_generate_v4() primary key,
-  slug text unique not null,
-  name text not null,
-  owner_name text,
-  email text,
-  plan text default 'FREE', -- 'FREE', 'PRO', 'ENTERPRISE'
-  status text default 'ACTIVE', -- 'ACTIVE', 'INACTIVE'
-  theme_config jsonb default '{}'::jsonb, -- Armazena cores, logo, etc
-  created_at timestamp with time zone default timezone('utc'::text, now())
+-- 2. EXTENSÕES
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- 3. TABELAS
+
+-- Tenants (Restaurantes)
+CREATE TABLE tenants (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    slug TEXT UNIQUE NOT NULL,
+    name TEXT NOT NULL,
+    owner_name TEXT,
+    email TEXT,
+    plan TEXT DEFAULT 'FREE', -- 'FREE', 'PRO', 'ENTERPRISE'
+    status TEXT DEFAULT 'ACTIVE', -- 'ACTIVE', 'INACTIVE'
+    theme_config JSONB DEFAULT '{}'::jsonb,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
 );
 
--- 3. Tabela de Funcionários (Staff)
-create table staff (
-  id uuid default uuid_generate_v4() primary key,
-  tenant_id uuid references tenants(id) on delete cascade not null,
-  name text not null,
-  role text not null, -- 'ADMIN', 'WAITER', 'KITCHEN', 'CASHIER'
-  pin text not null,
-  created_at timestamp with time zone default timezone('utc'::text, now())
+-- SaaS Admins (Super Admins do Sistema)
+CREATE TABLE saas_admins (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    name TEXT NOT NULL,
+    email TEXT UNIQUE NOT NULL,
+    password TEXT NOT NULL, -- Em produção, use hash/salt ou Auth do Supabase. Aqui simplificado para demo.
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
 );
 
--- 4. Tabela de Produtos
-create table products (
-  id uuid default uuid_generate_v4() primary key,
-  tenant_id uuid references tenants(id) on delete cascade not null,
-  name text not null,
-  description text,
-  price numeric(10,2) not null,
-  category text not null,
-  type text not null, -- 'KITCHEN', 'BAR'
-  image text,
-  is_visible boolean default true,
-  sort_order integer default 0,
-  created_at timestamp with time zone default timezone('utc'::text, now())
+-- Staff (Funcionários)
+CREATE TABLE staff (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    tenant_id UUID REFERENCES tenants(id) ON DELETE CASCADE NOT NULL,
+    name TEXT NOT NULL,
+    role TEXT NOT NULL, -- 'ADMIN', 'WAITER', 'KITCHEN', 'CASHIER'
+    pin TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
 );
 
--- 5. Tabela de Mesas
-create table restaurant_tables (
-  id uuid default uuid_generate_v4() primary key,
-  tenant_id uuid references tenants(id) on delete cascade not null,
-  number integer not null,
-  status text default 'AVAILABLE', -- 'AVAILABLE', 'OCCUPIED', 'WAITING_PAYMENT'
-  customer_name text,
-  access_code text,
-  created_at timestamp with time zone default timezone('utc'::text, now())
+-- Products (Produtos)
+CREATE TABLE products (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    tenant_id UUID REFERENCES tenants(id) ON DELETE CASCADE NOT NULL,
+    name TEXT NOT NULL,
+    description TEXT,
+    price NUMERIC(10,2) NOT NULL,
+    category TEXT NOT NULL,
+    type TEXT NOT NULL, -- 'KITCHEN', 'BAR'
+    image TEXT,
+    is_visible BOOLEAN DEFAULT TRUE,
+    sort_order INTEGER DEFAULT 0,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
 );
 
--- 6. Tabela de Pedidos (Orders)
-create table orders (
-  id uuid default uuid_generate_v4() primary key,
-  tenant_id uuid references tenants(id) on delete cascade not null,
-  table_id uuid references restaurant_tables(id) on delete cascade not null,
-  is_paid boolean default false,
-  status text default 'PENDING',
-  total_amount numeric(10,2) default 0,
-  created_at timestamp with time zone default timezone('utc'::text, now())
+-- Tables (Mesas)
+CREATE TABLE restaurant_tables (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    tenant_id UUID REFERENCES tenants(id) ON DELETE CASCADE NOT NULL,
+    number INTEGER NOT NULL,
+    status TEXT DEFAULT 'AVAILABLE', -- 'AVAILABLE', 'OCCUPIED', 'WAITING_PAYMENT'
+    customer_name TEXT,
+    access_code TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
 );
 
--- 7. Tabela de Itens do Pedido (Order Items)
-create table order_items (
-  id uuid default uuid_generate_v4() primary key,
-  order_id uuid references orders(id) on delete cascade not null,
-  product_id uuid references products(id) on delete set null,
-  product_name text not null, -- Snapshot do nome caso produto seja deletado
-  product_price numeric(10,2) not null, -- Snapshot do preço
-  product_type text not null,
-  quantity integer default 1,
-  notes text,
-  status text default 'PENDING', -- 'PENDING', 'PREPARING', 'READY', 'DELIVERED', 'CANCELLED'
-  created_at timestamp with time zone default timezone('utc'::text, now())
+-- Orders (Pedidos - Cabeçalho)
+CREATE TABLE orders (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    tenant_id UUID REFERENCES tenants(id) ON DELETE CASCADE NOT NULL,
+    table_id UUID REFERENCES restaurant_tables(id) ON DELETE CASCADE NOT NULL,
+    is_paid BOOLEAN DEFAULT FALSE,
+    status TEXT DEFAULT 'PENDING',
+    total_amount NUMERIC(10,2) DEFAULT 0,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
 );
 
--- 8. Tabela de Transações (Histórico de Vendas)
-create table transactions (
-  id uuid default uuid_generate_v4() primary key,
-  tenant_id uuid references tenants(id) on delete cascade not null,
-  table_id uuid references restaurant_tables(id) on delete set null,
-  table_number integer,
-  amount numeric(10,2) not null,
-  method text not null, -- 'CASH', 'CARD', 'PIX'
-  items_summary text,
-  cashier_name text,
-  created_at timestamp with time zone default timezone('utc'::text, now())
+-- Order Items (Itens do Pedido)
+CREATE TABLE order_items (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    tenant_id UUID REFERENCES tenants(id) ON DELETE CASCADE NOT NULL, -- Redundante mas útil para RLS e Filtros Realtime
+    order_id UUID REFERENCES orders(id) ON DELETE CASCADE NOT NULL,
+    product_id UUID REFERENCES products(id) ON DELETE SET NULL,
+    product_name TEXT NOT NULL,
+    product_price NUMERIC(10,2) NOT NULL,
+    product_type TEXT NOT NULL,
+    quantity INTEGER DEFAULT 1,
+    notes TEXT,
+    status TEXT DEFAULT 'PENDING', -- 'PENDING', 'PREPARING', 'READY', 'DELIVERED', 'CANCELLED'
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
 );
 
--- DADOS DE EXEMPLO (SEED)
--- Cria restaurante 'bistro'
-INSERT INTO tenants (slug, name, theme_config) 
-VALUES ('bistro', 'Bistrô do Chef', '{"primaryColor": "#ea580c", "backgroundColor": "#fff7ed", "fontColor": "#1c1917", "restaurantName": "Bistrô do Chef"}');
+-- Transactions (Histórico Financeiro)
+CREATE TABLE transactions (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    tenant_id UUID REFERENCES tenants(id) ON DELETE CASCADE NOT NULL,
+    table_id UUID REFERENCES restaurant_tables(id) ON DELETE SET NULL,
+    table_number INTEGER,
+    amount NUMERIC(10,2) NOT NULL,
+    method TEXT NOT NULL, -- 'CASH', 'CARD', 'PIX'
+    items_summary TEXT,
+    cashier_name TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
 
--- Pegar ID do tenant criado para inserir o resto (exemplo genérico, na prática o UUID muda)
+-- 4. CONFIGURAÇÃO DE REALTIME (Essencial para o funcionamento do App)
+
+-- Adiciona as tabelas na publicação do supabase_realtime
+ALTER PUBLICATION supabase_realtime ADD TABLE restaurant_tables;
+ALTER PUBLICATION supabase_realtime ADD TABLE orders;
+ALTER PUBLICATION supabase_realtime ADD TABLE order_items;
+ALTER PUBLICATION supabase_realtime ADD TABLE products;
+
+-- 5. SEED DATA (Dados Iniciais)
+
 DO $$
 DECLARE
-    t_id uuid;
+    t_id_bistro UUID;
+    t_id_burger UUID;
+    t_id_pizza UUID;
 BEGIN
-    SELECT id INTO t_id FROM tenants WHERE slug = 'bistro' LIMIT 1;
+    -- Seed SaaS Admin (CEO)
+    INSERT INTO saas_admins (name, email, password) VALUES ('CEO GastroFlow', 'welinsonmarlon15@gmail.com', 'admin');
 
-    -- Funcionários
+    -- --- RESTAURANTE 1: BISTRÔ DO CHEF ---
+    INSERT INTO tenants (slug, name, theme_config, plan) 
+    VALUES ('bistro', 'Bistrô do Chef', '{"primaryColor": "#ea580c", "backgroundColor": "#fff7ed", "fontColor": "#1c1917", "restaurantName": "Bistrô do Chef", "logoUrl": "https://cdn-icons-png.flaticon.com/512/1996/1996068.png"}', 'PRO')
+    RETURNING id INTO t_id_bistro;
+
+    -- Staff Bistrô
     INSERT INTO staff (tenant_id, name, role, pin) VALUES 
-    (t_id, 'Admin', 'ADMIN', '1234'),
-    (t_id, 'Garçom João', 'WAITER', '0000'),
-    (t_id, 'Cozinha Maria', 'KITCHEN', '1111'),
-    (t_id, 'Caixa Ana', 'CASHIER', '2222');
+    (t_id_bistro, 'Admin', 'ADMIN', '1234'),
+    (t_id_bistro, 'Garçom Carlos', 'WAITER', '0000'),
+    (t_id_bistro, 'Chef Jacquin', 'KITCHEN', '1111'),
+    (t_id_bistro, 'Ana Caixa', 'CASHIER', '2222');
 
-    -- Produtos
-    INSERT INTO products (tenant_id, name, description, price, category, type, image) VALUES
-    (t_id, 'Filet Mignon', 'Ao molho madeira.', 65.00, 'Pratos Principais', 'KITCHEN', 'https://picsum.photos/200/200?random=1'),
-    (t_id, 'Vinho Tinto', 'Cabernet Sauvignon.', 80.00, 'Bebidas', 'BAR', 'https://picsum.photos/200/200?random=2');
+    -- Produtos Bistrô
+    INSERT INTO products (tenant_id, name, description, price, category, type, image, sort_order) VALUES
+    (t_id_bistro, 'Filet Mignon', 'Ao molho madeira com purê rústico.', 65.00, 'Pratos Principais', 'KITCHEN', 'https://images.unsplash.com/photo-1558030006-45067198d286?auto=format&fit=crop&w=500&q=60', 1),
+    (t_id_bistro, 'Salmão Grelhado', 'Com legumes sauté.', 58.00, 'Pratos Principais', 'KITCHEN', 'https://images.unsplash.com/photo-1467003909585-2f8a7270028d?auto=format&fit=crop&w=500&q=60', 2),
+    (t_id_bistro, 'Vinho Tinto', 'Cabernet Sauvignon (Taça).', 25.00, 'Bebidas', 'BAR', 'https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?auto=format&fit=crop&w=500&q=60', 3),
+    (t_id_bistro, 'Petit Gateau', 'Com sorvete de baunilha.', 22.00, 'Sobremesas', 'KITCHEN', 'https://images.unsplash.com/photo-1624353365286-3f8d62daad51?auto=format&fit=crop&w=500&q=60', 4);
 
-    -- Mesas (10 mesas)
+    -- Mesas Bistrô (10 mesas)
     INSERT INTO restaurant_tables (tenant_id, number) 
-    SELECT t_id, i FROM generate_series(1, 10) AS i;
+    SELECT t_id_bistro, i FROM generate_series(1, 10) AS i;
+
+
+    -- --- RESTAURANTE 2: BURGER KINGO ---
+    INSERT INTO tenants (slug, name, theme_config, plan) 
+    VALUES ('burger', 'Burger Kingo', '{"primaryColor": "#dc2626", "backgroundColor": "#fef2f2", "fontColor": "#1f2937", "restaurantName": "Burger Kingo", "logoUrl": "https://cdn-icons-png.flaticon.com/512/3075/3075977.png"}', 'ENTERPRISE')
+    RETURNING id INTO t_id_burger;
+
+    -- Staff Burger
+    INSERT INTO staff (tenant_id, name, role, pin) VALUES 
+    (t_id_burger, 'Gerente', 'ADMIN', '1234'),
+    (t_id_burger, 'Atendente', 'WAITER', '0000'),
+    (t_id_burger, 'Chapeiro', 'KITCHEN', '1111');
+
+    -- Produtos Burger
+    INSERT INTO products (tenant_id, name, description, price, category, type, image, sort_order) VALUES
+    (t_id_burger, 'X-Bacon', 'Hambúrguer artesanal, muito bacon e cheddar.', 28.00, 'Lanches', 'KITCHEN', 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=500&q=60', 1),
+    (t_id_burger, 'Batata Frita', 'Crocante com sal.', 12.00, 'Acompanhamentos', 'KITCHEN', 'https://images.unsplash.com/photo-1630384060421-a431e4fb2a28?auto=format&fit=crop&w=500&q=60', 2),
+    (t_id_burger, 'Milkshake Morango', 'Cremoso e gelado.', 18.00, 'Bebidas', 'BAR', 'https://images.unsplash.com/photo-1572490122747-3968b75cc699?auto=format&fit=crop&w=500&q=60', 3);
+
+    -- Mesas Burger (20 mesas)
+    INSERT INTO restaurant_tables (tenant_id, number) 
+    SELECT t_id_burger, i FROM generate_series(1, 20) AS i;
+    
+    
+    -- --- RESTAURANTE 3: PIZZARIA EXPRESS ---
+    INSERT INTO tenants (slug, name, theme_config, plan) 
+    VALUES ('pizza', 'Pizzaria Express', '{"primaryColor": "#16a34a", "backgroundColor": "#f0fdf4", "fontColor": "#1f2937", "restaurantName": "Pizzaria Express", "logoUrl": "https://cdn-icons-png.flaticon.com/512/3132/3132693.png"}', 'FREE')
+    RETURNING id INTO t_id_pizza;
+    
+    INSERT INTO staff (tenant_id, name, role, pin) VALUES (t_id_pizza, 'Dono', 'ADMIN', '1234');
+    
+    INSERT INTO products (tenant_id, name, description, price, category, type, image, sort_order) VALUES
+    (t_id_pizza, 'Pizza Calabresa', 'Molho, mussarela e calabresa.', 45.00, 'Pizzas', 'KITCHEN', 'https://images.unsplash.com/photo-1628840042765-356cda07504e?auto=format&fit=crop&w=500&q=60', 1);
+    
+    INSERT INTO restaurant_tables (tenant_id, number) SELECT t_id_pizza, i FROM generate_series(1, 15) AS i;
 
 END $$;
