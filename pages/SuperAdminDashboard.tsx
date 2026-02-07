@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useSaaS } from '../context/SaaSContext';
 import { Plan, PlanType, RestaurantTenant } from '../types';
 import { Button } from '../components/Button';
-import { Building2, Users, DollarSign, Activity, Settings, Search, MoreHorizontal, ExternalLink, LogOut, Plus, X, List, Edit, Key } from 'lucide-react';
+import { Building2, Users, DollarSign, Activity, Settings, Search, MoreHorizontal, ExternalLink, LogOut, Plus, X, List, Edit, Key, Lock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 type ViewMode = 'RESTAURANTS' | 'FINANCIAL' | 'PLANS' | 'SETTINGS';
@@ -27,7 +27,7 @@ export const SuperAdminDashboard: React.FC = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingTenant, setEditingTenant] = useState<RestaurantTenant | null>(null);
   const [editTab, setEditTab] = useState<'DETAILS' | 'ADMIN'>('DETAILS');
-  const [newAdminForm, setNewAdminForm] = useState({ name: 'Admin', email: '', pin: '1234' });
+  const [newAdminForm, setNewAdminForm] = useState({ name: 'Admin', email: '', pin: '1234', password: '' });
 
   // Settings State
   const [settingsForm, setSettingsForm] = useState({
@@ -81,7 +81,7 @@ export const SuperAdminDashboard: React.FC = () => {
   const openEditModal = (tenant: RestaurantTenant) => {
       setEditingTenant(tenant);
       setEditTab('DETAILS');
-      setNewAdminForm({ name: 'Admin', email: tenant.email, pin: '1234' });
+      setNewAdminForm({ name: 'Admin', email: tenant.email, pin: '1234', password: '' });
       setIsEditModalOpen(true);
   };
 
@@ -111,10 +111,11 @@ export const SuperAdminDashboard: React.FC = () => {
               tenantId: editingTenant.id,
               name: newAdminForm.name,
               email: newAdminForm.email,
-              pin: newAdminForm.pin
+              pin: newAdminForm.pin,
+              password: newAdminForm.password
           } 
       });
-      setNewAdminForm({ name: 'Admin', email: '', pin: '1234' });
+      setNewAdminForm({ name: 'Admin', email: '', pin: '1234', password: '' });
       // Mantém modal aberto
   };
 
@@ -423,7 +424,20 @@ export const SuperAdminDashboard: React.FC = () => {
                                        <input type="email" className="w-full border p-2.5 rounded-lg" placeholder="gerente@restaurante.com" value={newAdminForm.email} onChange={(e) => setNewAdminForm({...newAdminForm, email: e.target.value})} />
                                    </div>
                                    <div>
-                                       <label className="block text-xs font-bold text-gray-500 uppercase mb-1">PIN de Acesso</label>
+                                       <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Senha (Login Remoto)</label>
+                                       <div className="relative">
+                                           <Lock size={16} className="absolute left-3 top-3 text-gray-400" />
+                                           <input 
+                                                type="password" 
+                                                className="w-full border p-2.5 pl-10 rounded-lg" 
+                                                placeholder="Para acesso via /login-owner" 
+                                                value={newAdminForm.password} 
+                                                onChange={(e) => setNewAdminForm({...newAdminForm, password: e.target.value})} 
+                                           />
+                                       </div>
+                                   </div>
+                                   <div>
+                                       <label className="block text-xs font-bold text-gray-500 uppercase mb-1">PIN de Acesso (Local)</label>
                                        <div className="relative">
                                            <Key size={16} className="absolute left-3 top-3 text-gray-400" />
                                            <input className="w-full border p-2.5 pl-10 rounded-lg font-mono" placeholder="1234" maxLength={4} value={newAdminForm.pin} onChange={(e) => setNewAdminForm({...newAdminForm, pin: e.target.value})} />

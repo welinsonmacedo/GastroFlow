@@ -1,6 +1,13 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
 import { RestaurantTenant, PlanType, Plan } from '../types';
 import { supabase } from '../lib/supabase';
+import { createClient } from '@supabase/supabase-js';
+
+// Cliente Supabase auxiliar para operações administrativas sem afetar a sessão atual
+// Adicionada verificação segura para import.meta.env para evitar erros em alguns ambientes
+const env: any = import.meta.env || {};
+const supabaseUrl = env.VITE_SUPABASE_URL || '';
+const supabaseKey = env.VITE_SUPABASE_ANON_KEY || '';
 
 interface SaaSState {
   isAuthenticated: boolean; 
@@ -18,7 +25,7 @@ type SaaSAction =
   | { type: 'SET_PLANS'; payload: Plan[] }
   | { type: 'CREATE_TENANT'; payload: { name: string; slug: string; ownerName: string; email: string; plan: PlanType } }
   | { type: 'UPDATE_TENANT'; payload: { id: string; name: string; slug: string; ownerName: string; email: string } }
-  | { type: 'CREATE_TENANT_ADMIN'; payload: { tenantId: string; name: string; email: string; pin: string } }
+  | { type: 'CREATE_TENANT_ADMIN'; payload: { tenantId: string; name: string; email: string; pin: string; password?: string } }
   | { type: 'ADD_TENANT_TO_LIST'; tenant: RestaurantTenant }
   | { type: 'TOGGLE_STATUS'; tenantId: string }
   | { type: 'CHANGE_PLAN'; tenantId: string; plan: PlanType }
@@ -191,7 +198,7 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
             if (error) throw error;
 
             if (newTenant) {
-                // 2. Criar Staff ADMIN padrão para o tenant conseguir logar
+                // 2. Criar Staff ADMIN padrão para o tenant conseguir logar (Local PIN)
                 await supabase.from('staff').insert({
                     tenant_id: newTenant.id,
                     name: 'Admin',
@@ -245,19 +252,62 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     if (action.type === 'CREATE_TENANT_ADMIN') {
         try {
+            let authUserId = null;
+
+            // Se senha foi fornecida, tenta criar usuário no Auth
+            if (action.payload.password) {
+                // TRUQUE: Cria um cliente Supabase "descartável" em memória para não sobrescrever a sessão do Admin atual
+                // Garante que a URL e Key estão disponíveis
+                if (!supabaseUrl || !supabaseKey) {
+                    throw new Error("Configuração do Supabase (URL/Key) não encontrada para criar usuário Auth.");
+                }
+
+                const tempClient = createClient(supabaseUrl, supabaseKey, {
+                    auth: {
+                        persistSession: false, // Importante: não salvar no localStorage
+                        autoRefreshToken: false,
+                        detectSessionInUrl: false
+                    }
+                });
+
+                const { data: authData, error: authError } = await tempClient.auth.signUp({
+                    email: action.payload.email,
+                    password: action.payload.password,
+                    options: {
+                        data: { name: action.payload.name }
+                    }
+                });
+
+                if (authError) {
+                    console.error("Erro Auth:", authError);
+                    alert(`Erro ao criar login Auth: ${authError.message}`);
+                    // Não retorna, tenta criar o staff local mesmo assim
+                } else if (authData.user) {
+                    authUserId = authData.user.id;
+                }
+            }
+
+            // Cria o registro na tabela staff (com ou sem vinculo Auth)
             const { error } = await supabase.from('staff').insert({
                 tenant_id: action.payload.tenantId,
                 name: action.payload.name,
                 email: action.payload.email,
                 role: 'ADMIN',
-                pin: action.payload.pin
+                pin: action.payload.pin,
+                auth_user_id: authUserId // Vincula se tiver criado com sucesso
             });
 
             if (error) throw error;
-            alert("Usuário Admin criado com sucesso!");
-        } catch (error) {
+            
+            if (authUserId) {
+                alert("Usuário Admin criado com sucesso! Login Auth e PIN configurados.");
+            } else {
+                alert("Usuário Admin criado apenas localmente (PIN). Login remoto falhou ou senha não fornecida.");
+            }
+
+        } catch (error: any) {
              console.error("Erro ao criar admin:", error);
-             alert("Erro ao criar usuário admin.");
+             alert(`Erro ao criar usuário admin: ${error.message}`);
         }
         return;
     }

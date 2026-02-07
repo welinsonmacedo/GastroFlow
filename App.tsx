@@ -25,7 +25,8 @@ const ProtectedRestaurantRoute = ({ children, allowedRoles }: { children: React.
     if (state.isLoading) return <div className="p-10 text-center">Carregando...</div>;
 
     if (!state.currentUser) {
-        return <Navigate to="/login" replace />;
+        // Redireciona preservando o search param se existir
+        return <Navigate to={`/login${window.location.search}`} replace />;
     }
     if (allowedRoles && !allowedRoles.includes(state.currentUser.role)) {
          return <div className="p-10 text-center text-red-500">Acesso Negado: Permissão insuficiente.</div>;
@@ -103,7 +104,7 @@ const TenantApp = () => {
         <>
             <TenantNavigation />
             <Routes>
-                <Route path="/" element={<Navigate to="/login" replace />} />
+                <Route path="/" element={<Navigate to={`/login${window.location.search}`} replace />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/client/table/:tableId" element={<ClientApp />} />
                 

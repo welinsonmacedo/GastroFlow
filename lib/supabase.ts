@@ -12,10 +12,10 @@ declare global {
 }
 
 // Verifica se import.meta.env existe antes de acessar propriedades.
-// O uso de '&&' permite curto-circuito se env for undefined no runtime.
-// Mantemos a string completa 'import.meta.env.VITE_...' para que o Vite possa fazer o replace estático no build.
-const supabaseUrl = (import.meta.env && import.meta.env.VITE_SUPABASE_URL) || '';
-const supabaseAnonKey = (import.meta.env && import.meta.env.VITE_SUPABASE_ANON_KEY) || '';
+// Usamos um objeto fallback vazio para garantir que o acesso não quebre em runtimes incompatíveis
+const env: any = import.meta.env || {};
+const supabaseUrl = env.VITE_SUPABASE_URL || '';
+const supabaseAnonKey = env.VITE_SUPABASE_ANON_KEY || '';
 
 export const isSupabaseConfigured = () => {
   return Boolean(supabaseUrl && supabaseAnonKey);
