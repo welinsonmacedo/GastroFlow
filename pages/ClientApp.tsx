@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { useRestaurant } from '../context/RestaurantContext';
 import { Button } from '../components/Button';
 import { TableStatus, Product } from '../types';
-import { ShoppingCart, ChefHat, Info, Plus, Minus, X, Lock, Receipt, Loader2, Bell, AlertTriangle, ArrowLeft, Search } from 'lucide-react';
+import { ShoppingCart, ChefHat, Info, Plus, Minus, X, Lock, Receipt, Loader2, Bell, AlertTriangle, ArrowLeft, Search, Edit3 } from 'lucide-react';
 
 export const ClientApp: React.FC = () => {
   const { tableId } = useParams<{ tableId: string }>();
@@ -15,6 +15,11 @@ export const ClientApp: React.FC = () => {
   const [waiterCalled, setWaiterCalled] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+
+  // --- Modal State ---
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [modalQuantity, setModalQuantity] = useState(1);
+  const [modalNotes, setModalNotes] = useState('');
 
   // Handle Loading
   if (state.isLoading) {
@@ -50,27 +55,37 @@ export const ClientApp: React.FC = () => {
       }
   };
 
-  const addToCart = (product: Product) => {
+  const openProductModal = (product: Product) => {
+      setSelectedProduct(product);
+      setModalQuantity(1);
+      setModalNotes('');
+  };
+
+  const closeProductModal = () => {
+      setSelectedProduct(null);
+  };
+
+  const addToCartFromModal = () => {
+    if (!selectedProduct) return;
+
     setCart(prev => {
-      const existing = prev.find(item => item.product.id === product.id);
-      if (existing) {
-        return prev.map(item => item.product.id === product.id ? { ...item, quantity: item.quantity + 1 } : item);
+      // Verifica se já existe o MESMO produto com a MESMA observação
+      const existingIndex = prev.findIndex(item => item.product.id === selectedProduct.id && item.notes === modalNotes);
+      
+      if (existingIndex >= 0) {
+        const newCart = [...prev];
+        newCart[existingIndex].quantity += modalQuantity;
+        return newCart;
       }
-      return [...prev, { product, quantity: 1, notes: '' }];
+      
+      return [...prev, { product: selectedProduct, quantity: modalQuantity, notes: modalNotes }];
     });
+
+    closeProductModal();
   };
 
-  const removeFromCart = (productId: string) => {
-    setCart(prev => prev.filter(item => item.product.id !== productId));
-  };
-
-  const updateQuantity = (productId: string, delta: number) => {
-    setCart(prev => prev.map(item => {
-      if (item.product.id === productId) {
-        return { ...item, quantity: Math.max(1, item.quantity + delta) };
-      }
-      return item;
-    }));
+  const removeFromCart = (index: number) => {
+    setCart(prev => prev.filter((_, i) => i !== index));
   };
 
   const submitOrder = () => {
@@ -167,6 +182,65 @@ export const ClientApp: React.FC = () => {
 
   return (
     <div className="min-h-screen pb-24" style={{ backgroundColor: theme.backgroundColor, color: theme.fontColor }}>
+      
+      {/* --- MODAL DE PRODUTO --- */}
+      {selectedProduct && (
+          <div className="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center animate-fade-in backdrop-blur-sm">
+              <div className="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+                  
+                  <div className="relative h-48 sm:h-56 bg-gray-100">
+                      <img src={selectedProduct.image} alt={selectedProduct.name} className="w-full h-full object-cover" />
+                      <button onClick={closeProductModal} className="absolute top-4 right-4 bg-white/90 p-2 rounded-full text-gray-800 shadow-md hover:bg-white transition-colors">
+                          <X size={24} />
+                      </button>
+                  </div>
+
+                  <div className="p-6 flex-1 overflow-y-auto">
+                      <div className="flex justify-between items-start mb-2">
+                          <h2 className="text-2xl font-bold text-gray-800 leading-tight">{selectedProduct.name}</h2>
+                          <span className="text-xl font-bold text-green-700 whitespace-nowrap">R$ {selectedProduct.price.toFixed(2)}</span>
+                      </div>
+                      <p className="text-gray-500 text-sm mb-6 leading-relaxed">{selectedProduct.description}</p>
+
+                      <div className="space-y-4">
+                          <div>
+                              <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                                  <Edit3 size={16} className="text-blue-500" /> Observações
+                              </label>
+                              <textarea 
+                                  className="w-full border border-gray-300 rounded-xl p-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow bg-gray-50"
+                                  rows={3}
+                                  placeholder="Ex: Sem cebola, ponto da carne, gelo e limão..."
+                                  value={modalNotes}
+                                  onChange={(e) => setModalNotes(e.target.value)}
+                              ></textarea>
+                          </div>
+
+                          <div className="flex items-center justify-between bg-gray-50 p-3 rounded-xl border border-gray-100">
+                              <span className="font-bold text-gray-700">Quantidade</span>
+                              <div className="flex items-center gap-4 bg-white shadow-sm rounded-lg border px-2 py-1">
+                                  <button onClick={() => setModalQuantity(Math.max(1, modalQuantity - 1))} className="p-2 text-gray-500 hover:text-blue-600 disabled:opacity-30"><Minus size={20} /></button>
+                                  <span className="font-bold text-xl w-8 text-center">{modalQuantity}</span>
+                                  <button onClick={() => setModalQuantity(modalQuantity + 1)} className="p-2 text-gray-500 hover:text-blue-600"><Plus size={20} /></button>
+                              </div>
+                          </div>
+                      </div>
+                  </div>
+
+                  <div className="p-4 border-t bg-white safe-area-bottom">
+                      <button 
+                          onClick={addToCartFromModal}
+                          className="w-full py-4 rounded-xl text-white font-bold text-lg shadow-lg flex justify-between items-center px-6 hover:opacity-90 active:scale-95 transition-all"
+                          style={{ backgroundColor: theme.primaryColor }}
+                      >
+                          <span>Adicionar</span>
+                          <span>R$ {(selectedProduct.price * modalQuantity).toFixed(2)}</span>
+                      </button>
+                  </div>
+              </div>
+          </div>
+      )}
+
       {/* Header Fixo */}
       <header className="bg-white shadow-sm sticky top-0 z-20">
           <div className="flex justify-between items-center p-4">
@@ -270,7 +344,7 @@ export const ClientApp: React.FC = () => {
                   <h2 className="text-xl font-bold mb-4 sticky top-16 bg-white/95 backdrop-blur py-2 z-10 px-2 rounded-lg shadow-sm border-l-4" style={{ borderColor: theme.primaryColor, color: theme.fontColor }}>{category}</h2>
                   <div className={isGrid ? "grid grid-cols-2 gap-4" : "flex flex-col gap-4"}>
                     {items.map(product => (
-                      <div key={product.id} className={`bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100 flex ${isGrid ? 'flex-col' : 'flex-row p-3 gap-4'}`}>
+                      <div key={product.id} onClick={() => openProductModal(product)} className={`bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100 flex cursor-pointer hover:shadow-md transition-shadow active:scale-[0.99] ${isGrid ? 'flex-col' : 'flex-row p-3 gap-4'}`}>
                         
                         {/* Imagem */}
                         <div className={`${isGrid ? 'w-full h-32' : 'w-24 h-24 shrink-0'}`}>
@@ -285,13 +359,12 @@ export const ClientApp: React.FC = () => {
                           </div>
                           <div className="flex justify-between items-center mt-auto">
                             <span className="font-bold text-lg" style={{ color: theme.primaryColor }}>R$ {product.price.toFixed(2)}</span>
-                            <button 
-                                className="w-8 h-8 rounded-full flex items-center justify-center text-white shadow-md active:scale-95 transition-transform"
+                            <div 
+                                className="w-8 h-8 rounded-full flex items-center justify-center text-white shadow-md"
                                 style={{ backgroundColor: theme.primaryColor }}
-                                onClick={() => addToCart(product)}
                             >
                                 <Plus size={20} />
-                            </button>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -326,26 +399,20 @@ export const ClientApp: React.FC = () => {
                     </div>
                 ) : (
                     <div className="space-y-4">
-                    {cart.map(item => (
-                        <div key={item.product.id} className="flex justify-between items-start border-b pb-4 last:border-0">
+                    {cart.map((item, idx) => (
+                        <div key={idx} className="flex justify-between items-start border-b pb-4 last:border-0">
                         <div className="flex-1">
                             <h4 className="font-medium text-gray-800">{item.product.name}</h4>
-                            <p className="text-sm text-gray-500 font-medium">R$ {item.product.price.toFixed(2)}</p>
-                            <input 
-                                type="text" 
-                                placeholder="Observações (ex: sem cebola)..."
-                                className="text-xs mt-2 w-full bg-gray-50 border border-gray-200 rounded px-2 py-1 focus:border-blue-500 focus:outline-none"
-                                value={item.notes}
-                                onChange={(e) => {
-                                    setCart(prev => prev.map(p => p.product.id === item.product.id ? { ...p, notes: e.target.value } : p));
-                                }}
-                            />
+                            <p className="text-sm text-gray-500 font-medium">R$ {item.product.price.toFixed(2)} <span className="text-xs text-gray-400">x {item.quantity}</span></p>
+                            {item.notes && (
+                                <div className="text-xs mt-2 bg-yellow-50 text-yellow-800 border border-yellow-200 p-2 rounded flex items-start gap-1">
+                                    <Info size={12} className="mt-0.5 shrink-0"/> {item.notes}
+                                </div>
+                            )}
                         </div>
                         <div className="flex items-center gap-3 ml-4">
-                            <button onClick={() => updateQuantity(item.product.id, -1)} className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600"><Minus size={16}/></button>
                             <span className="w-6 text-center font-bold text-lg">{item.quantity}</span>
-                            <button onClick={() => updateQuantity(item.product.id, 1)} className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600"><Plus size={16}/></button>
-                            <button onClick={() => removeFromCart(item.product.id)} className="text-red-400 ml-2 hover:text-red-600"><X size={20}/></button>
+                            <button onClick={() => removeFromCart(idx)} className="text-red-400 ml-2 hover:text-red-600 bg-red-50 p-2 rounded-lg"><X size={18}/></button>
                         </div>
                         </div>
                     ))}
@@ -434,8 +501,11 @@ export const ClientApp: React.FC = () => {
                             <div className="space-y-3">
                                 {order.items.map(item => (
                                     <div key={item.id} className="flex justify-between items-center">
-                                        <span className="text-gray-800 font-medium">{item.quantity}x {item.productName}</span>
-                                        <span className={`text-[10px] px-2 py-1 rounded-full font-bold uppercase tracking-wider
+                                        <div className="flex flex-col">
+                                            <span className="text-gray-800 font-medium">{item.quantity}x {item.productName}</span>
+                                            {item.notes && <span className="text-xs text-gray-500 italic">Obs: {item.notes}</span>}
+                                        </div>
+                                        <span className={`text-[10px] px-2 py-1 rounded-full font-bold uppercase tracking-wider shrink-0 ml-2
                                             ${item.status === 'PENDING' ? 'bg-gray-100 text-gray-600' : ''}
                                             ${item.status === 'PREPARING' ? 'bg-yellow-100 text-yellow-700 animate-pulse' : ''}
                                             ${item.status === 'READY' ? 'bg-green-100 text-green-700' : ''}
