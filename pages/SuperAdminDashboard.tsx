@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useSaaS } from '../context/SaaSContext';
 import { Plan, PlanType, RestaurantTenant, PlanLimits } from '../types';
 import { Button } from '../components/Button';
-import { Building2, Users, DollarSign, Activity, Settings, Search, MoreHorizontal, ExternalLink, LogOut, Plus, X, List, Edit, Key, Lock, BarChart2, Unlock, AlertTriangle } from 'lucide-react';
+import { Building2, Users, DollarSign, Activity, Settings, Search, MoreHorizontal, ExternalLink, LogOut, Plus, X, List, Edit, Key, Lock, BarChart2, Unlock, AlertTriangle, Link as LinkIcon, Copy, Check } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 type ViewMode = 'RESTAURANTS' | 'FINANCIAL' | 'PLANS' | 'SETTINGS';
@@ -31,6 +31,10 @@ export const SuperAdminDashboard: React.FC = () => {
   const [editingTenant, setEditingTenant] = useState<RestaurantTenant | null>(null);
   const [editTab, setEditTab] = useState<'DETAILS' | 'ADMIN'>('DETAILS');
   const [newAdminForm, setNewAdminForm] = useState({ name: 'Admin', email: '', pin: '1234', password: '' });
+
+  // Modal State (Links)
+  const [selectedTenantForLinks, setSelectedTenantForLinks] = useState<RestaurantTenant | null>(null);
+  const [copiedLink, setCopiedLink] = useState<string | null>(null);
 
   // Settings State
   const [settingsForm, setSettingsForm] = useState({
@@ -160,6 +164,26 @@ export const SuperAdminDashboard: React.FC = () => {
       setNewTenantForm(prev => ({ ...prev, name, slug }));
   };
 
+  // --- Links Handler ---
+  const handleCopyLink = (url: string) => {
+      navigator.clipboard.writeText(url);
+      setCopiedLink(url);
+      setTimeout(() => setCopiedLink(null), 2000);
+  };
+
+  const getTenantLinks = (slug: string) => {
+      const origin = window.location.origin;
+      const param = `?restaurant=${slug}`;
+      return [
+          { name: 'Página de Login (Staff)', url: `${origin}/login${param}` },
+          { name: 'App do Garçom', url: `${origin}/waiter${param}` },
+          { name: 'KDS (Cozinha)', url: `${origin}/kitchen${param}` },
+          { name: 'Frente de Caixa', url: `${origin}/cashier${param}` },
+          { name: 'Painel Admin', url: `${origin}/admin${param}` },
+          { name: 'App Cliente (Mesa 1 Exemplo)', url: `${origin}/client/table/1${param}` },
+      ];
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 flex">
         
@@ -261,7 +285,7 @@ export const SuperAdminDashboard: React.FC = () => {
                                 <th className="p-4">Dono</th>
                                 <th className="p-4">Plano</th>
                                 <th className="p-4">Requisições</th>
-                                <th className="p-4">Acesso</th>
+                                <th className="p-4">Status</th>
                                 <th className="p-4 text-right">Ações</th>
                             </tr>
                         </thead>
@@ -298,13 +322,22 @@ export const SuperAdminDashboard: React.FC = () => {
                                         </button>
                                     </td>
                                     <td className="p-4 text-right">
-                                        <button 
-                                            onClick={() => openEditModal(tenant)}
-                                            className="text-gray-400 hover:text-blue-600 p-2 hover:bg-blue-50 rounded-full transition-colors"
-                                            title="Editar Restaurante"
-                                        >
-                                            <Edit size={20} />
-                                        </button>
+                                        <div className="flex items-center justify-end gap-2">
+                                            <button 
+                                                onClick={() => setSelectedTenantForLinks(tenant)}
+                                                className="text-gray-400 hover:text-blue-600 p-2 hover:bg-blue-50 rounded-full transition-colors"
+                                                title="Ver Links de Acesso"
+                                            >
+                                                <LinkIcon size={20} />
+                                            </button>
+                                            <button 
+                                                onClick={() => openEditModal(tenant)}
+                                                className="text-gray-400 hover:text-blue-600 p-2 hover:bg-blue-50 rounded-full transition-colors"
+                                                title="Editar Restaurante"
+                                            >
+                                                <Edit size={20} />
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             ))}
@@ -481,6 +514,49 @@ export const SuperAdminDashboard: React.FC = () => {
                        <input type="text" required className="w-full border p-2.5 rounded-lg" placeholder="Dono" value={newTenantForm.ownerName} onChange={(e) => setNewTenantForm({...newTenantForm, ownerName: e.target.value})} />
                        <Button type="submit" className="w-full">Criar</Button>
                    </form>
+               </div>
+           </div>
+       )}
+
+       {/* --- MODAL: LINKS DO RESTAURANTE --- */}
+       {selectedTenantForLinks && (
+           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+               <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl p-6 flex flex-col max-h-[90vh]">
+                   <div className="flex justify-between items-center mb-6 border-b pb-4">
+                       <div>
+                           <h3 className="text-xl font-bold text-gray-800">Links de Acesso</h3>
+                           <p className="text-sm text-gray-500">{selectedTenantForLinks.name} ({selectedTenantForLinks.slug})</p>
+                       </div>
+                       <button onClick={() => setSelectedTenantForLinks(null)} className="p-2 hover:bg-gray-100 rounded-full"><X size={20} /></button>
+                   </div>
+                   
+                   <div className="space-y-4 overflow-y-auto pr-1">
+                       {getTenantLinks(selectedTenantForLinks.slug).map((link, idx) => (
+                           <div key={idx} className="bg-gray-50 border border-gray-200 rounded-lg p-4 flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
+                               <div className="flex-1 min-w-0">
+                                   <div className="font-bold text-gray-700 text-sm mb-1">{link.name}</div>
+                                   <div className="text-xs text-blue-600 truncate bg-white p-2 rounded border font-mono select-all">
+                                       {link.url}
+                                   </div>
+                               </div>
+                               <button 
+                                   onClick={() => handleCopyLink(link.url)}
+                                   className={`p-3 rounded-lg border flex items-center gap-2 transition-all font-bold text-sm shrink-0
+                                       ${copiedLink === link.url ? 'bg-green-100 text-green-700 border-green-200' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-100'}
+                                   `}
+                               >
+                                   {copiedLink === link.url ? <Check size={18}/> : <Copy size={18}/>}
+                                   {copiedLink === link.url ? 'Copiado!' : 'Copiar'}
+                               </button>
+                           </div>
+                       ))}
+                   </div>
+                   
+                   <div className="mt-6 pt-4 border-t text-center">
+                       <p className="text-xs text-gray-400">
+                           Estes links já incluem o identificador do restaurante para carregamento automático.
+                       </p>
+                   </div>
                </div>
            </div>
        )}
