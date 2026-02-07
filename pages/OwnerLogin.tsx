@@ -15,21 +15,32 @@ export const OwnerLogin: React.FC = () => {
         setError('');
         setLoading(true);
 
+        const emailTrimmed = form.email.trim();
+
         try {
             // 1. Autenticação no Supabase Auth (Email/Senha)
             const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-                email: form.email,
+                email: emailTrimmed,
                 password: form.password
             });
 
-            if (authError || !authData.user) {
-                throw new Error("Credenciais inválidas. Verifique seu e-mail e senha.");
+            if (authError) {
+                if (authError.message.includes("Email not confirmed")) {
+                    throw new Error("E-mail não confirmado. Verifique sua caixa de entrada antes de acessar.");
+                } else if (authError.message.includes("Invalid login credentials")) {
+                    throw new Error("E-mail ou senha incorretos.");
+                }
+                throw authError;
+            }
+
+            if (!authData.user) {
+                throw new Error("Erro ao obter dados do usuário.");
             }
 
             const userId = authData.user.id;
 
             // 2. Descobrir qual o Tenant (Restaurante) deste usuário
-            // Query robusta para staff e tenant associado
+            // Query robusta para staff e tenant associado. Usa limit(1) para evitar erro se tiver multiplos vinculos.
             const { data: staffData, error: staffError } = await supabase
                 .from('staff')
                 .select(`
@@ -37,6 +48,7 @@ export const OwnerLogin: React.FC = () => {
                     tenants!inner ( slug, name )
                 `)
                 .eq('auth_user_id', userId)
+                .limit(1)
                 .maybeSingle();
 
             let tenantSlug = '';
@@ -44,7 +56,7 @@ export const OwnerLogin: React.FC = () => {
             // Tenta extrair do staff
             if (staffData && staffData.tenants) {
                  const t = staffData.tenants;
-                 // Verifica se é array ou objeto
+                 // Verifica se é array ou objeto (depende da versão do client, mas usually object com !inner e single)
                  // @ts-ignore 
                  tenantSlug = Array.isArray(t) ? t[0]?.slug : t.slug;
             } 
@@ -55,6 +67,7 @@ export const OwnerLogin: React.FC = () => {
                     .from('tenants')
                     .select('slug')
                     .eq('owner_auth_id', userId)
+                    .limit(1)
                     .maybeSingle();
                 
                 if (tenantData) {
@@ -65,7 +78,7 @@ export const OwnerLogin: React.FC = () => {
             if (!tenantSlug) {
                 // Se logou no Auth mas não tem restaurante vinculado
                 await supabase.auth.signOut();
-                throw new Error("Usuário autenticado, mas nenhum restaurante vinculado foi encontrado.");
+                throw new Error("Usuário autenticado, mas nenhum restaurante vinculado foi encontrado para este login.");
             }
 
             // 3. Redirecionar para o ambiente do restaurante
@@ -123,7 +136,7 @@ export const OwnerLogin: React.FC = () => {
                             <input 
                                 type="password" 
                                 className="w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                                placeholder="******"
+                                placeholder="••••••"
                                 value={form.password}
                                 onChange={(e) => setForm({...form, password: e.target.value})}
                             />
@@ -132,7 +145,7 @@ export const OwnerLogin: React.FC = () => {
 
                     {error && (
                         <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm flex items-center gap-2 border border-red-100">
-                            <AlertCircle size={16} />
+                            <AlertCircle size={16} className="shrink-0" />
                             <span>{error}</span>
                         </div>
                     )}

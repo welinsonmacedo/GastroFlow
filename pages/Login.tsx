@@ -37,6 +37,8 @@ export const Login: React.FC = () => {
       setError('');
       setSuccessMessage('');
 
+      const emailTrimmed = email.trim();
+
       try {
           const currentSlug = getTenantSlug();
 
@@ -45,7 +47,7 @@ export const Login: React.FC = () => {
               if (password !== confirmPassword) throw new Error("As senhas não coincidem.");
               
               const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-                  email,
+                  email: emailTrimmed,
                   password
               });
 
@@ -63,7 +65,7 @@ export const Login: React.FC = () => {
 
           // --- FLUXO DE LOGIN ---
           const { data, error: signInError } = await supabase.auth.signInWithPassword({
-              email,
+              email: emailTrimmed,
               password
           });
 
