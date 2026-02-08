@@ -310,6 +310,7 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 costPrice: p.cost_price || 0,
                 category: p.category,
                 type: p.type as ProductType,
+                format: p.format || 'SIMPLE', // Default to SIMPLE if null
                 image: p.image,
                 isVisible: p.is_visible,
                 sortOrder: p.sort_order
@@ -595,7 +596,16 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
          const { data } = await supabase.from('products').select('*').eq('tenant_id', tenantId);
          if (data) {
              const mapped = data.map((p: any) => ({
-                id: p.id, name: p.name, description: p.description, price: p.price, category: p.category, type: p.type as ProductType, image: p.image, isVisible: p.is_visible, sortOrder: p.sort_order
+                id: p.id, 
+                name: p.name, 
+                description: p.description, 
+                price: p.price, 
+                category: p.category, 
+                type: p.type as ProductType, 
+                format: p.format || 'SIMPLE',
+                image: p.image, 
+                isVisible: p.is_visible, 
+                sortOrder: p.sort_order
             }));
             dispatchLocal({ type: 'REALTIME_UPDATE_PRODUCTS', products: mapped });
          }
@@ -885,9 +895,10 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                      name: action.product.name,
                      description: action.product.description,
                      price: action.product.price,
-                     cost_price: action.product.costPrice, // Salva o custo
+                     cost_price: action.product.costPrice, 
                      category: action.product.category,
                      type: action.product.type,
+                     format: action.product.format, // Novo Campo
                      image: action.product.image,
                      is_visible: action.product.isVisible,
                      sort_order: action.product.sortOrder
@@ -901,9 +912,10 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                      name: action.product.name,
                      description: action.product.description,
                      price: action.product.price,
-                     cost_price: action.product.costPrice, // Salva o custo
+                     cost_price: action.product.costPrice, 
                      category: action.product.category,
                      type: action.product.type,
+                     format: action.product.format, // Novo Campo
                      image: action.product.image,
                      is_visible: action.product.isVisible,
                      sort_order: action.product.sortOrder

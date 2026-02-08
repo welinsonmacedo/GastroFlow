@@ -110,6 +110,7 @@ export interface Product {
   costPrice?: number; // Novo: Preço de Custo
   category: string;
   type: ProductType;
+  format?: 'SIMPLE' | 'COMPOSITE' | 'INGREDIENT'; // Novo: Formato do produto
   image: string; 
   isVisible: boolean; 
   sortOrder: number; 

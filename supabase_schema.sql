@@ -64,6 +64,14 @@ BEGIN
     END IF;
 END $$;
 
+-- Adicionar coluna de formato aos produtos (Simples, Composto, Ingrediente)
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='products' AND column_name='format') THEN
+        ALTER TABLE products ADD COLUMN format TEXT DEFAULT 'SIMPLE'; -- 'SIMPLE', 'COMPOSITE', 'INGREDIENT'
+    END IF;
+END $$;
+
 -- 3. ATUALIZAR REALTIME
 -- Adiciona as novas tabelas à publicação realtime existente
 ALTER PUBLICATION supabase_realtime ADD TABLE suppliers;

@@ -5,7 +5,7 @@ import { Button } from '../components/Button';
 import { QRCodeGenerator } from '../components/QRCodeGenerator';
 import { ImageUploader } from '../components/ImageUploader';
 import { Product, ProductType, Role, User, InventoryItem, Expense } from '../types';
-import { LayoutDashboard, Utensils, QrCode, Printer, ExternalLink, Palette, Eye, EyeOff, Save, Copy, Plus, Users, ShieldCheck, Trash2, Edit, AlertTriangle, FileBarChart, X, ArrowUp, ArrowDown, LayoutGrid, List as ListIcon, Image as ImageIcon, Calendar, TrendingUp, Search, Loader2, Menu, Activity, CheckSquare, GripVertical, Link as LinkIcon, Share2, Lock, BookOpen, Package, DollarSign, Archive, TrendingDown, RefreshCcw } from 'lucide-react';
+import { LayoutDashboard, Utensils, QrCode, Printer, ExternalLink, Palette, Eye, EyeOff, Save, Copy, Plus, Users, ShieldCheck, Trash2, Edit, AlertTriangle, FileBarChart, X, ArrowUp, ArrowDown, LayoutGrid, List as ListIcon, Image as ImageIcon, Calendar, TrendingUp, Search, Loader2, Menu, Activity, CheckSquare, GripVertical, Link as LinkIcon, Share2, Lock, BookOpen, Package, DollarSign, Archive, TrendingDown, RefreshCcw, Layers } from 'lucide-react';
 import { getTenantSlug } from '../utils/tenant';
 import { supabase } from '../lib/supabase';
 import { Link } from 'react-router-dom';
@@ -245,12 +245,20 @@ export const AdminDashboard: React.FC = () => {
           costPrice: 0,
           category: 'Lanches',
           type: ProductType.KITCHEN,
+          format: 'SIMPLE',
           image: '',
           isVisible: true,
           sortOrder: 0
       });
       setIsCreatingNew(true);
   };
+
+  // --- Effect to auto-hide ingredients ---
+  useEffect(() => {
+      if (editingProduct?.format === 'INGREDIENT') {
+          setEditingProduct(prev => prev ? ({ ...prev, isVisible: false }) : null);
+      }
+  }, [editingProduct?.format]);
 
   // Drag and Drop Handlers
   const handleDragStart = (index: number) => {
@@ -525,8 +533,279 @@ export const AdminDashboard: React.FC = () => {
                     </div>
                 )}
 
-                {/* --- INVENTORY MODULE --- */}
-                {activeTab === 'INVENTORY' && (
+                {/* --- PRODUCTS MODULE --- */}
+                {activeTab === 'PRODUCTS' && (
+                <div>
+                     <div className="flex justify-between items-center mb-6">
+                        <div>
+                            <h2 className="text-2xl font-bold text-gray-800">Gerenciar Cardápio</h2>
+                            <p className="text-sm text-gray-500">Adicione produtos e organize a ordem de exibição.</p>
+                        </div>
+                        <Button onClick={handleAddProduct}>
+                            <Plus size={16} /> Adicionar
+                        </Button>
+                    </div>
+
+                    {editingProduct && (
+                        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                            <div className="bg-white p-6 rounded-lg w-full max-w-lg shadow-xl max-h-[90vh] overflow-y-auto relative">
+                                <button onClick={() => setEditingProduct(null)} className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"><X size={24} /></button>
+                                <h3 className="text-xl font-bold mb-4 pr-8">{isCreatingNew ? 'Novo Produto' : 'Editar Produto'}</h3>
+                                <div className="space-y-4">
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="col-span-2">
+                                            <label className="block text-sm font-medium mb-1">Nome</label>
+                                            <input className="w-full border p-2 rounded" value={editingProduct.name} onChange={e => setEditingProduct({...editingProduct, name: e.target.value})} />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium mb-1">Formato</label>
+                                            <select className="w-full border p-2 rounded" value={editingProduct.format || 'SIMPLE'} onChange={e => setEditingProduct({...editingProduct, format: e.target.value as any})}>
+                                                <option value="SIMPLE">Produto Simples</option>
+                                                <option value="COMPOSITE">Produto Composto</option>
+                                                <option value="INGREDIENT">Ingrediente</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium mb-1">Categoria</label>
+                                            <select className="w-full border p-2 rounded" value={editingProduct.category} onChange={e => setEditingProduct({...editingProduct, category: e.target.value})}>
+                                                <option value="Promocoes">Promoções</option>
+                                                <option value="Lanches">Lanches</option>
+                                                <option value="Pratos Principais">Pratos Principais</option>
+                                                <option value="Acompanhamentos">Acompanhamentos</option>
+                                                <option value="Bebidas">Bebidas</option>
+                                                <option value="Sobremesas">Sobremesas</option>
+                                                <option value="Pizzas">Pizzas</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium mb-1">Tipo (Produção)</label>
+                                            <select className="w-full border p-2 rounded" value={editingProduct.type} onChange={e => setEditingProduct({...editingProduct, type: e.target.value as ProductType})}>
+                                                <option value={ProductType.KITCHEN}>Cozinha</option>
+                                                <option value={ProductType.BAR}>Bar</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">Foto do Produto</label>
+                                        <ImageUploader value={editingProduct.image} onChange={(val) => setEditingProduct({...editingProduct, image: val})} />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-sm font-medium mb-1">Preço Venda (R$)</label>
+                                            <input type="number" step="0.01" className="w-full border p-2 rounded" value={editingProduct.price} onChange={e => setEditingProduct({...editingProduct, price: parseFloat(e.target.value)})} />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium mb-1 text-gray-500">Custo (Opcional)</label>
+                                            <input type="number" step="0.01" className="w-full border p-2 rounded bg-gray-50" value={editingProduct.costPrice || 0} onChange={e => setEditingProduct({...editingProduct, costPrice: parseFloat(e.target.value)})} />
+                                        </div>
+                                        <div className="col-span-2">
+                                             <label className="block text-sm font-medium mb-1">Ordem (Manual)</label>
+                                             <input type="number" className="w-full border p-2 rounded" value={editingProduct.sortOrder} onChange={e => setEditingProduct({...editingProduct, sortOrder: parseInt(e.target.value)})} />
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                         <input 
+                                            type="checkbox" 
+                                            id="isVisible" 
+                                            checked={editingProduct.isVisible} 
+                                            onChange={e => setEditingProduct({...editingProduct, isVisible: e.target.checked})} 
+                                            className="w-4 h-4" 
+                                            disabled={editingProduct.format === 'INGREDIENT'} // Disable if Ingredient
+                                         />
+                                         <label htmlFor="isVisible" className={`text-sm font-medium cursor-pointer ${editingProduct.format === 'INGREDIENT' ? 'text-gray-400' : ''}`}>
+                                            {editingProduct.format === 'INGREDIENT' ? 'Ingredientes não aparecem no cardápio' : 'Visível no Cardápio'}
+                                         </label>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">Descrição</label>
+                                        <textarea className="w-full border p-2 rounded" rows={3} value={editingProduct.description} onChange={e => setEditingProduct({...editingProduct, description: e.target.value})} />
+                                    </div>
+                                </div>
+                                <div className="mt-6 flex justify-end gap-2">
+                                    <Button variant="secondary" onClick={() => setEditingProduct(null)}>Cancelar</Button>
+                                    <Button variant="success" onClick={handleProductSave}>Salvar</Button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                    
+                    <div className="bg-white rounded-xl shadow-sm overflow-hidden overflow-x-auto">
+                        <table className="w-full text-left min-w-[600px]">
+                            <thead className="bg-gray-50 border-b">
+                                <tr>
+                                    <th className="p-4 w-16 text-center"></th>
+                                    <th className="p-4 w-16">Foto</th>
+                                    <th className="p-4">Nome</th>
+                                    <th className="p-4">Formato</th>
+                                    <th className="p-4">Categoria</th>
+                                    <th className="p-4">Preço</th>
+                                    <th className="p-4">Status</th>
+                                    <th className="p-4 text-right">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {sortedProducts.map((product, index) => (
+                                    <tr 
+                                        key={product.id} 
+                                        className={`border-b hover:bg-gray-50 transition-colors ${draggedItemIndex === index ? 'opacity-50 bg-blue-50' : ''}`}
+                                        draggable
+                                        onDragStart={() => handleDragStart(index)}
+                                        onDragOver={handleDragOver}
+                                        onDrop={() => handleDrop(index, sortedProducts)}
+                                    >
+                                        <td className="p-4 text-center cursor-move text-gray-400 hover:text-gray-600" title="Arrastar para reordenar">
+                                            <GripVertical size={20} className="mx-auto" />
+                                        </td>
+                                        <td className="p-4">
+                                            <img src={product.image} alt="" className="w-10 h-10 rounded object-cover bg-gray-200" />
+                                        </td>
+                                        <td className="p-4 font-medium">
+                                            {product.name}
+                                            <div className="text-[10px] text-gray-400 font-mono">Ordem: {product.sortOrder}</div>
+                                        </td>
+                                        <td className="p-4">
+                                            {product.format === 'COMPOSITE' && <span className="bg-purple-100 text-purple-700 px-2 py-1 rounded text-xs font-bold flex items-center gap-1 w-fit"><Layers size={12}/> COMPOSTO</span>}
+                                            {product.format === 'INGREDIENT' && <span className="bg-yellow-100 text-yellow-700 px-2 py-1 rounded text-xs font-bold flex items-center gap-1 w-fit"><Package size={12}/> INGREDIENTE</span>}
+                                            {(!product.format || product.format === 'SIMPLE') && <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs font-bold w-fit">SIMPLES</span>}
+                                        </td>
+                                        <td className="p-4"><span className="px-2 py-1 bg-gray-100 rounded text-sm">{product.category}</span></td>
+                                        <td className="p-4">R$ {product.price.toFixed(2)}</td>
+                                        <td className="p-4">
+                                            <div className={`flex items-center gap-1 text-sm font-medium ${product.isVisible ? 'text-green-600' : 'text-gray-400'}`}>
+                                                {product.isVisible ? <><Eye size={16}/> Visível</> : <><EyeOff size={16}/> Oculto</>}
+                                            </div>
+                                        </td>
+                                        <td className="p-4 text-right">
+                                            <div className="flex justify-end gap-2">
+                                                <Button size="sm" variant="outline" onClick={() => { setIsCreatingNew(false); setEditingProduct(product); }}>
+                                                    <Edit size={16} />
+                                                </Button>
+                                                <Button 
+                                                    size="sm" 
+                                                    variant="danger" 
+                                                    className="bg-red-50 text-red-600 hover:bg-red-100 border-red-200 border"
+                                                    onClick={() => handleDeleteProduct(product)}
+                                                >
+                                                    <Trash2 size={16} />
+                                                </Button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+
+            {/* ... Other Tabs remain unchanged ... */}
+            
+            {activeTab === 'CUSTOMIZATION' && (
+                 <div className="max-w-3xl">
+                    <h2 className="text-2xl font-bold mb-6 text-gray-800">Personalizar App do Cliente</h2>
+                    <div className="bg-white p-6 rounded-xl shadow-sm space-y-8">
+                        {/* Customization Form */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div className="space-y-4">
+                                <h3 className="font-bold text-gray-700 flex items-center gap-2"><Palette size={18} /> Identidade Visual</h3>
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">Nome do Restaurante</label>
+                                    <input type="text" className="w-full border p-2 rounded" value={localTheme.restaurantName} onChange={e => setLocalTheme({...localTheme, restaurantName: e.target.value})} />
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">Cor Principal</label>
+                                        <div className="flex gap-2 items-center">
+                                            <input type="color" className="h-10 w-10 cursor-pointer border rounded" value={localTheme.primaryColor} onChange={e => setLocalTheme({...localTheme, primaryColor: e.target.value})} />
+                                            <input type="text" className="flex-1 border p-2 rounded uppercase min-w-0" value={localTheme.primaryColor} onChange={e => setLocalTheme({...localTheme, primaryColor: e.target.value})} />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">Cor de Fundo</label>
+                                        <div className="flex gap-2 items-center">
+                                            <input type="color" className="h-10 w-10 cursor-pointer border rounded" value={localTheme.backgroundColor} onChange={e => setLocalTheme({...localTheme, backgroundColor: e.target.value})} />
+                                            <input type="text" className="flex-1 border p-2 rounded uppercase min-w-0" value={localTheme.backgroundColor} onChange={e => setLocalTheme({...localTheme, backgroundColor: e.target.value})} />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="space-y-4">
+                                <h3 className="font-bold text-gray-700 flex items-center gap-2"><LayoutGrid size={18} /> Layout e Imagens</h3>
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">Estilo do Cardápio</label>
+                                    <div className="flex gap-2">
+                                        <button 
+                                            onClick={() => setLocalTheme({...localTheme, viewMode: 'LIST'})}
+                                            className={`flex-1 py-2 border rounded flex items-center justify-center gap-2 ${localTheme.viewMode !== 'GRID' ? 'bg-blue-50 border-blue-500 text-blue-700 font-bold' : 'hover:bg-gray-50'}`}
+                                        >
+                                            <ListIcon size={16}/> Lista (Padrão)
+                                        </button>
+                                        <button 
+                                            onClick={() => setLocalTheme({...localTheme, viewMode: 'GRID'})}
+                                            className={`flex-1 py-2 border rounded flex items-center justify-center gap-2 ${localTheme.viewMode === 'GRID' ? 'bg-blue-50 border-blue-500 text-blue-700 font-bold' : 'hover:bg-gray-50'}`}
+                                        >
+                                            <LayoutGrid size={16}/> Grade (Fotos)
+                                        </button>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">Logo do Restaurante</label>
+                                    <ImageUploader value={localTheme.logoUrl} onChange={(val) => setLocalTheme({...localTheme, logoUrl: val})} />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium mb-1 flex items-center gap-2"><ImageIcon size={16}/> Imagem de Capa (Banner)</label>
+                            <p className="text-xs text-gray-500 mb-2">Aparece no topo do cardápio digital.</p>
+                            <ImageUploader value={localTheme.bannerUrl || ''} onChange={(val) => setLocalTheme({...localTheme, bannerUrl: val})} />
+                        </div>
+
+                        <div className="pt-4 border-t">
+                            <Button onClick={() => { dispatch({ type: 'UPDATE_THEME', theme: localTheme }); showAlert({ title: "Sucesso", message: "Tema salvo com sucesso!", type: 'SUCCESS' }); }} className="w-full py-3 text-lg">
+                                <Save size={20} /> Salvar Personalização
+                            </Button>
+                        </div>
+                    </div>
+                 </div>
+            )}
+             {activeTab === 'TABLES' && (
+                <div>
+                     <div className="flex justify-between items-center mb-6">
+                        <div>
+                            <h2 className="text-2xl font-bold text-gray-800">Mesas & QR Codes</h2>
+                            <p className="text-sm text-gray-500">Gerencie a quantidade de mesas e imprima os QR Codes.</p>
+                        </div>
+                        <Button onClick={handleAddTable}>
+                            <Plus size={16} /> Nova Mesa
+                        </Button>
+                    </div>
+                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                        {state.tables.map(table => (
+                            <div key={table.id} className="bg-white p-6 rounded-xl shadow-sm flex flex-col items-center gap-4 border border-gray-100 relative group">
+                                <button 
+                                    onClick={() => handleDeleteTable(table.id)}
+                                    className="absolute top-2 right-2 p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors"
+                                    title="Excluir Mesa"
+                                >
+                                    <Trash2 size={16} />
+                                </button>
+                                <h3 className="text-xl font-bold text-gray-800">Mesa {table.number}</h3>
+                                <QRCodeGenerator tableId={table.id} size={150} />
+                                <div className="w-full flex gap-1">
+                                    <a href={getTableUrl(table.id)} target="_blank" className="flex-1 text-xs bg-blue-50 text-blue-600 hover:bg-blue-100 py-2 rounded text-center flex items-center justify-center gap-1 font-medium"><ExternalLink size={12} /> Link</a>
+                                    <button onClick={() => navigator.clipboard.writeText(getTableUrl(table.id))} className="px-3 bg-gray-100 text-gray-600 hover:bg-gray-200 rounded text-xs flex items-center justify-center" title="Copiar Link"><Copy size={12} /></button>
+                                </div>
+                                <Button variant="secondary" size="sm" className="w-full" onClick={() => handlePrint(table.id)}><Printer size={16} /> Imprimir</Button>
+                            </div>
+                        ))}
+                     </div>
+                </div>
+            )}
+            
+            {/* ... Other Tabs (INVENTORY, FINANCE, REPORTS, STAFF) stay same ... */}
+            {activeTab === 'INVENTORY' && (
                     <div className="space-y-6">
                         <div className="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border">
                             <div>
@@ -647,7 +926,7 @@ export const AdminDashboard: React.FC = () => {
                     </div>
                 )}
 
-                {/* --- FINANCE MODULE --- */}
+                {/* --- FINANCE, STAFF, REPORTS sections continue as they were --- */}
                 {activeTab === 'FINANCE' && (
                     <div className="space-y-6">
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -781,6 +1060,7 @@ export const AdminDashboard: React.FC = () => {
                     </div>
                 )}
                 
+                {/* REPORTS and STAFF sections remain */}
                 {activeTab === 'REPORTS' && (
                     <>
                     {!state.planLimits.allowReports ? (
@@ -922,6 +1202,7 @@ export const AdminDashboard: React.FC = () => {
             {activeTab === 'STAFF' && (
                 <div>
                     <h2 className="text-2xl font-bold mb-6 text-gray-800">Gerenciar Funcionários</h2>
+                    {/* ... Staff Component Content ... */}
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                         <div className="bg-white p-6 rounded-xl shadow-sm h-fit">
                             <h3 className="font-bold mb-4 text-lg">{editingUser ? 'Editar Funcionário' : 'Novo Funcionário'}</h3>
@@ -948,7 +1229,6 @@ export const AdminDashboard: React.FC = () => {
                                     <input type="text" maxLength={4} className="w-full border p-2 rounded" value={userForm.pin} onChange={e => setUserForm({...userForm, pin: e.target.value})} placeholder="Opcional para login" />
                                 </div>
                                 
-                                {/* Permissões de Telas */}
                                 <div className="bg-gray-50 p-3 rounded-lg border">
                                     <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2"><CheckSquare size={16}/> Telas Permitidas</label>
                                     <div className="space-y-2">
@@ -1001,7 +1281,6 @@ export const AdminDashboard: React.FC = () => {
                                         </div>
                                     </div>
                                     
-                                    {/* Lista de Permissões Visual */}
                                     <div className="flex gap-1 flex-wrap justify-center">
                                         {user.allowedRoutes?.map(route => (
                                             <span key={route} className="text-[10px] bg-gray-100 px-2 py-1 rounded border border-gray-200 text-gray-600 font-mono">
@@ -1041,251 +1320,6 @@ export const AdminDashboard: React.FC = () => {
                             ))}
                         </div>
                     </div>
-                </div>
-            )}
-            
-            {activeTab === 'PRODUCTS' && (
-                <div>
-                     <div className="flex justify-between items-center mb-6">
-                        <div>
-                            <h2 className="text-2xl font-bold text-gray-800">Gerenciar Cardápio</h2>
-                            <p className="text-sm text-gray-500">Adicione produtos e organize a ordem de exibição.</p>
-                        </div>
-                        <Button onClick={handleAddProduct}>
-                            <Plus size={16} /> Adicionar
-                        </Button>
-                    </div>
-
-                    {editingProduct && (
-                        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                            <div className="bg-white p-6 rounded-lg w-full max-w-lg shadow-xl max-h-[90vh] overflow-y-auto relative">
-                                <button onClick={() => setEditingProduct(null)} className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"><X size={24} /></button>
-                                <h3 className="text-xl font-bold mb-4 pr-8">{isCreatingNew ? 'Novo Produto' : 'Editar Produto'}</h3>
-                                <div className="space-y-4">
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="col-span-2">
-                                            <label className="block text-sm font-medium mb-1">Nome</label>
-                                            <input className="w-full border p-2 rounded" value={editingProduct.name} onChange={e => setEditingProduct({...editingProduct, name: e.target.value})} />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium mb-1">Categoria</label>
-                                            <select className="w-full border p-2 rounded" value={editingProduct.category} onChange={e => setEditingProduct({...editingProduct, category: e.target.value})}>
-                                                <option value="Promocoes">Promoções</option>
-                                                <option value="Lanches">Lanches</option>
-                                                <option value="Pratos Principais">Pratos Principais</option>
-                                                <option value="Acompanhamentos">Acompanhamentos</option>
-                                                <option value="Bebidas">Bebidas</option>
-                                                <option value="Sobremesas">Sobremesas</option>
-                                                <option value="Pizzas">Pizzas</option>
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium mb-1">Tipo (Produção)</label>
-                                            <select className="w-full border p-2 rounded" value={editingProduct.type} onChange={e => setEditingProduct({...editingProduct, type: e.target.value as ProductType})}>
-                                                <option value={ProductType.KITCHEN}>Cozinha</option>
-                                                <option value={ProductType.BAR}>Bar</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium mb-1">Foto do Produto</label>
-                                        <ImageUploader value={editingProduct.image} onChange={(val) => setEditingProduct({...editingProduct, image: val})} />
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="block text-sm font-medium mb-1">Preço Venda (R$)</label>
-                                            <input type="number" step="0.01" className="w-full border p-2 rounded" value={editingProduct.price} onChange={e => setEditingProduct({...editingProduct, price: parseFloat(e.target.value)})} />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium mb-1 text-gray-500">Custo (Opcional)</label>
-                                            <input type="number" step="0.01" className="w-full border p-2 rounded bg-gray-50" value={editingProduct.costPrice || 0} onChange={e => setEditingProduct({...editingProduct, costPrice: parseFloat(e.target.value)})} />
-                                        </div>
-                                        <div className="col-span-2">
-                                             <label className="block text-sm font-medium mb-1">Ordem (Manual)</label>
-                                             <input type="number" className="w-full border p-2 rounded" value={editingProduct.sortOrder} onChange={e => setEditingProduct({...editingProduct, sortOrder: parseInt(e.target.value)})} />
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                         <input type="checkbox" id="isVisible" checked={editingProduct.isVisible} onChange={e => setEditingProduct({...editingProduct, isVisible: e.target.checked})} className="w-4 h-4" />
-                                         <label htmlFor="isVisible" className="text-sm font-medium cursor-pointer">Visível no Cardápio</label>
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium mb-1">Descrição</label>
-                                        <textarea className="w-full border p-2 rounded" rows={3} value={editingProduct.description} onChange={e => setEditingProduct({...editingProduct, description: e.target.value})} />
-                                    </div>
-                                </div>
-                                <div className="mt-6 flex justify-end gap-2">
-                                    <Button variant="secondary" onClick={() => setEditingProduct(null)}>Cancelar</Button>
-                                    <Button variant="success" onClick={handleProductSave}>Salvar</Button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-                    
-                    <div className="bg-white rounded-xl shadow-sm overflow-hidden overflow-x-auto">
-                        <table className="w-full text-left min-w-[600px]">
-                            <thead className="bg-gray-50 border-b">
-                                <tr>
-                                    <th className="p-4 w-16 text-center"></th>
-                                    <th className="p-4 w-16">Foto</th>
-                                    <th className="p-4">Nome</th>
-                                    <th className="p-4">Categoria</th>
-                                    <th className="p-4">Preço</th>
-                                    <th className="p-4">Status</th>
-                                    <th className="p-4 text-right">Ações</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {sortedProducts.map((product, index) => (
-                                    <tr 
-                                        key={product.id} 
-                                        className={`border-b hover:bg-gray-50 transition-colors ${draggedItemIndex === index ? 'opacity-50 bg-blue-50' : ''}`}
-                                        draggable
-                                        onDragStart={() => handleDragStart(index)}
-                                        onDragOver={handleDragOver}
-                                        onDrop={() => handleDrop(index, sortedProducts)}
-                                    >
-                                        <td className="p-4 text-center cursor-move text-gray-400 hover:text-gray-600" title="Arrastar para reordenar">
-                                            <GripVertical size={20} className="mx-auto" />
-                                        </td>
-                                        <td className="p-4">
-                                            <img src={product.image} alt="" className="w-10 h-10 rounded object-cover bg-gray-200" />
-                                        </td>
-                                        <td className="p-4 font-medium">
-                                            {product.name}
-                                            <div className="text-[10px] text-gray-400 font-mono">Ordem: {product.sortOrder}</div>
-                                        </td>
-                                        <td className="p-4"><span className="px-2 py-1 bg-gray-100 rounded text-sm">{product.category}</span></td>
-                                        <td className="p-4">R$ {product.price.toFixed(2)}</td>
-                                        <td className="p-4">
-                                            <div className={`flex items-center gap-1 text-sm font-medium ${product.isVisible ? 'text-green-600' : 'text-gray-400'}`}>
-                                                {product.isVisible ? <><Eye size={16}/> Visível</> : <><EyeOff size={16}/> Oculto</>}
-                                            </div>
-                                        </td>
-                                        <td className="p-4 text-right">
-                                            <div className="flex justify-end gap-2">
-                                                <Button size="sm" variant="outline" onClick={() => { setIsCreatingNew(false); setEditingProduct(product); }}>
-                                                    <Edit size={16} />
-                                                </Button>
-                                                <Button 
-                                                    size="sm" 
-                                                    variant="danger" 
-                                                    className="bg-red-50 text-red-600 hover:bg-red-100 border-red-200 border"
-                                                    onClick={() => handleDeleteProduct(product)}
-                                                >
-                                                    <Trash2 size={16} />
-                                                </Button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            )}
-            
-            {activeTab === 'CUSTOMIZATION' && (
-                 <div className="max-w-3xl">
-                    <h2 className="text-2xl font-bold mb-6 text-gray-800">Personalizar App do Cliente</h2>
-                    <div className="bg-white p-6 rounded-xl shadow-sm space-y-8">
-                        {/* Customization Form */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                            <div className="space-y-4">
-                                <h3 className="font-bold text-gray-700 flex items-center gap-2"><Palette size={18} /> Identidade Visual</h3>
-                                <div>
-                                    <label className="block text-sm font-medium mb-1">Nome do Restaurante</label>
-                                    <input type="text" className="w-full border p-2 rounded" value={localTheme.restaurantName} onChange={e => setLocalTheme({...localTheme, restaurantName: e.target.value})} />
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-sm font-medium mb-1">Cor Principal</label>
-                                        <div className="flex gap-2 items-center">
-                                            <input type="color" className="h-10 w-10 cursor-pointer border rounded" value={localTheme.primaryColor} onChange={e => setLocalTheme({...localTheme, primaryColor: e.target.value})} />
-                                            <input type="text" className="flex-1 border p-2 rounded uppercase min-w-0" value={localTheme.primaryColor} onChange={e => setLocalTheme({...localTheme, primaryColor: e.target.value})} />
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium mb-1">Cor de Fundo</label>
-                                        <div className="flex gap-2 items-center">
-                                            <input type="color" className="h-10 w-10 cursor-pointer border rounded" value={localTheme.backgroundColor} onChange={e => setLocalTheme({...localTheme, backgroundColor: e.target.value})} />
-                                            <input type="text" className="flex-1 border p-2 rounded uppercase min-w-0" value={localTheme.backgroundColor} onChange={e => setLocalTheme({...localTheme, backgroundColor: e.target.value})} />
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="space-y-4">
-                                <h3 className="font-bold text-gray-700 flex items-center gap-2"><LayoutGrid size={18} /> Layout e Imagens</h3>
-                                <div>
-                                    <label className="block text-sm font-medium mb-1">Estilo do Cardápio</label>
-                                    <div className="flex gap-2">
-                                        <button 
-                                            onClick={() => setLocalTheme({...localTheme, viewMode: 'LIST'})}
-                                            className={`flex-1 py-2 border rounded flex items-center justify-center gap-2 ${localTheme.viewMode !== 'GRID' ? 'bg-blue-50 border-blue-500 text-blue-700 font-bold' : 'hover:bg-gray-50'}`}
-                                        >
-                                            <ListIcon size={16}/> Lista (Padrão)
-                                        </button>
-                                        <button 
-                                            onClick={() => setLocalTheme({...localTheme, viewMode: 'GRID'})}
-                                            className={`flex-1 py-2 border rounded flex items-center justify-center gap-2 ${localTheme.viewMode === 'GRID' ? 'bg-blue-50 border-blue-500 text-blue-700 font-bold' : 'hover:bg-gray-50'}`}
-                                        >
-                                            <LayoutGrid size={16}/> Grade (Fotos)
-                                        </button>
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium mb-1">Logo do Restaurante</label>
-                                    <ImageUploader value={localTheme.logoUrl} onChange={(val) => setLocalTheme({...localTheme, logoUrl: val})} />
-                                </div>
-                            </div>
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium mb-1 flex items-center gap-2"><ImageIcon size={16}/> Imagem de Capa (Banner)</label>
-                            <p className="text-xs text-gray-500 mb-2">Aparece no topo do cardápio digital.</p>
-                            <ImageUploader value={localTheme.bannerUrl || ''} onChange={(val) => setLocalTheme({...localTheme, bannerUrl: val})} />
-                        </div>
-
-                        <div className="pt-4 border-t">
-                            <Button onClick={() => { dispatch({ type: 'UPDATE_THEME', theme: localTheme }); showAlert({ title: "Sucesso", message: "Tema salvo com sucesso!", type: 'SUCCESS' }); }} className="w-full py-3 text-lg">
-                                <Save size={20} /> Salvar Personalização
-                            </Button>
-                        </div>
-                    </div>
-                 </div>
-            )}
-             {activeTab === 'TABLES' && (
-                <div>
-                     <div className="flex justify-between items-center mb-6">
-                        <div>
-                            <h2 className="text-2xl font-bold text-gray-800">Mesas & QR Codes</h2>
-                            <p className="text-sm text-gray-500">Gerencie a quantidade de mesas e imprima os QR Codes.</p>
-                        </div>
-                        <Button onClick={handleAddTable}>
-                            <Plus size={16} /> Nova Mesa
-                        </Button>
-                    </div>
-                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                        {state.tables.map(table => (
-                            <div key={table.id} className="bg-white p-6 rounded-xl shadow-sm flex flex-col items-center gap-4 border border-gray-100 relative group">
-                                <button 
-                                    onClick={() => handleDeleteTable(table.id)}
-                                    className="absolute top-2 right-2 p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors"
-                                    title="Excluir Mesa"
-                                >
-                                    <Trash2 size={16} />
-                                </button>
-                                <h3 className="text-xl font-bold text-gray-800">Mesa {table.number}</h3>
-                                <QRCodeGenerator tableId={table.id} size={150} />
-                                <div className="w-full flex gap-1">
-                                    <a href={getTableUrl(table.id)} target="_blank" className="flex-1 text-xs bg-blue-50 text-blue-600 hover:bg-blue-100 py-2 rounded text-center flex items-center justify-center gap-1 font-medium"><ExternalLink size={12} /> Link</a>
-                                    <button onClick={() => navigator.clipboard.writeText(getTableUrl(table.id))} className="px-3 bg-gray-100 text-gray-600 hover:bg-gray-200 rounded text-xs flex items-center justify-center" title="Copiar Link"><Copy size={12} /></button>
-                                </div>
-                                <Button variant="secondary" size="sm" className="w-full" onClick={() => handlePrint(table.id)}><Printer size={16} /> Imprimir</Button>
-                            </div>
-                        ))}
-                     </div>
                 </div>
             )}
             </div>

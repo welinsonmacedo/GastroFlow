@@ -176,8 +176,10 @@ export const ClientApp: React.FC = () => {
   // --- CENÁRIO 3: Autenticado (Cardápio e Pedidos) ---
 
   const cartTotal = cart.reduce((acc, item) => acc + (item.product.price * item.quantity), 0);
+  
+  // Filter products: Must be visible AND NOT an ingredient
   const visibleProducts = state.products
-    .filter(p => p.isVisible)
+    .filter(p => p.isVisible && p.format !== 'INGREDIENT')
     .sort((a, b) => (a.sortOrder || 99) - (b.sortOrder || 99));
 
   return (
