@@ -48,7 +48,8 @@ export const SuperAdminDashboard: React.FC = () => {
   const [editingLimits, setEditingLimits] = useState<PlanLimits>({
       maxTables: 10, maxProducts: 30, maxStaff: 2, 
       allowKds: false, allowCashier: false, allowReports: false,
-      allowInventory: false, allowPurchases: false, allowExpenses: false
+      allowInventory: false, allowPurchases: false, allowExpenses: false,
+      allowStaff: true, allowTableMgmt: true, allowCustomization: true
   });
 
   // Derived Metrics
@@ -150,7 +151,8 @@ export const SuperAdminDashboard: React.FC = () => {
       setEditingLimits(plan.limits || {
           maxTables: -1, maxProducts: -1, maxStaff: -1, 
           allowKds: true, allowCashier: true, allowReports: true,
-          allowInventory: true, allowPurchases: true, allowExpenses: true
+          allowInventory: true, allowPurchases: true, allowExpenses: true,
+          allowStaff: true, allowTableMgmt: true, allowCustomization: true
       });
   }
   
@@ -410,6 +412,18 @@ export const SuperAdminDashboard: React.FC = () => {
                                                 <input type="checkbox" checked={editingLimits.allowExpenses} onChange={e => setEditingLimits({...editingLimits, allowExpenses: e.target.checked})} />
                                                 <span className="text-xs font-medium">Permitir Financeiro/Despesas</span>
                                             </label>
+                                            <label className="flex items-center gap-2 cursor-pointer">
+                                                <input type="checkbox" checked={editingLimits.allowStaff} onChange={e => setEditingLimits({...editingLimits, allowStaff: e.target.checked})} />
+                                                <span className="text-xs font-medium">Permitir Gestão de Equipe</span>
+                                            </label>
+                                            <label className="flex items-center gap-2 cursor-pointer">
+                                                <input type="checkbox" checked={editingLimits.allowTableMgmt} onChange={e => setEditingLimits({...editingLimits, allowTableMgmt: e.target.checked})} />
+                                                <span className="text-xs font-medium">Permitir Gestão de Mesas</span>
+                                            </label>
+                                            <label className="flex items-center gap-2 cursor-pointer">
+                                                <input type="checkbox" checked={editingLimits.allowCustomization} onChange={e => setEditingLimits({...editingLimits, allowCustomization: e.target.checked})} />
+                                                <span className="text-xs font-medium">Permitir Personalização</span>
+                                            </label>
                                         </div>
                                    </div>
 
@@ -443,9 +457,12 @@ export const SuperAdminDashboard: React.FC = () => {
                                        <div className="pt-1 mt-1 border-t border-slate-200 flex gap-2 flex-wrap">
                                            {plan.limits?.allowKds ? <span className="text-green-600 font-bold">KDS</span> : <span className="text-red-400 line-through">KDS</span>}
                                            {plan.limits?.allowCashier ? <span className="text-green-600 font-bold">PDV</span> : <span className="text-red-400 line-through">PDV</span>}
-                                           {plan.limits?.allowInventory ? <span className="text-green-600 font-bold">ESTOQUE</span> : <span className="text-red-400 line-through">ESTOQUE</span>}
-                                           {plan.limits?.allowPurchases ? <span className="text-green-600 font-bold">COMPRAS</span> : <span className="text-red-400 line-through">COMPRAS</span>}
+                                           {plan.limits?.allowInventory ? <span className="text-green-600 font-bold">EST</span> : <span className="text-red-400 line-through">EST</span>}
+                                           {plan.limits?.allowPurchases ? <span className="text-green-600 font-bold">CMP</span> : <span className="text-red-400 line-through">CMP</span>}
                                            {plan.limits?.allowExpenses ? <span className="text-green-600 font-bold">FIN</span> : <span className="text-red-400 line-through">FIN</span>}
+                                           {plan.limits?.allowStaff ? <span className="text-green-600 font-bold">EQP</span> : <span className="text-red-400 line-through">EQP</span>}
+                                           {plan.limits?.allowTableMgmt ? <span className="text-green-600 font-bold">MES</span> : <span className="text-red-400 line-through">MES</span>}
+                                           {plan.limits?.allowCustomization ? <span className="text-green-600 font-bold">PER</span> : <span className="text-red-400 line-through">PER</span>}
                                        </div>
                                    </div>
 

@@ -41,6 +41,9 @@ export interface PlanLimits {
     allowInventory?: boolean; // Estoque
     allowPurchases?: boolean; // Compras
     allowExpenses?: boolean; // Despesas
+    allowStaff?: boolean; // Gestão de Equipe
+    allowTableMgmt?: boolean; // Gestão de Mesas/QR
+    allowCustomization?: boolean; // Personalização do App
 }
 
 export interface Plan {

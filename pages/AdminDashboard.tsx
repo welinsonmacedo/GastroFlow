@@ -370,20 +370,29 @@ export const AdminDashboard: React.FC = () => {
                     <button onClick={() => setActiveTab('FINANCE')} className={`w-full text-left p-3 rounded flex items-center gap-3 ${activeTab==='FINANCE'?'bg-blue-600':''}`}><DollarSign size={18}/> Financeiro</button>
                 )}
                 
-                <button onClick={() => setActiveTab('STAFF')} className={`w-full text-left p-3 rounded flex items-center gap-3 ${activeTab==='STAFF'?'bg-blue-600':''}`}><Users size={18}/> Equipe</button>
-                <button onClick={() => setActiveTab('TABLES')} className={`w-full text-left p-3 rounded flex items-center gap-3 ${activeTab==='TABLES'?'bg-blue-600':''}`}><QrCode size={18}/> Mesas QR</button>
-                <button onClick={() => setActiveTab('CUSTOMIZATION')} className={`w-full text-left p-3 rounded flex items-center gap-3 ${activeTab==='CUSTOMIZATION'?'bg-blue-600':''}`}><Palette size={18}/> Personalizar</button>
+                {planLimits.allowStaff && (
+                    <button onClick={() => setActiveTab('STAFF')} className={`w-full text-left p-3 rounded flex items-center gap-3 ${activeTab==='STAFF'?'bg-blue-600':''}`}><Users size={18}/> Equipe</button>
+                )}
+
+                {planLimits.allowTableMgmt && (
+                    <button onClick={() => setActiveTab('TABLES')} className={`w-full text-left p-3 rounded flex items-center gap-3 ${activeTab==='TABLES'?'bg-blue-600':''}`}><QrCode size={18}/> Mesas QR</button>
+                )}
+
+                {planLimits.allowCustomization && (
+                    <button onClick={() => setActiveTab('CUSTOMIZATION')} className={`w-full text-left p-3 rounded flex items-center gap-3 ${activeTab==='CUSTOMIZATION'?'bg-blue-600':''}`}><Palette size={18}/> Personalizar</button>
+                )}
+
                 <Link to="/" className="w-full text-left p-3 rounded flex items-center gap-3 text-red-400 hover:bg-slate-800"><ArrowLeft size={18}/> Sair</Link>
             </nav>
         </div>
 
-        <div className="flex-1 p-8 h-screen overflow-y-auto">
+        <div className="flex-1 p-4 md:p-8 h-screen overflow-y-auto">
             <button onClick={() => setIsSidebarOpen(true)} className="md:hidden mb-4 p-2 bg-white rounded shadow"><Menu /></button>
 
             {activeTab === 'DASHBOARD' && (
                 <div>
                     <h2 className="text-2xl font-bold mb-6">Visão Geral</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                         <div className="bg-white p-6 rounded-xl shadow border-l-4 border-blue-500">
                             <div className="text-gray-500 text-sm font-bold uppercase">Vendas Hoje</div>
                             <div className="text-3xl font-bold">R$ {state.transactions.reduce((acc, t) => acc + t.amount, 0).toFixed(2)}</div>
@@ -400,30 +409,30 @@ export const AdminDashboard: React.FC = () => {
 
             {activeTab === 'INVENTORY' && planLimits.allowInventory && (
                 <div className="space-y-6">
-                    <div className="flex flex-wrap justify-between items-center bg-white p-6 rounded-xl shadow-sm gap-4">
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-6 rounded-xl shadow-sm gap-4">
                         <div>
-                            <h2 className="text-2xl font-bold text-gray-800">Estoque & Fichas Técnicas</h2>
-                            <p className="text-sm text-gray-500">Cadastre aqui TODOS os itens: ingredientes, bebidas e pratos.</p>
+                            <h2 className="text-2xl font-bold text-gray-800">Estoque</h2>
+                            <p className="text-sm text-gray-500">Gestão de produtos e insumos.</p>
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap gap-2 w-full md:w-auto">
                             {planLimits.allowPurchases && (
                                 <>
-                                    <Button onClick={() => setPurchaseHistoryOpen(true)} variant="outline" className="flex items-center gap-2" title="Histórico de Notas">
+                                    <Button onClick={() => setPurchaseHistoryOpen(true)} variant="outline" className="flex items-center gap-2 text-xs md:text-sm flex-1 md:flex-none" title="Histórico de Notas">
                                         <FileText size={16}/> Histórico
                                     </Button>
-                                    <Button onClick={() => setSupplierModalOpen(true)} variant="outline" className="flex items-center gap-2">
+                                    <Button onClick={() => setSupplierModalOpen(true)} variant="outline" className="flex items-center gap-2 text-xs md:text-sm flex-1 md:flex-none">
                                         <Truck size={16}/> Fornecedores
                                     </Button>
-                                    <Button onClick={() => setPurchaseModalOpen(true)} variant="secondary" className="flex items-center gap-2 bg-blue-100 text-blue-700 hover:bg-blue-200 border-blue-200">
-                                        <FileText size={16}/> Entrada de Nota
+                                    <Button onClick={() => setPurchaseModalOpen(true)} variant="secondary" className="flex items-center gap-2 bg-blue-100 text-blue-700 hover:bg-blue-200 border-blue-200 text-xs md:text-sm flex-1 md:flex-none">
+                                        <FileText size={16}/> Entrada
                                     </Button>
                                 </>
                             )}
-                            <Button onClick={handleInventoryInit} variant="secondary" className="flex items-center gap-2 bg-yellow-100 text-yellow-800 hover:bg-yellow-200 border-yellow-200">
-                                <ClipboardList size={16}/> Realizar Inventário
+                            <Button onClick={handleInventoryInit} variant="secondary" className="flex items-center gap-2 bg-yellow-100 text-yellow-800 hover:bg-yellow-200 border-yellow-200 text-xs md:text-sm flex-1 md:flex-none">
+                                <ClipboardList size={16}/> Inventário
                             </Button>
-                            <Button onClick={() => { setEditingInventory({ name: '', unit: 'UN', type: 'INGREDIENT', quantity: 0, minQuantity: 5, costPrice: 0 }); setInvRecipeStep([]); }}>
-                                <Plus size={16}/> Novo Item
+                            <Button onClick={() => { setEditingInventory({ name: '', unit: 'UN', type: 'INGREDIENT', quantity: 0, minQuantity: 5, costPrice: 0 }); setInvRecipeStep([]); }} className="text-xs md:text-sm flex-1 md:flex-none">
+                                <Plus size={16}/> Novo
                             </Button>
                         </div>
                     </div>
@@ -434,8 +443,8 @@ export const AdminDashboard: React.FC = () => {
                             <div className="bg-white p-6 rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
                                 <div className="flex justify-between items-center mb-4 border-b pb-4">
                                     <div>
-                                        <h3 className="font-bold text-lg">Contagem de Estoque (Inventário)</h3>
-                                        <p className="text-xs text-gray-500">Ajuste a quantidade real. A diferença será registrada automaticamente.</p>
+                                        <h3 className="font-bold text-lg">Contagem de Estoque</h3>
+                                        <p className="text-xs text-gray-500">Ajuste a quantidade real.</p>
                                     </div>
                                     <button onClick={() => setInventoryModalOpen(false)}><X size={20}/></button>
                                 </div>
@@ -444,10 +453,10 @@ export const AdminDashboard: React.FC = () => {
                                         <thead className="bg-gray-100 text-gray-600 sticky top-0">
                                             <tr>
                                                 <th className="p-3 text-left">Item</th>
-                                                <th className="p-3 text-center">Unidade</th>
-                                                <th className="p-3 text-center bg-blue-50">Qtd Sistema</th>
-                                                <th className="p-3 text-center bg-yellow-50 w-32">Contagem Real</th>
-                                                <th className="p-3 text-right">Diferença</th>
+                                                <th className="p-3 text-center">Un</th>
+                                                <th className="p-3 text-center bg-blue-50">Sistema</th>
+                                                <th className="p-3 text-center bg-yellow-50 w-24">Real</th>
+                                                <th className="p-3 text-right">Dif.</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y">
@@ -477,7 +486,7 @@ export const AdminDashboard: React.FC = () => {
                                 </div>
                                 <div className="pt-4 border-t flex justify-end gap-2 mt-4">
                                     <Button variant="secondary" onClick={() => setInventoryModalOpen(false)}>Cancelar</Button>
-                                    <Button onClick={handleInventorySave}>Salvar Ajustes</Button>
+                                    <Button onClick={handleInventorySave}>Salvar</Button>
                                 </div>
                             </div>
                         </div>
@@ -488,38 +497,40 @@ export const AdminDashboard: React.FC = () => {
                         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
                             <div className="bg-white p-6 rounded-xl shadow-xl w-full max-w-3xl max-h-[80vh] flex flex-col">
                                 <div className="flex justify-between items-center mb-4 border-b pb-4">
-                                    <h3 className="font-bold text-lg">Histórico de Compras (Fornecedores)</h3>
+                                    <h3 className="font-bold text-lg">Histórico de Compras</h3>
                                     <button onClick={() => setPurchaseHistoryOpen(false)}><X size={20}/></button>
                                 </div>
                                 <div className="flex-1 overflow-y-auto">
-                                    <table className="w-full text-sm text-left">
-                                        <thead className="bg-gray-100 text-gray-600">
-                                            <tr>
-                                                <th className="p-3">Data Venc.</th>
-                                                <th className="p-3">Descrição / Fornecedor</th>
-                                                <th className="p-3 text-right">Valor</th>
-                                                <th className="p-3 text-center">Status</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y">
-                                            {state.expenses.filter(e => e.category === 'Fornecedor').length === 0 && (
-                                                <tr><td colSpan={4} className="p-4 text-center text-gray-400">Nenhuma compra registrada.</td></tr>
-                                            )}
-                                            {state.expenses.filter(e => e.category === 'Fornecedor').map(e => (
-                                                <tr key={e.id} className="hover:bg-gray-50">
-                                                    <td className="p-3 font-mono">{new Date(e.dueDate).toLocaleDateString()}</td>
-                                                    <td className="p-3">{e.description}</td>
-                                                    <td className="p-3 text-right font-bold">R$ {e.amount.toFixed(2)}</td>
-                                                    <td className="p-3 text-center">
-                                                        {e.isPaid ? 
-                                                            <span className="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs font-bold">PAGO</span> : 
-                                                            <span className="bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full text-xs font-bold">ABERTO</span>
-                                                        }
-                                                    </td>
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-sm text-left min-w-[500px]">
+                                            <thead className="bg-gray-100 text-gray-600">
+                                                <tr>
+                                                    <th className="p-3">Data Venc.</th>
+                                                    <th className="p-3">Descrição / Fornecedor</th>
+                                                    <th className="p-3 text-right">Valor</th>
+                                                    <th className="p-3 text-center">Status</th>
                                                 </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
+                                            </thead>
+                                            <tbody className="divide-y">
+                                                {state.expenses.filter(e => e.category === 'Fornecedor').length === 0 && (
+                                                    <tr><td colSpan={4} className="p-4 text-center text-gray-400">Nenhuma compra registrada.</td></tr>
+                                                )}
+                                                {state.expenses.filter(e => e.category === 'Fornecedor').map(e => (
+                                                    <tr key={e.id} className="hover:bg-gray-50">
+                                                        <td className="p-3 font-mono">{new Date(e.dueDate).toLocaleDateString()}</td>
+                                                        <td className="p-3">{e.description}</td>
+                                                        <td className="p-3 text-right font-bold">R$ {e.amount.toFixed(2)}</td>
+                                                        <td className="p-3 text-center">
+                                                            {e.isPaid ? 
+                                                                <span className="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs font-bold">PAGO</span> : 
+                                                                <span className="bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full text-xs font-bold">ABERTO</span>
+                                                            }
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -535,8 +546,8 @@ export const AdminDashboard: React.FC = () => {
                                 </div>
                                 <form onSubmit={submitPurchaseEntry} className="space-y-6">
                                     {/* ... (Formulário igual ao anterior) ... */}
-                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-gray-50 p-4 rounded-lg">
-                                        <div className="col-span-2">
+                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-gray-50 p-4 rounded-lg">
+                                        <div className="col-span-1 md:col-span-2">
                                             <label className="block text-xs font-bold mb-1">Fornecedor</label>
                                             <select required className="w-full border p-2 rounded" value={purchaseForm.supplierId} onChange={e => setPurchaseForm({...purchaseForm, supplierId: e.target.value})}>
                                                 <option value="">Selecione...</option>
@@ -556,8 +567,8 @@ export const AdminDashboard: React.FC = () => {
                                     {/* ITENS DA NOTA */}
                                     <div className="border rounded-lg p-4">
                                         <h4 className="font-bold text-sm mb-3">Itens da Nota</h4>
-                                        <div className="flex gap-2 mb-4 items-end">
-                                            <div className="flex-1">
+                                        <div className="flex flex-col md:flex-row gap-2 mb-4 items-end">
+                                            <div className="flex-1 w-full">
                                                 <label className="block text-xs text-gray-500 mb-1">Item do Estoque</label>
                                                 <select className="w-full border p-2 rounded text-sm" value={tempPurchaseItem.itemId} onChange={e => setTempPurchaseItem({...tempPurchaseItem, itemId: e.target.value})}>
                                                     <option value="">Selecione...</option>
@@ -566,21 +577,23 @@ export const AdminDashboard: React.FC = () => {
                                                     ))}
                                                 </select>
                                             </div>
-                                            <div className="w-20">
-                                                <label className="block text-xs text-gray-500 mb-1">Qtd</label>
-                                                <input type="number" className="w-full border p-2 rounded text-sm" value={tempPurchaseItem.quantity} onChange={e => setTempPurchaseItem({...tempPurchaseItem, quantity: parseFloat(e.target.value)})} />
+                                            <div className="flex gap-2 w-full md:w-auto">
+                                                <div className="w-20">
+                                                    <label className="block text-xs text-gray-500 mb-1">Qtd</label>
+                                                    <input type="number" className="w-full border p-2 rounded text-sm" value={tempPurchaseItem.quantity} onChange={e => setTempPurchaseItem({...tempPurchaseItem, quantity: parseFloat(e.target.value)})} />
+                                                </div>
+                                                <div className="w-24">
+                                                    <label className="block text-xs text-gray-500 mb-1">Valor Unit.</label>
+                                                    <input type="number" step="0.01" className="w-full border p-2 rounded text-sm" value={tempPurchaseItem.unitPrice} onChange={e => setTempPurchaseItem({...tempPurchaseItem, unitPrice: parseFloat(e.target.value)})} />
+                                                </div>
+                                                <Button type="button" onClick={handleAddItemToPurchase} disabled={!tempPurchaseItem.itemId}>
+                                                    <Plus size={16}/>
+                                                </Button>
                                             </div>
-                                            <div className="w-24">
-                                                <label className="block text-xs text-gray-500 mb-1">Valor Unit.</label>
-                                                <input type="number" step="0.01" className="w-full border p-2 rounded text-sm" value={tempPurchaseItem.unitPrice} onChange={e => setTempPurchaseItem({...tempPurchaseItem, unitPrice: parseFloat(e.target.value)})} />
-                                            </div>
-                                            <Button type="button" onClick={handleAddItemToPurchase} disabled={!tempPurchaseItem.itemId}>
-                                                <Plus size={16}/>
-                                            </Button>
                                         </div>
 
-                                        <div className="bg-gray-50 rounded border overflow-hidden">
-                                            <table className="w-full text-sm text-left">
+                                        <div className="bg-gray-50 rounded border overflow-x-auto">
+                                            <table className="w-full text-sm text-left min-w-[400px]">
                                                 <thead className="bg-gray-100 text-xs text-gray-500 uppercase">
                                                     <tr>
                                                         <th className="p-2">Item</th>
@@ -640,18 +653,18 @@ export const AdminDashboard: React.FC = () => {
                                             </div>
                                         </div>
 
-                                        <div className="flex items-end gap-3 mb-4 border-t pt-4">
-                                            <div>
+                                        <div className="flex flex-col md:flex-row items-end gap-3 mb-4 border-t pt-4">
+                                            <div className="w-full md:w-auto">
                                                 <label className="block text-xs font-bold mb-1">Parcelas</label>
-                                                <select className="border p-2 rounded text-sm w-20" value={installmentsCount} onChange={e => setInstallmentsCount(Number(e.target.value))}>
+                                                <select className="border p-2 rounded text-sm w-full md:w-20" value={installmentsCount} onChange={e => setInstallmentsCount(Number(e.target.value))}>
                                                     {[1,2,3,4,5,6,10,12].map(n => <option key={n} value={n}>{n}x</option>)}
                                                 </select>
                                             </div>
-                                            <div>
+                                            <div className="w-full md:w-auto">
                                                 <label className="block text-xs font-bold mb-1">1º Vencimento</label>
-                                                <input type="date" className="border p-2 rounded text-sm" value={firstDueDate} onChange={e => setFirstDueDate(e.target.value)} />
+                                                <input type="date" className="border p-2 rounded text-sm w-full" value={firstDueDate} onChange={e => setFirstDueDate(e.target.value)} />
                                             </div>
-                                            <Button type="button" size="sm" onClick={generateInstallments}>Gerar Parcelas</Button>
+                                            <Button type="button" size="sm" onClick={generateInstallments} className="w-full md:w-auto">Gerar Parcelas</Button>
                                         </div>
 
                                         {paymentInstallments.length > 0 && (
@@ -693,11 +706,11 @@ export const AdminDashboard: React.FC = () => {
 
                                     <div className="flex justify-between items-center pt-4 border-t">
                                         <div className="text-lg">
-                                            Total da Nota: <span className="font-bold text-blue-600">R$ {(purchaseForm.items.reduce((acc, i) => acc + i.totalPrice, 0) + Number(purchaseForm.taxAmount || 0)).toFixed(2)}</span>
+                                            Total: <span className="font-bold text-blue-600">R$ {(purchaseForm.items.reduce((acc, i) => acc + i.totalPrice, 0) + Number(purchaseForm.taxAmount || 0)).toFixed(2)}</span>
                                         </div>
                                         <div className="flex gap-2">
                                             <Button type="button" variant="secondary" onClick={() => setPurchaseModalOpen(false)}>Cancelar</Button>
-                                            <Button type="submit">Processar Entrada</Button>
+                                            <Button type="submit">Processar</Button>
                                         </div>
                                     </div>
                                 </form>
@@ -747,8 +760,8 @@ export const AdminDashboard: React.FC = () => {
                                         <label className="block text-sm font-bold text-gray-700">Tipo do Item</label>
                                         <div className="grid grid-cols-3 gap-2 mt-1">
                                             <button type="button" onClick={() => setEditingInventory({...editingInventory, type: 'INGREDIENT'})} className={`p-2 rounded border text-xs font-bold ${editingInventory.type === 'INGREDIENT' ? 'bg-orange-100 border-orange-500 text-orange-700' : 'bg-gray-50'}`}>Matéria Prima</button>
-                                            <button type="button" onClick={() => setEditingInventory({...editingInventory, type: 'RESALE'})} className={`p-2 rounded border text-xs font-bold ${editingInventory.type === 'RESALE' ? 'bg-blue-100 border-blue-500 text-blue-700' : 'bg-gray-50'}`}>Revenda (Coca, Água)</button>
-                                            <button type="button" onClick={() => setEditingInventory({...editingInventory, type: 'COMPOSITE'})} className={`p-2 rounded border text-xs font-bold ${editingInventory.type === 'COMPOSITE' ? 'bg-purple-100 border-purple-500 text-purple-700' : 'bg-gray-50'}`}>Produzido (Prato)</button>
+                                            <button type="button" onClick={() => setEditingInventory({...editingInventory, type: 'RESALE'})} className={`p-2 rounded border text-xs font-bold ${editingInventory.type === 'RESALE' ? 'bg-blue-100 border-blue-500 text-blue-700' : 'bg-gray-50'}`}>Revenda</button>
+                                            <button type="button" onClick={() => setEditingInventory({...editingInventory, type: 'COMPOSITE'})} className={`p-2 rounded border text-xs font-bold ${editingInventory.type === 'COMPOSITE' ? 'bg-purple-100 border-purple-500 text-purple-700' : 'bg-gray-50'}`}>Produzido</button>
                                         </div>
                                     </div>
 
@@ -760,10 +773,10 @@ export const AdminDashboard: React.FC = () => {
                                         <div>
                                             <label className="block text-xs font-bold">Unidade</label>
                                             <select className="w-full border p-2 rounded" value={editingInventory.unit} onChange={e => setEditingInventory({...editingInventory, unit: e.target.value})}>
-                                                <option value="UN">UN (Unidade)</option>
-                                                <option value="KG">KG (Quilo)</option>
-                                                <option value="LT">LT (Litro)</option>
-                                                <option value="GR">GR (Gramas)</option> {/* NEW OPTION */}
+                                                <option value="UN">UN</option>
+                                                <option value="KG">KG</option>
+                                                <option value="LT">LT</option>
+                                                <option value="GR">GR</option> {/* NEW OPTION */}
                                             </select>
                                         </div>
                                         {editingInventory.type !== 'COMPOSITE' && (
@@ -787,7 +800,7 @@ export const AdminDashboard: React.FC = () => {
                                     {/* RECEITA (Apenas para Compostos) */}
                                     {editingInventory.type === 'COMPOSITE' && (
                                         <div className="bg-gray-50 p-4 rounded border mt-4">
-                                            <h4 className="font-bold text-sm mb-2 flex items-center gap-2"><Layers size={14}/> Composição (Ficha Técnica)</h4>
+                                            <h4 className="font-bold text-sm mb-2 flex items-center gap-2"><Layers size={14}/> Composição</h4>
                                             <div className="flex gap-2 mb-2">
                                                 <select className="flex-1 border p-1 text-sm rounded" value={selectedIngredientAdd} onChange={e => setSelectedIngredientAdd(e.target.value)}>
                                                     <option value="">Adicionar ingrediente...</option>
@@ -822,7 +835,7 @@ export const AdminDashboard: React.FC = () => {
                                                 })}
                                             </div>
                                             <div className="mt-2 text-right text-sm font-bold text-gray-600">
-                                                Custo Estimado: R$ {invRecipeStep.reduce((acc, step) => {
+                                                Custo: R$ {invRecipeStep.reduce((acc, step) => {
                                                     const ing = state.inventory.find(i => i.id === step.ingredientId);
                                                     return acc + ((ing?.costPrice || 0) * step.qty);
                                                 }, 0).toFixed(2)}
@@ -841,43 +854,45 @@ export const AdminDashboard: React.FC = () => {
 
                     {/* LISTA DE ESTOQUE */}
                     <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
-                        <table className="w-full text-left">
-                            <thead className="bg-gray-50 text-gray-600 text-sm">
-                                <tr>
-                                    <th className="p-4">Item</th>
-                                    <th className="p-4">Tipo</th>
-                                    <th className="p-4 text-center">Unidade</th>
-                                    <th className="p-4 text-right">Estoque</th>
-                                    <th className="p-4 text-right">Custo</th>
-                                    <th className="p-4 text-right">Ações</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y">
-                                {state.inventory.map(item => (
-                                    <tr key={item.id} className="hover:bg-gray-50">
-                                        <td className="p-4 font-medium">{item.name}</td>
-                                        <td className="p-4">
-                                            {item.type === 'INGREDIENT' && <span className="bg-orange-100 text-orange-700 px-2 py-1 rounded text-xs font-bold">Matéria Prima</span>}
-                                            {item.type === 'RESALE' && <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded text-xs font-bold">Revenda</span>}
-                                            {item.type === 'COMPOSITE' && <span className="bg-purple-100 text-purple-700 px-2 py-1 rounded text-xs font-bold">Prato/Combo</span>}
-                                        </td>
-                                        <td className="p-4 text-center text-sm">{item.unit}</td>
-                                        <td className={`p-4 text-right font-bold ${item.type === 'COMPOSITE' ? 'text-gray-400' : (item.quantity <= item.minQuantity ? 'text-red-600' : 'text-gray-800')}`}>
-                                            {item.type === 'COMPOSITE' ? '-' : item.quantity}
-                                        </td>
-                                        <td className="p-4 text-right text-sm">R$ {item.costPrice.toFixed(2)}</td>
-                                        <td className="p-4 flex justify-end gap-2">
-                                            {item.type !== 'COMPOSITE' && (
-                                                <button onClick={() => setStockModal({ itemId: item.id, type: 'IN', quantity: '', reason: '' })} className="p-2 bg-green-50 text-green-600 rounded hover:bg-green-100" title="Entrada"><Plus size={16}/></button>
-                                            )}
-                                            {item.type !== 'COMPOSITE' && (
-                                                <button onClick={() => setStockModal({ itemId: item.id, type: 'OUT', quantity: '', reason: '' })} className="p-2 bg-red-50 text-red-600 rounded hover:bg-red-100" title="Saída/Perda"><ArrowDown size={16}/></button>
-                                            )}
-                                        </td>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left min-w-[600px]">
+                                <thead className="bg-gray-50 text-gray-600 text-sm">
+                                    <tr>
+                                        <th className="p-4">Item</th>
+                                        <th className="p-4">Tipo</th>
+                                        <th className="p-4 text-center">Un</th>
+                                        <th className="p-4 text-right">Estoque</th>
+                                        <th className="p-4 text-right">Custo</th>
+                                        <th className="p-4 text-right">Ações</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody className="divide-y">
+                                    {state.inventory.map(item => (
+                                        <tr key={item.id} className="hover:bg-gray-50">
+                                            <td className="p-4 font-medium">{item.name}</td>
+                                            <td className="p-4">
+                                                {item.type === 'INGREDIENT' && <span className="bg-orange-100 text-orange-700 px-2 py-1 rounded text-xs font-bold">Matéria Prima</span>}
+                                                {item.type === 'RESALE' && <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded text-xs font-bold">Revenda</span>}
+                                                {item.type === 'COMPOSITE' && <span className="bg-purple-100 text-purple-700 px-2 py-1 rounded text-xs font-bold">Prato</span>}
+                                            </td>
+                                            <td className="p-4 text-center text-sm">{item.unit}</td>
+                                            <td className={`p-4 text-right font-bold ${item.type === 'COMPOSITE' ? 'text-gray-400' : (item.quantity <= item.minQuantity ? 'text-red-600' : 'text-gray-800')}`}>
+                                                {item.type === 'COMPOSITE' ? '-' : item.quantity}
+                                            </td>
+                                            <td className="p-4 text-right text-sm">R$ {item.costPrice.toFixed(2)}</td>
+                                            <td className="p-4 flex justify-end gap-2">
+                                                {item.type !== 'COMPOSITE' && (
+                                                    <button onClick={() => setStockModal({ itemId: item.id, type: 'IN', quantity: '', reason: '' })} className="p-2 bg-green-50 text-green-600 rounded hover:bg-green-100" title="Entrada"><Plus size={16}/></button>
+                                                )}
+                                                {item.type !== 'COMPOSITE' && (
+                                                    <button onClick={() => setStockModal({ itemId: item.id, type: 'OUT', quantity: '', reason: '' })} className="p-2 bg-red-50 text-red-600 rounded hover:bg-red-100" title="Saída/Perda"><ArrowDown size={16}/></button>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                     {/* Modal de Movimentação de Estoque */}
                     {stockModal && (
@@ -1026,50 +1041,165 @@ export const AdminDashboard: React.FC = () => {
                     )}
 
                     <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
-                        <table className="w-full text-left">
-                            <thead className="bg-gray-50 text-gray-600 text-sm">
-                                <tr>
-                                    <th className="p-4 w-10"></th>
-                                    <th className="p-4">Produto</th>
-                                    <th className="p-4">Categoria</th>
-                                    <th className="p-4">Preço Venda</th>
-                                    <th className="p-4">Lucro</th>
-                                    <th className="p-4 text-right">Ações</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y">
-                                {sortedProducts.map((p, idx) => (
-                                    <tr 
-                                        key={p.id} 
-                                        className="hover:bg-gray-50"
-                                        draggable
-                                        onDragStart={() => handleDragStart(idx)}
-                                        onDragOver={handleDragOver}
-                                        onDrop={() => handleDrop(idx)}
-                                    >
-                                        <td className="p-4 text-center cursor-move text-gray-400"><GripVertical size={16}/></td>
-                                        <td className="p-4 flex items-center gap-3">
-                                            <img src={p.image} className="w-10 h-10 rounded bg-gray-200 object-cover" />
-                                            <div>
-                                                <div className="font-medium">{p.name}</div>
-                                                <div className="text-xs text-gray-500">{p.isVisible ? 'Visível' : 'Oculto'}</div>
-                                            </div>
-                                        </td>
-                                        <td className="p-4 text-sm"><span className="bg-gray-100 px-2 py-1 rounded">{p.category}</span></td>
-                                        <td className="p-4 font-bold text-gray-800">R$ {p.price.toFixed(2)}</td>
-                                        <td className="p-4 text-sm text-green-600">R$ {(p.price - (p.costPrice || 0)).toFixed(2)}</td>
-                                        <td className="p-4 text-right">
-                                            <div className="flex justify-end gap-2">
-                                                <button onClick={() => setEditingProduct(p)} className="p-2 text-blue-600 hover:bg-blue-50 rounded"><Edit size={16}/></button>
-                                                <button onClick={() => {
-                                                    showConfirm({ title: "Remover", message: "Remover do cardápio?", type: 'ERROR', onConfirm: () => dispatch({ type: 'DELETE_PRODUCT', productId: p.id }) });
-                                                }} className="p-2 text-red-600 hover:bg-red-50 rounded"><Trash2 size={16}/></button>
-                                            </div>
-                                        </td>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left min-w-[600px]">
+                                <thead className="bg-gray-50 text-gray-600 text-sm">
+                                    <tr>
+                                        <th className="p-4 w-10"></th>
+                                        <th className="p-4">Produto</th>
+                                        <th className="p-4">Categoria</th>
+                                        <th className="p-4">Preço Venda</th>
+                                        <th className="p-4">Lucro</th>
+                                        <th className="p-4 text-right">Ações</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody className="divide-y">
+                                    {sortedProducts.map((p, idx) => (
+                                        <tr 
+                                            key={p.id} 
+                                            className="hover:bg-gray-50"
+                                            draggable
+                                            onDragStart={() => handleDragStart(idx)}
+                                            onDragOver={handleDragOver}
+                                            onDrop={() => handleDrop(idx)}
+                                        >
+                                            <td className="p-4 text-center cursor-move text-gray-400"><GripVertical size={16}/></td>
+                                            <td className="p-4 flex items-center gap-3">
+                                                <img src={p.image} className="w-10 h-10 rounded bg-gray-200 object-cover" />
+                                                <div>
+                                                    <div className="font-medium">{p.name}</div>
+                                                    <div className="text-xs text-gray-500">{p.isVisible ? 'Visível' : 'Oculto'}</div>
+                                                </div>
+                                            </td>
+                                            <td className="p-4 text-sm"><span className="bg-gray-100 px-2 py-1 rounded">{p.category}</span></td>
+                                            <td className="p-4 font-bold text-gray-800">R$ {p.price.toFixed(2)}</td>
+                                            <td className="p-4 text-sm text-green-600">R$ {(p.price - (p.costPrice || 0)).toFixed(2)}</td>
+                                            <td className="p-4 text-right">
+                                                <div className="flex justify-end gap-2">
+                                                    <button onClick={() => setEditingProduct(p)} className="p-2 text-blue-600 hover:bg-blue-50 rounded"><Edit size={16}/></button>
+                                                    <button onClick={() => {
+                                                        showConfirm({ title: "Remover", message: "Remover do cardápio?", type: 'ERROR', onConfirm: () => dispatch({ type: 'DELETE_PRODUCT', productId: p.id }) });
+                                                    }} className="p-2 text-red-600 hover:bg-red-50 rounded"><Trash2 size={16}/></button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {activeTab === 'CUSTOMIZATION' && planLimits.allowCustomization && (
+                 <div className="max-w-3xl">
+                    <h2 className="text-2xl font-bold mb-6 text-gray-800">Personalizar App do Cliente</h2>
+                    <div className="bg-white p-6 rounded-xl shadow-sm space-y-8">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div className="space-y-4">
+                                <h3 className="font-bold text-gray-700 flex items-center gap-2"><Palette size={18} /> Identidade Visual</h3>
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">Nome do Restaurante</label>
+                                    <input type="text" className="w-full border p-2 rounded" value={localTheme.restaurantName} onChange={e => setLocalTheme({...localTheme, restaurantName: e.target.value})} />
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">Cor Principal</label>
+                                        <div className="flex gap-2 items-center">
+                                            <input type="color" className="h-10 w-10 cursor-pointer border rounded" value={localTheme.primaryColor} onChange={e => setLocalTheme({...localTheme, primaryColor: e.target.value})} />
+                                            <input type="text" className="flex-1 border p-2 rounded uppercase min-w-0" value={localTheme.primaryColor} onChange={e => setLocalTheme({...localTheme, primaryColor: e.target.value})} />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">Cor de Fundo</label>
+                                        <div className="flex gap-2 items-center">
+                                            <input type="color" className="h-10 w-10 cursor-pointer border rounded" value={localTheme.backgroundColor} onChange={e => setLocalTheme({...localTheme, backgroundColor: e.target.value})} />
+                                            <input type="text" className="flex-1 border p-2 rounded uppercase min-w-0" value={localTheme.backgroundColor} onChange={e => setLocalTheme({...localTheme, backgroundColor: e.target.value})} />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="space-y-4">
+                                <h3 className="font-bold text-gray-700 flex items-center gap-2"><LayoutGrid size={18} /> Layout</h3>
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">Estilo do Cardápio</label>
+                                    <div className="flex gap-2">
+                                        <button onClick={() => setLocalTheme({...localTheme, viewMode: 'LIST'})} className={`flex-1 py-2 border rounded flex items-center justify-center gap-2 ${localTheme.viewMode !== 'GRID' ? 'bg-blue-50 border-blue-500 text-blue-700 font-bold' : 'hover:bg-gray-50'}`}><ListIcon size={16}/> Lista</button>
+                                        <button onClick={() => setLocalTheme({...localTheme, viewMode: 'GRID'})} className={`flex-1 py-2 border rounded flex items-center justify-center gap-2 ${localTheme.viewMode === 'GRID' ? 'bg-blue-50 border-blue-500 text-blue-700 font-bold' : 'hover:bg-gray-50'}`}><LayoutGrid size={16}/> Grade</button>
+                                    </div>
+                                </div>
+                                <div><label className="block text-sm font-medium mb-1">Logo</label><ImageUploader value={localTheme.logoUrl} onChange={(val) => setLocalTheme({...localTheme, logoUrl: val})} /></div>
+                            </div>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium mb-1 flex items-center gap-2"><ImageIcon size={16}/> Banner</label>
+                            <ImageUploader value={localTheme.bannerUrl || ''} onChange={(val) => setLocalTheme({...localTheme, bannerUrl: val})} />
+                        </div>
+                        <div className="pt-4 border-t"><Button onClick={() => { dispatch({ type: 'UPDATE_THEME', theme: localTheme }); showAlert({ title: "Sucesso", message: "Tema salvo!", type: 'SUCCESS' }); }} className="w-full py-3"><Save size={20} /> Salvar</Button></div>
+                    </div>
+                 </div>
+            )}
+
+            {activeTab === 'TABLES' && planLimits.allowTableMgmt && (
+                <div>
+                     <div className="flex justify-between items-center mb-6">
+                        <h2 className="text-2xl font-bold text-gray-800">Mesas & QR Codes</h2>
+                        <Button onClick={() => dispatch({ type: 'ADD_TABLE' })}><Plus size={16} /> Nova Mesa</Button>
+                    </div>
+                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                        {state.tables.map(table => (
+                            <div key={table.id} className="bg-white p-6 rounded-xl shadow-sm flex flex-col items-center gap-4 border relative group">
+                                <button onClick={() => showConfirm({title: "Excluir Mesa", message: "Confirma?", type: 'ERROR', onConfirm: () => dispatch({ type: 'DELETE_TABLE', tableId: table.id })})} className="absolute top-2 right-2 p-2 text-gray-300 hover:text-red-500 rounded-full"><Trash2 size={16} /></button>
+                                <h3 className="text-xl font-bold text-gray-800">Mesa {table.number}</h3>
+                                <QRCodeGenerator tableId={table.id} size={150} />
+                                <div className="w-full flex gap-1">
+                                    <a href={getTableUrl(table.id)} target="_blank" className="flex-1 text-xs bg-blue-50 text-blue-600 py-2 rounded text-center flex items-center justify-center gap-1 font-medium"><ExternalLink size={12} /> Link</a>
+                                    <button onClick={() => navigator.clipboard.writeText(getTableUrl(table.id))} className="px-3 bg-gray-100 text-gray-600 rounded text-xs"><Copy size={12} /></button>
+                                </div>
+                                <Button variant="secondary" size="sm" className="w-full" onClick={() => handlePrint(table.id)}><Printer size={16} /> Imprimir</Button>
+                            </div>
+                        ))}
+                     </div>
+                </div>
+            )}
+
+            {activeTab === 'STAFF' && planLimits.allowStaff && (
+                <div>
+                    <h2 className="text-2xl font-bold mb-6 text-gray-800">Gerenciar Equipe</h2>
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        <div className="bg-white p-6 rounded-xl shadow-sm h-fit">
+                            <h3 className="font-bold mb-4 text-lg">{editingUser ? 'Editar' : 'Novo'} Funcionário</h3>
+                            <form onSubmit={handleSaveUser} className="space-y-4">
+                                <input required className="w-full border p-2 rounded" placeholder="Nome" value={userForm.name} onChange={e => setUserForm({...userForm, name: e.target.value})} />
+                                <input required type="email" className="w-full border p-2 rounded" placeholder="Email" value={userForm.email} onChange={e => setUserForm({...userForm, email: e.target.value})} />
+                                <select className="w-full border p-2 rounded" value={userForm.role} onChange={e => setUserForm({...userForm, role: e.target.value as Role})}>
+                                    <option value={Role.WAITER}>Garçom</option>
+                                    <option value={Role.KITCHEN}>Cozinha</option>
+                                    <option value={Role.CASHIER}>Caixa</option>
+                                    <option value={Role.ADMIN}>Admin</option>
+                                </select>
+                                <input type="text" maxLength={4} className="w-full border p-2 rounded" placeholder="PIN" value={userForm.pin} onChange={e => setUserForm({...userForm, pin: e.target.value})} />
+                                <div className="flex gap-2">
+                                    {editingUser && <Button type="button" variant="secondary" onClick={() => { setEditingUser(null); setUserForm({name:'',role:Role.WAITER,pin:'',email:'',allowedRoutes:[]}); }}>Cancelar</Button>}
+                                    <Button className="flex-1" type="submit">Salvar</Button>
+                                </div>
+                            </form>
+                        </div>
+                        <div className="lg:col-span-2 space-y-4">
+                            {state.users.filter(u => u.role !== Role.SUPER_ADMIN).map(user => (
+                                <div key={user.id} className="bg-white p-4 rounded-xl shadow-sm flex items-center justify-between border">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center font-bold text-gray-600">{user.name.charAt(0)}</div>
+                                        <div><div className="font-bold">{user.name}</div><div className="text-xs text-gray-500 uppercase">{user.role}</div></div>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <button onClick={() => copyInviteLink(user.email)} className="text-green-600 p-2 hover:bg-green-50 rounded"><Share2 size={20}/></button>
+                                        <button onClick={() => { setEditingUser(user); setUserForm({name:user.name, email:user.email, role:user.role, pin:user.pin, allowedRoutes:user.allowedRoutes||[]}); }} className="text-blue-500 p-2 hover:bg-blue-50 rounded"><Edit size={20}/></button>
+                                        <button onClick={() => showConfirm({title:"Excluir", message:"Confirma?", type:'ERROR', onConfirm:()=>dispatch({type:'DELETE_USER', userId:user.id})})} className="text-red-500 p-2 hover:bg-red-50 rounded"><Trash2 size={20}/></button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 </div>
             )}
@@ -1093,23 +1223,25 @@ export const AdminDashboard: React.FC = () => {
                         </div>
                     )}
                     <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
-                        <table className="w-full text-left">
-                            <thead className="bg-gray-50 text-gray-600 text-sm"><tr><th className="p-4">Vencimento</th><th className="p-4">Descrição</th><th className="p-4">Valor</th><th className="p-4">Status</th><th className="p-4 text-right">Ações</th></tr></thead>
-                            <tbody>
-                                {state.expenses.map(exp => (
-                                    <tr key={exp.id} className="hover:bg-gray-50">
-                                        <td className="p-4 text-sm font-mono">{new Date(exp.dueDate).toLocaleDateString()}</td>
-                                        <td className="p-4">{exp.description}</td>
-                                        <td className="p-4 font-bold">R$ {exp.amount.toFixed(2)}</td>
-                                        <td className="p-4">{exp.isPaid ? <span className="text-green-600 font-bold text-xs">PAGO</span> : <span className="text-yellow-600 font-bold text-xs">ABERTO</span>}</td>
-                                        <td className="p-4 text-right flex justify-end gap-2">
-                                            {!exp.isPaid && planLimits.allowExpenses && <button onClick={() => dispatch({ type: 'PAY_EXPENSE', expenseId: exp.id })} className="text-blue-600 text-xs font-bold">Pagar</button>}
-                                            {planLimits.allowExpenses && <button onClick={() => dispatch({ type: 'DELETE_EXPENSE', expenseId: exp.id })} className="text-red-500"><Trash2 size={16}/></button>}
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left min-w-[600px]">
+                                <thead className="bg-gray-50 text-gray-600 text-sm"><tr><th className="p-4">Vencimento</th><th className="p-4">Descrição</th><th className="p-4">Valor</th><th className="p-4">Status</th><th className="p-4 text-right">Ações</th></tr></thead>
+                                <tbody>
+                                    {state.expenses.map(exp => (
+                                        <tr key={exp.id} className="hover:bg-gray-50">
+                                            <td className="p-4 text-sm font-mono">{new Date(exp.dueDate).toLocaleDateString()}</td>
+                                            <td className="p-4">{exp.description}</td>
+                                            <td className="p-4 font-bold">R$ {exp.amount.toFixed(2)}</td>
+                                            <td className="p-4">{exp.isPaid ? <span className="text-green-600 font-bold text-xs">PAGO</span> : <span className="text-yellow-600 font-bold text-xs">ABERTO</span>}</td>
+                                            <td className="p-4 text-right flex justify-end gap-2">
+                                                {!exp.isPaid && planLimits.allowExpenses && <button onClick={() => dispatch({ type: 'PAY_EXPENSE', expenseId: exp.id })} className="text-blue-600 text-xs font-bold">Pagar</button>}
+                                                {planLimits.allowExpenses && <button onClick={() => dispatch({ type: 'DELETE_EXPENSE', expenseId: exp.id })} className="text-red-500"><Trash2 size={16}/></button>}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             )}

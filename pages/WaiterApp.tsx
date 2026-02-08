@@ -3,7 +3,7 @@ import { useRestaurant } from '../context/RestaurantContext';
 import { useUI } from '../context/UIContext';
 import { TableStatus, OrderStatus, ProductType, Product } from '../types';
 import { Button } from '../components/Button';
-import { CheckCircle, Coffee, User, Key, X, Bell, Plus, Minus, Search, ShoppingCart, ChevronRight, Utensils, Trash2, ArrowLeft, Volume2, Edit3, MessageSquare } from 'lucide-react';
+import { CheckCircle, Coffee, User, Key, X, Bell, Plus, Minus, Search, ShoppingCart, ChevronRight, Utensils, Trash2, ArrowLeft, Volume2, Edit3, MessageSquare, ChevronUp, ChevronDown } from 'lucide-react';
 
 export const WaiterApp: React.FC = () => {
   const { state, dispatch } = useRestaurant();
@@ -13,6 +13,7 @@ export const WaiterApp: React.FC = () => {
   const [selectedTableForOpen, setSelectedTableForOpen] = useState<string | null>(null);
   const [selectedTableForAction, setSelectedTableForAction] = useState<string | null>(null); // Menu de opções
   const [orderingTableId, setOrderingTableId] = useState<string | null>(null); // Modo Pedido
+  const [isReadyToServeOpen, setIsReadyToServeOpen] = useState(false); // Mobile drawer
   
   // Order Form States
   const [customerName, setCustomerName] = useState('');
@@ -363,7 +364,7 @@ export const WaiterApp: React.FC = () => {
 
   // 2. VIEW: DASHBOARD (Tables)
   return (
-    <div className="min-h-screen bg-gray-100 p-4 lg:p-6 grid grid-cols-1 lg:grid-cols-3 gap-6 relative">
+    <div className="min-h-screen bg-gray-100 p-4 lg:p-6 grid grid-cols-1 lg:grid-cols-3 gap-6 relative pb-24 lg:pb-6">
       
       {/* Alert Overlay for Service Calls - Shows on top if any call exists */}
       {pendingCalls.length > 0 && (
@@ -453,13 +454,13 @@ export const WaiterApp: React.FC = () => {
                 <Volume2 size={12}/> Som Ativo
             </span>
         </h1>
-        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
           {state.tables.map(table => {
             const hasCall = pendingCalls.find(c => c.tableId === table.id);
             return (
             <div 
               key={table.id} 
-              className={`p-4 rounded-xl shadow-sm border-2 transition-all cursor-pointer flex flex-col items-center justify-center min-h-[140px] relative
+              className={`p-4 rounded-xl shadow-sm border-2 transition-all cursor-pointer flex flex-col items-center justify-center min-h-[120px] md:min-h-[140px] relative
                 ${hasCall ? 'bg-red-50 border-red-500 animate-[pulse_1s_infinite]' : ''}
                 ${!hasCall && table.status === TableStatus.OCCUPIED ? 'bg-white border-blue-500 hover:shadow-md' : ''}
                 ${!hasCall && table.status === TableStatus.AVAILABLE ? 'bg-gray-50 border-transparent hover:border-gray-300' : ''}
@@ -467,7 +468,7 @@ export const WaiterApp: React.FC = () => {
               `}
               onClick={() => hasCall ? resolveCall(hasCall.id) : handleTableClick(table.id, table.status)}
             >
-              <div className="text-4xl font-bold mb-1 text-gray-700">{table.number}</div>
+              <div className="text-3xl md:text-4xl font-bold mb-1 text-gray-700">{table.number}</div>
               
               {hasCall && (
                   <div className="absolute top-2 right-2 bg-red-600 text-white p-2 rounded-full animate-bounce">
@@ -477,16 +478,16 @@ export const WaiterApp: React.FC = () => {
               
               {table.status === TableStatus.OCCUPIED && (
                 <div className="flex flex-col items-center">
-                   <div className="flex items-center gap-1 text-sm font-medium text-blue-800 mb-1">
-                      <User size={12} /> {table.customerName}
+                   <div className="flex items-center gap-1 text-sm font-medium text-blue-800 mb-1 truncate max-w-full">
+                      <User size={12} /> <span className="truncate">{table.customerName}</span>
                    </div>
-                   <div className="flex items-center gap-1 text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded">
+                   <div className="hidden sm:flex items-center gap-1 text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded">
                       <Key size={10} /> {table.accessCode}
                    </div>
                 </div>
               )}
 
-              <div className={`text-xs font-bold uppercase px-2 py-1 rounded-full mt-2
+              <div className={`text-[10px] md:text-xs font-bold uppercase px-2 py-1 rounded-full mt-2
                  ${hasCall ? 'bg-red-600 text-white' : ''}
                  ${!hasCall && table.status === TableStatus.OCCUPIED ? 'bg-blue-100 text-blue-700' : ''}
                  ${!hasCall && table.status === TableStatus.AVAILABLE ? 'bg-gray-200 text-gray-600' : ''}
@@ -506,15 +507,29 @@ export const WaiterApp: React.FC = () => {
       </div>
 
       {/* Right Column: Action Center (Ready to Serve) - Stacks on bottom on mobile */}
-      <div className="bg-white rounded-xl shadow-lg p-4 h-fit sticky lg:top-4 z-10 border border-gray-100">
-        <div className="flex items-center gap-2 mb-4 pb-4 border-b">
-            <div className="bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold">
-                {readyToServeItems.length}
+      {/* Mobile: Collapsible Drawer / Desktop: Sticky Column */}
+      <div 
+        className={`bg-white rounded-t-xl lg:rounded-xl shadow-[0_-4px_10px_rgba(0,0,0,0.1)] lg:shadow-lg border border-gray-100 
+            fixed bottom-0 left-0 right-0 z-20 lg:static lg:h-fit lg:sticky lg:top-4 transition-all duration-300
+            ${isReadyToServeOpen ? 'h-[70vh]' : 'h-16 lg:h-auto'}
+        `}
+      >
+        <div 
+            className="p-4 flex items-center justify-between border-b cursor-pointer lg:cursor-default"
+            onClick={() => setIsReadyToServeOpen(!isReadyToServeOpen)}
+        >
+            <div className="flex items-center gap-2">
+                <div className="bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold animate-pulse">
+                    {readyToServeItems.length}
+                </div>
+                <h2 className="text-xl font-bold text-gray-800">Para Servir</h2>
             </div>
-            <h2 className="text-xl font-bold text-gray-800">Para Servir</h2>
+            <div className="lg:hidden text-gray-400">
+                {isReadyToServeOpen ? <ChevronDown size={24} /> : <ChevronUp size={24} />}
+            </div>
         </div>
 
-        <div className="space-y-4 max-h-[50vh] lg:max-h-[80vh] overflow-y-auto">
+        <div className="p-4 space-y-4 overflow-y-auto h-[calc(100%-64px)] lg:max-h-[80vh]">
             {readyToServeItems.length === 0 && (
                 <div className="text-center text-gray-400 py-10">Tudo entregue!</div>
             )}

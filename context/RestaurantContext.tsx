@@ -93,7 +93,10 @@ const initialState: State = {
       allowReports: true,
       allowInventory: true,
       allowPurchases: true,
-      allowExpenses: true
+      allowExpenses: true,
+      allowStaff: true, // Novo
+      allowTableMgmt: true, // Novo
+      allowCustomization: true // Novo
   },
   tables: [],
   products: [],
@@ -207,7 +210,10 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             
             let currentLimits = initialState.planLimits;
             const { data: planData } = await supabase.from('plans').select('limits').eq('key', tenant.plan).maybeSingle();
-            if (planData?.limits) currentLimits = planData.limits;
+            if (planData?.limits) {
+                // Merge dos limites do banco com os defaults para garantir que novos campos existam
+                currentLimits = { ...initialState.planLimits, ...planData.limits };
+            }
 
             const yesterday = new Date(); yesterday.setHours(yesterday.getHours() - 24);
 

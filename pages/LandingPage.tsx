@@ -128,7 +128,7 @@ export const LandingPage: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-20">
             {/* Logo */}
-            <div className="flex items-center gap-2 text-blue-700 font-extrabold text-2xl tracking-tighter cursor-pointer" onClick={() => window.scrollTo({top:0, behavior:'smooth'})}>
+            <div className="flex items-center gap-2 text-blue-700 font-extrabold text-xl md:text-2xl tracking-tighter cursor-pointer" onClick={() => window.scrollTo({top:0, behavior:'smooth'})}>
               <div className="bg-blue-600 text-white p-1.5 rounded-lg">
                 <ChefHat size={24} /> 
               </div>
@@ -198,10 +198,10 @@ export const LandingPage: React.FC = () => {
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 lg:py-32 flex flex-col items-center text-center">
           <div className="inline-flex items-center gap-2 bg-blue-500/10 border border-blue-500/20 rounded-full px-4 py-1.5 mb-8">
             <span className="flex h-2 w-2 rounded-full bg-blue-500 animate-pulse"></span>
-            <span className="text-sm font-medium text-blue-400 tracking-wide uppercase">O sistema nº 1 para restaurantes</span>
+            <span className="text-xs md:text-sm font-medium text-blue-400 tracking-wide uppercase">O sistema nº 1 para restaurantes</span>
           </div>
 
-          <h1 className="text-4xl sm:text-6xl md:text-7xl font-extrabold text-white tracking-tight mb-8 leading-tight">
+          <h1 className="text-3xl sm:text-6xl md:text-7xl font-extrabold text-white tracking-tight mb-8 leading-tight">
             Automatize seu restaurante <br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400">
               Venda mais, trabalhe menos.
@@ -270,11 +270,11 @@ export const LandingPage: React.FC = () => {
             
             {/* Block 1: QR Code Illustration */}
             <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-24">
-                <div className="lg:w-1/2 relative flex justify-center items-center group">
+                <div className="lg:w-1/2 relative flex justify-center items-center group w-full">
                     {/* Background Blob */}
                     <div className="absolute inset-0 bg-blue-100 rounded-full blur-3xl opacity-60 scale-90 group-hover:scale-100 transition-transform duration-1000"></div>
                     {/* Phone Mockup Illustration */}
-                    <div className="relative bg-white rounded-[3rem] border-8 border-slate-900 shadow-2xl h-[450px] w-[260px] flex flex-col overflow-hidden transform group-hover:-translate-y-2 transition-transform duration-500">
+                    <div className="relative bg-white rounded-[3rem] border-8 border-slate-900 shadow-2xl h-[450px] w-[260px] flex flex-col overflow-hidden transform group-hover:-translate-y-2 transition-transform duration-500 max-w-full">
                         {/* Notch */}
                         <div className="absolute top-0 left-1/2 transform -translate-x-1/2 h-6 w-32 bg-slate-900 rounded-b-xl z-20"></div>
                         {/* Screen Content */}
@@ -305,7 +305,7 @@ export const LandingPage: React.FC = () => {
 
             {/* Block 2: KDS Illustration (Reverse Layout) */}
             <div className="flex flex-col lg:flex-row-reverse items-center gap-12 lg:gap-24">
-                <div className="lg:w-1/2 relative flex justify-center items-center group">
+                <div className="lg:w-1/2 relative flex justify-center items-center group w-full">
                     <div className="absolute inset-0 bg-purple-100 rounded-full blur-3xl opacity-60 scale-90 group-hover:scale-100 transition-transform duration-1000"></div>
                     {/* Monitor Illustration */}
                     <div className="relative bg-slate-900 rounded-2xl p-2 shadow-2xl w-full max-w-md transform group-hover:-translate-y-2 transition-transform duration-500">
@@ -363,7 +363,7 @@ export const LandingPage: React.FC = () => {
 
             {/* Block 3: Admin Illustration */}
             <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-24">
-                <div className="lg:w-1/2 relative flex justify-center items-center group">
+                <div className="lg:w-1/2 relative flex justify-center items-center group w-full">
                     <div className="absolute inset-0 bg-emerald-100 rounded-full blur-3xl opacity-60 scale-90 group-hover:scale-100 transition-transform duration-1000"></div>
                     {/* Dashboard Illustration */}
                     <div className="relative bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm border border-slate-100 transform group-hover:-translate-y-2 transition-transform duration-500">

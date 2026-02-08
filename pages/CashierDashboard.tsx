@@ -99,9 +99,9 @@ export const CashierDashboard: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col lg:flex-row h-screen overflow-hidden">
+    <div className="min-h-screen bg-gray-50 flex flex-col lg:flex-row h-full">
         {/* Sidebar Mini (Horizontal on mobile, Vertical on desktop) */}
-        <div className="w-full lg:w-20 bg-slate-900 text-white flex flex-row lg:flex-col items-center justify-center lg:justify-start py-4 lg:py-6 gap-6 shrink-0 z-10">
+        <div className="w-full lg:w-20 bg-slate-900 text-white flex flex-row lg:flex-col items-center justify-center lg:justify-start py-4 lg:py-6 gap-6 shrink-0 z-10 sticky top-0 lg:h-screen">
             <button 
                 onClick={() => setActiveTab('ACTIVE')}
                 className={`p-3 rounded-xl transition-all ${activeTab === 'ACTIVE' ? 'bg-blue-600 shadow-lg' : 'hover:bg-slate-800 text-slate-400'}`}
@@ -126,9 +126,9 @@ export const CashierDashboard: React.FC = () => {
         </div>
 
       {activeTab === 'ACTIVE' && (
-          <div className="flex-1 flex flex-col lg:flex-row gap-6 p-4 lg:p-6 overflow-hidden">
+          <div className="flex-1 flex flex-col lg:flex-row gap-6 p-4 lg:p-6 overflow-y-auto">
             {/* Table List */}
-            <div className="w-full lg:w-1/3 bg-white rounded-xl shadow-sm overflow-hidden flex flex-col max-h-[300px] lg:max-h-none lg:h-auto border border-gray-200">
+            <div className="w-full lg:w-1/3 bg-white rounded-xl shadow-sm overflow-hidden flex flex-col max-h-[300px] lg:max-h-[calc(100vh-48px)] border border-gray-200">
                 <div className="p-4 bg-gray-800 text-white font-bold flex justify-between items-center">
                     <span>Mesas Abertas</span>
                     <span className="text-xs bg-red-500 px-2 py-1 rounded-full">{occupiedTables.length}</span>
@@ -247,7 +247,7 @@ export const CashierDashboard: React.FC = () => {
       {activeTab === 'PDV' && (
           <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
               {/* Left Column: Product Selection */}
-              <div className="flex-1 flex flex-col border-r border-gray-200 bg-white">
+              <div className="flex-1 flex flex-col border-b lg:border-b-0 lg:border-r border-gray-200 bg-white h-1/2 lg:h-auto">
                   {/* Search Header */}
                   <div className="p-4 border-b border-gray-200 bg-gray-50 flex gap-4 items-center">
                       <div className="relative flex-1">
@@ -255,7 +255,7 @@ export const CashierDashboard: React.FC = () => {
                           <input 
                               type="text" 
                               className="w-full pl-10 pr-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-                              placeholder="Buscar produto (Nome ou Cód)..."
+                              placeholder="Buscar produto..."
                               value={posSearch}
                               onChange={e => setPosSearch(e.target.value)}
                               autoFocus
@@ -266,7 +266,7 @@ export const CashierDashboard: React.FC = () => {
                           value={posCategory}
                           onChange={e => setPosCategory(e.target.value)}
                       >
-                          <option value="Todos">Todas Categorias</option>
+                          <option value="Todos">Todas</option>
                           {Array.from(new Set(state.products.map(p => p.category))).map(c => (
                               <option key={c} value={c}>{c}</option>
                           ))}
@@ -300,14 +300,14 @@ export const CashierDashboard: React.FC = () => {
               </div>
 
               {/* Right Column: Cart & Payment */}
-              <div className="w-full lg:w-96 bg-white flex flex-col border-l border-gray-200 shadow-xl z-20">
-                  <div className="p-4 bg-slate-800 text-white flex justify-between items-center">
+              <div className="w-full lg:w-96 bg-white flex flex-col lg:border-l border-gray-200 shadow-xl z-20 h-1/2 lg:h-auto">
+                  <div className="p-4 bg-slate-800 text-white flex justify-between items-center shrink-0">
                       <h3 className="font-bold flex items-center gap-2"><ShoppingCart size={20}/> Venda Balcão</h3>
                       <span className="bg-blue-600 text-xs px-2 py-1 rounded font-bold">{posCart.reduce((a,b)=>a+b.quantity,0)} Itens</span>
                   </div>
 
                   {/* Customer Input */}
-                  <div className="p-3 bg-gray-50 border-b">
+                  <div className="p-3 bg-gray-50 border-b shrink-0">
                       <input 
                           type="text" 
                           placeholder="Nome do Cliente (Opcional)"
@@ -344,7 +344,7 @@ export const CashierDashboard: React.FC = () => {
                   </div>
 
                   {/* Footer Totals */}
-                  <div className="p-4 bg-gray-50 border-t">
+                  <div className="p-4 bg-gray-50 border-t shrink-0">
                       <div className="flex justify-between items-center mb-4">
                           <span className="text-gray-600">Subtotal</span>
                           <span className="text-2xl font-bold text-gray-900">R$ {posTotal.toFixed(2)}</span>
@@ -365,51 +365,53 @@ export const CashierDashboard: React.FC = () => {
           <div className="flex-1 p-4 lg:p-8 h-screen overflow-y-auto">
               <h2 className="text-2xl font-bold text-gray-800 mb-6">Histórico de Transações</h2>
               
-              <div className="bg-white rounded-xl shadow-sm border overflow-hidden overflow-x-auto">
-                   <table className="w-full text-left min-w-[700px]">
-                        <thead className="bg-gray-100 text-gray-600 text-sm">
-                            <tr>
-                                <th className="p-4">ID</th>
-                                <th className="p-4">Data/Hora</th>
-                                <th className="p-4">Ref.</th>
-                                <th className="p-4">Resumo</th>
-                                <th className="p-4">Caixa</th>
-                                <th className="p-4">Método</th>
-                                <th className="p-4 text-right">Valor</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {[...state.transactions].reverse().map(t => (
-                                <tr key={t.id} className="border-b hover:bg-gray-50">
-                                    <td className="p-4 font-mono text-xs text-gray-500">{t.id.slice(0, 8)}...</td>
-                                    <td className="p-4 text-sm">{t.timestamp.toLocaleString()}</td>
-                                    <td className="p-4 font-bold">{t.tableNumber > 0 ? `Mesa ${t.tableNumber}` : 'Balcão (PDV)'}</td>
-                                    <td className="p-4 text-sm text-gray-600 max-w-xs truncate" title={t.itemsSummary}>{t.itemsSummary}</td>
-                                    <td className="p-4 text-sm">{t.cashierName}</td>
-                                    <td className="p-4">
-                                        <span className={`px-2 py-1 rounded text-xs font-bold whitespace-nowrap
-                                            ${t.method === 'PIX' ? 'bg-purple-100 text-purple-700' : ''}
-                                            ${t.method === 'CREDIT' ? 'bg-blue-100 text-blue-700' : ''}
-                                            ${t.method === 'DEBIT' ? 'bg-cyan-100 text-cyan-700' : ''}
-                                            ${t.method === 'CASH' ? 'bg-green-100 text-green-700' : ''}
-                                            ${t.method === 'CARD' ? 'bg-gray-100 text-gray-700' : ''} 
-                                        `}>
-                                            {t.method === 'CREDIT' ? 'CRÉDITO' : 
-                                             t.method === 'DEBIT' ? 'DÉBITO' : 
-                                             t.method === 'CASH' ? 'DINHEIRO' : 
-                                             t.method === 'CARD' ? 'CARTÃO' : t.method}
-                                        </span>
-                                    </td>
-                                    <td className="p-4 text-right font-bold text-gray-800">R$ {t.amount.toFixed(2)}</td>
-                                </tr>
-                            ))}
-                            {state.transactions.length === 0 && (
+              <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+                   <div className="overflow-x-auto">
+                       <table className="w-full text-left min-w-[700px]">
+                            <thead className="bg-gray-100 text-gray-600 text-sm">
                                 <tr>
-                                    <td colSpan={7} className="p-8 text-center text-gray-400">Nenhuma venda registrada ainda.</td>
+                                    <th className="p-4">ID</th>
+                                    <th className="p-4">Data/Hora</th>
+                                    <th className="p-4">Ref.</th>
+                                    <th className="p-4">Resumo</th>
+                                    <th className="p-4">Caixa</th>
+                                    <th className="p-4">Método</th>
+                                    <th className="p-4 text-right">Valor</th>
                                 </tr>
-                            )}
-                        </tbody>
-                   </table>
+                            </thead>
+                            <tbody>
+                                {[...state.transactions].reverse().map(t => (
+                                    <tr key={t.id} className="border-b hover:bg-gray-50">
+                                        <td className="p-4 font-mono text-xs text-gray-500">{t.id.slice(0, 8)}...</td>
+                                        <td className="p-4 text-sm">{t.timestamp.toLocaleString()}</td>
+                                        <td className="p-4 font-bold">{t.tableNumber > 0 ? `Mesa ${t.tableNumber}` : 'Balcão (PDV)'}</td>
+                                        <td className="p-4 text-sm text-gray-600 max-w-xs truncate" title={t.itemsSummary}>{t.itemsSummary}</td>
+                                        <td className="p-4 text-sm">{t.cashierName}</td>
+                                        <td className="p-4">
+                                            <span className={`px-2 py-1 rounded text-xs font-bold whitespace-nowrap
+                                                ${t.method === 'PIX' ? 'bg-purple-100 text-purple-700' : ''}
+                                                ${t.method === 'CREDIT' ? 'bg-blue-100 text-blue-700' : ''}
+                                                ${t.method === 'DEBIT' ? 'bg-cyan-100 text-cyan-700' : ''}
+                                                ${t.method === 'CASH' ? 'bg-green-100 text-green-700' : ''}
+                                                ${t.method === 'CARD' ? 'bg-gray-100 text-gray-700' : ''} 
+                                            `}>
+                                                {t.method === 'CREDIT' ? 'CRÉDITO' : 
+                                                 t.method === 'DEBIT' ? 'DÉBITO' : 
+                                                 t.method === 'CASH' ? 'DINHEIRO' : 
+                                                 t.method === 'CARD' ? 'CARTÃO' : t.method}
+                                            </span>
+                                        </td>
+                                        <td className="p-4 text-right font-bold text-gray-800">R$ {t.amount.toFixed(2)}</td>
+                                    </tr>
+                                ))}
+                                {state.transactions.length === 0 && (
+                                    <tr>
+                                        <td colSpan={7} className="p-8 text-center text-gray-400">Nenhuma venda registrada ainda.</td>
+                                    </tr>
+                                )}
+                            </tbody>
+                       </table>
+                   </div>
               </div>
           </div>
       )}
