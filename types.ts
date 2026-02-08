@@ -224,3 +224,10 @@ export interface Expense {
     isPaid: boolean;
     supplierId?: string;
 }
+
+export interface POSSaleData {
+    customerName: string;
+    items: { productId: string; quantity: number; notes: string }[];
+    totalAmount: number;
+    method: 'CASH' | 'CARD' | 'PIX' | 'CREDIT' | 'DEBIT';
+}

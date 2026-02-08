@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, useEffect, useState } from 'react';
-import { Table, Order, Product, TableStatus, OrderStatus, ProductType, RestaurantTheme, User, AuditLog, Transaction, Role, ServiceCall, OnlineUser, PlanLimits, InventoryItem, Expense, Supplier, InventoryRecipeItem, PurchaseEntry } from '../types';
+import { Table, Order, Product, TableStatus, OrderStatus, ProductType, RestaurantTheme, User, AuditLog, Transaction, Role, ServiceCall, OnlineUser, PlanLimits, InventoryItem, Expense, Supplier, InventoryRecipeItem, PurchaseEntry, POSSaleData } from '../types';
 import { getTenantSlug } from '../utils/tenant';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { useUI } from './UIContext';
@@ -62,6 +62,7 @@ type Action =
   | { type: 'DELETE_PRODUCT'; productId: string }
   | { type: 'UPDATE_THEME'; theme: RestaurantTheme }
   | { type: 'PROCESS_PAYMENT'; tableId: string; amount: number; method: 'CASH' | 'CARD' | 'PIX' | 'CREDIT' | 'DEBIT' }
+  | { type: 'PROCESS_POS_SALE'; sale: POSSaleData } // NEW: Venda Direta PDV
   | { type: 'CALL_WAITER'; tableId: string }
   | { type: 'RESOLVE_WAITER_CALL'; callId: string }
   | { type: 'PLAY_SOUND'; soundType: 'KITCHEN' | 'WAITER' }
@@ -635,6 +636,86 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             is_visible: action.product.isVisible,
             sort_order: action.product.sortOrder
         }).eq('id', action.product.id);
+        return;
+    }
+
+    // --- POS SALE (DIRECT SALE) ---
+    if (action.type === 'PROCESS_POS_SALE' && tenantId) {
+        const { data: orderData, error } = await supabase.from('orders').insert({
+            tenant_id: tenantId,
+            table_id: null, // Sem mesa associada
+            status: 'DELIVERED', // Já entregue/finalizado
+            is_paid: true
+        }).select().single();
+
+        if (orderData && !error) {
+            const itemsToInsert = action.sale.items.map(item => {
+                const product = state.products.find(p => p.id === item.productId);
+                return {
+                    tenant_id: tenantId,
+                    order_id: orderData.id,
+                    product_id: item.productId,
+                    product_name: product?.name || 'Unknown',
+                    product_price: product?.price || 0,
+                    product_type: product?.type || 'KITCHEN',
+                    quantity: item.quantity,
+                    notes: item.notes,
+                    status: 'DELIVERED'
+                };
+            });
+            await supabase.from('order_items').insert(itemsToInsert);
+
+            // Register Transaction
+            const itemsSummary = action.sale.items.map(i => `${i.quantity}x ${state.products.find(p => p.id === i.productId)?.name}`).join(', ');
+            await supabase.from('transactions').insert({
+                tenant_id: tenantId,
+                table_number: 0,
+                table_id: null,
+                amount: action.sale.totalAmount,
+                method: action.sale.method,
+                items_summary: `PDV: ${itemsSummary}`,
+                cashier_name: state.currentUser?.name || 'Caixa'
+            });
+
+            // --- STOCK DEDUCTION LOGIC (Copied from PLACE_ORDER but adapted) ---
+            for (const item of action.sale.items) {
+                const product = state.products.find(p => p.id === item.productId);
+                if (!product || !product.linkedInventoryItemId) continue;
+
+                const invItem = state.inventory.find(i => i.id === product.linkedInventoryItemId);
+                if (!invItem) continue;
+
+                if (invItem.type === 'RESALE') {
+                    const newQty = Number(invItem.quantity) - Number(item.quantity);
+                    await supabase.from('inventory_items').update({ quantity: newQty }).eq('id', invItem.id);
+                    await supabase.from('inventory_logs').insert({
+                        tenant_id: tenantId,
+                        item_id: invItem.id,
+                        type: 'SALE',
+                        quantity: item.quantity,
+                        reason: `Venda PDV #${orderData.id.slice(0,4)}`,
+                        user_name: state.currentUser?.name
+                    });
+                } else if (invItem.type === 'COMPOSITE' && invItem.recipe) {
+                    for (const recipeItem of invItem.recipe) {
+                        const ingredient = state.inventory.find(i => i.id === recipeItem.ingredientId);
+                        if(ingredient) {
+                            const totalNeeded = Number(recipeItem.quantity) * Number(item.quantity);
+                            const newQty = Number(ingredient.quantity) - totalNeeded;
+                            await supabase.from('inventory_items').update({ quantity: newQty }).eq('id', ingredient.id);
+                            await supabase.from('inventory_logs').insert({
+                                tenant_id: tenantId,
+                                item_id: ingredient.id,
+                                type: 'SALE',
+                                quantity: totalNeeded,
+                                reason: `Venda PDV ${product.name}`,
+                                user_name: state.currentUser?.name
+                            });
+                        }
+                    }
+                }
+            }
+        }
         return;
     }
 
