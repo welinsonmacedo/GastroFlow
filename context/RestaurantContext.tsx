@@ -5,6 +5,17 @@ import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { useUI } from './UIContext';
 
 // --- Types ---
+export interface InventoryLog {
+    id: string;
+    item_id: string;
+    item_name?: string; // Join
+    type: 'IN' | 'OUT' | 'SALE' | 'LOSS';
+    quantity: number;
+    reason: string;
+    user_name: string;
+    created_at: Date;
+}
+
 interface State {
   isLoading: boolean;
   tenantSlug: string | null;
@@ -25,6 +36,7 @@ interface State {
   audioUnlocked: boolean;
   // ERP STATES
   inventory: InventoryItem[];
+  inventoryLogs: InventoryLog[]; // Novo Estado
   expenses: Expense[];
   suppliers: Supplier[];
   // CASHIER STATES
@@ -47,6 +59,7 @@ type Action =
   | { type: 'REALTIME_UPDATE_AUDIT_LOGS'; auditLogs: AuditLog[] }
   | { type: 'REALTIME_UPDATE_SERVICE_CALLS'; calls: ServiceCall[] }
   | { type: 'REALTIME_UPDATE_INVENTORY'; inventory: InventoryItem[] }
+  | { type: 'REALTIME_UPDATE_INVENTORY_LOGS'; logs: InventoryLog[] }
   | { type: 'REALTIME_UPDATE_EXPENSES'; expenses: Expense[] }
   | { type: 'REALTIME_UPDATE_SUPPLIERS'; suppliers: Supplier[] }
   | { type: 'REALTIME_UPDATE_CASH_SESSION'; session: CashSession | null }
@@ -117,6 +130,7 @@ const initialState: State = {
   onlineUsers: [],
   audioUnlocked: false,
   inventory: [],
+  inventoryLogs: [],
   expenses: [],
   suppliers: [],
   activeCashSession: null,
@@ -176,6 +190,7 @@ const restaurantReducer = (state: State, action: Action): State => {
         if (newPending > oldPending && (state.currentUser?.role === Role.WAITER || state.currentUser?.role === Role.ADMIN)) playSoundSafely(waiterSound);
         return { ...state, serviceCalls: action.calls };
     case 'REALTIME_UPDATE_INVENTORY': return { ...state, inventory: action.inventory };
+    case 'REALTIME_UPDATE_INVENTORY_LOGS': return { ...state, inventoryLogs: action.logs };
     case 'REALTIME_UPDATE_EXPENSES': return { ...state, expenses: action.expenses };
     case 'REALTIME_UPDATE_SUPPLIERS': return { ...state, suppliers: action.suppliers };
     case 'REALTIME_UPDATE_CASH_SESSION': return { ...state, activeCashSession: action.session };
@@ -222,8 +237,6 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             let currentLimits = initialState.planLimits;
             const { data: planData } = await supabase.from('plans').select('limits').eq('key', tenant.plan).maybeSingle();
             if (planData?.limits) {
-                // Merge inteligente: Se a chave existir no banco, usa ela. Se não, usa o default (true)
-                // Isso evita que novas features fiquem como 'undefined' ou 'false' por acidente em planos legados.
                 currentLimits = { 
                     ...initialState.planLimits, 
                     ...Object.fromEntries(
@@ -237,7 +250,7 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             // Fetch Initial Data + Active Cash Session
             const [
                 usersRes, productsRes, tablesRes, ordersRes, transactionsRes, auditRes, callsRes,
-                invRes, expRes, suppRes, invRecipesRes, cashSessionRes
+                invRes, expRes, suppRes, invRecipesRes, cashSessionRes, invLogsRes
             ] = await Promise.all([
                 supabase.from('staff').select('*').eq('tenant_id', tenant.id),
                 supabase.from('products').select('*').eq('tenant_id', tenant.id),
@@ -250,7 +263,8 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 supabase.from('expenses').select('*').eq('tenant_id', tenant.id).order('due_date', { ascending: true }),
                 supabase.from('suppliers').select('*').eq('tenant_id', tenant.id),
                 supabase.from('inventory_recipes').select('*').eq('tenant_id', tenant.id),
-                supabase.from('cash_sessions').select('*').eq('tenant_id', tenant.id).eq('status', 'OPEN').maybeSingle()
+                supabase.from('cash_sessions').select('*').eq('tenant_id', tenant.id).eq('status', 'OPEN').maybeSingle(),
+                supabase.from('inventory_logs').select('*').eq('tenant_id', tenant.id).order('created_at', { ascending: false }).limit(100)
             ]);
 
             const mappedUsers = (usersRes.data || []).map(u => ({ id: u.id, name: u.name, role: u.role, pin: u.pin, auth_user_id: u.auth_user_id, email: u.email, allowedRoutes: u.allowed_routes || [] }));
@@ -307,6 +321,16 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 };
             });
 
+            const mappedInventoryLogs: InventoryLog[] = (invLogsRes.data || []).map(l => ({
+                id: l.id,
+                item_id: l.item_id,
+                type: l.type,
+                quantity: l.quantity,
+                reason: l.reason,
+                user_name: l.user_name,
+                created_at: new Date(l.created_at)
+            }));
+
             const mappedProducts: Product[] = (productsRes.data || []).map(p => ({
                 id: p.id,
                 linkedInventoryItemId: p.linked_inventory_item_id, 
@@ -343,6 +367,7 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                     users: mappedUsers, products: mappedProducts, tables: mappedTables, orders: mappedOrders,
                     transactions: mappedTransactions, auditLogs: mappedAuditLogs, serviceCalls: mappedCalls,
                     currentUser: autoLoggedUser, planLimits: currentLimits, inventory: mappedInventory,
+                    inventoryLogs: mappedInventoryLogs,
                     expenses: mappedExpenses, suppliers: mappedSuppliers,
                     activeCashSession, cashMovements
                 }
@@ -384,6 +409,29 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         }
     };
 
+    // Helper: Re-fetch Logs
+    const fetchLogs = async () => {
+        const { data: logs } = await supabase.from('inventory_logs').select('*').eq('tenant_id', tenantId).order('created_at', { ascending: false }).limit(100);
+        if (logs) {
+            const mapped: InventoryLog[] = logs.map(l => ({
+                id: l.id,
+                item_id: l.item_id,
+                type: l.type,
+                quantity: l.quantity,
+                reason: l.reason,
+                user_name: l.user_name,
+                created_at: new Date(l.created_at)
+            }));
+            dispatchLocal({ type: 'REALTIME_UPDATE_INVENTORY_LOGS', logs: mapped });
+        }
+    };
+
+    // Helper: Re-fetch Suppliers
+    const fetchSuppliers = async () => {
+        const { data } = await supabase.from('suppliers').select('*').eq('tenant_id', tenantId);
+        if(data) dispatchLocal({ type: 'REALTIME_UPDATE_SUPPLIERS', suppliers: data.map(s => ({ id: s.id, name: s.name, contactName: s.contact_name, phone: s.phone })) });
+    }
+
     // Helper: Re-fetch Cash Data
     const fetchCashData = async () => {
         const { data: sessionData } = await supabase.from('cash_sessions').select('*').eq('tenant_id', tenantId).eq('status', 'OPEN').maybeSingle();
@@ -420,6 +468,8 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const channel = supabase.channel(`restaurant_updates:${tenantId}`)
         // Inventory Updates
         .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory_items', filter: `tenant_id=eq.${tenantId}` }, fetchInventory)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory_logs', filter: `tenant_id=eq.${tenantId}` }, fetchLogs)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'suppliers', filter: `tenant_id=eq.${tenantId}` }, fetchSuppliers)
         // Cashier Updates
         .on('postgres_changes', { event: '*', schema: 'public', table: 'cash_sessions', filter: `tenant_id=eq.${tenantId}` }, fetchCashData)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'cash_movements', filter: `tenant_id=eq.${tenantId}` }, fetchCashData)
@@ -526,7 +576,7 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             const { supplierId, invoiceNumber, items, totalAmount, installments, taxAmount, distributeTax } = action.purchase;
             const supplier = state.suppliers.find(s => s.id === supplierId);
 
-            // 1. Create Expenses
+            // 1. Create Expenses (Installments)
             for (const [index, inst] of installments.entries()) {
                 await supabase.from('expenses').insert({
                     tenant_id: tenantId,
@@ -539,7 +589,7 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 });
             }
 
-            // 2. Update Inventory (Qty & Cost Price)
+            // 2. Update Inventory (Qty & Cost Price) & Logs
             const totalItemsValue = items.reduce((acc, i) => acc + i.totalPrice, 0);
             
             // Clone inventory for optimistic update
@@ -553,11 +603,16 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                     const incomingQty = Number(item.quantity);
                     let incomingCost = Number(item.unitPrice);
 
+                    // Distribute tax proportionally if enabled
                     if (distributeTax && totalItemsValue > 0 && taxAmount > 0) {
-                        const itemShare = (item.totalPrice / totalItemsValue) * taxAmount;
-                        incomingCost = (item.totalPrice + itemShare) / incomingQty;
+                        const itemShareRatio = item.totalPrice / totalItemsValue;
+                        const taxShare = taxAmount * itemShareRatio;
+                        // Tax share per unit
+                        const taxPerUnit = taxShare / incomingQty;
+                        incomingCost += taxPerUnit;
                     }
 
+                    // Weighted Average Cost Calculation
                     let newCost = incomingCost;
                     if (currentQty > 0) {
                         newCost = ((currentQty * currentCost) + (incomingQty * incomingCost)) / (currentQty + incomingQty);
@@ -571,11 +626,12 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                         cost_price: newCost
                     }).eq('id', item.inventoryItemId);
 
-                    // Sync Product Cost
+                    // Sync Product Cost if linked
                     await supabase.from('products').update({
                         cost_price: newCost
                     }).eq('linked_inventory_item_id', item.inventoryItemId);
 
+                    // Log
                     await supabase.from('inventory_logs').insert({
                         tenant_id: tenantId,
                         item_id: item.inventoryItemId,
@@ -617,7 +673,7 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                         await supabase.from('inventory_logs').insert({
                             tenant_id: tenantId,
                             item_id: adj.itemId,
-                            type: diff > 0 ? 'IN' : 'OUT',
+                            type: diff > 0 ? 'IN' : 'OUT', // Positive diff means we found more (IN), Negative means loss (OUT)
                             quantity: Math.abs(diff),
                             reason: `Inventário: Ajuste ${diff > 0 ? 'Sobra' : 'Perda'}`,
                             user_name: state.currentUser?.name
@@ -660,6 +716,7 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
     if (action.type === 'DELETE_SUPPLIER' && tenantId) {
         await supabase.from('suppliers').delete().eq('id', action.supplierId);
+        // O realtime cuidará da atualização da lista
         return;
     }
 

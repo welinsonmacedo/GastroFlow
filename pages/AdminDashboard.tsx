@@ -230,9 +230,18 @@ export const AdminDashboard: React.FC = () => {
       e.preventDefault();
       if(!newSupplier.name) return;
       dispatch({ type: 'ADD_SUPPLIER', supplier: { ...newSupplier, id: '' } as Supplier });
-      setSupplierModalOpen(false);
+      // Não fecha o modal, apenas limpa o form para permitir múltiplos cadastros ou visualização
       setNewSupplier({ name: '', contactName: '', phone: '' });
       showAlert({ title: "Sucesso", message: "Fornecedor adicionado!", type: 'SUCCESS' });
+  };
+
+  const handleDeleteSupplier = (id: string) => {
+      showConfirm({
+          title: "Excluir Fornecedor",
+          message: "Confirma a exclusão deste fornecedor?",
+          type: 'WARNING',
+          onConfirm: () => dispatch({ type: 'DELETE_SUPPLIER', supplierId: id })
+      });
   };
 
   // --- PURCHASE ENTRY LOGIC ---
@@ -301,9 +310,16 @@ export const AdminDashboard: React.FC = () => {
 
       const totalItems = purchaseForm.items.reduce((acc, i) => acc + i.totalPrice, 0);
       const grandTotal = totalItems + Number(purchaseForm.taxAmount || 0);
-      const totalInstallments = paymentInstallments.reduce((acc, i) => acc + i.amount, 0);
+      
+      // Se não gerou parcelas, gera uma à vista automaticamente
+      let finalInstallments = paymentInstallments;
+      if (finalInstallments.length === 0) {
+          finalInstallments = [{ amount: grandTotal, dueDate: new Date(purchaseForm.date) }];
+      }
 
-      if (paymentInstallments.length > 0 && Math.abs(grandTotal - totalInstallments) > 0.05) {
+      const totalInstallments = finalInstallments.reduce((acc, i) => acc + i.amount, 0);
+
+      if (Math.abs(grandTotal - totalInstallments) > 0.05) {
           showAlert({ 
               title: "Divergência", 
               message: `O valor das parcelas (R$ ${totalInstallments.toFixed(2)}) não bate com o total da nota (R$ ${grandTotal.toFixed(2)}). Gere as parcelas novamente.`, 
@@ -318,7 +334,7 @@ export const AdminDashboard: React.FC = () => {
               ...purchaseForm,
               date: new Date(purchaseForm.date),
               totalAmount: grandTotal,
-              installments: paymentInstallments.length > 0 ? paymentInstallments : [{ amount: grandTotal, dueDate: new Date(purchaseForm.date) }] // Fallback se não gerou parcelas
+              installments: finalInstallments
           }
       });
 
@@ -467,7 +483,9 @@ export const AdminDashboard: React.FC = () => {
             )}
 
             {activeTab === 'PRODUCTS' && (
+                // ... (Existing Products Tab Logic - No Changes Needed here)
                 <div className="space-y-6">
+                    {/* ... Same content ... */}
                     <div className="flex justify-between items-center bg-white p-6 rounded-xl shadow-sm">
                         <div>
                             <h2 className="text-2xl font-bold text-gray-800">Cardápio de Venda</h2>
@@ -475,8 +493,8 @@ export const AdminDashboard: React.FC = () => {
                         </div>
                         <Button onClick={() => setMenuModalOpen(true)}><Plus size={16}/> Adicionar Produto</Button>
                     </div>
-
-                    {/* Drag and Drop List */}
+                    {/* ... Products List and Modal ... */}
+                    {/* Reusing existing implementation structure for brevity as requested only changes to Inventory/Finance/Etc */}
                     <div className="bg-white rounded-xl shadow-sm border p-4">
                         {sortedProducts.map((product, index) => (
                             <div 
@@ -507,13 +525,11 @@ export const AdminDashboard: React.FC = () => {
                             </div>
                         ))}
                     </div>
-
-                    {/* Modal Add/Edit Product */}
+                    {/* Modal Menu ... */}
                     {(menuModalOpen || editingProduct) && (
                         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
                             <div className="bg-white p-6 rounded-xl shadow-xl w-full max-w-lg">
                                 <h3 className="font-bold text-lg mb-4">{editingProduct ? 'Editar Produto' : 'Adicionar ao Cardápio'}</h3>
-                                
                                 {!editingProduct && (
                                     <div className="mb-4">
                                         <label className="block text-xs font-bold mb-1">Selecione do Estoque (Obrigatório)</label>
@@ -529,43 +545,18 @@ export const AdminDashboard: React.FC = () => {
                                         </select>
                                     </div>
                                 )}
-
                                 <div className="space-y-3">
-                                    <input 
-                                        placeholder="Nome de Exibição" 
-                                        className="w-full border p-2 rounded" 
-                                        value={editingProduct ? editingProduct.name : newProductForm.name} 
-                                        onChange={e => editingProduct ? setEditingProduct({...editingProduct, name: e.target.value}) : setNewProductForm({...newProductForm, name: e.target.value})} 
-                                    />
-                                    <input 
-                                        placeholder="Preço de Venda" 
-                                        type="number"
-                                        className="w-full border p-2 rounded" 
-                                        value={editingProduct ? editingProduct.price : newProductForm.price} 
-                                        onChange={e => editingProduct ? setEditingProduct({...editingProduct, price: parseFloat(e.target.value)}) : setNewProductForm({...newProductForm, price: parseFloat(e.target.value)})} 
-                                    />
-                                    <textarea 
-                                        placeholder="Descrição" 
-                                        className="w-full border p-2 rounded" 
-                                        value={editingProduct ? editingProduct.description : newProductForm.description} 
-                                        onChange={e => editingProduct ? setEditingProduct({...editingProduct, description: e.target.value}) : setNewProductForm({...newProductForm, description: e.target.value})} 
-                                    />
-                                    <select 
-                                        className="w-full border p-2 rounded" 
-                                        value={editingProduct ? editingProduct.category : newProductForm.category}
-                                        onChange={e => editingProduct ? setEditingProduct({...editingProduct, category: e.target.value}) : setNewProductForm({...newProductForm, category: e.target.value})}
-                                    >
+                                    <input placeholder="Nome de Exibição" className="w-full border p-2 rounded" value={editingProduct ? editingProduct.name : newProductForm.name} onChange={e => editingProduct ? setEditingProduct({...editingProduct, name: e.target.value}) : setNewProductForm({...newProductForm, name: e.target.value})} />
+                                    <input placeholder="Preço de Venda" type="number" className="w-full border p-2 rounded" value={editingProduct ? editingProduct.price : newProductForm.price} onChange={e => editingProduct ? setEditingProduct({...editingProduct, price: parseFloat(e.target.value)}) : setNewProductForm({...newProductForm, price: parseFloat(e.target.value)})} />
+                                    <textarea placeholder="Descrição" className="w-full border p-2 rounded" value={editingProduct ? editingProduct.description : newProductForm.description} onChange={e => editingProduct ? setEditingProduct({...editingProduct, description: e.target.value}) : setNewProductForm({...newProductForm, description: e.target.value})} />
+                                    <select className="w-full border p-2 rounded" value={editingProduct ? editingProduct.category : newProductForm.category} onChange={e => editingProduct ? setEditingProduct({...editingProduct, category: e.target.value}) : setNewProductForm({...newProductForm, category: e.target.value})} >
                                         {['Lanches', 'Pizzas', 'Pratos Principais', 'Acompanhamentos', 'Bebidas', 'Sobremesas'].map(c => <option key={c} value={c}>{c}</option>)}
                                     </select>
                                     <div>
                                         <label className="block text-xs font-bold mb-1">Imagem</label>
-                                        <ImageUploader 
-                                            value={editingProduct ? editingProduct.image : newProductForm.image || ''} 
-                                            onChange={(val) => editingProduct ? setEditingProduct({...editingProduct, image: val}) : setNewProductForm({...newProductForm, image: val})} 
-                                        />
+                                        <ImageUploader value={editingProduct ? editingProduct.image : newProductForm.image || ''} onChange={(val) => editingProduct ? setEditingProduct({...editingProduct, image: val}) : setNewProductForm({...newProductForm, image: val})} />
                                     </div>
                                 </div>
-
                                 <div className="flex gap-2 mt-4">
                                     <Button variant="secondary" onClick={() => { setMenuModalOpen(false); setEditingProduct(null); }} className="flex-1">Cancelar</Button>
                                     <Button onClick={editingProduct ? handleUpdateMenuProduct : handleAddProductToMenu} className="flex-1">Salvar</Button>
@@ -577,6 +568,7 @@ export const AdminDashboard: React.FC = () => {
             )}
 
             {activeTab === 'ACCOUNTING' && planLimits.allowReports && (
+               // ... Existing Accounting Tab ...
                <div className="space-y-6">
                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-6 rounded-xl shadow-sm gap-4 print:hidden">
                         <div>
@@ -590,11 +582,10 @@ export const AdminDashboard: React.FC = () => {
                             <Button variant="secondary" onClick={() => window.print()}><Printer size={16}/> Imprimir</Button>
                         </div>
                     </div>
-                    
+                    {/* Stats */}
                     <div className="bg-white p-8 rounded-xl shadow-sm border print:border-none print:shadow-none">
                         <h1 className="text-3xl font-bold text-center mb-2 print:block hidden">{state.theme.restaurantName} - Relatório Financeiro</h1>
                         <p className="text-center text-gray-500 mb-8 print:block hidden">Período: {new Date(accountingDateStart).toLocaleDateString()} a {new Date(accountingDateEnd).toLocaleDateString()}</p>
-
                         <div className="grid grid-cols-3 gap-6 mb-8 text-center">
                             <div className="p-4 bg-gray-50 rounded-lg">
                                 <span className="block text-gray-500 text-sm uppercase">Receita Bruta</span>
@@ -609,7 +600,7 @@ export const AdminDashboard: React.FC = () => {
                                 <span className="text-3xl font-bold text-blue-800">R$ {accountingData.netIncome.toFixed(2)}</span>
                             </div>
                         </div>
-
+                        {/* Details */}
                         <div className="grid md:grid-cols-2 gap-8">
                             <div>
                                 <h3 className="font-bold border-b pb-2 mb-4">Receita por Método</h3>
@@ -638,9 +629,10 @@ export const AdminDashboard: React.FC = () => {
                </div>
             )}
 
-            {/* --- INVENTORY TAB --- */}
+            {/* --- INVENTORY TAB (REFACTORED) --- */}
             {activeTab === 'INVENTORY' && planLimits.allowInventory && (
                 <div className="space-y-6">
+                    {/* Header Actions */}
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-6 rounded-xl shadow-sm gap-4">
                         <div>
                             <h2 className="text-2xl font-bold text-gray-800">Estoque</h2>
@@ -651,15 +643,316 @@ export const AdminDashboard: React.FC = () => {
                                 <>
                                     <Button onClick={() => setPurchaseHistoryOpen(true)} variant="outline" className="flex items-center gap-2 text-xs md:text-sm flex-1 md:flex-none"><FileText size={16}/> Histórico</Button>
                                     <Button onClick={() => setSupplierModalOpen(true)} variant="outline" className="flex items-center gap-2 text-xs md:text-sm flex-1 md:flex-none"><Truck size={16}/> Fornecedores</Button>
-                                    <Button onClick={() => setPurchaseModalOpen(true)} variant="secondary" className="flex items-center gap-2 bg-blue-100 text-blue-700 hover:bg-blue-200 border-blue-200 text-xs md:text-sm flex-1 md:flex-none"><FileText size={16}/> Entrada</Button>
+                                    <Button onClick={() => setPurchaseModalOpen(true)} variant="secondary" className="flex items-center gap-2 bg-blue-100 text-blue-700 hover:bg-blue-200 border-blue-200 text-xs md:text-sm flex-1 md:flex-none"><FileText size={16}/> Entrada Nota</Button>
                                 </>
                             )}
                             <Button onClick={handleInventoryInit} variant="secondary" className="flex items-center gap-2 bg-yellow-100 text-yellow-800 hover:bg-yellow-200 border-yellow-200 text-xs md:text-sm flex-1 md:flex-none"><ClipboardList size={16}/> Inventário</Button>
-                            <Button onClick={() => { setEditingInventory({ name: '', unit: 'UN', type: 'INGREDIENT', quantity: 0, minQuantity: 5, costPrice: 0, image: '' }); setInvRecipeStep([]); }} className="text-xs md:text-sm flex-1 md:flex-none"><Plus size={16}/> Novo</Button>
+                            <Button onClick={() => { setEditingInventory({ name: '', unit: 'UN', type: 'INGREDIENT', quantity: 0, minQuantity: 5, costPrice: 0, image: '' }); setInvRecipeStep([]); }} className="text-xs md:text-sm flex-1 md:flex-none"><Plus size={16}/> Novo Item</Button>
                         </div>
                     </div>
 
-                    {/* Modais de Estoque */}
+                    {/* MODAL HISTÓRICO (Logs) */}
+                    {purchaseHistoryOpen && (
+                        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                            <div className="bg-white p-6 rounded-xl shadow-xl w-full max-w-4xl h-[80vh] flex flex-col">
+                                <div className="flex justify-between items-center mb-4">
+                                    <h3 className="font-bold text-xl">Histórico de Movimentações</h3>
+                                    <button onClick={() => setPurchaseHistoryOpen(false)}><X size={24}/></button>
+                                </div>
+                                <div className="flex-1 overflow-y-auto border rounded-lg">
+                                    <table className="w-full text-left text-sm">
+                                        <thead className="bg-gray-50 text-gray-600 sticky top-0">
+                                            <tr>
+                                                <th className="p-3">Data</th>
+                                                <th className="p-3">Item</th>
+                                                <th className="p-3">Tipo</th>
+                                                <th className="p-3 text-right">Qtd</th>
+                                                <th className="p-3">Motivo</th>
+                                                <th className="p-3">Usuário</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y">
+                                            {state.inventoryLogs.map(log => {
+                                                const item = state.inventory.find(i => i.id === log.item_id);
+                                                return (
+                                                    <tr key={log.id} className="hover:bg-gray-50">
+                                                        <td className="p-3 whitespace-nowrap">{log.created_at.toLocaleString()}</td>
+                                                        <td className="p-3 font-medium">{item?.name || log.item_id.slice(0,8)}</td>
+                                                        <td className="p-3">
+                                                            <span className={`px-2 py-1 rounded text-xs font-bold
+                                                                ${log.type === 'IN' ? 'bg-green-100 text-green-700' : ''}
+                                                                ${log.type === 'OUT' ? 'bg-red-100 text-red-700' : ''}
+                                                                ${log.type === 'SALE' ? 'bg-blue-100 text-blue-700' : ''}
+                                                                ${log.type === 'LOSS' ? 'bg-red-200 text-red-800' : ''}
+                                                            `}>
+                                                                {log.type === 'IN' ? 'ENTRADA' : log.type === 'OUT' ? 'SAÍDA' : log.type === 'SALE' ? 'VENDA' : 'PERDA'}
+                                                            </span>
+                                                        </td>
+                                                        <td className="p-3 text-right font-mono">{log.quantity}</td>
+                                                        <td className="p-3 text-gray-600">{log.reason}</td>
+                                                        <td className="p-3 text-gray-500 text-xs">{log.user_name}</td>
+                                                    </tr>
+                                                );
+                                            })}
+                                            {state.inventoryLogs.length === 0 && <tr><td colSpan={6} className="p-8 text-center text-gray-400">Nenhum histórico recente.</td></tr>}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* MODAL FORNECEDORES */}
+                    {supplierModalOpen && (
+                        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                            <div className="bg-white p-6 rounded-xl shadow-xl w-full max-w-lg h-[80vh] flex flex-col">
+                                <div className="flex justify-between items-center mb-4">
+                                    <h3 className="font-bold text-xl">Fornecedores</h3>
+                                    <button onClick={() => setSupplierModalOpen(false)}><X size={24}/></button>
+                                </div>
+                                
+                                {/* Form */}
+                                <form onSubmit={handleAddSupplier} className="bg-gray-50 p-4 rounded-lg border mb-4 space-y-3">
+                                    <h4 className="font-bold text-sm text-gray-600">Novo Fornecedor</h4>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <input required placeholder="Nome Empresa" className="border p-2 rounded text-sm w-full" value={newSupplier.name} onChange={e => setNewSupplier({...newSupplier, name: e.target.value})} />
+                                        <input placeholder="Telefone" className="border p-2 rounded text-sm w-full" value={newSupplier.phone} onChange={e => setNewSupplier({...newSupplier, phone: e.target.value})} />
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <input placeholder="Nome Contato" className="border p-2 rounded text-sm flex-1" value={newSupplier.contactName} onChange={e => setNewSupplier({...newSupplier, contactName: e.target.value})} />
+                                        <Button size="sm" type="submit"><Plus size={14}/> Adicionar</Button>
+                                    </div>
+                                </form>
+
+                                {/* List */}
+                                <div className="flex-1 overflow-y-auto">
+                                    <table className="w-full text-left text-sm">
+                                        <thead className="bg-gray-100 text-gray-600 sticky top-0">
+                                            <tr>
+                                                <th className="p-2">Nome</th>
+                                                <th className="p-2">Contato</th>
+                                                <th className="p-2 text-right">Ações</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y">
+                                            {state.suppliers.map(s => (
+                                                <tr key={s.id} className="hover:bg-gray-50">
+                                                    <td className="p-2 font-medium">{s.name} <div className="text-xs text-gray-400">{s.phone}</div></td>
+                                                    <td className="p-2 text-gray-600">{s.contactName}</td>
+                                                    <td className="p-2 text-right">
+                                                        <button onClick={() => handleDeleteSupplier(s.id)} className="text-red-500 hover:bg-red-50 p-1 rounded"><Trash2 size={16}/></button>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                            {state.suppliers.length === 0 && <tr><td colSpan={3} className="p-4 text-center text-gray-400">Nenhum fornecedor.</td></tr>}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* MODAL ENTRADA DE NOTA (Purchases) */}
+                    {purchaseModalOpen && (
+                        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                            <div className="bg-white p-6 rounded-xl shadow-xl w-full max-w-4xl h-[90vh] flex flex-col overflow-hidden">
+                                <div className="flex justify-between items-center mb-4 shrink-0">
+                                    <h3 className="font-bold text-xl">Entrada de Nota Fiscal</h3>
+                                    <button onClick={() => setPurchaseModalOpen(false)}><X size={24}/></button>
+                                </div>
+
+                                <div className="flex-1 overflow-y-auto pr-2">
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                                        <div>
+                                            <label className="block text-xs font-bold mb-1">Fornecedor</label>
+                                            <select className="w-full border p-2 rounded" value={purchaseForm.supplierId} onChange={e => setPurchaseForm({...purchaseForm, supplierId: e.target.value})}>
+                                                <option value="">Selecione...</option>
+                                                {state.suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold mb-1">Número da Nota</label>
+                                            <input className="w-full border p-2 rounded" value={purchaseForm.invoiceNumber} onChange={e => setPurchaseForm({...purchaseForm, invoiceNumber: e.target.value})} placeholder="Ex: 12345" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold mb-1">Data Emissão</label>
+                                            <input type="date" className="w-full border p-2 rounded" value={purchaseForm.date} onChange={e => setPurchaseForm({...purchaseForm, date: e.target.value})} />
+                                        </div>
+                                    </div>
+
+                                    {/* Item Entry Area */}
+                                    <div className="bg-gray-50 p-4 rounded-lg border mb-6">
+                                        <h4 className="font-bold text-sm mb-2 text-gray-700">Adicionar Itens</h4>
+                                        <div className="flex flex-wrap md:flex-nowrap gap-2 items-end">
+                                            <div className="flex-1 min-w-[200px]">
+                                                <label className="text-xs text-gray-500">Item do Estoque</label>
+                                                <select className="w-full border p-2 rounded text-sm" value={tempPurchaseItem.itemId} onChange={e => setTempPurchaseItem({...tempPurchaseItem, itemId: e.target.value})}>
+                                                    <option value="">Selecione o produto...</option>
+                                                    {state.inventory.filter(i => i.type !== 'COMPOSITE').map(i => (
+                                                        <option key={i.id} value={i.id}>{i.name} ({i.unit})</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                            <div className="w-24">
+                                                <label className="text-xs text-gray-500">Qtd</label>
+                                                <input type="number" step="0.001" className="w-full border p-2 rounded text-sm" value={tempPurchaseItem.quantity} onChange={e => setTempPurchaseItem({...tempPurchaseItem, quantity: parseFloat(e.target.value)})} />
+                                            </div>
+                                            <div className="w-32">
+                                                <label className="text-xs text-gray-500">Custo Unit (R$)</label>
+                                                <input type="number" step="0.01" className="w-full border p-2 rounded text-sm" value={tempPurchaseItem.unitPrice} onChange={e => setTempPurchaseItem({...tempPurchaseItem, unitPrice: parseFloat(e.target.value)})} />
+                                            </div>
+                                            <Button onClick={handleAddItemToPurchase} disabled={!tempPurchaseItem.itemId} size="sm" className="h-9"><Plus size={16}/> Adicionar</Button>
+                                        </div>
+                                    </div>
+
+                                    {/* Items List */}
+                                    <table className="w-full text-left text-sm mb-6 border">
+                                        <thead className="bg-gray-100">
+                                            <tr>
+                                                <th className="p-2">Item</th>
+                                                <th className="p-2 text-right">Qtd</th>
+                                                <th className="p-2 text-right">Custo Un.</th>
+                                                <th className="p-2 text-right">Total</th>
+                                                <th className="p-2 text-center">Remover</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {purchaseForm.items.map((item, idx) => {
+                                                const invItem = state.inventory.find(i => i.id === item.inventoryItemId);
+                                                return (
+                                                    <tr key={idx} className="border-b">
+                                                        <td className="p-2">{invItem?.name}</td>
+                                                        <td className="p-2 text-right">{item.quantity}</td>
+                                                        <td className="p-2 text-right">R$ {item.unitPrice.toFixed(2)}</td>
+                                                        <td className="p-2 text-right font-bold">R$ {item.totalPrice.toFixed(2)}</td>
+                                                        <td className="p-2 text-center">
+                                                            <button onClick={() => handleRemovePurchaseItem(idx)} className="text-red-500"><Trash2 size={16}/></button>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                        <tfoot className="bg-gray-50 font-bold">
+                                            <tr>
+                                                <td colSpan={3} className="p-2 text-right">Total Itens:</td>
+                                                <td className="p-2 text-right">R$ {purchaseForm.items.reduce((acc, i) => acc + i.totalPrice, 0).toFixed(2)}</td>
+                                                <td></td>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+
+                                    {/* Payment & Installments */}
+                                    <div className="border-t pt-4">
+                                        <h4 className="font-bold mb-3">Financeiro e Impostos</h4>
+                                        <div className="flex gap-4 items-center mb-4">
+                                            <div>
+                                                <label className="block text-xs font-bold mb-1">Impostos/Frete (R$)</label>
+                                                <input type="number" step="0.01" className="border p-2 rounded w-32" value={purchaseForm.taxAmount} onChange={e => setPurchaseForm({...purchaseForm, taxAmount: parseFloat(e.target.value) || 0})} />
+                                            </div>
+                                            <div className="flex items-center gap-2 mt-5">
+                                                <input type="checkbox" checked={purchaseForm.distributeTax} onChange={e => setPurchaseForm({...purchaseForm, distributeTax: e.target.checked})} />
+                                                <span className="text-sm">Distribuir no custo dos itens?</span>
+                                            </div>
+                                        </div>
+
+                                        <div className="bg-blue-50 p-4 rounded-lg flex items-end gap-4">
+                                            <div>
+                                                <label className="block text-xs font-bold mb-1">Parcelas</label>
+                                                <select className="border p-2 rounded w-20" value={installmentsCount} onChange={e => setInstallmentsCount(parseInt(e.target.value))}>
+                                                    {[1,2,3,4,5,6,12].map(n => <option key={n} value={n}>{n}x</option>)}
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-bold mb-1">1º Vencimento</label>
+                                                <input type="date" className="border p-2 rounded" value={firstDueDate} onChange={e => setFirstDueDate(e.target.value)} />
+                                            </div>
+                                            <Button onClick={generateInstallments} variant="secondary" size="sm" className="h-9">Gerar Parcelas</Button>
+                                        </div>
+
+                                        {paymentInstallments.length > 0 && (
+                                            <div className="mt-4 grid grid-cols-3 gap-2">
+                                                {paymentInstallments.map((inst, idx) => (
+                                                    <div key={idx} className="bg-white border p-2 rounded text-sm flex justify-between">
+                                                        <span>{idx + 1}ª - {inst.dueDate.toLocaleDateString()}</span>
+                                                        <span className="font-bold">R$ {inst.amount.toFixed(2)}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div className="flex gap-2 pt-4 border-t mt-4 shrink-0 bg-white">
+                                    <Button variant="secondary" onClick={() => setPurchaseModalOpen(false)} className="flex-1">Cancelar</Button>
+                                    <Button onClick={submitPurchaseEntry} className="flex-1">Confirmar Entrada</Button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* MODAL INVENTÁRIO (Stock Count) */}
+                    {inventoryModalOpen && (
+                        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                            <div className="bg-white p-6 rounded-xl shadow-xl w-full max-w-4xl h-[90vh] flex flex-col">
+                                <div className="flex justify-between items-center mb-4">
+                                    <h3 className="font-bold text-xl">Contagem de Estoque (Balanço)</h3>
+                                    <button onClick={() => setInventoryModalOpen(false)}><X size={24}/></button>
+                                </div>
+                                <div className="bg-yellow-50 p-3 rounded mb-4 text-sm text-yellow-800 flex items-center gap-2">
+                                    <AlertTriangle size={16}/>
+                                    Informe a quantidade real encontrada fisicamente. O sistema calculará a diferença automaticamente.
+                                </div>
+                                
+                                <div className="flex-1 overflow-y-auto border rounded-lg">
+                                    <table className="w-full text-left text-sm">
+                                        <thead className="bg-gray-100 text-gray-600 sticky top-0 z-10">
+                                            <tr>
+                                                <th className="p-3">Item</th>
+                                                <th className="p-3 text-center">Un</th>
+                                                <th className="p-3 text-right bg-blue-50">Estoque Sistema</th>
+                                                <th className="p-3 text-right bg-yellow-50 w-32">Estoque Real</th>
+                                                <th className="p-3 text-right">Diferença</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y">
+                                            {state.inventory.filter(i => i.type !== 'COMPOSITE').map(item => {
+                                                const currentQty = item.quantity;
+                                                const realQty = inventoryCounts[item.id] ?? currentQty;
+                                                const diff = realQty - currentQty;
+                                                
+                                                return (
+                                                    <tr key={item.id} className="hover:bg-gray-50">
+                                                        <td className="p-3 font-medium">{item.name}</td>
+                                                        <td className="p-3 text-center text-xs text-gray-500">{item.unit}</td>
+                                                        <td className="p-3 text-right font-bold text-blue-700 bg-blue-50/30">{currentQty}</td>
+                                                        <td className="p-2 bg-yellow-50/30">
+                                                            <input 
+                                                                type="number" 
+                                                                step="0.001"
+                                                                className="w-full border border-yellow-300 rounded p-1 text-right font-bold focus:ring-2 focus:ring-yellow-500 outline-none"
+                                                                value={inventoryCounts[item.id] ?? ''} 
+                                                                onChange={e => setInventoryCounts({...inventoryCounts, [item.id]: parseFloat(e.target.value)})}
+                                                                placeholder={currentQty.toString()}
+                                                            />
+                                                        </td>
+                                                        <td className={`p-3 text-right font-bold ${diff < 0 ? 'text-red-600' : (diff > 0 ? 'text-green-600' : 'text-gray-400')}`}>
+                                                            {diff > 0 ? `+${diff.toFixed(3)}` : diff.toFixed(3)}
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div className="flex gap-2 pt-4 border-t mt-4">
+                                    <Button variant="secondary" onClick={() => setInventoryModalOpen(false)} className="flex-1">Cancelar</Button>
+                                    <Button onClick={handleInventorySave} className="flex-1">Processar Ajustes</Button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* MODAL MOVIMENTAÇÃO MANUAL */}
                     {stockModal && (
                         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
                             <div className="bg-white p-6 rounded-xl shadow-xl w-full max-w-sm">
@@ -918,6 +1211,7 @@ export const AdminDashboard: React.FC = () => {
 
             {/* --- STAFF TAB --- */}
             {activeTab === 'STAFF' && (
+                // ... Existing Staff Tab ...
                 <div className="space-y-6">
                     <div className="flex justify-between items-center bg-white p-6 rounded-xl shadow-sm">
                         <h2 className="text-2xl font-bold">Equipe</h2>
@@ -938,7 +1232,6 @@ export const AdminDashboard: React.FC = () => {
                             </div>
                         ))}
                     </div>
-
                     {/* MODAL USER */}
                     {editingUser && (
                         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -967,6 +1260,7 @@ export const AdminDashboard: React.FC = () => {
 
             {/* --- TABLES TAB --- */}
             {activeTab === 'TABLES' && (
+                // ... Existing Tables Tab ...
                 <div className="space-y-6">
                     <div className="flex justify-between items-center bg-white p-6 rounded-xl shadow-sm">
                         <h2 className="text-2xl font-bold">Mesas & QR Codes</h2>
@@ -991,6 +1285,7 @@ export const AdminDashboard: React.FC = () => {
 
             {/* --- CUSTOMIZATION TAB --- */}
             {activeTab === 'CUSTOMIZATION' && (
+                // ... Existing Customization Tab ...
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     <div className="bg-white p-6 rounded-xl shadow-sm border space-y-6">
                         <h2 className="text-xl font-bold">Aparência do App</h2>
@@ -1020,7 +1315,6 @@ export const AdminDashboard: React.FC = () => {
                         </div>
                         <Button onClick={() => { dispatch({ type: 'UPDATE_THEME', theme: localTheme }); showAlert({ title: "Salvo", message: "Tema atualizado!", type: 'SUCCESS' }); }} className="w-full">Salvar Alterações</Button>
                     </div>
-
                     {/* Live Preview */}
                     <div className="border-4 border-gray-800 rounded-[2rem] overflow-hidden shadow-2xl h-[600px] relative bg-white">
                         <div className="absolute top-0 w-full h-6 bg-gray-800 flex justify-center"><div className="w-32 h-4 bg-black rounded-b-xl"></div></div>
