@@ -5,7 +5,7 @@ import { Button } from '../components/Button';
 import { QRCodeGenerator } from '../components/QRCodeGenerator';
 import { ImageUploader } from '../components/ImageUploader';
 import { Product, ProductType, Role, User, InventoryItem, Expense, InventoryType, Supplier, PurchaseItemInput, PurchaseInstallment } from '../types';
-import { LayoutDashboard, Utensils, QrCode, Printer, ExternalLink, Palette, Eye, EyeOff, Save, Copy, Plus, Users, ShieldCheck, Trash2, Edit, AlertTriangle, FileBarChart, X, ArrowUp, ArrowDown, LayoutGrid, List as ListIcon, Image as ImageIcon, Calendar, TrendingUp, Search, Loader2, Menu, Activity, CheckSquare, GripVertical, Link as LinkIcon, Share2, Lock, BookOpen, Package, DollarSign, Archive, TrendingDown, RefreshCcw, Layers, ArrowLeft, Truck, FileText, ClipboardList, FileSpreadsheet, PieChart, CreditCard } from 'lucide-react';
+import { LayoutDashboard, Utensils, QrCode, Printer, ExternalLink, Palette, Eye, EyeOff, Save, Copy, Plus, Users, ShieldCheck, Trash2, Edit, AlertTriangle, FileBarChart, X, ArrowUp, ArrowDown, LayoutGrid, List as ListIcon, Image as ImageIcon, Calendar, TrendingUp, Search, Loader2, Menu, Activity, CheckSquare, GripVertical, Link as LinkIcon, Share2, Lock, BookOpen, Package, DollarSign, Archive, TrendingDown, RefreshCcw, Layers, ArrowLeft, Truck, FileText, ClipboardList, FileSpreadsheet, PieChart, CreditCard, Info } from 'lucide-react';
 import { getTenantSlug } from '../utils/tenant';
 import { supabase } from '../lib/supabase';
 import { Link } from 'react-router-dom';
@@ -514,8 +514,22 @@ export const AdminDashboard: React.FC = () => {
                                         </div>
                                         {editingInventory.type !== 'COMPOSITE' && (
                                             <div>
-                                                <label className="block text-xs font-bold">Custo Unit. (R$)</label>
-                                                <input type="number" step="0.01" className="w-full border p-2 rounded" value={editingInventory.costPrice} onChange={e => setEditingInventory({...editingInventory, costPrice: parseFloat(e.target.value)})} />
+                                                <label className="block text-xs font-bold">
+                                                    {editingInventory.id ? 'Custo Médio (R$)' : 'Custo Inicial (R$)'}
+                                                </label>
+                                                <input 
+                                                    type="number" 
+                                                    step="0.01" 
+                                                    className={`w-full border p-2 rounded ${editingInventory.id ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''}`}
+                                                    value={editingInventory.costPrice} 
+                                                    onChange={e => setEditingInventory({...editingInventory, costPrice: parseFloat(e.target.value)})} 
+                                                    disabled={!!editingInventory.id} // Disable if editing
+                                                />
+                                                {editingInventory.id && (
+                                                    <p className="text-[10px] text-blue-600 mt-1 flex items-center gap-1">
+                                                        <Info size={10}/> Atualizado via Notas de Entrada
+                                                    </p>
+                                                )}
                                             </div>
                                         )}
                                         {editingInventory.type !== 'COMPOSITE' && (
@@ -629,6 +643,7 @@ export const AdminDashboard: React.FC = () => {
                                             </td>
                                             <td className="p-4 text-right text-sm">R$ {item.costPrice.toFixed(2)}</td>
                                             <td className="p-4 flex justify-end gap-2">
+                                                <button onClick={() => setEditingInventory(item)} className="p-2 text-blue-600 hover:bg-blue-50 rounded" title="Editar"><Edit size={16}/></button>
                                                 {item.type !== 'COMPOSITE' && (
                                                     <button onClick={() => setStockModal({ itemId: item.id, type: 'IN', quantity: '', reason: '' })} className="p-2 bg-green-50 text-green-600 rounded hover:bg-green-100" title="Entrada"><Plus size={16}/></button>
                                                 )}

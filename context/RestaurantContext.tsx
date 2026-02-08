@@ -521,11 +521,16 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
                     const newQty = currentQty + incomingQty;
 
-                    // Update DB
+                    // Update DB Inventory Item
                     await supabase.from('inventory_items').update({
                         quantity: newQty,
                         cost_price: newCost
                     }).eq('id', item.inventoryItemId);
+
+                    // Sync cost to Menu Products linked to this item (NOVO)
+                    await supabase.from('products').update({
+                        cost_price: newCost
+                    }).eq('linked_inventory_item_id', item.inventoryItemId);
 
                     // Log Movement
                     await supabase.from('inventory_logs').insert({
@@ -546,7 +551,6 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
 
     // ... (Remainder of the file: PROCESS_INVENTORY_ADJUSTMENT, ADD_SUPPLIER, etc.)
-    // ... Copying existing logic for brevity as it remains unchanged ...
     
     if (action.type === 'PROCESS_INVENTORY_ADJUSTMENT' && tenantId) {
         try {
