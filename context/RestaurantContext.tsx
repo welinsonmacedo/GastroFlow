@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, useEffect, useState } from 'react';
-import { Table, Order, Product, TableStatus, OrderStatus, ProductType, RestaurantTheme, User, AuditLog, Transaction, Role, ServiceCall, OnlineUser, PlanLimits, InventoryItem, Expense, Supplier, InventoryRecipeItem } from '../types';
+import { Table, Order, Product, TableStatus, OrderStatus, ProductType, RestaurantTheme, User, AuditLog, Transaction, Role, ServiceCall, OnlineUser, PlanLimits, InventoryItem, Expense, Supplier, InventoryRecipeItem, PurchaseEntry } from '../types';
 import { getTenantSlug } from '../utils/tenant';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { useUI } from './UIContext';
@@ -45,6 +45,7 @@ type Action =
   | { type: 'REALTIME_UPDATE_SERVICE_CALLS'; calls: ServiceCall[] }
   | { type: 'REALTIME_UPDATE_INVENTORY'; inventory: InventoryItem[] }
   | { type: 'REALTIME_UPDATE_EXPENSES'; expenses: Expense[] }
+  | { type: 'REALTIME_UPDATE_SUPPLIERS'; suppliers: Supplier[] } // NEW
   | { type: 'UPDATE_ONLINE_USERS'; users: OnlineUser[] }
   | { type: 'UNLOCK_AUDIO' }
   | { type: 'ADD_USER'; user: User }
@@ -56,7 +57,7 @@ type Action =
   | { type: 'CLOSE_TABLE'; tableId: string }
   | { type: 'PLACE_ORDER'; tableId: string; items: { productId: string; quantity: number; notes: string }[] }
   | { type: 'UPDATE_ITEM_STATUS'; orderId: string; itemId: string; status: OrderStatus }
-  | { type: 'ADD_PRODUCT_TO_MENU'; product: Product } // Nova Action
+  | { type: 'ADD_PRODUCT_TO_MENU'; product: Product } 
   | { type: 'UPDATE_PRODUCT'; product: Product }
   | { type: 'DELETE_PRODUCT'; productId: string }
   | { type: 'UPDATE_THEME'; theme: RestaurantTheme }
@@ -67,6 +68,9 @@ type Action =
   // ERP ACTIONS
   | { type: 'ADD_INVENTORY_ITEM'; item: InventoryItem }
   | { type: 'UPDATE_STOCK'; itemId: string; quantity: number; reason: string; operation: 'IN' | 'OUT' }
+  | { type: 'PROCESS_PURCHASE'; purchase: PurchaseEntry } // NEW: Entrada de Nota Completa
+  | { type: 'ADD_SUPPLIER'; supplier: Supplier } // NEW
+  | { type: 'DELETE_SUPPLIER'; supplierId: string } // NEW
   | { type: 'ADD_EXPENSE'; expense: Expense }
   | { type: 'PAY_EXPENSE'; expenseId: string }
   | { type: 'DELETE_EXPENSE'; expenseId: string };
@@ -148,6 +152,7 @@ const restaurantReducer = (state: State, action: Action): State => {
         return { ...state, serviceCalls: action.calls };
     case 'REALTIME_UPDATE_INVENTORY': return { ...state, inventory: action.inventory };
     case 'REALTIME_UPDATE_EXPENSES': return { ...state, expenses: action.expenses };
+    case 'REALTIME_UPDATE_SUPPLIERS': return { ...state, suppliers: action.suppliers };
     case 'UPDATE_ONLINE_USERS': return { ...state, onlineUsers: action.users };
     case 'UPDATE_THEME': return { ...state, theme: action.theme };
     case 'PLAY_SOUND': 
@@ -244,7 +249,6 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 category: p.category, type: p.type, image: p.image, isVisible: p.is_visible, sortOrder: p.sort_order
             }));
 
-            // ... (Tables, Orders, etc. mappings similar to before)
             const mappedTables = (tablesRes.data || []).map(t => ({ id: t.id, number: t.number, status: t.status, customerName: t.customer_name || '', accessCode: t.access_code || '' }));
             const mappedOrders = (ordersRes.data || []).map(o => ({
                 id: o.id, tableId: o.table_id, timestamp: new Date(o.created_at), isPaid: o.is_paid,
@@ -253,7 +257,7 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             const mappedTransactions = (transactionsRes.data || []).map(t => ({ id: t.id, tableId: t.table_id || '', tableNumber: t.table_number || 0, amount: t.amount, method: t.method as any, timestamp: new Date(t.created_at), itemsSummary: t.items_summary || '', cashierName: t.cashier_name || '' }));
             const mappedAuditLogs = (auditRes.data || []).map(l => ({ id: l.id, userId: l.user_id || '', userName: l.user_name || '', action: l.action, details: l.details || '', timestamp: new Date(l.created_at) }));
             const mappedCalls = (callsRes.data || []).map(c => ({ id: c.id, tableId: c.table_id, status: c.status, timestamp: new Date(c.created_at) }));
-            const mappedExpenses = (expRes.data || []).map(e => ({ id: e.id, description: e.description, amount: e.amount, category: e.category, dueDate: new Date(e.due_date), paidDate: e.paid_date ? new Date(e.paid_date) : undefined, isPaid: e.is_paid }));
+            const mappedExpenses = (expRes.data || []).map(e => ({ id: e.id, description: e.description, amount: e.amount, category: e.category, dueDate: new Date(e.due_date), paidDate: e.paid_date ? new Date(e.paid_date) : undefined, isPaid: e.is_paid, supplierId: e.supplier_id }));
             const mappedSuppliers = (suppRes.data || []).map(s => ({ id: s.id, name: s.name, contactName: s.contact_name, phone: s.phone }));
 
             // Auto Login Check
@@ -378,7 +382,6 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         }
     };
 
-    // Need a specific fetch for products to handle linked inventory correctly
     const fetchProducts = async () => {
          const { data } = await supabase.from('products').select('*').eq('tenant_id', tenantId);
          if (data) {
@@ -390,8 +393,6 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
          }
     };
 
-    // Updated fetch for Inventory with new types and recipes logic
-    // Note: Realtime for recipes is complex, so we might just trigger full reload on inventory change
     const fetchInventory = async () => {
         const { data: invData } = await supabase.from('inventory_items').select('*').eq('tenant_id', tenantId);
         const { data: recipeData } = await supabase.from('inventory_recipes').select('*').eq('tenant_id', tenantId);
@@ -419,13 +420,30 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         }
     };
 
+    const fetchSuppliers = async () => {
+        const { data } = await supabase.from('suppliers').select('*').eq('tenant_id', tenantId);
+        if(data) {
+            const mapped = data.map((s:any) => ({ id: s.id, name: s.name, contactName: s.contact_name, phone: s.phone }));
+            dispatchLocal({ type: 'REALTIME_UPDATE_SUPPLIERS', suppliers: mapped });
+        }
+    };
+
+    const fetchExpenses = async () => {
+        const { data } = await supabase.from('expenses').select('*').eq('tenant_id', tenantId).order('due_date', { ascending: true });
+        if (data) {
+            const mapped = data.map((e: any) => ({ id: e.id, description: e.description, amount: e.amount, category: e.category, dueDate: new Date(e.due_date), paidDate: e.paid_date ? new Date(e.paid_date) : undefined, isPaid: e.is_paid, supplierId: e.supplier_id }));
+            dispatchLocal({ type: 'REALTIME_UPDATE_EXPENSES', expenses: mapped });
+        }
+    };
+
     const channel = supabase.channel(`restaurant_updates:${tenantId}`)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `tenant_id=eq.${tenantId}` }, fetchOrders)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'order_items', filter: `tenant_id=eq.${tenantId}` }, fetchOrders)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'products', filter: `tenant_id=eq.${tenantId}` }, fetchProducts)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory_items', filter: `tenant_id=eq.${tenantId}` }, fetchInventory)
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory_recipes', filter: `tenant_id=eq.${tenantId}` }, fetchInventory) // Reload inventory on recipe change
-        // ... (other subscriptions omitted for brevity)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory_recipes', filter: `tenant_id=eq.${tenantId}` }, fetchInventory)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'suppliers', filter: `tenant_id=eq.${tenantId}` }, fetchSuppliers)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'expenses', filter: `tenant_id=eq.${tenantId}` }, fetchExpenses)
         .subscribe();
 
     return () => { supabase.removeChannel(channel); }
@@ -460,6 +478,80 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             }
             logAudit(tenantId, 'ADD_STOCK_ITEM', `Item ${action.item.name} (${action.item.type}) cadastrado`);
         }
+        return;
+    }
+
+    // --- NEW: PROCESS PURCHASE ENTRY ---
+    if (action.type === 'PROCESS_PURCHASE' && tenantId) {
+        try {
+            const { supplierId, invoiceNumber, items, totalAmount, dueDate } = action.purchase;
+            const supplier = state.suppliers.find(s => s.id === supplierId);
+
+            // 1. Create Expense (Financial)
+            await supabase.from('expenses').insert({
+                tenant_id: tenantId,
+                description: `Nota Fiscal #${invoiceNumber} - ${supplier?.name}`,
+                amount: totalAmount,
+                category: 'Fornecedor',
+                due_date: dueDate.toISOString().split('T')[0],
+                is_paid: false,
+                supplier_id: supplierId
+            });
+
+            // 2. Update Inventory (Qty & Cost Price) and Log
+            for (const item of items) {
+                const currentItem = state.inventory.find(i => i.id === item.inventoryItemId);
+                if (currentItem) {
+                    const currentQty = Number(currentItem.quantity);
+                    const currentCost = Number(currentItem.costPrice);
+                    const incomingQty = Number(item.quantity);
+                    const incomingCost = Number(item.unitPrice);
+
+                    // Weighted Average Cost Formula
+                    // Se estoque atual for zero ou negativo, assume o novo custo
+                    let newCost = incomingCost;
+                    if (currentQty > 0) {
+                        newCost = ((currentQty * currentCost) + (incomingQty * incomingCost)) / (currentQty + incomingQty);
+                    }
+
+                    const newQty = currentQty + incomingQty;
+
+                    // Update DB
+                    await supabase.from('inventory_items').update({
+                        quantity: newQty,
+                        cost_price: newCost
+                    }).eq('id', item.inventoryItemId);
+
+                    // Log Movement
+                    await supabase.from('inventory_logs').insert({
+                        tenant_id: tenantId,
+                        item_id: item.inventoryItemId,
+                        type: 'IN',
+                        quantity: incomingQty,
+                        reason: `Compra NF #${invoiceNumber}`,
+                        user_name: state.currentUser?.name
+                    });
+                }
+            }
+            logAudit(tenantId, 'PURCHASE_ENTRY', `Entrada de Nota #${invoiceNumber} processada.`);
+        } catch (err) {
+            console.error("Erro ao processar compra:", err);
+        }
+        return;
+    }
+
+    if (action.type === 'ADD_SUPPLIER' && tenantId) {
+        await supabase.from('suppliers').insert({
+            tenant_id: tenantId,
+            name: action.supplier.name,
+            contact_name: action.supplier.contactName,
+            phone: action.supplier.phone
+        });
+        return;
+    }
+
+    if (action.type === 'DELETE_SUPPLIER' && tenantId) {
+        await supabase.from('suppliers').delete().eq('id', action.supplierId);
         return;
     }
 

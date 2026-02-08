@@ -4,8 +4,8 @@ import { useUI } from '../context/UIContext';
 import { Button } from '../components/Button';
 import { QRCodeGenerator } from '../components/QRCodeGenerator';
 import { ImageUploader } from '../components/ImageUploader';
-import { Product, ProductType, Role, User, InventoryItem, Expense, InventoryType } from '../types';
-import { LayoutDashboard, Utensils, QrCode, Printer, ExternalLink, Palette, Eye, EyeOff, Save, Copy, Plus, Users, ShieldCheck, Trash2, Edit, AlertTriangle, FileBarChart, X, ArrowUp, ArrowDown, LayoutGrid, List as ListIcon, Image as ImageIcon, Calendar, TrendingUp, Search, Loader2, Menu, Activity, CheckSquare, GripVertical, Link as LinkIcon, Share2, Lock, BookOpen, Package, DollarSign, Archive, TrendingDown, RefreshCcw, Layers, ArrowLeft } from 'lucide-react';
+import { Product, ProductType, Role, User, InventoryItem, Expense, InventoryType, Supplier, PurchaseItemInput } from '../types';
+import { LayoutDashboard, Utensils, QrCode, Printer, ExternalLink, Palette, Eye, EyeOff, Save, Copy, Plus, Users, ShieldCheck, Trash2, Edit, AlertTriangle, FileBarChart, X, ArrowUp, ArrowDown, LayoutGrid, List as ListIcon, Image as ImageIcon, Calendar, TrendingUp, Search, Loader2, Menu, Activity, CheckSquare, GripVertical, Link as LinkIcon, Share2, Lock, BookOpen, Package, DollarSign, Archive, TrendingDown, RefreshCcw, Layers, ArrowLeft, Truck, FileText } from 'lucide-react';
 import { getTenantSlug } from '../utils/tenant';
 import { supabase } from '../lib/supabase';
 import { Link } from 'react-router-dom';
@@ -23,7 +23,22 @@ export const AdminDashboard: React.FC = () => {
   const [selectedIngredientAdd, setSelectedIngredientAdd] = useState('');
   const [stockModal, setStockModal] = useState<{ itemId: string, type: 'IN' | 'OUT', quantity: string, reason: string } | null>(null);
 
-  // --- Menu Product State (NEW) ---
+  // --- Purchase/Invoice Entry State (NEW) ---
+  const [purchaseModalOpen, setPurchaseModalOpen] = useState(false);
+  const [purchaseForm, setPurchaseForm] = useState<{
+      supplierId: string;
+      invoiceNumber: string;
+      date: string;
+      dueDate: string;
+      items: PurchaseItemInput[];
+  }>({ supplierId: '', invoiceNumber: '', date: new Date().toISOString().split('T')[0], dueDate: '', items: [] });
+  const [tempPurchaseItem, setTempPurchaseItem] = useState({ itemId: '', quantity: 1, unitPrice: 0 });
+
+  // --- Supplier State (NEW) ---
+  const [supplierModalOpen, setSupplierModalOpen] = useState(false);
+  const [newSupplier, setNewSupplier] = useState<Partial<Supplier>>({ name: '', contactName: '', phone: '' });
+
+  // --- Menu Product State ---
   const [menuModalOpen, setMenuModalOpen] = useState(false);
   const [selectedStockId, setSelectedStockId] = useState('');
   const [newProductForm, setNewProductForm] = useState<Partial<Product>>({
@@ -79,7 +94,6 @@ export const AdminDashboard: React.FC = () => {
       const end = reportDateEnd + ' 23:59:59';
       try {
           const { data: transactions } = await supabase.from('transactions').select('*').eq('tenant_id', state.tenantId).gte('created_at', start).lte('created_at', end);
-          // (Simplified logic for brevity - matches previous robust implementation logic)
           const totalSales = transactions?.reduce((acc, t) => acc + t.amount, 0) || 0;
           setReportData({ transactions: transactions || [], topProducts: [], totalSales, salesByMethod: {} });
       } catch (error) { console.error(error); } finally { setLoadingReport(false); }
@@ -87,7 +101,7 @@ export const AdminDashboard: React.FC = () => {
 
   useEffect(() => { if (activeTab === 'REPORTS') fetchReportData(); }, [activeTab, fetchReportData]);
 
-  // --- NEW INVENTORY LOGIC ---
+  // --- INVENTORY LOGIC ---
   const handleAddIngredientToRecipe = () => {
       if(!selectedIngredientAdd) return;
       const ing = state.inventory.find(i => i.id === selectedIngredientAdd);
@@ -133,20 +147,80 @@ export const AdminDashboard: React.FC = () => {
       showAlert({ title: "Sucesso", message: "Movimentação registrada!", type: 'SUCCESS' });
   };
 
-  // --- NEW MENU LOGIC ---
+  // --- SUPPLIER LOGIC ---
+  const handleAddSupplier = (e: React.FormEvent) => {
+      e.preventDefault();
+      if(!newSupplier.name) return;
+      dispatch({ type: 'ADD_SUPPLIER', supplier: { ...newSupplier, id: '' } as Supplier });
+      setSupplierModalOpen(false);
+      setNewSupplier({ name: '', contactName: '', phone: '' });
+      showAlert({ title: "Sucesso", message: "Fornecedor adicionado!", type: 'SUCCESS' });
+  };
+
+  // --- PURCHASE ENTRY LOGIC ---
+  const handleAddItemToPurchase = () => {
+      if (!tempPurchaseItem.itemId || tempPurchaseItem.quantity <= 0) return;
+      
+      const item = state.inventory.find(i => i.id === tempPurchaseItem.itemId);
+      if(!item) return;
+
+      const newItem: PurchaseItemInput = {
+          inventoryItemId: item.id,
+          quantity: Number(tempPurchaseItem.quantity),
+          unitPrice: Number(tempPurchaseItem.unitPrice),
+          totalPrice: Number(tempPurchaseItem.quantity) * Number(tempPurchaseItem.unitPrice)
+      };
+
+      setPurchaseForm(prev => ({
+          ...prev,
+          items: [...prev.items, newItem]
+      }));
+      setTempPurchaseItem({ itemId: '', quantity: 1, unitPrice: 0 });
+  };
+
+  const handleRemovePurchaseItem = (index: number) => {
+      setPurchaseForm(prev => ({
+          ...prev,
+          items: prev.items.filter((_, i) => i !== index)
+      }));
+  };
+
+  const submitPurchaseEntry = (e: React.FormEvent) => {
+      e.preventDefault();
+      if(!purchaseForm.supplierId || !purchaseForm.invoiceNumber || purchaseForm.items.length === 0) {
+          showAlert({ title: "Erro", message: "Preencha o fornecedor, número da nota e adicione itens.", type: 'ERROR' });
+          return;
+      }
+
+      const totalAmount = purchaseForm.items.reduce((acc, i) => acc + i.totalPrice, 0);
+
+      dispatch({
+          type: 'PROCESS_PURCHASE',
+          purchase: {
+              ...purchaseForm,
+              date: new Date(purchaseForm.date),
+              dueDate: new Date(purchaseForm.dueDate || purchaseForm.date),
+              totalAmount
+          }
+      });
+
+      setPurchaseModalOpen(false);
+      setPurchaseForm({ supplierId: '', invoiceNumber: '', date: new Date().toISOString().split('T')[0], dueDate: '', items: [] });
+      showAlert({ title: "Sucesso", message: "Nota lançada! Estoque e Financeiro atualizados.", type: 'SUCCESS' });
+  };
+
+  // --- MENU LOGIC ---
   const handleAddProductToMenu = (e: React.FormEvent) => {
       e.preventDefault();
       if(!selectedStockId) return;
-      
       const stockItem = state.inventory.find(i => i.id === selectedStockId);
       if(!stockItem) return;
-
       dispatch({
           type: 'ADD_PRODUCT_TO_MENU',
           product: {
               ...newProductForm,
               linkedInventoryItemId: stockItem.id,
-              name: stockItem.name, // Nome inicial vem do estoque
+              name: stockItem.name,
               costPrice: stockItem.costPrice,
               sortOrder: state.products.length + 1
           } as Product
@@ -163,13 +237,11 @@ export const AdminDashboard: React.FC = () => {
       }
   };
 
-  // Filter inventory for menu selection (Only Resale or Composite, not currently in menu)
   const availableForMenu = state.inventory.filter(i => 
       (i.type === 'RESALE' || i.type === 'COMPOSITE') && 
       !state.products.some(p => p.linkedInventoryItemId === i.id)
   );
 
-  // Drag & Drop
   const sortedProducts = [...state.products].sort((a,b) => (a.sortOrder || 0) - (b.sortOrder || 0));
   const handleDragStart = (index: number) => setDraggedItemIndex(index);
   const handleDragOver = (e: React.DragEvent) => e.preventDefault();
@@ -186,7 +258,6 @@ export const AdminDashboard: React.FC = () => {
       setDraggedItemIndex(null);
   };
 
-  // STAFF & FINANCE HANDLERS
   const handleSaveUser = (e: React.FormEvent) => {
       e.preventDefault();
       if(editingUser) dispatch({ type: 'UPDATE_USER', user: { ...editingUser, ...userForm } as User });
@@ -203,7 +274,6 @@ export const AdminDashboard: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-100 flex relative">
-        {/* Sidebar */}
         <div className={`bg-slate-900 text-white w-64 p-6 fixed h-full z-50 transition-transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0`}>
             <div className="flex justify-between items-center mb-10">
                 <h1 className="text-xl font-bold">Admin Panel</h1>
@@ -224,7 +294,6 @@ export const AdminDashboard: React.FC = () => {
         <div className="flex-1 p-8 h-screen overflow-y-auto">
             <button onClick={() => setIsSidebarOpen(true)} className="md:hidden mb-4 p-2 bg-white rounded shadow"><Menu /></button>
 
-            {/* --- DASHBOARD TAB --- */}
             {activeTab === 'DASHBOARD' && (
                 <div>
                     <h2 className="text-2xl font-bold mb-6">Visão Geral</h2>
@@ -241,18 +310,157 @@ export const AdminDashboard: React.FC = () => {
                 </div>
             )}
 
-            {/* --- INVENTORY TAB --- */}
             {activeTab === 'INVENTORY' && (
                 <div className="space-y-6">
-                    <div className="flex justify-between items-center bg-white p-6 rounded-xl shadow-sm">
+                    <div className="flex flex-wrap justify-between items-center bg-white p-6 rounded-xl shadow-sm gap-4">
                         <div>
                             <h2 className="text-2xl font-bold text-gray-800">Estoque & Fichas Técnicas</h2>
                             <p className="text-sm text-gray-500">Cadastre aqui TODOS os itens: ingredientes, bebidas e pratos.</p>
                         </div>
-                        <Button onClick={() => { setEditingInventory({ name: '', unit: 'UN', type: 'INGREDIENT', quantity: 0, minQuantity: 5, costPrice: 0 }); setInvRecipeStep([]); }}>
-                            <Plus size={16}/> Novo Item
-                        </Button>
+                        <div className="flex gap-2">
+                            <Button onClick={() => setSupplierModalOpen(true)} variant="outline" className="flex items-center gap-2">
+                                <Truck size={16}/> Fornecedores
+                            </Button>
+                            <Button onClick={() => setPurchaseModalOpen(true)} variant="secondary" className="flex items-center gap-2 bg-blue-100 text-blue-700 hover:bg-blue-200 border-blue-200">
+                                <FileText size={16}/> Entrada de Nota
+                            </Button>
+                            <Button onClick={() => { setEditingInventory({ name: '', unit: 'UN', type: 'INGREDIENT', quantity: 0, minQuantity: 5, costPrice: 0 }); setInvRecipeStep([]); }}>
+                                <Plus size={16}/> Novo Item
+                            </Button>
+                        </div>
                     </div>
+
+                    {/* MODAL ENTRADA DE NOTA DE COMPRA */}
+                    {purchaseModalOpen && (
+                        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                            <div className="bg-white p-6 rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+                                <div className="flex justify-between items-center mb-4">
+                                    <h3 className="font-bold text-lg flex items-center gap-2"><FileText size={20}/> Entrada de Nota Fiscal</h3>
+                                    <button onClick={() => setPurchaseModalOpen(false)}><X size={20}/></button>
+                                </div>
+                                <form onSubmit={submitPurchaseEntry} className="space-y-6">
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-gray-50 p-4 rounded-lg">
+                                        <div className="col-span-2">
+                                            <label className="block text-xs font-bold mb-1">Fornecedor</label>
+                                            <select required className="w-full border p-2 rounded" value={purchaseForm.supplierId} onChange={e => setPurchaseForm({...purchaseForm, supplierId: e.target.value})}>
+                                                <option value="">Selecione...</option>
+                                                {state.suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold mb-1">Número NF</label>
+                                            <input required className="w-full border p-2 rounded" value={purchaseForm.invoiceNumber} onChange={e => setPurchaseForm({...purchaseForm, invoiceNumber: e.target.value})} />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold mb-1">Data Emissão</label>
+                                            <input type="date" required className="w-full border p-2 rounded" value={purchaseForm.date} onChange={e => setPurchaseForm({...purchaseForm, date: e.target.value})} />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold mb-1">Vencimento (Financeiro)</label>
+                                            <input type="date" required className="w-full border p-2 rounded" value={purchaseForm.dueDate} onChange={e => setPurchaseForm({...purchaseForm, dueDate: e.target.value})} />
+                                        </div>
+                                    </div>
+
+                                    <div className="border rounded-lg p-4">
+                                        <h4 className="font-bold text-sm mb-3">Itens da Nota</h4>
+                                        <div className="flex gap-2 mb-4 items-end">
+                                            <div className="flex-1">
+                                                <label className="block text-xs text-gray-500 mb-1">Item do Estoque</label>
+                                                <select className="w-full border p-2 rounded text-sm" value={tempPurchaseItem.itemId} onChange={e => setTempPurchaseItem({...tempPurchaseItem, itemId: e.target.value})}>
+                                                    <option value="">Selecione...</option>
+                                                    {state.inventory.filter(i => i.type !== 'COMPOSITE').map(i => (
+                                                        <option key={i.id} value={i.id}>{i.name} ({i.unit})</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                            <div className="w-20">
+                                                <label className="block text-xs text-gray-500 mb-1">Qtd</label>
+                                                <input type="number" className="w-full border p-2 rounded text-sm" value={tempPurchaseItem.quantity} onChange={e => setTempPurchaseItem({...tempPurchaseItem, quantity: parseFloat(e.target.value)})} />
+                                            </div>
+                                            <div className="w-24">
+                                                <label className="block text-xs text-gray-500 mb-1">Valor Unit.</label>
+                                                <input type="number" step="0.01" className="w-full border p-2 rounded text-sm" value={tempPurchaseItem.unitPrice} onChange={e => setTempPurchaseItem({...tempPurchaseItem, unitPrice: parseFloat(e.target.value)})} />
+                                            </div>
+                                            <Button type="button" onClick={handleAddItemToPurchase} disabled={!tempPurchaseItem.itemId}>
+                                                <Plus size={16}/>
+                                            </Button>
+                                        </div>
+
+                                        <div className="bg-gray-50 rounded border overflow-hidden">
+                                            <table className="w-full text-sm text-left">
+                                                <thead className="bg-gray-100 text-xs text-gray-500 uppercase">
+                                                    <tr>
+                                                        <th className="p-2">Item</th>
+                                                        <th className="p-2 text-right">Qtd</th>
+                                                        <th className="p-2 text-right">Vl. Unit</th>
+                                                        <th className="p-2 text-right">Total</th>
+                                                        <th className="p-2"></th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {purchaseForm.items.map((item, idx) => {
+                                                        const invItem = state.inventory.find(i => i.id === item.inventoryItemId);
+                                                        return (
+                                                            <tr key={idx} className="border-b last:border-0">
+                                                                <td className="p-2">{invItem?.name}</td>
+                                                                <td className="p-2 text-right">{item.quantity}</td>
+                                                                <td className="p-2 text-right">R$ {item.unitPrice.toFixed(2)}</td>
+                                                                <td className="p-2 text-right font-bold">R$ {item.totalPrice.toFixed(2)}</td>
+                                                                <td className="p-2 text-right">
+                                                                    <button type="button" onClick={() => handleRemovePurchaseItem(idx)} className="text-red-500"><Trash2 size={14}/></button>
+                                                                </td>
+                                                            </tr>
+                                                        );
+                                                    })}
+                                                </tbody>
+                                            </table>
+                                            {purchaseForm.items.length === 0 && <p className="text-center p-4 text-gray-400 text-xs">Nenhum item adicionado.</p>}
+                                        </div>
+                                    </div>
+
+                                    <div className="flex justify-between items-center pt-4 border-t">
+                                        <div className="text-lg">Total da Nota: <span className="font-bold text-blue-600">R$ {purchaseForm.items.reduce((acc, i) => acc + i.totalPrice, 0).toFixed(2)}</span></div>
+                                        <div className="flex gap-2">
+                                            <Button type="button" variant="secondary" onClick={() => setPurchaseModalOpen(false)}>Cancelar</Button>
+                                            <Button type="submit">Processar Entrada</Button>
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* MODAL FORNECEDORES */}
+                    {supplierModalOpen && (
+                        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                            <div className="bg-white p-6 rounded-xl shadow-xl w-full max-w-md max-h-[80vh] flex flex-col">
+                                <div className="flex justify-between items-center mb-4">
+                                    <h3 className="font-bold text-lg">Gerenciar Fornecedores</h3>
+                                    <button onClick={() => setSupplierModalOpen(false)}><X size={20}/></button>
+                                </div>
+                                
+                                <form onSubmit={handleAddSupplier} className="space-y-3 mb-6 border-b pb-6">
+                                    <input required className="w-full border p-2 rounded" placeholder="Nome da Empresa" value={newSupplier.name} onChange={e => setNewSupplier({...newSupplier, name: e.target.value})} />
+                                    <input className="w-full border p-2 rounded" placeholder="Nome do Contato" value={newSupplier.contactName} onChange={e => setNewSupplier({...newSupplier, contactName: e.target.value})} />
+                                    <input className="w-full border p-2 rounded" placeholder="Telefone / WhatsApp" value={newSupplier.phone} onChange={e => setNewSupplier({...newSupplier, phone: e.target.value})} />
+                                    <Button type="submit" className="w-full">Adicionar Fornecedor</Button>
+                                </form>
+
+                                <div className="flex-1 overflow-y-auto space-y-2">
+                                    {state.suppliers.map(s => (
+                                        <div key={s.id} className="flex justify-between items-center p-3 bg-gray-50 rounded border">
+                                            <div>
+                                                <div className="font-bold">{s.name}</div>
+                                                <div className="text-xs text-gray-500">{s.contactName} - {s.phone}</div>
+                                            </div>
+                                            <button onClick={() => showConfirm({ title: 'Excluir', message: 'Remover fornecedor?', type: 'ERROR', onConfirm: () => dispatch({ type: 'DELETE_SUPPLIER', supplierId: s.id }) })} className="text-red-400 hover:text-red-600"><Trash2 size={16}/></button>
+                                        </div>
+                                    ))}
+                                    {state.suppliers.length === 0 && <p className="text-center text-gray-400 text-sm">Nenhum fornecedor cadastrado.</p>}
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                     {/* MODAL CADASTRO ESTOQUE */}
                     {editingInventory && (
@@ -414,7 +622,7 @@ export const AdminDashboard: React.FC = () => {
                 </div>
             )}
 
-            {/* --- MENU TAB (Products) --- */}
+            {/* ... Other Tabs remain identical to previous implementation ... */}
             {activeTab === 'PRODUCTS' && (
                 <div className="space-y-6">
                     <div className="flex justify-between items-center bg-white p-6 rounded-xl shadow-sm">
@@ -590,7 +798,6 @@ export const AdminDashboard: React.FC = () => {
                 </div>
             )}
 
-            {/* --- CUSTOMIZATION TAB --- */}
             {activeTab === 'CUSTOMIZATION' && (
                  <div className="max-w-3xl">
                     <h2 className="text-2xl font-bold mb-6 text-gray-800">Personalizar App do Cliente</h2>
@@ -640,7 +847,6 @@ export const AdminDashboard: React.FC = () => {
                  </div>
             )}
 
-            {/* --- TABLES TAB --- */}
             {activeTab === 'TABLES' && (
                 <div>
                      <div className="flex justify-between items-center mb-6">
@@ -664,7 +870,6 @@ export const AdminDashboard: React.FC = () => {
                 </div>
             )}
 
-            {/* --- STAFF TAB --- */}
             {activeTab === 'STAFF' && (
                 <div>
                     <h2 className="text-2xl font-bold mb-6 text-gray-800">Gerenciar Equipe</h2>
@@ -706,7 +911,6 @@ export const AdminDashboard: React.FC = () => {
                 </div>
             )}
 
-            {/* --- FINANCE TAB --- */}
             {activeTab === 'FINANCE' && (
                 <div className="space-y-6">
                     <div className="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border">

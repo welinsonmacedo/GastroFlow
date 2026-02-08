@@ -191,6 +191,22 @@ export interface Supplier {
     contactName: string;
 }
 
+export interface PurchaseItemInput {
+    inventoryItemId: string;
+    quantity: number;
+    unitPrice: number;
+    totalPrice: number;
+}
+
+export interface PurchaseEntry {
+    supplierId: string;
+    invoiceNumber: string; // Numero da Nota
+    date: Date;
+    dueDate: Date; // Para o financeiro
+    items: PurchaseItemInput[];
+    totalAmount: number;
+}
+
 export interface Expense {
     id: string;
     description: string;
