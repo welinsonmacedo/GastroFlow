@@ -46,7 +46,9 @@ export const SuperAdminDashboard: React.FC = () => {
   const [editingPlan, setEditingPlan] = useState<Plan | null>(null);
   const [editingFeatures, setEditingFeatures] = useState<string>('');
   const [editingLimits, setEditingLimits] = useState<PlanLimits>({
-      maxTables: 10, maxProducts: 30, maxStaff: 2, allowKds: false, allowCashier: false, allowReports: false
+      maxTables: 10, maxProducts: 30, maxStaff: 2, 
+      allowKds: false, allowCashier: false, allowReports: false,
+      allowInventory: false, allowPurchases: false, allowExpenses: false
   });
 
   // Derived Metrics
@@ -146,7 +148,9 @@ export const SuperAdminDashboard: React.FC = () => {
       setEditingFeatures(plan.features.join('\n'));
       // Carrega limites ou usa defaults se não existir
       setEditingLimits(plan.limits || {
-          maxTables: -1, maxProducts: -1, maxStaff: -1, allowKds: true, allowCashier: true, allowReports: true
+          maxTables: -1, maxProducts: -1, maxStaff: -1, 
+          allowKds: true, allowCashier: true, allowReports: true,
+          allowInventory: true, allowPurchases: true, allowExpenses: true
       });
   }
   
@@ -386,11 +390,25 @@ export const SuperAdminDashboard: React.FC = () => {
                                             </label>
                                             <label className="flex items-center gap-2 cursor-pointer">
                                                 <input type="checkbox" checked={editingLimits.allowCashier} onChange={e => setEditingLimits({...editingLimits, allowCashier: e.target.checked})} />
-                                                <span className="text-xs font-medium">Permitir Módulo Caixa</span>
+                                                <span className="text-xs font-medium">Permitir Módulo Caixa/PDV</span>
                                             </label>
                                             <label className="flex items-center gap-2 cursor-pointer">
                                                 <input type="checkbox" checked={editingLimits.allowReports} onChange={e => setEditingLimits({...editingLimits, allowReports: e.target.checked})} />
                                                 <span className="text-xs font-medium">Permitir Relatórios</span>
+                                            </label>
+                                            
+                                            {/* NEW MODULAR FLAGS */}
+                                            <label className="flex items-center gap-2 cursor-pointer">
+                                                <input type="checkbox" checked={editingLimits.allowInventory} onChange={e => setEditingLimits({...editingLimits, allowInventory: e.target.checked})} />
+                                                <span className="text-xs font-medium">Permitir Estoque</span>
+                                            </label>
+                                            <label className="flex items-center gap-2 cursor-pointer">
+                                                <input type="checkbox" checked={editingLimits.allowPurchases} onChange={e => setEditingLimits({...editingLimits, allowPurchases: e.target.checked})} />
+                                                <span className="text-xs font-medium">Permitir Compras/Entrada Notas</span>
+                                            </label>
+                                            <label className="flex items-center gap-2 cursor-pointer">
+                                                <input type="checkbox" checked={editingLimits.allowExpenses} onChange={e => setEditingLimits({...editingLimits, allowExpenses: e.target.checked})} />
+                                                <span className="text-xs font-medium">Permitir Financeiro/Despesas</span>
                                             </label>
                                         </div>
                                    </div>
@@ -424,7 +442,10 @@ export const SuperAdminDashboard: React.FC = () => {
                                        <div className="flex justify-between"><span>Staff:</span> <span className="font-bold">{plan.limits?.maxStaff === -1 ? '∞' : plan.limits?.maxStaff}</span></div>
                                        <div className="pt-1 mt-1 border-t border-slate-200 flex gap-2 flex-wrap">
                                            {plan.limits?.allowKds ? <span className="text-green-600 font-bold">KDS</span> : <span className="text-red-400 line-through">KDS</span>}
-                                           {plan.limits?.allowCashier ? <span className="text-green-600 font-bold">Caixa</span> : <span className="text-red-400 line-through">Caixa</span>}
+                                           {plan.limits?.allowCashier ? <span className="text-green-600 font-bold">PDV</span> : <span className="text-red-400 line-through">PDV</span>}
+                                           {plan.limits?.allowInventory ? <span className="text-green-600 font-bold">ESTOQUE</span> : <span className="text-red-400 line-through">ESTOQUE</span>}
+                                           {plan.limits?.allowPurchases ? <span className="text-green-600 font-bold">COMPRAS</span> : <span className="text-red-400 line-through">COMPRAS</span>}
+                                           {plan.limits?.allowExpenses ? <span className="text-green-600 font-bold">FIN</span> : <span className="text-red-400 line-through">FIN</span>}
                                        </div>
                                    </div>
 

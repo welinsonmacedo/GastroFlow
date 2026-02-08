@@ -36,8 +36,11 @@ export interface PlanLimits {
     maxProducts: number;
     maxStaff: number;
     allowKds: boolean;
-    allowCashier: boolean;
+    allowCashier: boolean; // PDV
     allowReports?: boolean;
+    allowInventory?: boolean; // Estoque
+    allowPurchases?: boolean; // Compras
+    allowExpenses?: boolean; // Despesas
 }
 
 export interface Plan {
@@ -117,7 +120,7 @@ export interface InventoryRecipeItem {
 export interface InventoryItem {
     id: string;
     name: string;
-    unit: string; // kg, lt, un
+    unit: string; // kg, lt, un, gr
     quantity: number;
     minQuantity: number;
     costPrice: number;

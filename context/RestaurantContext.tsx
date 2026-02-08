@@ -83,7 +83,18 @@ const initialState: State = {
   tenantId: null,
   isValidTenant: false,
   isInactiveTenant: false,
-  planLimits: { maxTables: -1, maxProducts: -1, maxStaff: -1, allowKds: true, allowCashier: true },
+  // Limites padrão - Assume tudo true se não especificado, exceto módulos pagos
+  planLimits: { 
+      maxTables: -1, 
+      maxProducts: -1, 
+      maxStaff: -1, 
+      allowKds: true, 
+      allowCashier: true,
+      allowReports: true,
+      allowInventory: true,
+      allowPurchases: true,
+      allowExpenses: true
+  },
   tables: [],
   products: [],
   orders: [],

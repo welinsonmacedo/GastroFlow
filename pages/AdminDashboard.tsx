@@ -346,6 +346,9 @@ export const AdminDashboard: React.FC = () => {
       setEditingExpense(null);
   };
 
+  // --- PLAN FEATURES CHECK ---
+  const { planLimits } = state;
+
   return (
     <div className="min-h-screen bg-gray-100 flex relative">
         <div className={`bg-slate-900 text-white w-64 p-6 fixed h-full z-50 transition-transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0`}>
@@ -355,9 +358,18 @@ export const AdminDashboard: React.FC = () => {
             </div>
             <nav className="space-y-2">
                 <button onClick={() => setActiveTab('DASHBOARD')} className={`w-full text-left p-3 rounded flex items-center gap-3 ${activeTab==='DASHBOARD'?'bg-blue-600':''}`}><LayoutDashboard size={18}/> Dashboard</button>
-                <button onClick={() => setActiveTab('INVENTORY')} className={`w-full text-left p-3 rounded flex items-center gap-3 ${activeTab==='INVENTORY'?'bg-blue-600':''}`}><Package size={18}/> Estoque (Cadastro)</button>
+                
+                {/* CONDITIONAL RENDER BASED ON PLAN LIMITS */}
+                {planLimits.allowInventory && (
+                    <button onClick={() => setActiveTab('INVENTORY')} className={`w-full text-left p-3 rounded flex items-center gap-3 ${activeTab==='INVENTORY'?'bg-blue-600':''}`}><Package size={18}/> Estoque (Cadastro)</button>
+                )}
+                
                 <button onClick={() => setActiveTab('PRODUCTS')} className={`w-full text-left p-3 rounded flex items-center gap-3 ${activeTab==='PRODUCTS'?'bg-blue-600':''}`}><Utensils size={18}/> Cardápio (Venda)</button>
-                <button onClick={() => setActiveTab('FINANCE')} className={`w-full text-left p-3 rounded flex items-center gap-3 ${activeTab==='FINANCE'?'bg-blue-600':''}`}><DollarSign size={18}/> Financeiro</button>
+                
+                {(planLimits.allowExpenses || planLimits.allowPurchases) && (
+                    <button onClick={() => setActiveTab('FINANCE')} className={`w-full text-left p-3 rounded flex items-center gap-3 ${activeTab==='FINANCE'?'bg-blue-600':''}`}><DollarSign size={18}/> Financeiro</button>
+                )}
+                
                 <button onClick={() => setActiveTab('STAFF')} className={`w-full text-left p-3 rounded flex items-center gap-3 ${activeTab==='STAFF'?'bg-blue-600':''}`}><Users size={18}/> Equipe</button>
                 <button onClick={() => setActiveTab('TABLES')} className={`w-full text-left p-3 rounded flex items-center gap-3 ${activeTab==='TABLES'?'bg-blue-600':''}`}><QrCode size={18}/> Mesas QR</button>
                 <button onClick={() => setActiveTab('CUSTOMIZATION')} className={`w-full text-left p-3 rounded flex items-center gap-3 ${activeTab==='CUSTOMIZATION'?'bg-blue-600':''}`}><Palette size={18}/> Personalizar</button>
@@ -376,15 +388,17 @@ export const AdminDashboard: React.FC = () => {
                             <div className="text-gray-500 text-sm font-bold uppercase">Vendas Hoje</div>
                             <div className="text-3xl font-bold">R$ {state.transactions.reduce((acc, t) => acc + t.amount, 0).toFixed(2)}</div>
                         </div>
-                        <div className="bg-white p-6 rounded-xl shadow border-l-4 border-yellow-500">
-                            <div className="text-gray-500 text-sm font-bold uppercase">Estoque Baixo</div>
-                            <div className="text-3xl font-bold">{state.inventory.filter(i => i.quantity <= i.minQuantity).length}</div>
-                        </div>
+                        {planLimits.allowInventory && (
+                            <div className="bg-white p-6 rounded-xl shadow border-l-4 border-yellow-500">
+                                <div className="text-gray-500 text-sm font-bold uppercase">Estoque Baixo</div>
+                                <div className="text-3xl font-bold">{state.inventory.filter(i => i.quantity <= i.minQuantity).length}</div>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
 
-            {activeTab === 'INVENTORY' && (
+            {activeTab === 'INVENTORY' && planLimits.allowInventory && (
                 <div className="space-y-6">
                     <div className="flex flex-wrap justify-between items-center bg-white p-6 rounded-xl shadow-sm gap-4">
                         <div>
@@ -392,17 +406,21 @@ export const AdminDashboard: React.FC = () => {
                             <p className="text-sm text-gray-500">Cadastre aqui TODOS os itens: ingredientes, bebidas e pratos.</p>
                         </div>
                         <div className="flex gap-2">
-                            <Button onClick={() => setPurchaseHistoryOpen(true)} variant="outline" className="flex items-center gap-2" title="Histórico de Notas">
-                                <FileText size={16}/> Histórico
-                            </Button>
-                            <Button onClick={() => setSupplierModalOpen(true)} variant="outline" className="flex items-center gap-2">
-                                <Truck size={16}/> Fornecedores
-                            </Button>
+                            {planLimits.allowPurchases && (
+                                <>
+                                    <Button onClick={() => setPurchaseHistoryOpen(true)} variant="outline" className="flex items-center gap-2" title="Histórico de Notas">
+                                        <FileText size={16}/> Histórico
+                                    </Button>
+                                    <Button onClick={() => setSupplierModalOpen(true)} variant="outline" className="flex items-center gap-2">
+                                        <Truck size={16}/> Fornecedores
+                                    </Button>
+                                    <Button onClick={() => setPurchaseModalOpen(true)} variant="secondary" className="flex items-center gap-2 bg-blue-100 text-blue-700 hover:bg-blue-200 border-blue-200">
+                                        <FileText size={16}/> Entrada de Nota
+                                    </Button>
+                                </>
+                            )}
                             <Button onClick={handleInventoryInit} variant="secondary" className="flex items-center gap-2 bg-yellow-100 text-yellow-800 hover:bg-yellow-200 border-yellow-200">
                                 <ClipboardList size={16}/> Realizar Inventário
-                            </Button>
-                            <Button onClick={() => setPurchaseModalOpen(true)} variant="secondary" className="flex items-center gap-2 bg-blue-100 text-blue-700 hover:bg-blue-200 border-blue-200">
-                                <FileText size={16}/> Entrada de Nota
                             </Button>
                             <Button onClick={() => { setEditingInventory({ name: '', unit: 'UN', type: 'INGREDIENT', quantity: 0, minQuantity: 5, costPrice: 0 }); setInvRecipeStep([]); }}>
                                 <Plus size={16}/> Novo Item
@@ -466,7 +484,7 @@ export const AdminDashboard: React.FC = () => {
                     )}
 
                     {/* MODAL HISTÓRICO DE COMPRAS */}
-                    {purchaseHistoryOpen && (
+                    {purchaseHistoryOpen && planLimits.allowPurchases && (
                         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
                             <div className="bg-white p-6 rounded-xl shadow-xl w-full max-w-3xl max-h-[80vh] flex flex-col">
                                 <div className="flex justify-between items-center mb-4 border-b pb-4">
@@ -508,7 +526,7 @@ export const AdminDashboard: React.FC = () => {
                     )}
 
                     {/* MODAL ENTRADA DE NOTA DE COMPRA */}
-                    {purchaseModalOpen && (
+                    {purchaseModalOpen && planLimits.allowPurchases && (
                         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
                             <div className="bg-white p-6 rounded-xl shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
                                 <div className="flex justify-between items-center mb-4">
@@ -516,6 +534,7 @@ export const AdminDashboard: React.FC = () => {
                                     <button onClick={() => setPurchaseModalOpen(false)}><X size={20}/></button>
                                 </div>
                                 <form onSubmit={submitPurchaseEntry} className="space-y-6">
+                                    {/* ... (Formulário igual ao anterior) ... */}
                                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-gray-50 p-4 rounded-lg">
                                         <div className="col-span-2">
                                             <label className="block text-xs font-bold mb-1">Fornecedor</label>
@@ -687,7 +706,7 @@ export const AdminDashboard: React.FC = () => {
                     )}
 
                     {/* MODAL FORNECEDORES */}
-                    {supplierModalOpen && (
+                    {supplierModalOpen && planLimits.allowPurchases && (
                         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
                             <div className="bg-white p-6 rounded-xl shadow-xl w-full max-w-md max-h-[80vh] flex flex-col">
                                 <div className="flex justify-between items-center mb-4">
@@ -744,6 +763,7 @@ export const AdminDashboard: React.FC = () => {
                                                 <option value="UN">UN (Unidade)</option>
                                                 <option value="KG">KG (Quilo)</option>
                                                 <option value="LT">LT (Litro)</option>
+                                                <option value="GR">GR (Gramas)</option> {/* NEW OPTION */}
                                             </select>
                                         </div>
                                         {editingInventory.type !== 'COMPOSITE' && (
@@ -1054,126 +1074,15 @@ export const AdminDashboard: React.FC = () => {
                 </div>
             )}
 
-            {activeTab === 'CUSTOMIZATION' && (
-                 <div className="max-w-3xl">
-                    <h2 className="text-2xl font-bold mb-6 text-gray-800">Personalizar App do Cliente</h2>
-                    <div className="bg-white p-6 rounded-xl shadow-sm space-y-8">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                            <div className="space-y-4">
-                                <h3 className="font-bold text-gray-700 flex items-center gap-2"><Palette size={18} /> Identidade Visual</h3>
-                                <div>
-                                    <label className="block text-sm font-medium mb-1">Nome do Restaurante</label>
-                                    <input type="text" className="w-full border p-2 rounded" value={localTheme.restaurantName} onChange={e => setLocalTheme({...localTheme, restaurantName: e.target.value})} />
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-sm font-medium mb-1">Cor Principal</label>
-                                        <div className="flex gap-2 items-center">
-                                            <input type="color" className="h-10 w-10 cursor-pointer border rounded" value={localTheme.primaryColor} onChange={e => setLocalTheme({...localTheme, primaryColor: e.target.value})} />
-                                            <input type="text" className="flex-1 border p-2 rounded uppercase min-w-0" value={localTheme.primaryColor} onChange={e => setLocalTheme({...localTheme, primaryColor: e.target.value})} />
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium mb-1">Cor de Fundo</label>
-                                        <div className="flex gap-2 items-center">
-                                            <input type="color" className="h-10 w-10 cursor-pointer border rounded" value={localTheme.backgroundColor} onChange={e => setLocalTheme({...localTheme, backgroundColor: e.target.value})} />
-                                            <input type="text" className="flex-1 border p-2 rounded uppercase min-w-0" value={localTheme.backgroundColor} onChange={e => setLocalTheme({...localTheme, backgroundColor: e.target.value})} />
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="space-y-4">
-                                <h3 className="font-bold text-gray-700 flex items-center gap-2"><LayoutGrid size={18} /> Layout</h3>
-                                <div>
-                                    <label className="block text-sm font-medium mb-1">Estilo do Cardápio</label>
-                                    <div className="flex gap-2">
-                                        <button onClick={() => setLocalTheme({...localTheme, viewMode: 'LIST'})} className={`flex-1 py-2 border rounded flex items-center justify-center gap-2 ${localTheme.viewMode !== 'GRID' ? 'bg-blue-50 border-blue-500 text-blue-700 font-bold' : 'hover:bg-gray-50'}`}><ListIcon size={16}/> Lista</button>
-                                        <button onClick={() => setLocalTheme({...localTheme, viewMode: 'GRID'})} className={`flex-1 py-2 border rounded flex items-center justify-center gap-2 ${localTheme.viewMode === 'GRID' ? 'bg-blue-50 border-blue-500 text-blue-700 font-bold' : 'hover:bg-gray-50'}`}><LayoutGrid size={16}/> Grade</button>
-                                    </div>
-                                </div>
-                                <div><label className="block text-sm font-medium mb-1">Logo</label><ImageUploader value={localTheme.logoUrl} onChange={(val) => setLocalTheme({...localTheme, logoUrl: val})} /></div>
-                            </div>
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium mb-1 flex items-center gap-2"><ImageIcon size={16}/> Banner</label>
-                            <ImageUploader value={localTheme.bannerUrl || ''} onChange={(val) => setLocalTheme({...localTheme, bannerUrl: val})} />
-                        </div>
-                        <div className="pt-4 border-t"><Button onClick={() => { dispatch({ type: 'UPDATE_THEME', theme: localTheme }); showAlert({ title: "Sucesso", message: "Tema salvo!", type: 'SUCCESS' }); }} className="w-full py-3"><Save size={20} /> Salvar</Button></div>
-                    </div>
-                 </div>
-            )}
-
-            {activeTab === 'TABLES' && (
-                <div>
-                     <div className="flex justify-between items-center mb-6">
-                        <h2 className="text-2xl font-bold text-gray-800">Mesas & QR Codes</h2>
-                        <Button onClick={() => dispatch({ type: 'ADD_TABLE' })}><Plus size={16} /> Nova Mesa</Button>
-                    </div>
-                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                        {state.tables.map(table => (
-                            <div key={table.id} className="bg-white p-6 rounded-xl shadow-sm flex flex-col items-center gap-4 border relative group">
-                                <button onClick={() => showConfirm({title: "Excluir Mesa", message: "Confirma?", type: 'ERROR', onConfirm: () => dispatch({ type: 'DELETE_TABLE', tableId: table.id })})} className="absolute top-2 right-2 p-2 text-gray-300 hover:text-red-500 rounded-full"><Trash2 size={16} /></button>
-                                <h3 className="text-xl font-bold text-gray-800">Mesa {table.number}</h3>
-                                <QRCodeGenerator tableId={table.id} size={150} />
-                                <div className="w-full flex gap-1">
-                                    <a href={getTableUrl(table.id)} target="_blank" className="flex-1 text-xs bg-blue-50 text-blue-600 py-2 rounded text-center flex items-center justify-center gap-1 font-medium"><ExternalLink size={12} /> Link</a>
-                                    <button onClick={() => navigator.clipboard.writeText(getTableUrl(table.id))} className="px-3 bg-gray-100 text-gray-600 rounded text-xs"><Copy size={12} /></button>
-                                </div>
-                                <Button variant="secondary" size="sm" className="w-full" onClick={() => handlePrint(table.id)}><Printer size={16} /> Imprimir</Button>
-                            </div>
-                        ))}
-                     </div>
-                </div>
-            )}
-
-            {activeTab === 'STAFF' && (
-                <div>
-                    <h2 className="text-2xl font-bold mb-6 text-gray-800">Gerenciar Equipe</h2>
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                        <div className="bg-white p-6 rounded-xl shadow-sm h-fit">
-                            <h3 className="font-bold mb-4 text-lg">{editingUser ? 'Editar' : 'Novo'} Funcionário</h3>
-                            <form onSubmit={handleSaveUser} className="space-y-4">
-                                <input required className="w-full border p-2 rounded" placeholder="Nome" value={userForm.name} onChange={e => setUserForm({...userForm, name: e.target.value})} />
-                                <input required type="email" className="w-full border p-2 rounded" placeholder="Email" value={userForm.email} onChange={e => setUserForm({...userForm, email: e.target.value})} />
-                                <select className="w-full border p-2 rounded" value={userForm.role} onChange={e => setUserForm({...userForm, role: e.target.value as Role})}>
-                                    <option value={Role.WAITER}>Garçom</option>
-                                    <option value={Role.KITCHEN}>Cozinha</option>
-                                    <option value={Role.CASHIER}>Caixa</option>
-                                    <option value={Role.ADMIN}>Admin</option>
-                                </select>
-                                <input type="text" maxLength={4} className="w-full border p-2 rounded" placeholder="PIN" value={userForm.pin} onChange={e => setUserForm({...userForm, pin: e.target.value})} />
-                                <div className="flex gap-2">
-                                    {editingUser && <Button type="button" variant="secondary" onClick={() => { setEditingUser(null); setUserForm({name:'',role:Role.WAITER,pin:'',email:'',allowedRoutes:[]}); }}>Cancelar</Button>}
-                                    <Button className="flex-1" type="submit">Salvar</Button>
-                                </div>
-                            </form>
-                        </div>
-                        <div className="lg:col-span-2 space-y-4">
-                            {state.users.filter(u => u.role !== Role.SUPER_ADMIN).map(user => (
-                                <div key={user.id} className="bg-white p-4 rounded-xl shadow-sm flex items-center justify-between border">
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center font-bold text-gray-600">{user.name.charAt(0)}</div>
-                                        <div><div className="font-bold">{user.name}</div><div className="text-xs text-gray-500 uppercase">{user.role}</div></div>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <button onClick={() => copyInviteLink(user.email)} className="text-green-600 p-2 hover:bg-green-50 rounded"><Share2 size={20}/></button>
-                                        <button onClick={() => { setEditingUser(user); setUserForm({name:user.name, email:user.email, role:user.role, pin:user.pin, allowedRoutes:user.allowedRoutes||[]}); }} className="text-blue-500 p-2 hover:bg-blue-50 rounded"><Edit size={20}/></button>
-                                        <button onClick={() => showConfirm({title:"Excluir", message:"Confirma?", type:'ERROR', onConfirm:()=>dispatch({type:'DELETE_USER', userId:user.id})})} className="text-red-500 p-2 hover:bg-red-50 rounded"><Trash2 size={20}/></button>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {activeTab === 'FINANCE' && (
+            {activeTab === 'FINANCE' && (planLimits.allowExpenses || planLimits.allowPurchases) && (
                 <div className="space-y-6">
                     <div className="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border">
                         <div><h2 className="text-xl font-bold">Contas a Pagar</h2></div>
-                        <Button onClick={() => setEditingExpense({ description: '', amount: 0, category: 'Fornecedor', isPaid: false, dueDate: new Date() })}><Plus size={16}/> Nova Despesa</Button>
+                        {planLimits.allowExpenses && (
+                            <Button onClick={() => setEditingExpense({ description: '', amount: 0, category: 'Fornecedor', isPaid: false, dueDate: new Date() })}><Plus size={16}/> Nova Despesa</Button>
+                        )}
                     </div>
-                    {editingExpense && (
+                    {editingExpense && planLimits.allowExpenses && (
                         <div className="bg-white p-6 rounded-xl shadow-lg border border-blue-200">
                             <form onSubmit={handleSaveExpense} className="grid grid-cols-2 gap-4">
                                 <input required className="w-full border p-2 rounded col-span-2" placeholder="Descrição" value={editingExpense.description} onChange={e => setEditingExpense({...editingExpense, description: e.target.value})} />
@@ -1194,8 +1103,8 @@ export const AdminDashboard: React.FC = () => {
                                         <td className="p-4 font-bold">R$ {exp.amount.toFixed(2)}</td>
                                         <td className="p-4">{exp.isPaid ? <span className="text-green-600 font-bold text-xs">PAGO</span> : <span className="text-yellow-600 font-bold text-xs">ABERTO</span>}</td>
                                         <td className="p-4 text-right flex justify-end gap-2">
-                                            {!exp.isPaid && <button onClick={() => dispatch({ type: 'PAY_EXPENSE', expenseId: exp.id })} className="text-blue-600 text-xs font-bold">Pagar</button>}
-                                            <button onClick={() => dispatch({ type: 'DELETE_EXPENSE', expenseId: exp.id })} className="text-red-500"><Trash2 size={16}/></button>
+                                            {!exp.isPaid && planLimits.allowExpenses && <button onClick={() => dispatch({ type: 'PAY_EXPENSE', expenseId: exp.id })} className="text-blue-600 text-xs font-bold">Pagar</button>}
+                                            {planLimits.allowExpenses && <button onClick={() => dispatch({ type: 'DELETE_EXPENSE', expenseId: exp.id })} className="text-red-500"><Trash2 size={16}/></button>}
                                         </td>
                                     </tr>
                                 ))}
