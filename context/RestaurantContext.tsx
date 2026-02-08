@@ -352,7 +352,6 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     initTenant();
   }, []);
 
-  // ... (Remainder of the file unchanged: Effects for Realtime, dispatch logic) ...
   // --- REALTIME SUBSCRIPTIONS ---
   useEffect(() => {
     if (!state.tenantId) return;
@@ -864,6 +863,84 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             return;
         }
         dispatchLocal(action);
+    }
+
+    // --- OTHER ACTIONS HANDLERS ---
+    if (action.type === 'ADD_TABLE' && tenantId) {
+        const nextNumber = state.tables.length > 0 ? Math.max(...state.tables.map(t => t.number)) + 1 : 1;
+        await supabase.from('restaurant_tables').insert({
+            tenant_id: tenantId,
+            number: nextNumber,
+            status: 'AVAILABLE'
+        });
+        return;
+    }
+
+    if (action.type === 'DELETE_TABLE' && tenantId) {
+        await supabase.from('restaurant_tables').delete().eq('id', action.tableId);
+        return;
+    }
+
+    if (action.type === 'ADD_USER' && tenantId) {
+        await supabase.from('staff').insert({
+            tenant_id: tenantId,
+            name: action.user.name,
+            role: action.user.role,
+            pin: action.user.pin,
+            email: action.user.email,
+            allowed_routes: action.user.allowedRoutes
+        });
+        return;
+    }
+
+    if (action.type === 'UPDATE_USER' && tenantId) {
+        await supabase.from('staff').update({
+            name: action.user.name,
+            role: action.user.role,
+            pin: action.user.pin,
+            email: action.user.email,
+            allowed_routes: action.user.allowedRoutes
+        }).eq('id', action.user.id);
+        return;
+    }
+
+    if (action.type === 'DELETE_USER' && tenantId) {
+        await supabase.from('staff').delete().eq('id', action.userId);
+        return;
+    }
+
+    if (action.type === 'UPDATE_THEME' && tenantId) {
+        await supabase.from('tenants').update({
+            theme_config: action.theme
+        }).eq('id', tenantId);
+        dispatchLocal({ type: 'UPDATE_THEME', theme: action.theme });
+        return;
+    }
+
+    if (action.type === 'ADD_EXPENSE' && tenantId) {
+        await supabase.from('expenses').insert({
+            tenant_id: tenantId,
+            description: action.expense.description,
+            amount: action.expense.amount,
+            category: action.expense.category,
+            due_date: action.expense.dueDate,
+            is_paid: action.expense.isPaid,
+            supplier_id: action.expense.supplierId
+        });
+        return;
+    }
+    
+    if (action.type === 'PAY_EXPENSE' && tenantId) {
+        await supabase.from('expenses').update({
+            is_paid: true,
+            paid_date: new Date().toISOString()
+        }).eq('id', action.expenseId);
+        return;
+    }
+
+    if (action.type === 'DELETE_EXPENSE' && tenantId) {
+        await supabase.from('expenses').delete().eq('id', action.expenseId);
+        return;
     }
 
     switch (action.type) {

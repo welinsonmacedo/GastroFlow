@@ -25,7 +25,6 @@ export const AdminDashboard: React.FC = () => {
   const [inventoryModalOpen, setInventoryModalOpen] = useState(false);
   const [inventoryCounts, setInventoryCounts] = useState<{ [key: string]: number }>({});
 
-  // ... (Other states remain the same as previous file version) ...
   // --- Purchase/Invoice Entry State ---
   const [purchaseModalOpen, setPurchaseModalOpen] = useState(false);
   const [purchaseHistoryOpen, setPurchaseHistoryOpen] = useState(false);
@@ -379,18 +378,35 @@ export const AdminDashboard: React.FC = () => {
       setDraggedItemIndex(null);
   };
 
+  // --- STAFF LOGIC ---
   const handleSaveUser = (e: React.FormEvent) => {
       e.preventDefault();
       if(editingUser) dispatch({ type: 'UPDATE_USER', user: { ...editingUser, ...userForm } as User });
       else dispatch({ type: 'ADD_USER', user: { ...userForm, id: Math.random().toString() } as User });
       setEditingUser(null);
       setUserForm({ name: '', role: Role.WAITER, pin: '', email: '', allowedRoutes: [] });
+      showAlert({ title: "Sucesso", message: "Usuário salvo!", type: 'SUCCESS' });
   };
 
+  // --- FINANCE LOGIC ---
   const handleSaveExpense = (e: React.FormEvent) => {
       e.preventDefault();
-      if(editingExpense) dispatch({ type: 'ADD_EXPENSE', expense: { ...editingExpense, id: Math.random().toString(), isPaid: editingExpense.isPaid || false } as Expense });
-      setEditingExpense(null);
+      if(editingExpense) {
+          dispatch({ type: 'ADD_EXPENSE', expense: { ...editingExpense, id: Math.random().toString(), isPaid: editingExpense.isPaid || false } as Expense });
+          setEditingExpense(null);
+          showAlert({ title: "Sucesso", message: "Despesa registrada!", type: 'SUCCESS' });
+      }
+  };
+
+  const handlePayExpense = (id: string) => {
+      showConfirm({
+          title: "Dar Baixa",
+          message: "Confirmar pagamento desta conta?",
+          onConfirm: () => {
+              dispatch({ type: 'PAY_EXPENSE', expenseId: id });
+              showAlert({ title: "Sucesso", message: "Pagamento registrado.", type: 'SUCCESS' });
+          }
+      });
   };
 
   // --- PLAN FEATURES CHECK ---
@@ -406,24 +422,26 @@ export const AdminDashboard: React.FC = () => {
             </div>
             <nav className="space-y-2">
                 <button onClick={() => setActiveTab('DASHBOARD')} className={`w-full text-left p-3 rounded flex items-center gap-3 ${activeTab==='DASHBOARD'?'bg-blue-600':''}`}><LayoutDashboard size={18}/> Dashboard</button>
-                {/* Permissões de Estoque */}
+                
                 {planLimits.allowInventory && <button onClick={() => setActiveTab('INVENTORY')} className={`w-full text-left p-3 rounded flex items-center gap-3 ${activeTab==='INVENTORY'?'bg-blue-600':''}`}><Package size={18}/> Estoque (Cadastro)</button>}
                 
                 <button onClick={() => setActiveTab('PRODUCTS')} className={`w-full text-left p-3 rounded flex items-center gap-3 ${activeTab==='PRODUCTS'?'bg-blue-600':''}`}><Utensils size={18}/> Cardápio (Venda)</button>
                 
-                {/* Permissões de Financeiro / Compras */}
                 {(planLimits.allowExpenses || planLimits.allowPurchases) && <button onClick={() => setActiveTab('FINANCE')} className={`w-full text-left p-3 rounded flex items-center gap-3 ${activeTab==='FINANCE'?'bg-blue-600':''}`}><DollarSign size={18}/> Financeiro</button>}
                 
                 {planLimits.allowReports && <button onClick={() => setActiveTab('ACCOUNTING')} className={`w-full text-left p-3 rounded flex items-center gap-3 ${activeTab==='ACCOUNTING'?'bg-blue-600':''}`}><FileSpreadsheet size={18}/> Contabilidade</button>}
+                
                 {planLimits.allowStaff && <button onClick={() => setActiveTab('STAFF')} className={`w-full text-left p-3 rounded flex items-center gap-3 ${activeTab==='STAFF'?'bg-blue-600':''}`}><Users size={18}/> Equipe</button>}
+                
                 {planLimits.allowTableMgmt && <button onClick={() => setActiveTab('TABLES')} className={`w-full text-left p-3 rounded flex items-center gap-3 ${activeTab==='TABLES'?'bg-blue-600':''}`}><QrCode size={18}/> Mesas QR</button>}
+                
                 {planLimits.allowCustomization && <button onClick={() => setActiveTab('CUSTOMIZATION')} className={`w-full text-left p-3 rounded flex items-center gap-3 ${activeTab==='CUSTOMIZATION'?'bg-blue-600':''}`}><Palette size={18}/> Personalizar</button>}
+                
                 <Link to="/" className="w-full text-left p-3 rounded flex items-center gap-3 text-red-400 hover:bg-slate-800"><ArrowLeft size={18}/> Sair</Link>
             </nav>
         </div>
 
         <div className="flex-1 p-4 md:p-8 h-screen overflow-y-auto">
-            {/* ... Mobile Menu Button ... */}
             <button onClick={() => setIsSidebarOpen(true)} className="md:hidden mb-4 p-2 bg-white rounded shadow print:hidden"><Menu /></button>
 
             {activeTab === 'DASHBOARD' && (
@@ -440,15 +458,126 @@ export const AdminDashboard: React.FC = () => {
                                 <div className="text-3xl font-bold">{state.inventory.filter(i => i.quantity <= i.minQuantity).length}</div>
                             </div>
                         )}
+                        <div className="bg-white p-6 rounded-xl shadow border-l-4 border-purple-500">
+                            <div className="text-gray-500 text-sm font-bold uppercase">Pedidos Abertos</div>
+                            <div className="text-3xl font-bold">{state.orders.filter(o => !o.isPaid).length}</div>
+                        </div>
                     </div>
                 </div>
             )}
 
-            {/* ... ACCOUNTING TAB (Hidden for brevity, same as previous) ... */}
+            {activeTab === 'PRODUCTS' && (
+                <div className="space-y-6">
+                    <div className="flex justify-between items-center bg-white p-6 rounded-xl shadow-sm">
+                        <div>
+                            <h2 className="text-2xl font-bold text-gray-800">Cardápio de Venda</h2>
+                            <p className="text-sm text-gray-500">Gerencie os produtos visíveis para o cliente.</p>
+                        </div>
+                        <Button onClick={() => setMenuModalOpen(true)}><Plus size={16}/> Adicionar Produto</Button>
+                    </div>
+
+                    {/* Drag and Drop List */}
+                    <div className="bg-white rounded-xl shadow-sm border p-4">
+                        {sortedProducts.map((product, index) => (
+                            <div 
+                                key={product.id} 
+                                draggable
+                                onDragStart={() => handleDragStart(index)}
+                                onDragOver={handleDragOver}
+                                onDrop={() => handleDrop(index)}
+                                className="flex items-center gap-4 p-3 border-b last:border-0 hover:bg-gray-50 cursor-move"
+                            >
+                                <GripVertical className="text-gray-400" />
+                                <img src={product.image} className="w-10 h-10 rounded object-cover bg-gray-100" />
+                                <div className="flex-1">
+                                    <div className="font-bold">{product.name}</div>
+                                    <div className="text-xs text-gray-500">{product.category}</div>
+                                </div>
+                                <div className="text-right">
+                                    <div className="font-bold text-blue-600">R$ {product.price.toFixed(2)}</div>
+                                    {product.costPrice && <div className="text-xs text-gray-400">Custo: R$ {product.costPrice.toFixed(2)}</div>}
+                                </div>
+                                <div className="flex gap-2">
+                                    <button onClick={() => setEditingProduct(product)} className="p-2 text-blue-600 hover:bg-blue-50 rounded"><Edit size={16}/></button>
+                                    <button onClick={() => dispatch({type: 'UPDATE_PRODUCT', product: {...product, isVisible: !product.isVisible}})} className={`p-2 rounded ${product.isVisible ? 'text-green-600 hover:bg-green-50' : 'text-gray-400 hover:bg-gray-100'}`}>
+                                        {product.isVisible ? <Eye size={16}/> : <EyeOff size={16}/>}
+                                    </button>
+                                    <button onClick={() => dispatch({type: 'DELETE_PRODUCT', productId: product.id})} className="p-2 text-red-600 hover:bg-red-50 rounded"><Trash2 size={16}/></button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Modal Add/Edit Product */}
+                    {(menuModalOpen || editingProduct) && (
+                        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                            <div className="bg-white p-6 rounded-xl shadow-xl w-full max-w-lg">
+                                <h3 className="font-bold text-lg mb-4">{editingProduct ? 'Editar Produto' : 'Adicionar ao Cardápio'}</h3>
+                                
+                                {!editingProduct && (
+                                    <div className="mb-4">
+                                        <label className="block text-xs font-bold mb-1">Selecione do Estoque (Obrigatório)</label>
+                                        <select 
+                                            className="w-full border p-2 rounded" 
+                                            value={selectedStockId} 
+                                            onChange={e => setSelectedStockId(e.target.value)}
+                                        >
+                                            <option value="">Selecione...</option>
+                                            {availableForMenu.map(i => (
+                                                <option key={i.id} value={i.id}>{i.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
+
+                                <div className="space-y-3">
+                                    <input 
+                                        placeholder="Nome de Exibição" 
+                                        className="w-full border p-2 rounded" 
+                                        value={editingProduct ? editingProduct.name : newProductForm.name} 
+                                        onChange={e => editingProduct ? setEditingProduct({...editingProduct, name: e.target.value}) : setNewProductForm({...newProductForm, name: e.target.value})} 
+                                    />
+                                    <input 
+                                        placeholder="Preço de Venda" 
+                                        type="number"
+                                        className="w-full border p-2 rounded" 
+                                        value={editingProduct ? editingProduct.price : newProductForm.price} 
+                                        onChange={e => editingProduct ? setEditingProduct({...editingProduct, price: parseFloat(e.target.value)}) : setNewProductForm({...newProductForm, price: parseFloat(e.target.value)})} 
+                                    />
+                                    <textarea 
+                                        placeholder="Descrição" 
+                                        className="w-full border p-2 rounded" 
+                                        value={editingProduct ? editingProduct.description : newProductForm.description} 
+                                        onChange={e => editingProduct ? setEditingProduct({...editingProduct, description: e.target.value}) : setNewProductForm({...newProductForm, description: e.target.value})} 
+                                    />
+                                    <select 
+                                        className="w-full border p-2 rounded" 
+                                        value={editingProduct ? editingProduct.category : newProductForm.category}
+                                        onChange={e => editingProduct ? setEditingProduct({...editingProduct, category: e.target.value}) : setNewProductForm({...newProductForm, category: e.target.value})}
+                                    >
+                                        {['Lanches', 'Pizzas', 'Pratos Principais', 'Acompanhamentos', 'Bebidas', 'Sobremesas'].map(c => <option key={c} value={c}>{c}</option>)}
+                                    </select>
+                                    <div>
+                                        <label className="block text-xs font-bold mb-1">Imagem</label>
+                                        <ImageUploader 
+                                            value={editingProduct ? editingProduct.image : newProductForm.image || ''} 
+                                            onChange={(val) => editingProduct ? setEditingProduct({...editingProduct, image: val}) : setNewProductForm({...newProductForm, image: val})} 
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="flex gap-2 mt-4">
+                                    <Button variant="secondary" onClick={() => { setMenuModalOpen(false); setEditingProduct(null); }} className="flex-1">Cancelar</Button>
+                                    <Button onClick={editingProduct ? handleUpdateMenuProduct : handleAddProductToMenu} className="flex-1">Salvar</Button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+
             {activeTab === 'ACCOUNTING' && planLimits.allowReports && (
-               /* ... */
                <div className="space-y-6">
-                   {/* Reusing existing Accounting UI */}
                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-6 rounded-xl shadow-sm gap-4 print:hidden">
                         <div>
                             <h2 className="text-2xl font-bold text-gray-800">Relatório Contábil (DRE)</h2>
@@ -461,11 +590,55 @@ export const AdminDashboard: React.FC = () => {
                             <Button variant="secondary" onClick={() => window.print()}><Printer size={16}/> Imprimir</Button>
                         </div>
                     </div>
-                    {/* ... Rest of Accounting ... */}
+                    
+                    <div className="bg-white p-8 rounded-xl shadow-sm border print:border-none print:shadow-none">
+                        <h1 className="text-3xl font-bold text-center mb-2 print:block hidden">{state.theme.restaurantName} - Relatório Financeiro</h1>
+                        <p className="text-center text-gray-500 mb-8 print:block hidden">Período: {new Date(accountingDateStart).toLocaleDateString()} a {new Date(accountingDateEnd).toLocaleDateString()}</p>
+
+                        <div className="grid grid-cols-3 gap-6 mb-8 text-center">
+                            <div className="p-4 bg-gray-50 rounded-lg">
+                                <span className="block text-gray-500 text-sm uppercase">Receita Bruta</span>
+                                <span className="text-2xl font-bold text-green-600">R$ {accountingData.revenue.toFixed(2)}</span>
+                            </div>
+                            <div className="p-4 bg-gray-50 rounded-lg">
+                                <span className="block text-gray-500 text-sm uppercase">Despesas</span>
+                                <span className="text-2xl font-bold text-red-600">R$ {accountingData.expenses.toFixed(2)}</span>
+                            </div>
+                            <div className="p-4 bg-blue-50 rounded-lg border border-blue-100">
+                                <span className="block text-blue-600 text-sm uppercase font-bold">Lucro Líquido</span>
+                                <span className="text-3xl font-bold text-blue-800">R$ {accountingData.netIncome.toFixed(2)}</span>
+                            </div>
+                        </div>
+
+                        <div className="grid md:grid-cols-2 gap-8">
+                            <div>
+                                <h3 className="font-bold border-b pb-2 mb-4">Receita por Método</h3>
+                                <ul className="space-y-2">
+                                    {Object.entries(accountingData.byMethod).map(([method, amount]: any) => (
+                                        <li key={method} className="flex justify-between">
+                                            <span>{method}</span>
+                                            <span className="font-mono">R$ {amount.toFixed(2)}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                            <div>
+                                <h3 className="font-bold border-b pb-2 mb-4">Despesas por Categoria</h3>
+                                <ul className="space-y-2">
+                                    {Object.entries(accountingData.expensesByCategory).map(([cat, amount]: any) => (
+                                        <li key={cat} className="flex justify-between">
+                                            <span>{cat}</span>
+                                            <span className="font-mono">R$ {amount.toFixed(2)}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
                </div>
             )}
 
-            {/* --- INVENTORY TAB (UPDATED) --- */}
+            {/* --- INVENTORY TAB --- */}
             {activeTab === 'INVENTORY' && planLimits.allowInventory && (
                 <div className="space-y-6">
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-6 rounded-xl shadow-sm gap-4">
@@ -486,7 +659,22 @@ export const AdminDashboard: React.FC = () => {
                         </div>
                     </div>
 
-                    {/* ... Modais existentes (Inventário, Histórico, Compras, Fornecedores) mantidos iguais ... */}
+                    {/* Modais de Estoque */}
+                    {stockModal && (
+                        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                            <div className="bg-white p-6 rounded-xl shadow-xl w-full max-w-sm">
+                                <h3 className="font-bold text-lg mb-4">{stockModal.type === 'IN' ? 'Entrada Manual' : 'Saída / Perda'}</h3>
+                                <form onSubmit={handleStockUpdate} className="space-y-3">
+                                    <input type="number" step="0.001" placeholder="Quantidade" className="w-full border p-2 rounded" value={stockModal.quantity} onChange={e => setStockModal({...stockModal, quantity: e.target.value})} autoFocus />
+                                    <input type="text" placeholder="Motivo (Ex: Ajuste, Perda, Doação)" className="w-full border p-2 rounded" value={stockModal.reason} onChange={e => setStockModal({...stockModal, reason: e.target.value})} />
+                                    <div className="flex gap-2">
+                                        <Button type="button" variant="secondary" onClick={() => setStockModal(null)} className="flex-1">Cancelar</Button>
+                                        <Button type="submit" className="flex-1">Confirmar</Button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    )}
 
                     {/* MODAL CADASTRO ESTOQUE (ATUALIZADO) */}
                     {editingInventory && (
@@ -549,7 +737,6 @@ export const AdminDashboard: React.FC = () => {
                                         </div>
                                     </div>
 
-                                    {/* IMAGE UPLOADER FOR RESALE AND COMPOSITE */}
                                     {(editingInventory.type === 'RESALE' || editingInventory.type === 'COMPOSITE') && (
                                         <div>
                                             <label className="block text-xs font-bold mb-1">Foto do Produto (Opcional)</label>
@@ -561,7 +748,6 @@ export const AdminDashboard: React.FC = () => {
                                         </div>
                                     )}
 
-                                    {/* RECEITA (Apenas para Compostos) */}
                                     {editingInventory.type === 'COMPOSITE' && (
                                         <div className="bg-gray-50 p-4 rounded border mt-4">
                                             <h4 className="font-bold text-sm mb-2 flex items-center gap-2"><Layers size={14}/> Composição</h4>
@@ -662,11 +848,207 @@ export const AdminDashboard: React.FC = () => {
                             </table>
                         </div>
                     </div>
-                    {/* ... Stock Modal ... */}
                 </div>
             )}
 
-            {/* ... Other Tabs ... */}
+            {/* --- FINANCE TAB --- */}
+            {activeTab === 'FINANCE' && (
+                <div className="space-y-6">
+                    <div className="flex justify-between items-center bg-white p-6 rounded-xl shadow-sm">
+                        <h2 className="text-2xl font-bold text-gray-800">Financeiro</h2>
+                        <Button onClick={() => setEditingExpense({ description: '', amount: 0, category: 'Outros', isPaid: false })}><Plus size={16}/> Nova Despesa</Button>
+                    </div>
+
+                    <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+                        <table className="w-full text-left">
+                            <thead className="bg-gray-50 text-gray-600 text-sm">
+                                <tr>
+                                    <th className="p-4">Descrição</th>
+                                    <th className="p-4">Categoria</th>
+                                    <th className="p-4">Vencimento</th>
+                                    <th className="p-4 text-right">Valor</th>
+                                    <th className="p-4 text-center">Status</th>
+                                    <th className="p-4 text-right">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y">
+                                {state.expenses.map(expense => (
+                                    <tr key={expense.id} className="hover:bg-gray-50">
+                                        <td className="p-4 font-medium">{expense.description}</td>
+                                        <td className="p-4 text-sm">{expense.category}</td>
+                                        <td className="p-4 text-sm">{new Date(expense.dueDate).toLocaleDateString()}</td>
+                                        <td className="p-4 text-right font-bold">R$ {expense.amount.toFixed(2)}</td>
+                                        <td className="p-4 text-center">
+                                            <span className={`px-2 py-1 rounded text-xs font-bold ${expense.isPaid ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                                {expense.isPaid ? 'PAGO' : 'PENDENTE'}
+                                            </span>
+                                        </td>
+                                        <td className="p-4 text-right flex justify-end gap-2">
+                                            {!expense.isPaid && <button onClick={() => handlePayExpense(expense.id)} className="p-2 bg-green-50 text-green-600 rounded" title="Pagar"><CheckSquare size={16}/></button>}
+                                            <button onClick={() => dispatch({ type: 'DELETE_EXPENSE', expenseId: expense.id })} className="p-2 text-red-600 hover:bg-red-50 rounded"><Trash2 size={16}/></button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {/* MODAL EXPENSE */}
+                    {editingExpense && (
+                        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                            <div className="bg-white p-6 rounded-xl w-full max-w-md">
+                                <h3 className="font-bold text-lg mb-4">Adicionar Despesa</h3>
+                                <form onSubmit={handleSaveExpense} className="space-y-4">
+                                    <input required placeholder="Descrição" className="w-full border p-2 rounded" value={editingExpense.description} onChange={e => setEditingExpense({...editingExpense, description: e.target.value})} />
+                                    <input required type="number" step="0.01" placeholder="Valor" className="w-full border p-2 rounded" value={editingExpense.amount} onChange={e => setEditingExpense({...editingExpense, amount: parseFloat(e.target.value)})} />
+                                    <select className="w-full border p-2 rounded" value={editingExpense.category} onChange={e => setEditingExpense({...editingExpense, category: e.target.value})}>
+                                        <option>Fornecedor</option><option>Aluguel</option><option>Energia</option><option>Pessoal</option><option>Outros</option>
+                                    </select>
+                                    <input type="date" required className="w-full border p-2 rounded" value={editingExpense.dueDate ? new Date(editingExpense.dueDate).toISOString().split('T')[0] : ''} onChange={e => setEditingExpense({...editingExpense, dueDate: new Date(e.target.value)})} />
+                                    <div className="flex gap-2">
+                                        <Button type="button" variant="secondary" onClick={() => setEditingExpense(null)} className="flex-1">Cancelar</Button>
+                                        <Button type="submit" className="flex-1">Salvar</Button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* --- STAFF TAB --- */}
+            {activeTab === 'STAFF' && (
+                <div className="space-y-6">
+                    <div className="flex justify-between items-center bg-white p-6 rounded-xl shadow-sm">
+                        <h2 className="text-2xl font-bold">Equipe</h2>
+                        <Button onClick={() => setEditingUser({ name: '', role: Role.WAITER, pin: '', id: '', allowedRoutes: [] })}><Plus size={16}/> Novo Usuário</Button>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {state.users.map(u => (
+                            <div key={u.id} className="bg-white p-4 rounded-xl shadow-sm border flex justify-between items-center">
+                                <div>
+                                    <h3 className="font-bold">{u.name}</h3>
+                                    <p className="text-sm text-gray-500">{u.role}</p>
+                                    <p className="text-xs text-blue-600 font-mono mt-1">PIN: {u.pin}</p>
+                                </div>
+                                <div className="flex gap-2">
+                                    <button onClick={() => { setEditingUser(u); setUserForm(u); }} className="p-2 text-blue-600 bg-blue-50 rounded"><Edit size={16}/></button>
+                                    <button onClick={() => dispatch({ type: 'DELETE_USER', userId: u.id })} className="p-2 text-red-600 bg-red-50 rounded"><Trash2 size={16}/></button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* MODAL USER */}
+                    {editingUser && (
+                        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                            <div className="bg-white p-6 rounded-xl w-full max-w-sm">
+                                <h3 className="font-bold text-lg mb-4">{editingUser.id ? 'Editar' : 'Novo'} Usuário</h3>
+                                <form onSubmit={handleSaveUser} className="space-y-4">
+                                    <input required placeholder="Nome" className="w-full border p-2 rounded" value={userForm.name} onChange={e => setUserForm({...userForm, name: e.target.value})} />
+                                    <select className="w-full border p-2 rounded" value={userForm.role} onChange={e => setUserForm({...userForm, role: e.target.value as Role})}>
+                                        <option value="WAITER">Garçom</option>
+                                        <option value="KITCHEN">Cozinha</option>
+                                        <option value="CASHIER">Caixa</option>
+                                        <option value="ADMIN">Gerente</option>
+                                    </select>
+                                    <input required placeholder="PIN (4 dígitos)" maxLength={4} className="w-full border p-2 rounded" value={userForm.pin} onChange={e => setUserForm({...userForm, pin: e.target.value})} />
+                                    
+                                    <div className="flex gap-2">
+                                        <Button type="button" variant="secondary" onClick={() => setEditingUser(null)} className="flex-1">Cancelar</Button>
+                                        <Button type="submit" className="flex-1">Salvar</Button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* --- TABLES TAB --- */}
+            {activeTab === 'TABLES' && (
+                <div className="space-y-6">
+                    <div className="flex justify-between items-center bg-white p-6 rounded-xl shadow-sm">
+                        <h2 className="text-2xl font-bold">Mesas & QR Codes</h2>
+                        <Button onClick={() => dispatch({ type: 'ADD_TABLE' })}><Plus size={16}/> Adicionar Mesa</Button>
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                        {state.tables.map(table => (
+                            <div key={table.id} className="bg-white p-4 rounded-xl shadow-sm border flex flex-col items-center relative group">
+                                <div className="text-2xl font-bold mb-2">Mesa {table.number}</div>
+                                <div className="bg-white p-2 border rounded mb-2">
+                                    <QRCodeGenerator tableId={table.id} size={100} />
+                                </div>
+                                <div className="flex gap-2 w-full mt-2">
+                                    <button onClick={() => handlePrint(table.id)} className="flex-1 bg-blue-50 text-blue-600 py-1 rounded text-xs font-bold hover:bg-blue-100">Imprimir</button>
+                                    <button onClick={() => dispatch({ type: 'DELETE_TABLE', tableId: table.id })} className="p-1 bg-red-50 text-red-600 rounded hover:bg-red-100"><Trash2 size={16}/></button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* --- CUSTOMIZATION TAB --- */}
+            {activeTab === 'CUSTOMIZATION' && (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div className="bg-white p-6 rounded-xl shadow-sm border space-y-6">
+                        <h2 className="text-xl font-bold">Aparência do App</h2>
+                        <div>
+                            <label className="block text-sm font-bold mb-1">Nome do Restaurante</label>
+                            <input className="w-full border p-2 rounded" value={localTheme.restaurantName} onChange={e => setLocalTheme({...localTheme, restaurantName: e.target.value})} />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-bold mb-1">Cor Principal</label>
+                                <div className="flex gap-2">
+                                    <input type="color" className="h-10 w-10 border rounded cursor-pointer" value={localTheme.primaryColor} onChange={e => setLocalTheme({...localTheme, primaryColor: e.target.value})} />
+                                    <input className="flex-1 border p-2 rounded uppercase" value={localTheme.primaryColor} onChange={e => setLocalTheme({...localTheme, primaryColor: e.target.value})} />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold mb-1">Cor de Fundo</label>
+                                <div className="flex gap-2">
+                                    <input type="color" className="h-10 w-10 border rounded cursor-pointer" value={localTheme.backgroundColor} onChange={e => setLocalTheme({...localTheme, backgroundColor: e.target.value})} />
+                                    <input className="flex-1 border p-2 rounded uppercase" value={localTheme.backgroundColor} onChange={e => setLocalTheme({...localTheme, backgroundColor: e.target.value})} />
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-bold mb-1">Logo URL</label>
+                            <ImageUploader value={localTheme.logoUrl} onChange={val => setLocalTheme({...localTheme, logoUrl: val})} />
+                        </div>
+                        <Button onClick={() => { dispatch({ type: 'UPDATE_THEME', theme: localTheme }); showAlert({ title: "Salvo", message: "Tema atualizado!", type: 'SUCCESS' }); }} className="w-full">Salvar Alterações</Button>
+                    </div>
+
+                    {/* Live Preview */}
+                    <div className="border-4 border-gray-800 rounded-[2rem] overflow-hidden shadow-2xl h-[600px] relative bg-white">
+                        <div className="absolute top-0 w-full h-6 bg-gray-800 flex justify-center"><div className="w-32 h-4 bg-black rounded-b-xl"></div></div>
+                        <div className="h-full overflow-y-auto pt-8 pb-4" style={{ backgroundColor: localTheme.backgroundColor, color: localTheme.fontColor }}>
+                            <div className="p-4">
+                                <div className="flex items-center gap-2 mb-6">
+                                    {localTheme.logoUrl ? <img src={localTheme.logoUrl} className="w-10 h-10 rounded-full bg-white p-1 object-contain"/> : <div className="w-10 h-10 rounded-full bg-gray-200"></div>}
+                                    <h1 className="font-bold text-lg" style={{ color: localTheme.primaryColor }}>{localTheme.restaurantName}</h1>
+                                </div>
+                                <div className="h-40 bg-gray-200 rounded-xl mb-6 flex items-center justify-center text-gray-400">Banner</div>
+                                <h2 className="font-bold text-lg mb-4">Lanches</h2>
+                                <div className="space-y-4">
+                                    {[1, 2].map(i => (
+                                        <div key={i} className="bg-white p-3 rounded-xl shadow-sm flex gap-3">
+                                            <div className="w-20 h-20 bg-gray-100 rounded-lg"></div>
+                                            <div className="flex-1">
+                                                <div className="h-4 w-3/4 bg-gray-200 rounded mb-2"></div>
+                                                <div className="h-3 w-1/2 bg-gray-100 rounded mb-4"></div>
+                                                <div className="font-bold" style={{ color: localTheme.primaryColor }}>R$ 25,00</div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     </div>
   );
