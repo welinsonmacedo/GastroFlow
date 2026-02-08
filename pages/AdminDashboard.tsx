@@ -5,7 +5,7 @@ import { Button } from '../components/Button';
 import { QRCodeGenerator } from '../components/QRCodeGenerator';
 import { ImageUploader } from '../components/ImageUploader';
 import { Product, ProductType, Role, User, InventoryItem, Expense, InventoryType, Supplier, PurchaseItemInput, PurchaseInstallment } from '../types';
-import { LayoutDashboard, Utensils, QrCode, Printer, ExternalLink, Palette, Eye, EyeOff, Save, Copy, Plus, Users, ShieldCheck, Trash2, Edit, AlertTriangle, FileBarChart, X, ArrowUp, ArrowDown, LayoutGrid, List as ListIcon, Image as ImageIcon, Calendar, TrendingUp, Search, Loader2, Menu, Activity, CheckSquare, GripVertical, Link as LinkIcon, Share2, Lock, BookOpen, Package, DollarSign, Archive, TrendingDown, RefreshCcw, Layers, ArrowLeft, Truck, FileText, ClipboardList, FileSpreadsheet, PieChart, CreditCard, Info, MapPin, Phone, User as UserIcon } from 'lucide-react';
+import { LayoutDashboard, Utensils, QrCode, Printer, ExternalLink, Palette, Eye, EyeOff, Save, Copy, Plus, Users, ShieldCheck, Trash2, Edit, AlertTriangle, FileBarChart, X, ArrowUp, ArrowDown, LayoutGrid, List as ListIcon, Image as ImageIcon, Calendar, TrendingUp, Search, Loader2, Menu, Activity, CheckSquare, GripVertical, Link as LinkIcon, Share2, Lock, BookOpen, Package, DollarSign, Archive, TrendingDown, RefreshCcw, Layers, ArrowLeft, Truck, FileText, ClipboardList, FileSpreadsheet, PieChart, CreditCard, Info, MapPin, Phone, User as UserIcon, Check, UserPlus } from 'lucide-react';
 import { getTenantSlug } from '../utils/tenant';
 import { supabase } from '../lib/supabase';
 import { Link } from 'react-router-dom';
@@ -68,6 +68,7 @@ export const AdminDashboard: React.FC = () => {
   // Staff state
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [userForm, setUserForm] = useState<Partial<User>>({ name: '', role: Role.WAITER, pin: '', email: '', allowedRoutes: [] });
+  const [copiedInviteId, setCopiedInviteId] = useState<string | null>(null);
 
   // Finance State
   const [editingExpense, setEditingExpense] = useState<Partial<Expense> | null>(null);
@@ -98,11 +99,19 @@ export const AdminDashboard: React.FC = () => {
     }
   };
   
-  const copyInviteLink = (userEmail?: string) => {
-      if (!userEmail) return showAlert({ title: "Atenção", message: "Sem email cadastrado.", type: 'WARNING' });
+  const copyInviteLink = (userEmail?: string, userId?: string) => {
+      if (!userEmail) return showAlert({ title: "Atenção", message: "Este usuário não tem email cadastrado.", type: 'WARNING' });
       const slug = state.tenantSlug || getTenantSlug();
+      // Link de convite que força o modo de registro
       const link = `${window.location.origin}/login?restaurant=${slug}&email=${encodeURIComponent(userEmail)}&register=true`;
-      navigator.clipboard.writeText(link).then(() => showAlert({ title: "Copiado!", message: "Link copiado.", type: 'SUCCESS' }));
+      
+      navigator.clipboard.writeText(link).then(() => {
+          if (userId) {
+              setCopiedInviteId(userId);
+              setTimeout(() => setCopiedInviteId(null), 2000);
+          }
+          showAlert({ title: "Link Copiado!", message: "Envie este link para o funcionário criar a senha.", type: 'SUCCESS' });
+      });
   };
 
   // --- ACCOUNTING FETCHING ---
@@ -451,13 +460,32 @@ export const AdminDashboard: React.FC = () => {
   };
 
   // --- STAFF LOGIC ---
+  const getRoutesForRole = (role: Role): string[] => {
+      switch (role) {
+          case Role.WAITER: return ['/waiter'];
+          case Role.KITCHEN: return ['/kitchen'];
+          case Role.CASHIER: return ['/cashier'];
+          case Role.ADMIN: return ['/admin', '/waiter', '/kitchen', '/cashier'];
+          default: return [];
+      }
+  };
+
   const handleSaveUser = (e: React.FormEvent) => {
       e.preventDefault();
-      if(editingUser) dispatch({ type: 'UPDATE_USER', user: { ...editingUser, ...userForm } as User });
-      else dispatch({ type: 'ADD_USER', user: { ...userForm, id: Math.random().toString() } as User });
+      
+      // Auto-assign routes based on role for simplicity
+      const routes = getRoutesForRole(userForm.role || Role.WAITER);
+      const userToSave = { ...userForm, allowedRoutes: routes };
+
+      if(editingUser) {
+          dispatch({ type: 'UPDATE_USER', user: { ...editingUser, ...userToSave } as User });
+      } else {
+          dispatch({ type: 'ADD_USER', user: { ...userToSave, id: Math.random().toString() } as User });
+      }
+      
       setEditingUser(null);
       setUserForm({ name: '', role: Role.WAITER, pin: '', email: '', allowedRoutes: [] });
-      showAlert({ title: "Sucesso", message: "Usuário salvo!", type: 'SUCCESS' });
+      showAlert({ title: "Sucesso", message: "Usuário salvo! Se for novo, envie o link de convite.", type: 'SUCCESS' });
   };
 
   // --- FINANCE LOGIC ---
@@ -1309,55 +1337,116 @@ export const AdminDashboard: React.FC = () => {
                     <div className="flex justify-between items-center bg-white p-6 rounded-xl shadow-sm">
                         <div>
                             <h2 className="text-2xl font-bold text-gray-800">Equipe</h2>
-                            <p className="text-sm text-gray-500">Gerencie usuários e permissões.</p>
+                            <p className="text-sm text-gray-500">Gerencie usuários e permissões de acesso.</p>
                         </div>
-                        <Button onClick={() => { setEditingUser(null); setUserForm({ name: '', role: Role.WAITER, pin: '', email: '', allowedRoutes: [] }); }}><Plus size={16}/> Novo Usuário</Button>
+                        <Button onClick={() => { setEditingUser(null); setUserForm({ name: '', role: Role.WAITER, pin: '', email: '', allowedRoutes: [] }); }}><UserPlus size={16}/> Novo Usuário</Button>
                     </div>
-                    <div className="bg-white rounded-xl shadow-sm border">
-                        <table className="w-full text-left">
-                            <thead className="bg-gray-50 border-b">
+                    
+                    <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+                        <table className="w-full text-left text-sm">
+                            <thead className="bg-gray-100 text-gray-600 uppercase text-xs">
                                 <tr>
                                     <th className="p-4">Nome</th>
                                     <th className="p-4">Cargo</th>
-                                    <th className="p-4">PIN</th>
-                                    <th className="p-4">Email (Login)</th>
+                                    <th className="p-4">Acesso (PIN)</th>
+                                    <th className="p-4">Email</th>
+                                    <th className="p-4 text-center">Status</th>
                                     <th className="p-4 text-right">Ações</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y">
-                                {state.users.map(user => (
-                                    <tr key={user.id}>
-                                        <td className="p-4 font-medium">{user.name}</td>
-                                        <td className="p-4"><span className="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded">{user.role}</span></td>
-                                        <td className="p-4 font-mono text-gray-500">****</td>
-                                        <td className="p-4 text-gray-500">{user.email || '-'}</td>
-                                        <td className="p-4 text-right">
-                                            <button onClick={() => { setEditingUser(user); setUserForm(user); }} className="text-blue-600 hover:bg-blue-50 p-2 rounded mr-2"><Edit size={16}/></button>
-                                            <button onClick={() => showConfirm({ title: 'Excluir Usuário', message: 'Confirma a exclusão?', onConfirm: () => dispatch({ type: 'DELETE_USER', userId: user.id }) })} className="text-red-600 hover:bg-red-50 p-2 rounded"><Trash2 size={16}/></button>
-                                        </td>
-                                    </tr>
-                                ))}
+                                {state.users.map(user => {
+                                    // Verifica se o usuário tem auth_user_id vinculado (Login Ativo)
+                                    const isPending = !user.auth_user_id;
+                                    
+                                    return (
+                                        <tr key={user.id} className="hover:bg-gray-50">
+                                            <td className="p-4 font-bold text-gray-800">{user.name}</td>
+                                            <td className="p-4">
+                                                <span className={`px-2 py-1 rounded text-xs font-bold
+                                                    ${user.role === 'ADMIN' ? 'bg-purple-100 text-purple-700' : ''}
+                                                    ${user.role === 'WAITER' ? 'bg-orange-100 text-orange-700' : ''}
+                                                    ${user.role === 'KITCHEN' ? 'bg-red-100 text-red-700' : ''}
+                                                    ${user.role === 'CASHIER' ? 'bg-green-100 text-green-700' : ''}
+                                                `}>
+                                                    {user.role}
+                                                </span>
+                                            </td>
+                                            <td className="p-4 font-mono text-gray-500">****</td>
+                                            <td className="p-4 text-gray-600">{user.email || '-'}</td>
+                                            <td className="p-4 text-center">
+                                                {isPending ? (
+                                                    <button 
+                                                        onClick={() => copyInviteLink(user.email, user.id)}
+                                                        className={`flex items-center gap-1 mx-auto text-xs px-2 py-1 rounded border transition-all ${copiedInviteId === user.id ? 'bg-green-100 text-green-700 border-green-200' : 'bg-yellow-50 text-yellow-700 border-yellow-200 hover:bg-yellow-100'}`}
+                                                    >
+                                                        {copiedInviteId === user.id ? <Check size={12}/> : <LinkIcon size={12}/>}
+                                                        {copiedInviteId === user.id ? 'Copiado!' : 'Copiar Convite'}
+                                                    </button>
+                                                ) : (
+                                                    <span className="text-green-600 text-xs font-bold flex items-center justify-center gap-1"><CheckSquare size={14}/> Ativo</span>
+                                                )}
+                                            </td>
+                                            <td className="p-4 text-right">
+                                                <div className="flex items-center justify-end gap-2">
+                                                    <button onClick={() => { setEditingUser(user); setUserForm(user); }} className="text-blue-600 hover:bg-blue-50 p-2 rounded transition-colors" title="Editar"><Edit size={16}/></button>
+                                                    <button onClick={() => showConfirm({ title: 'Excluir Usuário', message: 'Confirma a exclusão? O acesso será revogado.', onConfirm: () => dispatch({ type: 'DELETE_USER', userId: user.id }) })} className="text-red-600 hover:bg-red-50 p-2 rounded transition-colors" title="Excluir"><Trash2 size={16}/></button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
                             </tbody>
                         </table>
                     </div>
-                    {/* User Modal */}
+
+                    {/* MODAL ADICIONAR/EDITAR USUÁRIO */}
                     {(userForm.name || editingUser) && (
-                        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                            <div className="bg-white p-6 rounded-xl shadow-xl w-full max-w-md">
-                                <h3 className="font-bold text-lg mb-4">{editingUser ? 'Editar Usuário' : 'Novo Usuário'}</h3>
-                                <form onSubmit={handleSaveUser} className="space-y-3">
-                                    <input required placeholder="Nome" className="w-full border p-2 rounded" value={userForm.name} onChange={e => setUserForm({...userForm, name: e.target.value})} />
-                                    <select className="w-full border p-2 rounded" value={userForm.role} onChange={e => setUserForm({...userForm, role: e.target.value as Role})}>
-                                        <option value="WAITER">Garçom</option>
-                                        <option value="KITCHEN">Cozinha</option>
-                                        <option value="CASHIER">Caixa</option>
-                                        <option value="ADMIN">Gerente/Admin</option>
-                                    </select>
-                                    <input required placeholder="PIN (4 dígitos)" maxLength={4} className="w-full border p-2 rounded" value={userForm.pin} onChange={e => setUserForm({...userForm, pin: e.target.value})} />
-                                    <input type="email" placeholder="Email (Opcional para login remoto)" className="w-full border p-2 rounded" value={userForm.email} onChange={e => setUserForm({...userForm, email: e.target.value})} />
-                                    <div className="flex gap-2 mt-4">
+                        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+                            <div className="bg-white p-6 rounded-xl shadow-xl w-full max-w-md animate-fade-in">
+                                <div className="flex justify-between items-center mb-4 border-b pb-2">
+                                    <h3 className="font-bold text-lg text-gray-800">{editingUser ? 'Editar Usuário' : 'Novo Membro da Equipe'}</h3>
+                                    <button onClick={() => { setEditingUser(null); setUserForm({ name: '', role: Role.WAITER, pin: '', email: '', allowedRoutes: [] }); }} className="text-gray-400 hover:text-red-500"><X size={20}/></button>
+                                </div>
+                                
+                                <form onSubmit={handleSaveUser} className="space-y-4">
+                                    <div>
+                                        <label className="block text-xs font-bold mb-1 text-gray-600">Nome Completo</label>
+                                        <input required placeholder="Ex: Maria Silva" className="w-full border p-2.5 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none" value={userForm.name} onChange={e => setUserForm({...userForm, name: e.target.value})} autoFocus />
+                                    </div>
+                                    
+                                    <div>
+                                        <label className="block text-xs font-bold mb-1 text-gray-600">Função / Cargo</label>
+                                        <select className="w-full border p-2.5 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none" value={userForm.role} onChange={e => setUserForm({...userForm, role: e.target.value as Role})}>
+                                            <option value="WAITER">Garçom (Pedidos e Mesas)</option>
+                                            <option value="KITCHEN">Cozinha (KDS)</option>
+                                            <option value="CASHIER">Caixa (Pagamentos)</option>
+                                            <option value="ADMIN">Gerente (Acesso Total)</option>
+                                        </select>
+                                        <p className="text-[10px] text-gray-400 mt-1">As permissões de acesso serão configuradas automaticamente com base no cargo.</p>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-xs font-bold mb-1 text-gray-600">PIN de Acesso</label>
+                                            <input required placeholder="4 dígitos" maxLength={4} className="w-full border p-2.5 rounded-lg text-sm font-mono text-center tracking-widest focus:ring-2 focus:ring-blue-500 outline-none" value={userForm.pin} onChange={e => setUserForm({...userForm, pin: e.target.value})} />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold mb-1 text-gray-600">E-mail (Login)</label>
+                                            <input required type="email" placeholder="usuario@email.com" className="w-full border p-2.5 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none" value={userForm.email} onChange={e => setUserForm({...userForm, email: e.target.value})} />
+                                        </div>
+                                    </div>
+
+                                    {!editingUser && (
+                                        <div className="bg-blue-50 p-3 rounded-lg border border-blue-100 text-xs text-blue-800 flex gap-2">
+                                            <Info size={16} className="shrink-0 mt-0.5"/>
+                                            <p>Ao salvar, você poderá copiar um <strong>link de convite</strong> para enviar ao funcionário, permitindo que ele crie sua própria senha de acesso.</p>
+                                        </div>
+                                    )}
+
+                                    <div className="flex gap-2 pt-2">
                                         <Button type="button" variant="secondary" onClick={() => { setEditingUser(null); setUserForm({ name: '', role: Role.WAITER, pin: '', email: '', allowedRoutes: [] }); }} className="flex-1">Cancelar</Button>
-                                        <Button type="submit" className="flex-1">Salvar</Button>
+                                        <Button type="submit" className="flex-1">Salvar Usuário</Button>
                                     </div>
                                 </form>
                             </div>
@@ -1415,7 +1504,7 @@ export const AdminDashboard: React.FC = () => {
                             <h2 className="text-2xl font-bold text-gray-800">Financeiro</h2>
                             <p className="text-sm text-gray-500">Contas a pagar e despesas.</p>
                         </div>
-                        <Button onClick={() => setEditingExpense({ description: '', amount: 0, category: 'Outros', dueDate: new Date().toISOString().split('T')[0], isPaid: false })}><Plus size={16}/> Nova Despesa</Button>
+                        <Button onClick={() => setEditingExpense({ description: '', amount: 0, category: 'Outros', dueDate: new Date().toISOString().split('T')[0] as any, isPaid: false })}><Plus size={16}/> Nova Despesa</Button>
                     </div>
                     
                     <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
@@ -1451,7 +1540,7 @@ export const AdminDashboard: React.FC = () => {
                                         </td>
                                     </tr>
                                 ))}
-                                {state.expenses.length === 0 && <tr><td colSpan={6} className="p-8 text-center text-gray-400">Nenhuma despesa registrada.</td></tr>}
+                                {state.expenses.length === 0 && <tr><td colSpan={6} className="p-8 text-center text-gray-400">Nenhum despesa registrada.</td></tr>}
                             </tbody>
                         </table>
                     </div>
@@ -1474,7 +1563,7 @@ export const AdminDashboard: React.FC = () => {
                                     </select>
                                     <div>
                                         <label className="block text-xs font-bold mb-1">Vencimento</label>
-                                        <input type="date" className="w-full border p-2 rounded" value={editingExpense.dueDate as any} onChange={e => setEditingExpense({...editingExpense, dueDate: e.target.value as any})} />
+                                        <input type="date" className="w-full border p-2 rounded" value={editingExpense.dueDate ? new Date(editingExpense.dueDate).toISOString().split('T')[0] : ''} onChange={e => setEditingExpense({...editingExpense, dueDate: e.target.value as any})} />
                                     </div>
                                     <div className="flex items-center gap-2 mt-2">
                                         <input type="checkbox" checked={editingExpense.isPaid} onChange={e => setEditingExpense({...editingExpense, isPaid: e.target.checked})} id="paid-check"/>
