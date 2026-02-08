@@ -209,6 +209,8 @@ export interface PurchaseEntry {
     date: Date;
     items: PurchaseItemInput[];
     totalAmount: number;
+    taxAmount: number; // Impostos
+    distributeTax: boolean; // Distribuir no custo?
     installments: PurchaseInstallment[];
 }
 

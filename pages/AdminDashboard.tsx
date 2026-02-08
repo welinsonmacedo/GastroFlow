@@ -5,7 +5,7 @@ import { Button } from '../components/Button';
 import { QRCodeGenerator } from '../components/QRCodeGenerator';
 import { ImageUploader } from '../components/ImageUploader';
 import { Product, ProductType, Role, User, InventoryItem, Expense, InventoryType, Supplier, PurchaseItemInput, PurchaseInstallment } from '../types';
-import { LayoutDashboard, Utensils, QrCode, Printer, ExternalLink, Palette, Eye, EyeOff, Save, Copy, Plus, Users, ShieldCheck, Trash2, Edit, AlertTriangle, FileBarChart, X, ArrowUp, ArrowDown, LayoutGrid, List as ListIcon, Image as ImageIcon, Calendar, TrendingUp, Search, Loader2, Menu, Activity, CheckSquare, GripVertical, Link as LinkIcon, Share2, Lock, BookOpen, Package, DollarSign, Archive, TrendingDown, RefreshCcw, Layers, ArrowLeft, Truck, FileText } from 'lucide-react';
+import { LayoutDashboard, Utensils, QrCode, Printer, ExternalLink, Palette, Eye, EyeOff, Save, Copy, Plus, Users, ShieldCheck, Trash2, Edit, AlertTriangle, FileBarChart, X, ArrowUp, ArrowDown, LayoutGrid, List as ListIcon, Image as ImageIcon, Calendar, TrendingUp, Search, Loader2, Menu, Activity, CheckSquare, GripVertical, Link as LinkIcon, Share2, Lock, BookOpen, Package, DollarSign, Archive, TrendingDown, RefreshCcw, Layers, ArrowLeft, Truck, FileText, ClipboardList } from 'lucide-react';
 import { getTenantSlug } from '../utils/tenant';
 import { supabase } from '../lib/supabase';
 import { Link } from 'react-router-dom';
@@ -17,20 +17,25 @@ export const AdminDashboard: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [localTheme, setLocalTheme] = useState(state.theme);
 
-  // --- Inventory State (NEW) ---
+  // --- Inventory State ---
   const [editingInventory, setEditingInventory] = useState<Partial<InventoryItem> | null>(null);
   const [invRecipeStep, setInvRecipeStep] = useState<{ ingredientId: string, qty: number }[]>([]);
   const [selectedIngredientAdd, setSelectedIngredientAdd] = useState('');
   const [stockModal, setStockModal] = useState<{ itemId: string, type: 'IN' | 'OUT', quantity: string, reason: string } | null>(null);
+  const [inventoryModalOpen, setInventoryModalOpen] = useState(false);
+  const [inventoryCounts, setInventoryCounts] = useState<{ [key: string]: number }>({});
 
-  // --- Purchase/Invoice Entry State (NEW) ---
+  // --- Purchase/Invoice Entry State ---
   const [purchaseModalOpen, setPurchaseModalOpen] = useState(false);
+  const [purchaseHistoryOpen, setPurchaseHistoryOpen] = useState(false);
   const [purchaseForm, setPurchaseForm] = useState<{
       supplierId: string;
       invoiceNumber: string;
       date: string;
       items: PurchaseItemInput[];
-  }>({ supplierId: '', invoiceNumber: '', date: new Date().toISOString().split('T')[0], items: [] });
+      taxAmount: number;
+      distributeTax: boolean;
+  }>({ supplierId: '', invoiceNumber: '', date: new Date().toISOString().split('T')[0], items: [], taxAmount: 0, distributeTax: false });
   const [tempPurchaseItem, setTempPurchaseItem] = useState({ itemId: '', quantity: 1, unitPrice: 0 });
   
   // Installments Management
@@ -38,7 +43,7 @@ export const AdminDashboard: React.FC = () => {
   const [installmentsCount, setInstallmentsCount] = useState(1);
   const [firstDueDate, setFirstDueDate] = useState(new Date().toISOString().split('T')[0]);
 
-  // --- Supplier State (NEW) ---
+  // --- Supplier State ---
   const [supplierModalOpen, setSupplierModalOpen] = useState(false);
   const [newSupplier, setNewSupplier] = useState<Partial<Supplier>>({ name: '', contactName: '', phone: '' });
 
@@ -151,6 +156,28 @@ export const AdminDashboard: React.FC = () => {
       showAlert({ title: "Sucesso", message: "Movimentação registrada!", type: 'SUCCESS' });
   };
 
+  // --- INVENTORY TAKING (ADJUSTMENT) ---
+  const handleInventoryInit = () => {
+      // Initialize counts with current system stock
+      const initialCounts: {[key:string]: number} = {};
+      state.inventory.filter(i => i.type !== 'COMPOSITE').forEach(i => {
+          initialCounts[i.id] = i.quantity;
+      });
+      setInventoryCounts(initialCounts);
+      setInventoryModalOpen(true);
+  };
+
+  const handleInventorySave = () => {
+      const adjustments = Object.keys(inventoryCounts).map(itemId => ({
+          itemId,
+          realQty: inventoryCounts[itemId]
+      }));
+      
+      dispatch({ type: 'PROCESS_INVENTORY_ADJUSTMENT', adjustments });
+      setInventoryModalOpen(false);
+      showAlert({ title: "Sucesso", message: "Inventário atualizado com sucesso!", type: 'SUCCESS' });
+  };
+
   // --- SUPPLIER LOGIC ---
   const handleAddSupplier = (e: React.FormEvent) => {
       e.preventDefault();
@@ -190,11 +217,13 @@ export const AdminDashboard: React.FC = () => {
   };
 
   const generateInstallments = () => {
-      const total = purchaseForm.items.reduce((acc, i) => acc + i.totalPrice, 0);
-      if (total <= 0) return;
+      const itemsTotal = purchaseForm.items.reduce((acc, i) => acc + i.totalPrice, 0);
+      const grandTotal = itemsTotal + Number(purchaseForm.taxAmount || 0);
+
+      if (grandTotal <= 0) return;
 
       const count = Math.max(1, Math.min(12, installmentsCount));
-      const amountPerInst = total / count;
+      const amountPerInst = grandTotal / count;
       const baseDate = new Date(firstDueDate);
       
       const newInst: PurchaseInstallment[] = [];
@@ -209,7 +238,7 @@ export const AdminDashboard: React.FC = () => {
       
       // Ajuste de centavos na última parcela
       const sum = newInst.reduce((acc, i) => acc + i.amount, 0);
-      const diff = total - sum;
+      const diff = grandTotal - sum;
       if (Math.abs(diff) > 0.001) {
           newInst[newInst.length - 1].amount += diff;
       }
@@ -224,14 +253,15 @@ export const AdminDashboard: React.FC = () => {
           return;
       }
 
-      const totalAmount = purchaseForm.items.reduce((acc, i) => acc + i.totalPrice, 0);
+      const totalItems = purchaseForm.items.reduce((acc, i) => acc + i.totalPrice, 0);
+      const grandTotal = totalItems + Number(purchaseForm.taxAmount || 0);
       const totalInstallments = paymentInstallments.reduce((acc, i) => acc + i.amount, 0);
 
       // Validação básica do valor (margem de erro de 1 centavo)
-      if (Math.abs(totalAmount - totalInstallments) > 0.05) {
+      if (paymentInstallments.length > 0 && Math.abs(grandTotal - totalInstallments) > 0.05) {
           showAlert({ 
               title: "Divergência", 
-              message: `O valor das parcelas (R$ ${totalInstallments.toFixed(2)}) não bate com o total da nota (R$ ${totalAmount.toFixed(2)}). Gere as parcelas novamente.`, 
+              message: `O valor das parcelas (R$ ${totalInstallments.toFixed(2)}) não bate com o total da nota (R$ ${grandTotal.toFixed(2)}). Gere as parcelas novamente.`, 
               type: 'WARNING' 
           });
           return;
@@ -242,13 +272,13 @@ export const AdminDashboard: React.FC = () => {
           purchase: {
               ...purchaseForm,
               date: new Date(purchaseForm.date),
-              totalAmount,
-              installments: paymentInstallments
+              totalAmount: grandTotal,
+              installments: paymentInstallments.length > 0 ? paymentInstallments : [{ amount: grandTotal, dueDate: new Date(purchaseForm.date) }] // Fallback se não gerou parcelas
           }
       });
 
       setPurchaseModalOpen(false);
-      setPurchaseForm({ supplierId: '', invoiceNumber: '', date: new Date().toISOString().split('T')[0], items: [] });
+      setPurchaseForm({ supplierId: '', invoiceNumber: '', date: new Date().toISOString().split('T')[0], items: [], taxAmount: 0, distributeTax: false });
       setPaymentInstallments([]);
       showAlert({ title: "Sucesso", message: "Nota lançada! Estoque e Financeiro atualizados.", type: 'SUCCESS' });
   };
@@ -362,8 +392,14 @@ export const AdminDashboard: React.FC = () => {
                             <p className="text-sm text-gray-500">Cadastre aqui TODOS os itens: ingredientes, bebidas e pratos.</p>
                         </div>
                         <div className="flex gap-2">
+                            <Button onClick={() => setPurchaseHistoryOpen(true)} variant="outline" className="flex items-center gap-2" title="Histórico de Notas">
+                                <FileText size={16}/> Histórico
+                            </Button>
                             <Button onClick={() => setSupplierModalOpen(true)} variant="outline" className="flex items-center gap-2">
                                 <Truck size={16}/> Fornecedores
+                            </Button>
+                            <Button onClick={handleInventoryInit} variant="secondary" className="flex items-center gap-2 bg-yellow-100 text-yellow-800 hover:bg-yellow-200 border-yellow-200">
+                                <ClipboardList size={16}/> Realizar Inventário
                             </Button>
                             <Button onClick={() => setPurchaseModalOpen(true)} variant="secondary" className="flex items-center gap-2 bg-blue-100 text-blue-700 hover:bg-blue-200 border-blue-200">
                                 <FileText size={16}/> Entrada de Nota
@@ -373,6 +409,103 @@ export const AdminDashboard: React.FC = () => {
                             </Button>
                         </div>
                     </div>
+
+                    {/* MODAL INVENTÁRIO (STOCK TAKING) */}
+                    {inventoryModalOpen && (
+                        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                            <div className="bg-white p-6 rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
+                                <div className="flex justify-between items-center mb-4 border-b pb-4">
+                                    <div>
+                                        <h3 className="font-bold text-lg">Contagem de Estoque (Inventário)</h3>
+                                        <p className="text-xs text-gray-500">Ajuste a quantidade real. A diferença será registrada automaticamente.</p>
+                                    </div>
+                                    <button onClick={() => setInventoryModalOpen(false)}><X size={20}/></button>
+                                </div>
+                                <div className="flex-1 overflow-y-auto">
+                                    <table className="w-full text-sm">
+                                        <thead className="bg-gray-100 text-gray-600 sticky top-0">
+                                            <tr>
+                                                <th className="p-3 text-left">Item</th>
+                                                <th className="p-3 text-center">Unidade</th>
+                                                <th className="p-3 text-center bg-blue-50">Qtd Sistema</th>
+                                                <th className="p-3 text-center bg-yellow-50 w-32">Contagem Real</th>
+                                                <th className="p-3 text-right">Diferença</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y">
+                                            {state.inventory.filter(i => i.type !== 'COMPOSITE').map(item => {
+                                                const diff = (inventoryCounts[item.id] || 0) - item.quantity;
+                                                return (
+                                                    <tr key={item.id} className="hover:bg-gray-50">
+                                                        <td className="p-3 font-medium">{item.name}</td>
+                                                        <td className="p-3 text-center text-gray-500">{item.unit}</td>
+                                                        <td className="p-3 text-center font-bold text-blue-700 bg-blue-50/50">{item.quantity}</td>
+                                                        <td className="p-3 text-center bg-yellow-50/50">
+                                                            <input 
+                                                                type="number" 
+                                                                className="w-full text-center border border-yellow-300 rounded p-1 font-bold bg-white focus:ring-2 focus:ring-yellow-400 outline-none"
+                                                                value={inventoryCounts[item.id]}
+                                                                onChange={(e) => setInventoryCounts({...inventoryCounts, [item.id]: parseFloat(e.target.value) || 0})}
+                                                            />
+                                                        </td>
+                                                        <td className={`p-3 text-right font-bold ${diff < 0 ? 'text-red-500' : diff > 0 ? 'text-green-500' : 'text-gray-300'}`}>
+                                                            {diff > 0 ? '+' : ''}{diff.toFixed(2)}
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div className="pt-4 border-t flex justify-end gap-2 mt-4">
+                                    <Button variant="secondary" onClick={() => setInventoryModalOpen(false)}>Cancelar</Button>
+                                    <Button onClick={handleInventorySave}>Salvar Ajustes</Button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* MODAL HISTÓRICO DE COMPRAS */}
+                    {purchaseHistoryOpen && (
+                        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                            <div className="bg-white p-6 rounded-xl shadow-xl w-full max-w-3xl max-h-[80vh] flex flex-col">
+                                <div className="flex justify-between items-center mb-4 border-b pb-4">
+                                    <h3 className="font-bold text-lg">Histórico de Compras (Fornecedores)</h3>
+                                    <button onClick={() => setPurchaseHistoryOpen(false)}><X size={20}/></button>
+                                </div>
+                                <div className="flex-1 overflow-y-auto">
+                                    <table className="w-full text-sm text-left">
+                                        <thead className="bg-gray-100 text-gray-600">
+                                            <tr>
+                                                <th className="p-3">Data Venc.</th>
+                                                <th className="p-3">Descrição / Fornecedor</th>
+                                                <th className="p-3 text-right">Valor</th>
+                                                <th className="p-3 text-center">Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y">
+                                            {state.expenses.filter(e => e.category === 'Fornecedor').length === 0 && (
+                                                <tr><td colSpan={4} className="p-4 text-center text-gray-400">Nenhuma compra registrada.</td></tr>
+                                            )}
+                                            {state.expenses.filter(e => e.category === 'Fornecedor').map(e => (
+                                                <tr key={e.id} className="hover:bg-gray-50">
+                                                    <td className="p-3 font-mono">{new Date(e.dueDate).toLocaleDateString()}</td>
+                                                    <td className="p-3">{e.description}</td>
+                                                    <td className="p-3 text-right font-bold">R$ {e.amount.toFixed(2)}</td>
+                                                    <td className="p-3 text-center">
+                                                        {e.isPaid ? 
+                                                            <span className="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs font-bold">PAGO</span> : 
+                                                            <span className="bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full text-xs font-bold">ABERTO</span>
+                                                        }
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                     {/* MODAL ENTRADA DE NOTA DE COMPRA */}
                     {purchaseModalOpen && (
@@ -459,10 +592,36 @@ export const AdminDashboard: React.FC = () => {
                                         </div>
                                     </div>
 
-                                    {/* FINANCEIRO / PARCELAS */}
+                                    {/* FINANCEIRO / PARCELAS / IMPOSTOS */}
                                     <div className="border rounded-lg p-4 bg-blue-50/50">
-                                        <h4 className="font-bold text-sm mb-3 flex items-center gap-2"><DollarSign size={16}/> Condições de Pagamento</h4>
-                                        <div className="flex items-end gap-3 mb-4">
+                                        <h4 className="font-bold text-sm mb-3 flex items-center gap-2"><DollarSign size={16}/> Financeiro e Impostos</h4>
+                                        
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                            <div>
+                                                <label className="block text-xs font-bold mb-1 text-gray-600">Valor Impostos (ST, IPI, Frete)</label>
+                                                <input 
+                                                    type="number" step="0.01" 
+                                                    className="w-full border p-2 rounded bg-white" 
+                                                    placeholder="0.00"
+                                                    value={purchaseForm.taxAmount || ''} 
+                                                    onChange={e => setPurchaseForm({...purchaseForm, taxAmount: parseFloat(e.target.value) || 0})}
+                                                />
+                                            </div>
+                                            <div className="flex items-center gap-2 pt-6">
+                                                <input 
+                                                    type="checkbox" 
+                                                    id="distributeTax"
+                                                    className="w-4 h-4"
+                                                    checked={purchaseForm.distributeTax}
+                                                    onChange={e => setPurchaseForm({...purchaseForm, distributeTax: e.target.checked})}
+                                                />
+                                                <label htmlFor="distributeTax" className="text-sm font-medium text-gray-700 cursor-pointer">
+                                                    Distribuir Imposto no Custo Unitário?
+                                                </label>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-end gap-3 mb-4 border-t pt-4">
                                             <div>
                                                 <label className="block text-xs font-bold mb-1">Parcelas</label>
                                                 <select className="border p-2 rounded text-sm w-20" value={installmentsCount} onChange={e => setInstallmentsCount(Number(e.target.value))}>
@@ -514,7 +673,9 @@ export const AdminDashboard: React.FC = () => {
                                     </div>
 
                                     <div className="flex justify-between items-center pt-4 border-t">
-                                        <div className="text-lg">Total da Nota: <span className="font-bold text-blue-600">R$ {purchaseForm.items.reduce((acc, i) => acc + i.totalPrice, 0).toFixed(2)}</span></div>
+                                        <div className="text-lg">
+                                            Total da Nota: <span className="font-bold text-blue-600">R$ {(purchaseForm.items.reduce((acc, i) => acc + i.totalPrice, 0) + Number(purchaseForm.taxAmount || 0)).toFixed(2)}</span>
+                                        </div>
                                         <div className="flex gap-2">
                                             <Button type="button" variant="secondary" onClick={() => setPurchaseModalOpen(false)}>Cancelar</Button>
                                             <Button type="submit">Processar Entrada</Button>

@@ -69,6 +69,7 @@ type Action =
   | { type: 'ADD_INVENTORY_ITEM'; item: InventoryItem }
   | { type: 'UPDATE_STOCK'; itemId: string; quantity: number; reason: string; operation: 'IN' | 'OUT' }
   | { type: 'PROCESS_PURCHASE'; purchase: PurchaseEntry } // NEW: Entrada de Nota Completa
+  | { type: 'PROCESS_INVENTORY_ADJUSTMENT'; adjustments: { itemId: string; realQty: number }[] } // NEW: Inventário
   | { type: 'ADD_SUPPLIER'; supplier: Supplier } // NEW
   | { type: 'DELETE_SUPPLIER'; supplierId: string } // NEW
   | { type: 'ADD_EXPENSE'; expense: Expense }
@@ -481,13 +482,14 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         return;
     }
 
-    // --- NEW: PROCESS PURCHASE ENTRY ---
+    // --- NEW: PROCESS PURCHASE ENTRY (UPDATED) ---
     if (action.type === 'PROCESS_PURCHASE' && tenantId) {
         try {
-            const { supplierId, invoiceNumber, items, totalAmount, installments } = action.purchase;
+            const { supplierId, invoiceNumber, items, totalAmount, installments, taxAmount, distributeTax } = action.purchase;
             const supplier = state.suppliers.find(s => s.id === supplierId);
 
             // 1. Create Expenses (Financial) - Iterate over installments
+            // Financeiro deve refletir o valor TOTAL da nota (Itens + Impostos) que será pago.
             for (const [index, inst] of installments.entries()) {
                 await supabase.from('expenses').insert({
                     tenant_id: tenantId,
@@ -501,13 +503,23 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             }
 
             // 2. Update Inventory (Qty & Cost Price) and Log
+            // Calcular custo proporcional dos impostos se "distributeTax" for true
+            const totalItemsValue = items.reduce((acc, i) => acc + i.totalPrice, 0);
+
             for (const item of items) {
                 const currentItem = state.inventory.find(i => i.id === item.inventoryItemId);
                 if (currentItem) {
                     const currentQty = Number(currentItem.quantity);
                     const currentCost = Number(currentItem.costPrice);
                     const incomingQty = Number(item.quantity);
-                    const incomingCost = Number(item.unitPrice);
+                    let incomingCost = Number(item.unitPrice); // Custo Base
+
+                    // Se distribuir impostos, ajusta o custo unitário de entrada
+                    if (distributeTax && totalItemsValue > 0 && taxAmount > 0) {
+                        const itemShare = (item.totalPrice / totalItemsValue) * taxAmount;
+                        // Novo custo unitário = (Total Item + Parcela Imposto) / Qtd
+                        incomingCost = (item.totalPrice + itemShare) / incomingQty;
+                    }
 
                     // Weighted Average Cost Formula
                     // Se estoque atual for zero ou negativo, assume o novo custo
@@ -538,6 +550,38 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             logAudit(tenantId, 'PURCHASE_ENTRY', `Entrada de Nota #${invoiceNumber} processada.`);
         } catch (err) {
             console.error("Erro ao processar compra:", err);
+        }
+        return;
+    }
+
+    // --- NEW: INVENTORY ADJUSTMENT ---
+    if (action.type === 'PROCESS_INVENTORY_ADJUSTMENT' && tenantId) {
+        try {
+            for (const adj of action.adjustments) {
+                const item = state.inventory.find(i => i.id === adj.itemId);
+                if (item) {
+                    const currentQty = item.quantity;
+                    const diff = adj.realQty - currentQty;
+
+                    if (diff !== 0) {
+                        // Atualiza Estoque
+                        await supabase.from('inventory_items').update({ quantity: adj.realQty }).eq('id', adj.itemId);
+                        
+                        // Cria Log
+                        await supabase.from('inventory_logs').insert({
+                            tenant_id: tenantId,
+                            item_id: adj.itemId,
+                            type: diff > 0 ? 'IN' : 'OUT',
+                            quantity: Math.abs(diff),
+                            reason: `Inventário: Ajuste ${diff > 0 ? 'Sobra' : 'Perda'}`,
+                            user_name: state.currentUser?.name
+                        });
+                    }
+                }
+            }
+            logAudit(tenantId, 'INVENTORY_ADJUSTMENT', `Inventário realizado por ${state.currentUser?.name}`);
+        } catch (e) {
+            console.error(e);
         }
         return;
     }
