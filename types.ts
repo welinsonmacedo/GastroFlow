@@ -216,8 +216,18 @@ export interface RestaurantTheme {
 export interface Supplier {
     id: string;
     name: string;
-    phone: string;
     contactName: string;
+    phone: string;
+    // Fiscal & Address
+    cnpj?: string;
+    ie?: string; // Inscrição Estadual
+    email?: string;
+    cep?: string;
+    address?: string;
+    number?: string;
+    complement?: string;
+    city?: string;
+    state?: string;
 }
 
 export interface PurchaseItemInput {

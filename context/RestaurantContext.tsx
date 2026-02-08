@@ -347,7 +347,21 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             const mappedAuditLogs = (auditRes.data || []).map(l => ({ id: l.id, userId: l.user_id || '', userName: l.user_name || '', action: l.action, details: l.details || '', timestamp: new Date(l.created_at) }));
             const mappedCalls = (callsRes.data || []).map(c => ({ id: c.id, tableId: c.table_id, status: c.status, timestamp: new Date(c.created_at) }));
             const mappedExpenses = (expRes.data || []).map(e => ({ id: e.id, description: e.description, amount: e.amount, category: e.category, dueDate: new Date(e.due_date), paidDate: e.paid_date ? new Date(e.paid_date) : undefined, isPaid: e.is_paid, supplierId: e.supplier_id }));
-            const mappedSuppliers = (suppRes.data || []).map(s => ({ id: s.id, name: s.name, contactName: s.contact_name, phone: s.phone }));
+            const mappedSuppliers: Supplier[] = (suppRes.data || []).map(s => ({ 
+                id: s.id, 
+                name: s.name, 
+                contactName: s.contact_name, 
+                phone: s.phone,
+                cnpj: s.cnpj,
+                ie: s.ie,
+                email: s.email,
+                cep: s.cep,
+                address: s.address,
+                number: s.number,
+                complement: s.complement,
+                city: s.city,
+                state: s.state
+            }));
 
             let autoLoggedUser: User | null = null;
             const { data: { session } } = await supabase.auth.getSession();
@@ -429,7 +443,24 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     // Helper: Re-fetch Suppliers
     const fetchSuppliers = async () => {
         const { data } = await supabase.from('suppliers').select('*').eq('tenant_id', tenantId);
-        if(data) dispatchLocal({ type: 'REALTIME_UPDATE_SUPPLIERS', suppliers: data.map(s => ({ id: s.id, name: s.name, contactName: s.contact_name, phone: s.phone })) });
+        if(data) {
+            const mapped: Supplier[] = data.map(s => ({ 
+                id: s.id, 
+                name: s.name, 
+                contactName: s.contact_name, 
+                phone: s.phone,
+                cnpj: s.cnpj,
+                ie: s.ie,
+                email: s.email,
+                cep: s.cep,
+                address: s.address,
+                number: s.number,
+                complement: s.complement,
+                city: s.city,
+                state: s.state
+            }));
+            dispatchLocal({ type: 'REALTIME_UPDATE_SUPPLIERS', suppliers: mapped });
+        }
     }
 
     // Helper: Re-fetch Cash Data
@@ -715,7 +746,17 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             tenant_id: tenantId,
             name: action.supplier.name,
             contact_name: action.supplier.contactName,
-            phone: action.supplier.phone
+            phone: action.supplier.phone,
+            // New Fiscal Fields
+            cnpj: action.supplier.cnpj,
+            ie: action.supplier.ie,
+            email: action.supplier.email,
+            cep: action.supplier.cep,
+            address: action.supplier.address,
+            number: action.supplier.number,
+            complement: action.supplier.complement,
+            city: action.supplier.city,
+            state: action.supplier.state
         });
         return;
     }

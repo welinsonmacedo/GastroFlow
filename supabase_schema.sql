@@ -50,10 +50,27 @@ CREATE TABLE IF NOT EXISTS cash_movements (
     user_name TEXT
 );
 
--- 4. Atualizar Realtime e RLS
+-- 4. Atualizar Tabela de Fornecedores (Novos Campos Fiscais)
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='suppliers' AND column_name='cnpj') THEN
+        ALTER TABLE suppliers ADD COLUMN cnpj TEXT;
+        ALTER TABLE suppliers ADD COLUMN ie TEXT; -- Inscrição Estadual
+        ALTER TABLE suppliers ADD COLUMN email TEXT;
+        ALTER TABLE suppliers ADD COLUMN cep TEXT;
+        ALTER TABLE suppliers ADD COLUMN address TEXT;
+        ALTER TABLE suppliers ADD COLUMN number TEXT;
+        ALTER TABLE suppliers ADD COLUMN complement TEXT;
+        ALTER TABLE suppliers ADD COLUMN city TEXT;
+        ALTER TABLE suppliers ADD COLUMN state TEXT;
+    END IF;
+END $$;
+
+-- 5. Atualizar Realtime e RLS
 ALTER PUBLICATION supabase_realtime ADD TABLE inventory_recipes;
 ALTER PUBLICATION supabase_realtime ADD TABLE cash_sessions;
 ALTER PUBLICATION supabase_realtime ADD TABLE cash_movements;
+ALTER PUBLICATION supabase_realtime ADD TABLE suppliers; -- Garantir que fornecedores estejam no realtime
 
 ALTER TABLE inventory_recipes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE cash_sessions ENABLE ROW LEVEL SECURITY;
