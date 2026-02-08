@@ -34,7 +34,7 @@ export const AdminInventory: React.FC = () => {
 
   const purchaseItemsTotal = purchaseForm.items.reduce((acc, i) => acc + i.totalPrice, 0);
 
-  // ... (Keep existing handlers: handleSaveInventoryItem, handleStockUpdate, etc.)
+  // --- Handlers (Stock Item) ---
   const handleSaveInventoryItem = (e: React.FormEvent) => {
       e.preventDefault();
       if(!editingInventory || !editingInventory.name) return;
@@ -70,6 +70,7 @@ export const AdminInventory: React.FC = () => {
       }
   };
 
+  // --- Handlers (Supplier) ---
   const formatCNPJ = (value: string) => value.replace(/\D/g, '').replace(/^(\d{2})(\d)/, '$1.$2').replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3').replace(/\.(\d{3})(\d)/, '.$1/$2').replace(/(\d{4})(\d)/, '$1-$2').slice(0, 18);
   const formatCEP = (value: string) => value.replace(/\D/g, '').replace(/^(\d{5})(\d)/, '$1-$2').slice(0, 9);
   const formatPhone = (value: string) => { const v = value.replace(/\D/g, ''); return v.length > 10 ? v.replace(/^(\d{2})(\d{5})(\d{4}).*/, '($1) $2-$3') : v.replace(/^(\d{2})(\d{4})(\d{4}).*/, '($1) $2-$3').slice(0, 14); };
@@ -94,12 +95,26 @@ export const AdminInventory: React.FC = () => {
       showAlert({ title: "Sucesso", message: "Fornecedor adicionado!", type: 'SUCCESS' });
   };
 
+  const handleDeleteSupplier = (id: string) => {
+      showConfirm({
+          title: "Excluir Fornecedor",
+          message: "Confirma a exclusão deste fornecedor?",
+          type: 'WARNING',
+          onConfirm: () => dispatch({ type: 'DELETE_SUPPLIER', supplierId: id })
+      });
+  };
+
+  // --- Handlers (Purchase) ---
   const handleAddItemToPurchase = () => {
       if (!tempPurchaseItem.itemId || tempPurchaseItem.quantity <= 0) return;
       const item = state.inventory.find(i => i.id === tempPurchaseItem.itemId);
       if(!item) return;
       setPurchaseForm(prev => ({ ...prev, items: [...prev.items, { inventoryItemId: item.id, quantity: Number(tempPurchaseItem.quantity), unitPrice: Number(tempPurchaseItem.unitPrice), totalPrice: Number(tempPurchaseItem.quantity) * Number(tempPurchaseItem.unitPrice) }] }));
       setTempPurchaseItem({ itemId: '', quantity: 1, unitPrice: 0 });
+  };
+
+  const handleRemovePurchaseItem = (index: number) => {
+      setPurchaseForm(prev => ({ ...prev, items: prev.items.filter((_, i) => i !== index) }));
   };
 
   const generateInstallments = () => {
@@ -117,12 +132,28 @@ export const AdminInventory: React.FC = () => {
       setPaymentInstallments(newInst);
   };
 
+  const handleInstallmentDateChange = (index: number, newDateStr: string) => {
+      const newInstallments = [...paymentInstallments];
+      newInstallments[index].dueDate = new Date(newDateStr + 'T12:00:00');
+      setPaymentInstallments(newInstallments);
+  };
+
   const submitPurchaseEntry = (e: React.FormEvent) => {
       e.preventDefault();
+      if(!purchaseForm.supplierId || !purchaseForm.invoiceNumber || purchaseForm.items.length === 0) {
+          showAlert({ title: "Erro", message: "Preencha o fornecedor, número da nota e adicione itens.", type: 'ERROR' });
+          return;
+      }
+
       const grandTotal = purchaseItemsTotal + Number(purchaseForm.taxAmount || 0);
       let finalInstallments = paymentInstallments.length > 0 ? paymentInstallments : [{ amount: grandTotal, dueDate: new Date(purchaseForm.date) }];
       const totalInst = finalInstallments.reduce((acc, i) => acc + i.amount, 0);
-      if (Math.abs(grandTotal - totalInst) > 0.05) { showAlert({ title: "Divergência", message: "Valor das parcelas não bate com o total.", type: 'WARNING' }); return; }
+      
+      if (Math.abs(grandTotal - totalInst) > 0.05) {
+          showAlert({ title: "Divergência", message: "Valor das parcelas não bate com o total.", type: 'WARNING' });
+          return;
+      }
+
       dispatch({ type: 'PROCESS_PURCHASE', purchase: { ...purchaseForm, date: new Date(purchaseForm.date), totalAmount: grandTotal, installments: finalInstallments } });
       setPurchaseModalOpen(false);
       setPurchaseForm({ supplierId: '', invoiceNumber: '', date: new Date().toISOString().split('T')[0], items: [], taxAmount: 0, distributeTax: true });
@@ -130,6 +161,7 @@ export const AdminInventory: React.FC = () => {
       showAlert({ title: "Sucesso", message: "Nota lançada!", type: 'SUCCESS' });
   };
 
+  // --- Handlers (Inventory Count) ---
   const handleInventorySave = () => {
       const adjustments = Object.keys(inventoryCounts).map(itemId => ({ itemId, realQty: inventoryCounts[itemId] }));
       dispatch({ type: 'PROCESS_INVENTORY_ADJUSTMENT', adjustments });
@@ -322,7 +354,7 @@ export const AdminInventory: React.FC = () => {
                     <h4 className="font-bold text-lg mb-4 text-gray-800">Lista de Fornecedores</h4>
                     <div className="overflow-y-auto max-h-[70vh] border rounded-xl">
                         <table className="w-full text-left text-sm"><thead className="bg-gray-100 sticky top-0"><tr><th className="p-3">Nome</th><th className="p-3">CNPJ</th><th className="p-3 text-right">Ação</th></tr></thead>
-                        <tbody className="divide-y">{state.suppliers.map(s => (<tr key={s.id}><td className="p-3 font-medium">{s.name}</td><td className="p-3">{s.cnpj}</td><td className="p-3 text-right"><button onClick={() => showConfirm({title:'Excluir', message:'Confirmar?', onConfirm:()=>dispatch({type:'DELETE_SUPPLIER', supplierId: s.id})})}><Trash2 size={18} className="text-red-500"/></button></td></tr>))}</tbody></table>
+                        <tbody className="divide-y">{state.suppliers.map(s => (<tr key={s.id}><td className="p-3 font-medium">{s.name}</td><td className="p-3">{s.cnpj}</td><td className="p-3 text-right"><button onClick={() => handleDeleteSupplier(s.id)}><Trash2 size={18} className="text-red-500"/></button></td></tr>))}</tbody></table>
                     </div>
                 </div>
             </div>
@@ -358,7 +390,7 @@ export const AdminInventory: React.FC = () => {
                         <thead className="bg-gray-100"><tr><th className="p-3">Item</th><th className="p-3 text-right">Qtd</th><th className="p-3 text-right">Unit</th><th className="p-3 text-right">Total</th><th className="p-3 text-center">X</th></tr></thead>
                         <tbody>
                             {purchaseForm.items.map((item, idx) => (
-                                <tr key={idx} className="border-b bg-white"><td className="p-3">{state.inventory.find(i=>i.id===item.inventoryItemId)?.name}</td><td className="p-3 text-right">{item.quantity}</td><td className="p-3 text-right">R$ {item.unitPrice.toFixed(2)}</td><td className="p-3 text-right font-bold">R$ {item.totalPrice.toFixed(2)}</td><td className="p-3 text-center"><button onClick={() => setPurchaseForm(prev => ({...prev, items: prev.items.filter((_, i) => i !== idx)}))} className="text-red-500"><Trash2 size={16}/></button></td></tr>
+                                <tr key={idx} className="border-b bg-white"><td className="p-3">{state.inventory.find(i=>i.id===item.inventoryItemId)?.name}</td><td className="p-3 text-right">{item.quantity}</td><td className="p-3 text-right">R$ {item.unitPrice.toFixed(2)}</td><td className="p-3 text-right font-bold">R$ {item.totalPrice.toFixed(2)}</td><td className="p-3 text-center"><button onClick={() => handleRemovePurchaseItem(idx)} className="text-red-500"><Trash2 size={16}/></button></td></tr>
                             ))}
                         </tbody>
                         <tfoot className="bg-gray-50 font-bold"><tr><td colSpan={3} className="p-3 text-right">Total Produtos:</td><td className="p-3 text-right">R$ {purchaseItemsTotal.toFixed(2)}</td><td></td></tr></tfoot>
@@ -376,7 +408,7 @@ export const AdminInventory: React.FC = () => {
                         <div><label className="block text-xs font-bold mb-1">1º Vencimento</label><input type="date" className="border p-2 rounded" value={firstDueDate} onChange={e => setFirstDueDate(e.target.value)} /></div>
                         <Button onClick={generateInstallments} variant="secondary" size="sm" className="h-[38px]">Gerar Parcelas</Button>
                     </div>
-                    {paymentInstallments.length > 0 && <div className="grid grid-cols-2 md:grid-cols-4 gap-3">{paymentInstallments.map((inst, idx) => <div key={idx} className="bg-white border p-3 rounded-lg text-sm flex flex-col gap-1 shadow-sm"><span className="font-bold text-gray-500 text-xs">{idx + 1}ª Parcela</span><input type="date" className="border p-1 rounded text-xs w-full mb-1" value={inst.dueDate.toISOString().split('T')[0]} onChange={(e) => { const n = [...paymentInstallments]; n[idx].dueDate = new Date(e.target.value + 'T12:00:00'); setPaymentInstallments(n); }} /><span className="font-bold text-base text-gray-800">R$ {inst.amount.toFixed(2)}</span></div>)}</div>}
+                    {paymentInstallments.length > 0 && <div className="grid grid-cols-2 md:grid-cols-4 gap-3">{paymentInstallments.map((inst, idx) => <div key={idx} className="bg-white border p-3 rounded-lg text-sm flex flex-col gap-1 shadow-sm"><span className="font-bold text-gray-500 text-xs">{idx + 1}ª Parcela</span><input type="date" className="border p-1 rounded text-xs w-full mb-1" value={inst.dueDate.toISOString().split('T')[0]} onChange={(e) => handleInstallmentDateChange(idx, e.target.value)} /><span className="font-bold text-base text-gray-800">R$ {inst.amount.toFixed(2)}</span></div>)}</div>}
                 </div>
             </div>
             <div className="flex gap-3 pt-6 border-t mt-4"><Button variant="secondary" onClick={() => setPurchaseModalOpen(false)} className="flex-1 py-3">Cancelar</Button><Button onClick={submitPurchaseEntry} className="flex-1 py-3">Confirmar Entrada</Button></div>
