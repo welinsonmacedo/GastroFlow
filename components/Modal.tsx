@@ -40,17 +40,15 @@ export const Modal: React.FC<ModalProps> = ({
   // Renderiza o conteúdo baseado na variante
   const content = variant === 'page' ? (
     // --- VARIANT: PAGE (Sidebar Aware) ---
-    // z-40 fica abaixo da Sidebar (z-50) no Desktop se a sidebar estiver fixa, 
-    // mas md:left-72 empurra o conteúdo para o lado.
-    // No Mobile, cobre tudo (z-50 no mobile sidebar só abre se clicado).
-    <div className="fixed inset-0 z-40 bg-gray-100 flex flex-col animate-fade-in md:left-72">
+    // z-[60] para garantir que fique acima da sidebar (z-50) e navbar (z-50)
+    <div className="fixed inset-0 z-[60] bg-gray-100 flex flex-col animate-fade-in md:left-72">
         {/* Header */}
-        <div className="bg-white border-b px-4 md:px-6 py-4 flex justify-between items-center shrink-0 shadow-sm safe-area-top">
+        <div className="bg-white border-b px-4 md:px-6 py-4 flex justify-between items-center shrink-0 shadow-sm safe-area-top relative z-10">
           <div className="flex items-center gap-3">
-            {/* Botão Voltar sempre visível */}
+            {/* Botão Voltar sempre visível e com z-index garantido */}
             <button 
               onClick={onClose} 
-              className="p-2 -ml-2 text-gray-600 hover:bg-gray-100 rounded-full transition-colors flex items-center gap-2 group"
+              className="p-2 -ml-2 text-gray-600 hover:bg-gray-100 rounded-full transition-colors flex items-center gap-2 group relative z-20"
               title="Voltar"
             >
                <ArrowLeft size={24} className="group-hover:-translate-x-1 transition-transform"/>
@@ -75,7 +73,7 @@ export const Modal: React.FC<ModalProps> = ({
     </div>
   ) : (
     // --- VARIANT: DIALOG (Centered Popup) ---
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4 animate-fade-in">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4 animate-fade-in">
       <div 
         className={`bg-white rounded-2xl shadow-2xl w-full flex flex-col max-h-[90vh] relative overflow-hidden flex-shrink-0
           ${maxWidth === 'sm' ? 'max-w-sm' : ''}
