@@ -4,6 +4,7 @@ import { useUI } from '../context/UIContext';
 import { TableStatus, Product, ProductType } from '../types';
 import { Button } from '../components/Button';
 import { DollarSign, CreditCard, Smartphone, History, Receipt, ArrowLeft, ShoppingCart, Search, Plus, Minus, Trash2, Tag, Box, AlertTriangle, ArrowDown, Lock, Wallet, ArrowUp } from 'lucide-react';
+import { Modal } from '../components/Modal';
 
 export const CashierDashboard: React.FC = () => {
   const { state, dispatch } = useRestaurant();
@@ -209,86 +210,75 @@ export const CashierDashboard: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col lg:flex-row h-full relative">
         {/* MODAL SANGRIA */}
-        {bleedModalOpen && (
-            <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-                <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm animate-fade-in">
-                    <h3 className="font-bold text-lg mb-4 text-red-600 flex items-center gap-2"><ArrowDown size={20}/> Realizar Sangria</h3>
-                    <form onSubmit={handleBleed} className="space-y-4">
-                        <div>
-                            <label className="block text-xs font-bold mb-1">Valor (R$)</label>
-                            <input autoFocus type="number" step="0.01" className="w-full border p-2 rounded text-lg font-bold" value={bleedAmount} onChange={e => setBleedAmount(e.target.value)} required />
-                            <p className="text-xs text-gray-500 mt-1">Disponível em dinheiro: R$ {expectedCash.toFixed(2)}</p>
-                        </div>
-                        <div>
-                            <label className="block text-xs font-bold mb-1">Motivo</label>
-                            <input type="text" className="w-full border p-2 rounded" placeholder="Ex: Pagamento fornecedor, retirada..." value={bleedReason} onChange={e => setBleedReason(e.target.value)} required />
-                        </div>
-                        <div className="flex gap-2">
-                            <Button type="button" variant="secondary" onClick={() => setBleedModalOpen(false)} className="flex-1">Cancelar</Button>
-                            <Button type="submit" variant="danger" className="flex-1">Confirmar Retirada</Button>
-                        </div>
-                    </form>
+        <Modal isOpen={bleedModalOpen} onClose={() => setBleedModalOpen(false)} title="Realizar Sangria" variant="dialog" maxWidth="sm">
+            <form onSubmit={handleBleed} className="space-y-4">
+                <div>
+                    <label className="block text-xs font-bold mb-1">Valor (R$)</label>
+                    <input autoFocus type="number" step="0.01" className="w-full border p-2 rounded text-lg font-bold" value={bleedAmount} onChange={e => setBleedAmount(e.target.value)} required />
+                    <p className="text-xs text-gray-500 mt-1">Disponível em dinheiro: R$ {expectedCash.toFixed(2)}</p>
                 </div>
-            </div>
-        )}
+                <div>
+                    <label className="block text-xs font-bold mb-1">Motivo</label>
+                    <input type="text" className="w-full border p-2 rounded" placeholder="Ex: Pagamento fornecedor, retirada..." value={bleedReason} onChange={e => setBleedReason(e.target.value)} required />
+                </div>
+                <div className="flex gap-2">
+                    <Button type="button" variant="secondary" onClick={() => setBleedModalOpen(false)} className="flex-1">Cancelar</Button>
+                    <Button type="submit" variant="danger" className="flex-1">Confirmar Retirada</Button>
+                </div>
+            </form>
+        </Modal>
 
         {/* MODAL FECHAMENTO */}
-        {closeModalOpen && (
-            <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-                <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-lg animate-fade-in max-h-[90vh] overflow-y-auto">
-                    <h3 className="font-bold text-xl mb-6 text-gray-800 border-b pb-2">Fechamento de Caixa</h3>
-                    
-                    <div className="space-y-4 mb-6">
-                        <div className="flex justify-between items-center text-sm">
-                            <span className="text-gray-600">Fundo Inicial</span>
-                            <span className="font-bold">R$ {state.activeCashSession.initialAmount.toFixed(2)}</span>
-                        </div>
-                        <div className="flex justify-between items-center text-sm">
-                            <span className="text-gray-600">Vendas (Dinheiro)</span>
-                            <span className="font-bold text-green-600">+ R$ {totalSalesCash.toFixed(2)}</span>
-                        </div>
-                        <div className="flex justify-between items-center text-sm">
-                            <span className="text-gray-600">Sangrias</span>
-                            <span className="font-bold text-red-600">- R$ {totalBleed.toFixed(2)}</span>
-                        </div>
-                        <div className="flex justify-between items-center text-lg font-bold bg-gray-100 p-2 rounded">
-                            <span>Esperado em Gaveta</span>
-                            <span>R$ {expectedCash.toFixed(2)}</span>
-                        </div>
-                        
-                        <div className="pt-2 border-t mt-2">
-                            <div className="flex justify-between text-xs text-gray-500">
-                                <span>Cartão: R$ {totalSalesCard.toFixed(2)}</span>
-                                <span>Pix: R$ {totalSalesPix.toFixed(2)}</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="mb-6">
-                        <label className="block text-sm font-bold text-gray-700 mb-2">Valor Conferido (Contagem)</label>
-                        <input 
-                            type="number" 
-                            step="0.01"
-                            className="w-full text-center text-2xl font-bold border-2 border-blue-500 rounded-xl p-3 focus:outline-none bg-blue-50"
-                            placeholder="0.00"
-                            value={closeCountedAmount}
-                            onChange={e => setCloseCountedAmount(e.target.value)}
-                            autoFocus
-                        />
-                        {closeCountedAmount && (
-                            <p className={`text-center text-sm mt-2 font-bold ${(parseFloat(closeCountedAmount) - expectedCash) < 0 ? 'text-red-500' : 'text-green-500'}`}>
-                                Diferença: R$ {(parseFloat(closeCountedAmount) - expectedCash).toFixed(2)}
-                            </p>
-                        )}
-                    </div>
-
-                    <div className="flex gap-3">
-                        <Button type="button" variant="secondary" onClick={() => setCloseModalOpen(false)} className="flex-1">Cancelar</Button>
-                        <Button onClick={handleCloseRegister} className="flex-1 bg-slate-800 hover:bg-slate-900" disabled={!closeCountedAmount}>Concluir Fechamento</Button>
+        <Modal isOpen={closeModalOpen} onClose={() => setCloseModalOpen(false)} title="Fechamento de Caixa" variant="dialog" maxWidth="md">
+            <div className="space-y-4 mb-6">
+                <div className="flex justify-between items-center text-sm">
+                    <span className="text-gray-600">Fundo Inicial</span>
+                    <span className="font-bold">R$ {state.activeCashSession.initialAmount.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between items-center text-sm">
+                    <span className="text-gray-600">Vendas (Dinheiro)</span>
+                    <span className="font-bold text-green-600">+ R$ {totalSalesCash.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between items-center text-sm">
+                    <span className="text-gray-600">Sangrias</span>
+                    <span className="font-bold text-red-600">- R$ {totalBleed.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between items-center text-lg font-bold bg-gray-100 p-2 rounded">
+                    <span>Esperado em Gaveta</span>
+                    <span>R$ {expectedCash.toFixed(2)}</span>
+                </div>
+                
+                <div className="pt-2 border-t mt-2">
+                    <div className="flex justify-between text-xs text-gray-500">
+                        <span>Cartão: R$ {totalSalesCard.toFixed(2)}</span>
+                        <span>Pix: R$ {totalSalesPix.toFixed(2)}</span>
                     </div>
                 </div>
             </div>
-        )}
+
+            <div className="mb-6">
+                <label className="block text-sm font-bold text-gray-700 mb-2">Valor Conferido (Contagem)</label>
+                <input 
+                    type="number" 
+                    step="0.01"
+                    className="w-full text-center text-2xl font-bold border-2 border-blue-500 rounded-xl p-3 focus:outline-none bg-blue-50"
+                    placeholder="0.00"
+                    value={closeCountedAmount}
+                    onChange={e => setCloseCountedAmount(e.target.value)}
+                    autoFocus
+                />
+                {closeCountedAmount && (
+                    <p className={`text-center text-sm mt-2 font-bold ${(parseFloat(closeCountedAmount) - expectedCash) < 0 ? 'text-red-500' : 'text-green-500'}`}>
+                        Diferença: R$ {(parseFloat(closeCountedAmount) - expectedCash).toFixed(2)}
+                    </p>
+                )}
+            </div>
+
+            <div className="flex gap-3">
+                <Button type="button" variant="secondary" onClick={() => setCloseModalOpen(false)} className="flex-1">Cancelar</Button>
+                <Button onClick={handleCloseRegister} className="flex-1 bg-slate-800 hover:bg-slate-900" disabled={!closeCountedAmount}>Concluir Fechamento</Button>
+            </div>
+        </Modal>
 
         {/* Sidebar Mini (Horizontal on mobile, Vertical on desktop) */}
         <div className="w-full lg:w-20 bg-slate-900 text-white flex flex-row lg:flex-col items-center justify-center lg:justify-start py-4 lg:py-6 gap-6 shrink-0 z-10 sticky top-0 lg:h-screen">

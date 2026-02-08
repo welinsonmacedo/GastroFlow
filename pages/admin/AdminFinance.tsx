@@ -83,7 +83,8 @@ export const AdminFinance: React.FC = () => {
             isOpen={!!editingExpense} 
             onClose={() => setEditingExpense(null)}
             title="Registrar Despesa"
-            size="sm"
+            variant="dialog" // Small form
+            maxWidth="md"
         >
             <form onSubmit={handleSaveExpense} className="space-y-4">
                 <div>

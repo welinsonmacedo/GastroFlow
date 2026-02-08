@@ -125,7 +125,8 @@ export const AdminStaff: React.FC = () => {
             isOpen={!!userForm.name || !!editingUser} 
             onClose={() => { setEditingUser(null); setUserForm({ name: '', role: Role.WAITER, pin: '', email: '', allowedRoutes: [] }); }}
             title={editingUser ? 'Editar Usuário' : 'Novo Membro da Equipe'}
-            size="md"
+            variant="dialog" // Keep small
+            maxWidth="md"
         >
             <form onSubmit={handleSaveUser} className="space-y-4">
                 <div>
