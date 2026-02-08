@@ -47,8 +47,13 @@ export const Modal: React.FC<ModalProps> = ({
         {/* Header */}
         <div className="bg-white border-b px-4 md:px-6 py-4 flex justify-between items-center shrink-0 shadow-sm safe-area-top">
           <div className="flex items-center gap-3">
-            <button onClick={onClose} className="md:hidden p-2 -ml-2 text-gray-600 hover:bg-gray-100 rounded-full">
-               <ArrowLeft size={24}/>
+            {/* Botão Voltar sempre visível */}
+            <button 
+              onClick={onClose} 
+              className="p-2 -ml-2 text-gray-600 hover:bg-gray-100 rounded-full transition-colors flex items-center gap-2 group"
+              title="Voltar"
+            >
+               <ArrowLeft size={24} className="group-hover:-translate-x-1 transition-transform"/>
             </button>
             <h2 className="text-xl font-bold text-gray-800 line-clamp-1">{title}</h2>
           </div>
@@ -82,7 +87,16 @@ export const Modal: React.FC<ModalProps> = ({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex justify-between items-center p-5 border-b bg-gray-50 shrink-0">
-          <h3 className="font-bold text-lg text-gray-800">{title}</h3>
+          <div className="flex items-center gap-3">
+             <button 
+                onClick={onClose} 
+                className="p-1 -ml-1 text-gray-500 hover:text-gray-800 hover:bg-gray-200 rounded-full transition-colors"
+                title="Voltar"
+             >
+                <ArrowLeft size={20}/>
+             </button>
+             <h3 className="font-bold text-lg text-gray-800">{title}</h3>
+          </div>
           <button 
             onClick={onClose} 
             className="p-2 hover:bg-gray-200 rounded-full text-gray-500 hover:text-red-500 transition-colors"
