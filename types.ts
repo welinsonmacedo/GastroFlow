@@ -198,13 +198,18 @@ export interface PurchaseItemInput {
     totalPrice: number;
 }
 
+export interface PurchaseInstallment {
+    dueDate: Date;
+    amount: number;
+}
+
 export interface PurchaseEntry {
     supplierId: string;
     invoiceNumber: string; // Numero da Nota
     date: Date;
-    dueDate: Date; // Para o financeiro
     items: PurchaseItemInput[];
     totalAmount: number;
+    installments: PurchaseInstallment[];
 }
 
 export interface Expense {

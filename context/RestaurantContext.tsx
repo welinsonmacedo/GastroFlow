@@ -484,19 +484,21 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     // --- NEW: PROCESS PURCHASE ENTRY ---
     if (action.type === 'PROCESS_PURCHASE' && tenantId) {
         try {
-            const { supplierId, invoiceNumber, items, totalAmount, dueDate } = action.purchase;
+            const { supplierId, invoiceNumber, items, totalAmount, installments } = action.purchase;
             const supplier = state.suppliers.find(s => s.id === supplierId);
 
-            // 1. Create Expense (Financial)
-            await supabase.from('expenses').insert({
-                tenant_id: tenantId,
-                description: `Nota Fiscal #${invoiceNumber} - ${supplier?.name}`,
-                amount: totalAmount,
-                category: 'Fornecedor',
-                due_date: dueDate.toISOString().split('T')[0],
-                is_paid: false,
-                supplier_id: supplierId
-            });
+            // 1. Create Expenses (Financial) - Iterate over installments
+            for (const [index, inst] of installments.entries()) {
+                await supabase.from('expenses').insert({
+                    tenant_id: tenantId,
+                    description: `NF #${invoiceNumber} (${index + 1}/${installments.length}) - ${supplier?.name}`,
+                    amount: inst.amount,
+                    category: 'Fornecedor',
+                    due_date: inst.dueDate.toISOString().split('T')[0],
+                    is_paid: false,
+                    supplier_id: supplierId
+                });
+            }
 
             // 2. Update Inventory (Qty & Cost Price) and Log
             for (const item of items) {

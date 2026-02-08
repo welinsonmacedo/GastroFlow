@@ -4,7 +4,7 @@ import { useUI } from '../context/UIContext';
 import { Button } from '../components/Button';
 import { QRCodeGenerator } from '../components/QRCodeGenerator';
 import { ImageUploader } from '../components/ImageUploader';
-import { Product, ProductType, Role, User, InventoryItem, Expense, InventoryType, Supplier, PurchaseItemInput } from '../types';
+import { Product, ProductType, Role, User, InventoryItem, Expense, InventoryType, Supplier, PurchaseItemInput, PurchaseInstallment } from '../types';
 import { LayoutDashboard, Utensils, QrCode, Printer, ExternalLink, Palette, Eye, EyeOff, Save, Copy, Plus, Users, ShieldCheck, Trash2, Edit, AlertTriangle, FileBarChart, X, ArrowUp, ArrowDown, LayoutGrid, List as ListIcon, Image as ImageIcon, Calendar, TrendingUp, Search, Loader2, Menu, Activity, CheckSquare, GripVertical, Link as LinkIcon, Share2, Lock, BookOpen, Package, DollarSign, Archive, TrendingDown, RefreshCcw, Layers, ArrowLeft, Truck, FileText } from 'lucide-react';
 import { getTenantSlug } from '../utils/tenant';
 import { supabase } from '../lib/supabase';
@@ -29,10 +29,14 @@ export const AdminDashboard: React.FC = () => {
       supplierId: string;
       invoiceNumber: string;
       date: string;
-      dueDate: string;
       items: PurchaseItemInput[];
-  }>({ supplierId: '', invoiceNumber: '', date: new Date().toISOString().split('T')[0], dueDate: '', items: [] });
+  }>({ supplierId: '', invoiceNumber: '', date: new Date().toISOString().split('T')[0], items: [] });
   const [tempPurchaseItem, setTempPurchaseItem] = useState({ itemId: '', quantity: 1, unitPrice: 0 });
+  
+  // Installments Management
+  const [paymentInstallments, setPaymentInstallments] = useState<PurchaseInstallment[]>([]);
+  const [installmentsCount, setInstallmentsCount] = useState(1);
+  const [firstDueDate, setFirstDueDate] = useState(new Date().toISOString().split('T')[0]);
 
   // --- Supplier State (NEW) ---
   const [supplierModalOpen, setSupplierModalOpen] = useState(false);
@@ -185,6 +189,34 @@ export const AdminDashboard: React.FC = () => {
       }));
   };
 
+  const generateInstallments = () => {
+      const total = purchaseForm.items.reduce((acc, i) => acc + i.totalPrice, 0);
+      if (total <= 0) return;
+
+      const count = Math.max(1, Math.min(12, installmentsCount));
+      const amountPerInst = total / count;
+      const baseDate = new Date(firstDueDate);
+      
+      const newInst: PurchaseInstallment[] = [];
+      for (let i = 0; i < count; i++) {
+          const date = new Date(baseDate);
+          date.setDate(date.getDate() + (i * 30)); // Aproximação +30 dias
+          newInst.push({
+              dueDate: date,
+              amount: parseFloat(amountPerInst.toFixed(2))
+          });
+      }
+      
+      // Ajuste de centavos na última parcela
+      const sum = newInst.reduce((acc, i) => acc + i.amount, 0);
+      const diff = total - sum;
+      if (Math.abs(diff) > 0.001) {
+          newInst[newInst.length - 1].amount += diff;
+      }
+
+      setPaymentInstallments(newInst);
+  };
+
   const submitPurchaseEntry = (e: React.FormEvent) => {
       e.preventDefault();
       if(!purchaseForm.supplierId || !purchaseForm.invoiceNumber || purchaseForm.items.length === 0) {
@@ -193,19 +225,31 @@ export const AdminDashboard: React.FC = () => {
       }
 
       const totalAmount = purchaseForm.items.reduce((acc, i) => acc + i.totalPrice, 0);
+      const totalInstallments = paymentInstallments.reduce((acc, i) => acc + i.amount, 0);
+
+      // Validação básica do valor (margem de erro de 1 centavo)
+      if (Math.abs(totalAmount - totalInstallments) > 0.05) {
+          showAlert({ 
+              title: "Divergência", 
+              message: `O valor das parcelas (R$ ${totalInstallments.toFixed(2)}) não bate com o total da nota (R$ ${totalAmount.toFixed(2)}). Gere as parcelas novamente.`, 
+              type: 'WARNING' 
+          });
+          return;
+      }
 
       dispatch({
           type: 'PROCESS_PURCHASE',
           purchase: {
               ...purchaseForm,
               date: new Date(purchaseForm.date),
-              dueDate: new Date(purchaseForm.dueDate || purchaseForm.date),
-              totalAmount
+              totalAmount,
+              installments: paymentInstallments
           }
       });
 
       setPurchaseModalOpen(false);
-      setPurchaseForm({ supplierId: '', invoiceNumber: '', date: new Date().toISOString().split('T')[0], dueDate: '', items: [] });
+      setPurchaseForm({ supplierId: '', invoiceNumber: '', date: new Date().toISOString().split('T')[0], items: [] });
+      setPaymentInstallments([]);
       showAlert({ title: "Sucesso", message: "Nota lançada! Estoque e Financeiro atualizados.", type: 'SUCCESS' });
   };
 
@@ -333,7 +377,7 @@ export const AdminDashboard: React.FC = () => {
                     {/* MODAL ENTRADA DE NOTA DE COMPRA */}
                     {purchaseModalOpen && (
                         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                            <div className="bg-white p-6 rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+                            <div className="bg-white p-6 rounded-xl shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
                                 <div className="flex justify-between items-center mb-4">
                                     <h3 className="font-bold text-lg flex items-center gap-2"><FileText size={20}/> Entrada de Nota Fiscal</h3>
                                     <button onClick={() => setPurchaseModalOpen(false)}><X size={20}/></button>
@@ -355,12 +399,9 @@ export const AdminDashboard: React.FC = () => {
                                             <label className="block text-xs font-bold mb-1">Data Emissão</label>
                                             <input type="date" required className="w-full border p-2 rounded" value={purchaseForm.date} onChange={e => setPurchaseForm({...purchaseForm, date: e.target.value})} />
                                         </div>
-                                        <div>
-                                            <label className="block text-xs font-bold mb-1">Vencimento (Financeiro)</label>
-                                            <input type="date" required className="w-full border p-2 rounded" value={purchaseForm.dueDate} onChange={e => setPurchaseForm({...purchaseForm, dueDate: e.target.value})} />
-                                        </div>
                                     </div>
 
+                                    {/* ITENS DA NOTA */}
                                     <div className="border rounded-lg p-4">
                                         <h4 className="font-bold text-sm mb-3">Itens da Nota</h4>
                                         <div className="flex gap-2 mb-4 items-end">
@@ -416,6 +457,60 @@ export const AdminDashboard: React.FC = () => {
                                             </table>
                                             {purchaseForm.items.length === 0 && <p className="text-center p-4 text-gray-400 text-xs">Nenhum item adicionado.</p>}
                                         </div>
+                                    </div>
+
+                                    {/* FINANCEIRO / PARCELAS */}
+                                    <div className="border rounded-lg p-4 bg-blue-50/50">
+                                        <h4 className="font-bold text-sm mb-3 flex items-center gap-2"><DollarSign size={16}/> Condições de Pagamento</h4>
+                                        <div className="flex items-end gap-3 mb-4">
+                                            <div>
+                                                <label className="block text-xs font-bold mb-1">Parcelas</label>
+                                                <select className="border p-2 rounded text-sm w-20" value={installmentsCount} onChange={e => setInstallmentsCount(Number(e.target.value))}>
+                                                    {[1,2,3,4,5,6,10,12].map(n => <option key={n} value={n}>{n}x</option>)}
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-bold mb-1">1º Vencimento</label>
+                                                <input type="date" className="border p-2 rounded text-sm" value={firstDueDate} onChange={e => setFirstDueDate(e.target.value)} />
+                                            </div>
+                                            <Button type="button" size="sm" onClick={generateInstallments}>Gerar Parcelas</Button>
+                                        </div>
+
+                                        {paymentInstallments.length > 0 && (
+                                            <div className="space-y-2">
+                                                {paymentInstallments.map((inst, idx) => (
+                                                    <div key={idx} className="flex gap-2 items-center text-sm">
+                                                        <span className="w-8 font-bold text-gray-500">{idx + 1}x</span>
+                                                        <input 
+                                                            type="date" 
+                                                            className="border p-1 rounded" 
+                                                            value={inst.dueDate.toISOString().split('T')[0]} 
+                                                            onChange={e => {
+                                                                const newInst = [...paymentInstallments];
+                                                                newInst[idx].dueDate = new Date(e.target.value);
+                                                                setPaymentInstallments(newInst);
+                                                            }}
+                                                        />
+                                                        <div className="flex items-center border rounded bg-white px-2">
+                                                            <span className="text-gray-500 mr-1">R$</span>
+                                                            <input 
+                                                                type="number" step="0.01" 
+                                                                className="w-24 p-1 outline-none font-bold text-right" 
+                                                                value={inst.amount}
+                                                                onChange={e => {
+                                                                    const newInst = [...paymentInstallments];
+                                                                    newInst[idx].amount = parseFloat(e.target.value);
+                                                                    setPaymentInstallments(newInst);
+                                                                }}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                                <div className="text-right text-xs text-gray-500 mt-2">
+                                                    Total Parcelado: <b>R$ {paymentInstallments.reduce((acc, i) => acc + i.amount, 0).toFixed(2)}</b>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
 
                                     <div className="flex justify-between items-center pt-4 border-t">
