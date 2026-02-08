@@ -406,9 +406,14 @@ export const AdminDashboard: React.FC = () => {
             </div>
             <nav className="space-y-2">
                 <button onClick={() => setActiveTab('DASHBOARD')} className={`w-full text-left p-3 rounded flex items-center gap-3 ${activeTab==='DASHBOARD'?'bg-blue-600':''}`}><LayoutDashboard size={18}/> Dashboard</button>
+                {/* Permissões de Estoque */}
                 {planLimits.allowInventory && <button onClick={() => setActiveTab('INVENTORY')} className={`w-full text-left p-3 rounded flex items-center gap-3 ${activeTab==='INVENTORY'?'bg-blue-600':''}`}><Package size={18}/> Estoque (Cadastro)</button>}
+                
                 <button onClick={() => setActiveTab('PRODUCTS')} className={`w-full text-left p-3 rounded flex items-center gap-3 ${activeTab==='PRODUCTS'?'bg-blue-600':''}`}><Utensils size={18}/> Cardápio (Venda)</button>
+                
+                {/* Permissões de Financeiro / Compras */}
                 {(planLimits.allowExpenses || planLimits.allowPurchases) && <button onClick={() => setActiveTab('FINANCE')} className={`w-full text-left p-3 rounded flex items-center gap-3 ${activeTab==='FINANCE'?'bg-blue-600':''}`}><DollarSign size={18}/> Financeiro</button>}
+                
                 {planLimits.allowReports && <button onClick={() => setActiveTab('ACCOUNTING')} className={`w-full text-left p-3 rounded flex items-center gap-3 ${activeTab==='ACCOUNTING'?'bg-blue-600':''}`}><FileSpreadsheet size={18}/> Contabilidade</button>}
                 {planLimits.allowStaff && <button onClick={() => setActiveTab('STAFF')} className={`w-full text-left p-3 rounded flex items-center gap-3 ${activeTab==='STAFF'?'bg-blue-600':''}`}><Users size={18}/> Equipe</button>}
                 {planLimits.allowTableMgmt && <button onClick={() => setActiveTab('TABLES')} className={`w-full text-left p-3 rounded flex items-center gap-3 ${activeTab==='TABLES'?'bg-blue-600':''}`}><QrCode size={18}/> Mesas QR</button>}
