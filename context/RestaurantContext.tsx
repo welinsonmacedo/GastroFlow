@@ -85,6 +85,7 @@ type Action =
   | { type: 'RESOLVE_WAITER_CALL'; callId: string }
   | { type: 'PLAY_SOUND'; soundType: 'KITCHEN' | 'WAITER' }
   | { type: 'ADD_INVENTORY_ITEM'; item: InventoryItem }
+  | { type: 'UPDATE_INVENTORY_ITEM'; item: InventoryItem }
   | { type: 'UPDATE_STOCK'; itemId: string; quantity: number; reason: string; operation: 'IN' | 'OUT' }
   | { type: 'PROCESS_PURCHASE'; purchase: PurchaseEntry }
   | { type: 'PROCESS_INVENTORY_ADJUSTMENT'; adjustments: { itemId: string; realQty: number }[] }
@@ -599,6 +600,39 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
             logAudit(tenantId, 'ADD_STOCK_ITEM', `Item ${action.item.name} (${action.item.type}) cadastrado`);
         }
+        return;
+    }
+
+    if (action.type === 'UPDATE_INVENTORY_ITEM' && tenantId) {
+        // 1. Update basic fields
+        await supabase.from('inventory_items').update({
+            name: action.item.name,
+            unit: action.item.unit,
+            min_quantity: action.item.minQuantity,
+            cost_price: action.item.costPrice, // Allow manual cost update
+            image: action.item.image,
+            type: action.item.type
+        }).eq('id', action.item.id);
+
+        // 2. If composite, update recipes (full replace for simplicity)
+        if (action.item.type === 'COMPOSITE' && action.item.recipe) {
+            // Delete old recipes
+            await supabase.from('inventory_recipes').delete().eq('parent_item_id', action.item.id);
+            // Insert new recipes
+            const recipes = action.item.recipe.map(r => ({
+                tenant_id: tenantId,
+                parent_item_id: action.item.id,
+                ingredient_item_id: r.ingredientId,
+                quantity: r.quantity
+            }));
+            await supabase.from('inventory_recipes').insert(recipes);
+        }
+        
+        // 3. Optimistic update
+        const updatedInventory = state.inventory.map(i => i.id === action.item.id ? action.item : i);
+        dispatchLocal({ type: 'REALTIME_UPDATE_INVENTORY', inventory: updatedInventory });
+        
+        logAudit(tenantId, 'UPDATE_STOCK_ITEM', `Item ${action.item.name} atualizado`);
         return;
     }
 
