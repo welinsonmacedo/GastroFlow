@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, useEffect, useState, useCallback } from 'react';
-import { Table, Order, Product, TableStatus, OrderStatus, ProductType, OrderItem, RestaurantTheme, User, AuditLog, Transaction, Role, ServiceCall, OnlineUser, PlanLimits } from '../types';
+import { Table, Order, Product, TableStatus, OrderStatus, ProductType, OrderItem, RestaurantTheme, User, AuditLog, Transaction, Role, ServiceCall, OnlineUser, PlanLimits, InventoryItem, Expense, Supplier } from '../types';
 import { getTenantSlug } from '../utils/tenant';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { useUI } from './UIContext';
@@ -23,6 +23,10 @@ interface State {
   serviceCalls: ServiceCall[];
   onlineUsers: OnlineUser[]; 
   audioUnlocked: boolean;
+  // ERP STATES
+  inventory: InventoryItem[];
+  expenses: Expense[];
+  suppliers: Supplier[];
 }
 
 type Action =
@@ -30,7 +34,7 @@ type Action =
   | { type: 'INIT_DATA'; payload: Partial<State> }
   | { type: 'TENANT_NOT_FOUND' }
   | { type: 'TENANT_INACTIVE' } 
-  | { type: 'UPDATE_PLAN_LIMITS'; limits: PlanLimits; status?: string } // Nova Ação
+  | { type: 'UPDATE_PLAN_LIMITS'; limits: PlanLimits; status?: string }
   | { type: 'LOGIN'; user: User }
   | { type: 'LOGOUT' }
   | { type: 'REALTIME_UPDATE_TABLES'; tables: Table[] }
@@ -39,6 +43,8 @@ type Action =
   | { type: 'REALTIME_UPDATE_TRANSACTIONS'; transactions: Transaction[] }
   | { type: 'REALTIME_UPDATE_AUDIT_LOGS'; auditLogs: AuditLog[] }
   | { type: 'REALTIME_UPDATE_SERVICE_CALLS'; calls: ServiceCall[] }
+  | { type: 'REALTIME_UPDATE_INVENTORY'; inventory: InventoryItem[] } // NEW
+  | { type: 'REALTIME_UPDATE_EXPENSES'; expenses: Expense[] } // NEW
   | { type: 'UPDATE_ONLINE_USERS'; users: OnlineUser[] }
   | { type: 'UNLOCK_AUDIO' }
   | { type: 'ADD_USER'; user: User }
@@ -57,7 +63,13 @@ type Action =
   | { type: 'PROCESS_PAYMENT'; tableId: string; amount: number; method: 'CASH' | 'CARD' | 'PIX' | 'CREDIT' | 'DEBIT' }
   | { type: 'CALL_WAITER'; tableId: string }
   | { type: 'RESOLVE_WAITER_CALL'; callId: string }
-  | { type: 'PLAY_SOUND'; soundType: 'KITCHEN' | 'WAITER' };
+  | { type: 'PLAY_SOUND'; soundType: 'KITCHEN' | 'WAITER' }
+  // ERP ACTIONS
+  | { type: 'ADD_INVENTORY_ITEM'; item: InventoryItem }
+  | { type: 'UPDATE_STOCK'; itemId: string; quantity: number; reason: string; operation: 'IN' | 'OUT' }
+  | { type: 'ADD_EXPENSE'; expense: Expense }
+  | { type: 'PAY_EXPENSE'; expenseId: string }
+  | { type: 'DELETE_EXPENSE'; expenseId: string };
 
 const initialState: State = {
   isLoading: true,
@@ -65,7 +77,7 @@ const initialState: State = {
   tenantId: null,
   isValidTenant: false,
   isInactiveTenant: false,
-  planLimits: { maxTables: -1, maxProducts: -1, maxStaff: -1, allowKds: true, allowCashier: true }, // Default aberto
+  planLimits: { maxTables: -1, maxProducts: -1, maxStaff: -1, allowKds: true, allowCashier: true },
   tables: [],
   products: [],
   orders: [],
@@ -76,7 +88,10 @@ const initialState: State = {
   transactions: [],
   serviceCalls: [],
   onlineUsers: [],
-  audioUnlocked: false
+  audioUnlocked: false,
+  inventory: [],
+  expenses: [],
+  suppliers: []
 };
 
 const RestaurantContext = createContext<{
@@ -171,6 +186,12 @@ const restaurantReducer = (state: State, action: Action): State => {
         }
         return { ...state, serviceCalls: action.calls };
 
+    case 'REALTIME_UPDATE_INVENTORY':
+        return { ...state, inventory: action.inventory };
+
+    case 'REALTIME_UPDATE_EXPENSES':
+        return { ...state, expenses: action.expenses };
+
     case 'UPDATE_ONLINE_USERS':
         return { ...state, onlineUsers: action.users };
 
@@ -254,14 +275,21 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             yesterday.setHours(yesterday.getHours() - 24);
             const isoDate = yesterday.toISOString();
 
-            const [usersRes, productsRes, tablesRes, ordersRes, transactionsRes, auditRes, callsRes] = await Promise.all([
+            const [
+                usersRes, productsRes, tablesRes, ordersRes, transactionsRes, auditRes, callsRes,
+                invRes, expRes, suppRes
+            ] = await Promise.all([
                 supabase.from('staff').select('*').eq('tenant_id', tenant.id),
                 supabase.from('products').select('*').eq('tenant_id', tenant.id),
                 supabase.from('restaurant_tables').select('*').eq('tenant_id', tenant.id).order('number'),
                 supabase.from('orders').select(`*, items:order_items (*)`).eq('tenant_id', tenant.id).gte('created_at', isoDate),
                 supabase.from('transactions').select('*').eq('tenant_id', tenant.id).order('created_at', { ascending: false }).limit(50),
                 supabase.from('audit_logs').select('*').eq('tenant_id', tenant.id).order('created_at', { ascending: false }).limit(50),
-                supabase.from('service_calls').select('*').eq('tenant_id', tenant.id).eq('status', 'PENDING')
+                supabase.from('service_calls').select('*').eq('tenant_id', tenant.id).eq('status', 'PENDING'),
+                // ERP Tables
+                supabase.from('inventory_items').select('*').eq('tenant_id', tenant.id),
+                supabase.from('expenses').select('*').eq('tenant_id', tenant.id).order('due_date', { ascending: true }),
+                supabase.from('suppliers').select('*').eq('tenant_id', tenant.id)
             ]);
 
             const mappedUsers: User[] = (usersRes.data || []).map(u => ({ 
@@ -279,11 +307,12 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 name: p.name,
                 description: p.description,
                 price: p.price,
+                costPrice: p.cost_price || 0,
                 category: p.category,
                 type: p.type as ProductType,
                 image: p.image,
                 isVisible: p.is_visible,
-                sort_order: p.sort_order
+                sortOrder: p.sort_order
             }));
 
             const mappedTables: Table[] = (tablesRes.data || []).map(t => ({
@@ -337,6 +366,33 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 timestamp: new Date(c.created_at)
             }));
 
+            // Mapeamento ERP
+            const mappedInventory: InventoryItem[] = (invRes.data || []).map(i => ({
+                id: i.id,
+                name: i.name,
+                unit: i.unit,
+                quantity: i.quantity,
+                minQuantity: i.min_quantity,
+                costPrice: i.cost_price
+            }));
+
+            const mappedExpenses: Expense[] = (expRes.data || []).map(e => ({
+                id: e.id,
+                description: e.description,
+                amount: e.amount,
+                category: e.category,
+                dueDate: new Date(e.due_date),
+                paidDate: e.paid_date ? new Date(e.paid_date) : undefined,
+                isPaid: e.is_paid
+            }));
+
+            const mappedSuppliers: Supplier[] = (suppRes.data || []).map(s => ({
+                id: s.id,
+                name: s.name,
+                contactName: s.contact_name,
+                phone: s.phone
+            }));
+
             let autoLoggedUser: User | null = null;
             const { data: { session } } = await supabase.auth.getSession();
             if (session?.user) {
@@ -373,7 +429,11 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                     auditLogs: mappedAuditLogs,
                     serviceCalls: mappedCalls,
                     currentUser: autoLoggedUser,
-                    planLimits: currentLimits
+                    planLimits: currentLimits,
+                    // ERP
+                    inventory: mappedInventory,
+                    expenses: mappedExpenses,
+                    suppliers: mappedSuppliers
                 }
             });
 
@@ -386,6 +446,7 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     initTenant();
   }, []);
 
+  // ... (Presence e Auth Listeners mantidos iguais) ...
   // 2. Presence Logic
   useEffect(() => {
       if (!state.tenantId || !state.currentUser) {
@@ -470,6 +531,7 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const tenantId = state.tenantId;
 
     // --- Definindo Fetchers Reutilizáveis ---
+    // (Fetchers existentes mantidos...)
     const fetchTables = async () => {
         const { data } = await supabase.from('restaurant_tables').select('*').eq('tenant_id', tenantId).order('number');
         if (data) {
@@ -539,14 +601,12 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
          }
     };
 
-    // --- Fetcher para Atualização de Plano (CRÍTICO) ---
     const fetchTenantPlan = async (payload: any) => {
         if (!payload.new) return;
         
         const newPlanKey = payload.new.plan;
         const newStatus = payload.new.status;
 
-        // Busca os limites do novo plano
         const { data: planData } = await supabase
             .from('plans')
             .select('limits')
@@ -565,22 +625,41 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         }
     };
 
+    // --- NEW ERP FETCHERS ---
+    const fetchInventory = async () => {
+        const { data } = await supabase.from('inventory_items').select('*').eq('tenant_id', tenantId);
+        if (data) {
+            const mapped: InventoryItem[] = data.map((i: any) => ({
+                id: i.id, name: i.name, unit: i.unit, quantity: i.quantity, minQuantity: i.min_quantity, costPrice: i.cost_price
+            }));
+            dispatchLocal({ type: 'REALTIME_UPDATE_INVENTORY', inventory: mapped });
+        }
+    };
+
+    const fetchExpenses = async () => {
+        const { data } = await supabase.from('expenses').select('*').eq('tenant_id', tenantId).order('due_date', { ascending: true });
+        if (data) {
+            const mapped: Expense[] = data.map((e: any) => ({
+                id: e.id, description: e.description, amount: e.amount, category: e.category, dueDate: new Date(e.due_date), paidDate: e.paid_date ? new Date(e.paid_date) : undefined, isPaid: e.is_paid
+            }));
+            dispatchLocal({ type: 'REALTIME_UPDATE_EXPENSES', expenses: mapped });
+        }
+    };
+
     // --- Configurando Canal Único de Assinatura ---
     const channel = supabase.channel(`restaurant_updates:${tenantId}`)
-        // Tenant Info (Plano, Status, Tema)
+        // Tenant Info
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'tenants', filter: `id=eq.${tenantId}` }, fetchTenantPlan)
-        // Mesas
+        // Core
         .on('postgres_changes', { event: '*', schema: 'public', table: 'restaurant_tables', filter: `tenant_id=eq.${tenantId}` }, fetchTables)
-        // Pedidos
         .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `tenant_id=eq.${tenantId}` }, fetchOrders)
-        // Itens de Pedido
         .on('postgres_changes', { event: '*', schema: 'public', table: 'order_items', filter: `tenant_id=eq.${tenantId}` }, fetchOrders)
-        // Chamados de Serviço
         .on('postgres_changes', { event: '*', schema: 'public', table: 'service_calls', filter: `tenant_id=eq.${tenantId}` }, fetchServiceCalls)
-        // Transações
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'transactions', filter: `tenant_id=eq.${tenantId}` }, fetchTransactions)
-        // Produtos
         .on('postgres_changes', { event: '*', schema: 'public', table: 'products', filter: `tenant_id=eq.${tenantId}` }, fetchProducts)
+        // ERP Listeners
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory_items', filter: `tenant_id=eq.${tenantId}` }, fetchInventory)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'expenses', filter: `tenant_id=eq.${tenantId}` }, fetchExpenses)
         .subscribe();
 
     return () => {
@@ -590,40 +669,94 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   // 6. INACTIVITY LOGOUT TIMER (5 Hours for Restaurant Staff)
   useEffect(() => {
-      // Se não tem usuário logado, não faz nada
       if (!state.currentUser) return;
-
-      const TIMEOUT_MS = 5 * 60 * 60 * 1000; // 5 Horas
+      const TIMEOUT_MS = 5 * 60 * 60 * 1000;
       let timeoutId: any;
-
       const handleLogout = async () => {
-          console.log(`Sessão expirada por inatividade (${TIMEOUT_MS}ms).`);
           await supabase.auth.signOut();
           dispatchLocal({ type: 'LOGOUT' });
       };
-
       const resetTimer = () => {
           if (timeoutId) clearTimeout(timeoutId);
           timeoutId = setTimeout(handleLogout, TIMEOUT_MS);
       };
-
-      // Eventos para detectar atividade
       const events = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'];
       events.forEach(event => window.addEventListener(event, resetTimer));
-
-      // Inicia timer inicial
       resetTimer();
-
       return () => {
           if (timeoutId) clearTimeout(timeoutId);
           events.forEach(event => window.removeEventListener(event, resetTimer));
       };
   }, [state.currentUser]);
 
-  // 5. Intercept Dispatch
+  // 5. Intercept Dispatch (Action Handlers)
   const dispatch = async (action: Action) => {
     const { tenantId, planLimits } = state;
 
+    // ERP HANDLERS
+    if (action.type === 'ADD_INVENTORY_ITEM' && tenantId) {
+        await supabase.from('inventory_items').insert({
+            tenant_id: tenantId,
+            name: action.item.name,
+            unit: action.item.unit,
+            quantity: action.item.quantity,
+            min_quantity: action.item.minQuantity,
+            cost_price: action.item.costPrice
+        });
+        logAudit(tenantId, 'ADD_STOCK_ITEM', `Item ${action.item.name} adicionado ao estoque`);
+        return;
+    }
+
+    if (action.type === 'UPDATE_STOCK' && tenantId) {
+        const item = state.inventory.find(i => i.id === action.itemId);
+        if (!item) return;
+
+        const newQty = action.operation === 'IN' 
+            ? Number(item.quantity) + Number(action.quantity) 
+            : Number(item.quantity) - Number(action.quantity);
+
+        await supabase.from('inventory_items').update({ quantity: newQty }).eq('id', action.itemId);
+        
+        await supabase.from('inventory_logs').insert({
+            tenant_id: tenantId,
+            item_id: action.itemId,
+            type: action.operation,
+            quantity: action.quantity,
+            reason: action.reason,
+            user_name: state.currentUser?.name
+        });
+        return;
+    }
+
+    if (action.type === 'ADD_EXPENSE' && tenantId) {
+        await supabase.from('expenses').insert({
+            tenant_id: tenantId,
+            description: action.expense.description,
+            amount: action.expense.amount,
+            category: action.expense.category,
+            due_date: action.expense.dueDate.toISOString().split('T')[0],
+            is_paid: action.expense.isPaid,
+            paid_date: action.expense.isPaid ? new Date().toISOString() : null
+        });
+        logAudit(tenantId, 'ADD_EXPENSE', `Despesa ${action.expense.description} R$${action.expense.amount} criada`);
+        return;
+    }
+
+    if (action.type === 'PAY_EXPENSE' && tenantId) {
+        await supabase.from('expenses').update({
+            is_paid: true,
+            paid_date: new Date().toISOString()
+        }).eq('id', action.expenseId);
+        logAudit(tenantId, 'PAY_EXPENSE', `Despesa paga`);
+        return;
+    }
+
+    if (action.type === 'DELETE_EXPENSE' && tenantId) {
+        await supabase.from('expenses').delete().eq('id', action.expenseId);
+        return;
+    }
+
+    // EXISTING HANDLERS
     switch (action.type) {
         case 'UNLOCK_AUDIO':
              dispatchLocal(action);
@@ -644,25 +777,12 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         
         case 'ADD_TABLE':
             if (tenantId) {
-                // VERIFICA LIMITES DO PLANO
                 if (planLimits.maxTables !== -1 && state.tables.length >= planLimits.maxTables) {
-                    showAlert({
-                        title: "Limite Atingido",
-                        message: `O limite de ${planLimits.maxTables} mesas para o seu plano foi atingido. Faça um upgrade para adicionar mais.`,
-                        type: 'WARNING'
-                    });
+                    showAlert({ title: "Limite Atingido", message: "Faça upgrade para adicionar mais mesas.", type: 'WARNING' });
                     return;
                 }
-
                 const maxNumber = state.tables.reduce((max, t) => Math.max(max, t.number), 0);
-                const nextNumber = maxNumber + 1;
-                
-                await supabase.from('restaurant_tables').insert({
-                    tenant_id: tenantId,
-                    number: nextNumber,
-                    status: 'AVAILABLE'
-                });
-                logAudit(tenantId, 'ADD_TABLE', `Mesa ${nextNumber} criada`);
+                await supabase.from('restaurant_tables').insert({ tenant_id: tenantId, number: maxNumber + 1, status: 'AVAILABLE' });
             }
             break;
 
@@ -670,37 +790,22 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             if (tenantId) {
                 const hasOrders = state.orders.some(o => o.tableId === action.tableId && !o.isPaid);
                 if (hasOrders) {
-                    showAlert({
-                        title: "Ação Bloqueada",
-                        message: "Não é possível excluir uma mesa com pedidos em aberto.",
-                        type: 'ERROR'
-                    });
+                    showAlert({ title: "Erro", message: "Mesa com pedidos abertos.", type: 'ERROR' });
                     return;
                 }
                 await supabase.from('restaurant_tables').delete().eq('id', action.tableId);
-                logAudit(tenantId, 'DELETE_TABLE', `Mesa ID ${action.tableId} excluída`);
             }
             break;
 
         case 'OPEN_TABLE':
             if (tenantId) {
-                await supabase.from('restaurant_tables').update({
-                    status: 'OCCUPIED',
-                    customer_name: action.customerName,
-                    access_code: action.accessCode
-                }).eq('id', action.tableId);
-                logAudit(tenantId, 'OPEN_TABLE', `Mesa ${action.tableId} aberta para ${action.customerName}`);
+                await supabase.from('restaurant_tables').update({ status: 'OCCUPIED', customer_name: action.customerName, access_code: action.accessCode }).eq('id', action.tableId);
             }
             break;
 
         case 'CLOSE_TABLE':
             if (tenantId) {
-                await supabase.from('restaurant_tables').update({
-                    status: 'AVAILABLE',
-                    customer_name: null,
-                    access_code: null
-                }).eq('id', action.tableId);
-                logAudit(tenantId, 'CLOSE_TABLE', `Mesa ${action.tableId} fechada manualmente`);
+                await supabase.from('restaurant_tables').update({ status: 'AVAILABLE', customer_name: null, access_code: null }).eq('id', action.tableId);
             }
             break;
 
@@ -734,15 +839,12 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             break;
 
         case 'UPDATE_ITEM_STATUS':
-            if (tenantId) {
-                await supabase.from('order_items').update({ status: action.status }).eq('id', action.itemId);
-            }
+            if (tenantId) await supabase.from('order_items').update({ status: action.status }).eq('id', action.itemId);
             break;
         
         case 'PROCESS_PAYMENT':
             if (tenantId) {
                 const table = state.tables.find(t => t.id === action.tableId);
-                
                 await supabase.from('transactions').insert({
                     tenant_id: tenantId,
                     table_id: action.tableId,
@@ -752,73 +854,44 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                     items_summary: 'Pedido processado via sistema',
                     cashier_name: state.currentUser?.name || 'Sistema'
                 });
-
                 const tableOrders = state.orders.filter(o => o.tableId === action.tableId);
                 const orderIds = tableOrders.map(o => o.id);
                 if (orderIds.length > 0) {
                     await supabase.from('orders').update({ is_paid: true, status: 'COMPLETED' }).in('id', orderIds);
                 }
-
-                await supabase.from('restaurant_tables').update({
-                    status: 'AVAILABLE',
-                    customer_name: null,
-                    access_code: null
-                }).eq('id', action.tableId);
-                
-                logAudit(tenantId, 'PAYMENT', `Pagamento de R$${action.amount} recebido via ${action.method} mesa ${table?.number}`);
+                await supabase.from('restaurant_tables').update({ status: 'AVAILABLE', customer_name: null, access_code: null }).eq('id', action.tableId);
             }
             break;
 
         case 'CALL_WAITER':
             if (tenantId) {
-                const { data: existing } = await supabase.from('service_calls')
-                    .select('id')
-                    .eq('table_id', action.tableId)
-                    .eq('status', 'PENDING')
-                    .maybeSingle();
-
-                if (!existing) {
-                    await supabase.from('service_calls').insert({
-                        tenant_id: tenantId,
-                        table_id: action.tableId,
-                        status: 'PENDING'
-                    });
-                }
+                const { data: existing } = await supabase.from('service_calls').select('id').eq('table_id', action.tableId).eq('status', 'PENDING').maybeSingle();
+                if (!existing) await supabase.from('service_calls').insert({ tenant_id: tenantId, table_id: action.tableId, status: 'PENDING' });
             }
             break;
         
         case 'RESOLVE_WAITER_CALL':
-            if (tenantId) {
-                await supabase.from('service_calls')
-                    .update({ status: 'RESOLVED' })
-                    .eq('id', action.callId);
-            }
+            if (tenantId) await supabase.from('service_calls').update({ status: 'RESOLVED' }).eq('id', action.callId);
             break;
 
         case 'ADD_PRODUCT':
              if (tenantId) {
-                 // VERIFICA LIMITES DO PLANO
                  if (planLimits.maxProducts !== -1 && state.products.length >= planLimits.maxProducts) {
-                    showAlert({
-                        title: "Limite Atingido",
-                        message: `O limite de ${planLimits.maxProducts} produtos para o seu plano foi atingido. Faça um upgrade para adicionar mais.`,
-                        type: 'WARNING'
-                    });
+                    showAlert({ title: "Limite Atingido", message: "Faça upgrade para adicionar mais produtos.", type: 'WARNING' });
                     return;
                  }
-
                  await supabase.from('products').insert({
                      tenant_id: tenantId,
                      name: action.product.name,
                      description: action.product.description,
                      price: action.product.price,
+                     cost_price: action.product.costPrice, // Salva o custo
                      category: action.product.category,
                      type: action.product.type,
                      image: action.product.image,
                      is_visible: action.product.isVisible,
                      sort_order: action.product.sortOrder
                  });
-                 logAudit(tenantId, 'ADD_PRODUCT', `Produto ${action.product.name} criado`);
              }
              break;
         
@@ -828,6 +901,7 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                      name: action.product.name,
                      description: action.product.description,
                      price: action.product.price,
+                     cost_price: action.product.costPrice, // Salva o custo
                      category: action.product.category,
                      type: action.product.type,
                      image: action.product.image,
@@ -838,33 +912,22 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             break;
         
         case 'DELETE_PRODUCT':
-            if (tenantId) {
-                await supabase.from('products').delete().eq('id', action.productId);
-                logAudit(tenantId, 'DELETE_PRODUCT', `Produto ID ${action.productId} removido`);
-            }
+            if (tenantId) await supabase.from('products').delete().eq('id', action.productId);
             break;
         
         case 'UPDATE_THEME':
             if(tenantId) {
                 await supabase.from('tenants').update({ theme_config: action.theme }).eq('id', tenantId);
                 dispatchLocal(action);
-                logAudit(tenantId, 'UPDATE_THEME', `Tema atualizado`);
             }
             break;
             
         case 'ADD_USER':
             if(tenantId) {
-                // VERIFICA LIMITES DO PLANO
-                // Subtrai 1 se quisermos excluir o admin principal, mas geralmente conta todos
                 if (planLimits.maxStaff !== -1 && state.users.length >= planLimits.maxStaff) {
-                    showAlert({
-                        title: "Limite Atingido",
-                        message: `O limite de ${planLimits.maxStaff} funcionários para o seu plano foi atingido. Faça um upgrade para adicionar mais.`,
-                        type: 'WARNING'
-                    });
+                    showAlert({ title: "Limite Atingido", message: "Faça upgrade para adicionar mais funcionários.", type: 'WARNING' });
                     return;
                 }
-
                 await supabase.from('staff').insert({
                     tenant_id: tenantId,
                     name: action.user.name,
@@ -874,7 +937,6 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                     allowed_routes: action.user.allowedRoutes
                 });
                 window.location.reload();
-                logAudit(tenantId, 'ADD_USER', `Usuário ${action.user.name} criado`);
             }
             break;
 
@@ -882,7 +944,6 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             if(tenantId) {
                 await supabase.from('staff').delete().eq('id', action.userId);
                 window.location.reload();
-                logAudit(tenantId, 'DELETE_USER', `Usuário ID ${action.userId} removido`);
             }
             break;
         
@@ -896,7 +957,6 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                     allowed_routes: action.user.allowedRoutes
                 }).eq('id', action.user.id);
                 window.location.reload();
-                logAudit(tenantId, 'UPDATE_USER', `Usuário ${action.user.name} atualizado`);
             }
             break;
     }

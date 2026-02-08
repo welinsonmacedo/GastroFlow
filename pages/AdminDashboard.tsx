@@ -4,8 +4,8 @@ import { useUI } from '../context/UIContext';
 import { Button } from '../components/Button';
 import { QRCodeGenerator } from '../components/QRCodeGenerator';
 import { ImageUploader } from '../components/ImageUploader';
-import { Product, ProductType, Role, User } from '../types';
-import { LayoutDashboard, Utensils, QrCode, Printer, ExternalLink, Palette, Eye, EyeOff, Save, Copy, Plus, Users, ShieldCheck, Trash2, Edit, AlertTriangle, FileBarChart, X, ArrowUp, ArrowDown, LayoutGrid, List as ListIcon, Image as ImageIcon, Calendar, TrendingUp, Search, Loader2, Menu, Activity, CheckSquare, GripVertical, Link as LinkIcon, Share2, Lock, BookOpen } from 'lucide-react';
+import { Product, ProductType, Role, User, InventoryItem, Expense } from '../types';
+import { LayoutDashboard, Utensils, QrCode, Printer, ExternalLink, Palette, Eye, EyeOff, Save, Copy, Plus, Users, ShieldCheck, Trash2, Edit, AlertTriangle, FileBarChart, X, ArrowUp, ArrowDown, LayoutGrid, List as ListIcon, Image as ImageIcon, Calendar, TrendingUp, Search, Loader2, Menu, Activity, CheckSquare, GripVertical, Link as LinkIcon, Share2, Lock, BookOpen, Package, DollarSign, Archive, TrendingDown, RefreshCcw } from 'lucide-react';
 import { getTenantSlug } from '../utils/tenant';
 import { supabase } from '../lib/supabase';
 import { Link } from 'react-router-dom';
@@ -13,7 +13,7 @@ import { Link } from 'react-router-dom';
 export const AdminDashboard: React.FC = () => {
   const { state, dispatch } = useRestaurant();
   const { showAlert, showConfirm } = useUI();
-  const [activeTab, setActiveTab] = useState<'DASHBOARD' | 'PRODUCTS' | 'TABLES' | 'CUSTOMIZATION' | 'STAFF' | 'AUDIT' | 'REPORTS'>('DASHBOARD');
+  const [activeTab, setActiveTab] = useState<'DASHBOARD' | 'PRODUCTS' | 'TABLES' | 'CUSTOMIZATION' | 'STAFF' | 'AUDIT' | 'REPORTS' | 'INVENTORY' | 'FINANCE'>('DASHBOARD');
   
   // Mobile Sidebar State
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -29,6 +29,13 @@ export const AdminDashboard: React.FC = () => {
   // Staff state
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [userForm, setUserForm] = useState<Partial<User>>({ name: '', role: Role.WAITER, pin: '', email: '', allowedRoutes: [] });
+
+  // Inventory State
+  const [editingInventory, setEditingInventory] = useState<InventoryItem | null>(null);
+  const [stockModal, setStockModal] = useState<{ itemId: string, type: 'IN' | 'OUT', quantity: string, reason: string } | null>(null);
+
+  // Finance State
+  const [editingExpense, setEditingExpense] = useState<Partial<Expense> | null>(null);
 
   // Report State
   const [reportDateStart, setReportDateStart] = useState(new Date().toISOString().split('T')[0]);
@@ -87,7 +94,6 @@ export const AdminDashboard: React.FC = () => {
           return;
       }
       const slug = state.tenantSlug || getTenantSlug();
-      // Cria um link que vai direto para o login com email preenchido e modo de cadastro ativo
       const link = `${window.location.origin}/login?restaurant=${slug}&email=${encodeURIComponent(userEmail)}&register=true`;
       
       navigator.clipboard.writeText(link).then(() => {
@@ -98,7 +104,7 @@ export const AdminDashboard: React.FC = () => {
   // --- Report Logic ---
   const fetchReportData = useCallback(async () => {
       if (!state.tenantId) return;
-      if (!state.planLimits.allowReports) return; // Segurança extra
+      if (!state.planLimits.allowReports) return;
 
       setLoadingReport(true);
 
@@ -106,7 +112,6 @@ export const AdminDashboard: React.FC = () => {
       const end = reportDateEnd + ' 23:59:59';
 
       try {
-          // 1. Fetch Transactions (Financeiro)
           const { data: transactions } = await supabase
               .from('transactions')
               .select('*')
@@ -115,7 +120,6 @@ export const AdminDashboard: React.FC = () => {
               .lte('created_at', end)
               .order('created_at', { ascending: false });
 
-          // 2. Fetch Order Items (Produtos) - via Orders Pagas
           const { data: paidOrders } = await supabase
               .from('orders')
               .select('id')
@@ -125,7 +129,6 @@ export const AdminDashboard: React.FC = () => {
               .lte('created_at', end);
           
           const orderIds = paidOrders?.map(o => o.id) || [];
-          
           let topProducts: any[] = [];
 
           if (orderIds.length > 0) {
@@ -176,19 +179,49 @@ export const AdminDashboard: React.FC = () => {
       }
   }, [activeTab, fetchReportData]);
 
-  const handleAddProduct = () => {
-      setIsCreatingNew(true);
-      setEditingProduct({
-          id: Math.random().toString(36).substr(2, 9),
-          name: '',
-          description: '',
-          price: 0,
-          category: 'Lanches',
-          type: ProductType.KITCHEN,
-          image: '',
-          isVisible: true,
-          sortOrder: state.products.length + 1
+  // --- Inventory Handlers ---
+  const handleSaveInventory = (e: React.FormEvent) => {
+      e.preventDefault();
+      if(!editingInventory) return;
+      
+      // Aqui só criamos novos itens, edição de qtd é via movimentação
+      dispatch({ type: 'ADD_INVENTORY_ITEM', item: editingInventory });
+      setEditingInventory(null);
+      showAlert({ title: "Sucesso", message: "Item cadastrado!", type: 'SUCCESS' });
+  };
+
+  const handleStockUpdate = (e: React.FormEvent) => {
+      e.preventDefault();
+      if(!stockModal) return;
+      dispatch({ 
+          type: 'UPDATE_STOCK', 
+          itemId: stockModal.itemId, 
+          operation: stockModal.type, 
+          quantity: parseFloat(stockModal.quantity), 
+          reason: stockModal.reason 
       });
+      setStockModal(null);
+      showAlert({ title: "Sucesso", message: "Estoque atualizado!", type: 'SUCCESS' });
+  };
+
+  // --- Finance Handlers ---
+  const handleSaveExpense = (e: React.FormEvent) => {
+      e.preventDefault();
+      if(!editingExpense?.description || !editingExpense.amount) return;
+      
+      dispatch({ 
+          type: 'ADD_EXPENSE', 
+          expense: {
+              id: Math.random().toString(), // Temp ID, will be ignored by DB
+              description: editingExpense.description,
+              amount: parseFloat(editingExpense.amount as any),
+              category: editingExpense.category || 'Outros',
+              dueDate: new Date(editingExpense.dueDate || new Date()),
+              isPaid: editingExpense.isPaid || false
+          } 
+      });
+      setEditingExpense(null);
+      showAlert({ title: "Sucesso", message: "Despesa lançada!", type: 'SUCCESS' });
   };
 
   const handleProductSave = () => {
@@ -201,6 +234,22 @@ export const AdminDashboard: React.FC = () => {
         setEditingProduct(null);
         setIsCreatingNew(false);
      }
+  };
+
+  const handleAddProduct = () => {
+      setEditingProduct({
+          id: '',
+          name: '',
+          description: '',
+          price: 0,
+          costPrice: 0,
+          category: 'Lanches',
+          type: ProductType.KITCHEN,
+          image: '',
+          isVisible: true,
+          sortOrder: 0
+      });
+      setIsCreatingNew(true);
   };
 
   // Drag and Drop Handlers
@@ -341,6 +390,25 @@ export const AdminDashboard: React.FC = () => {
                   <LayoutDashboard size={20} /> Visão Geral
               </button>
               
+              <button onClick={() => { setActiveTab('PRODUCTS'); setIsSidebarOpen(false); }} className={`flex items-center gap-3 w-full p-3 rounded transition-colors ${activeTab === 'PRODUCTS' ? 'bg-blue-600' : 'hover:bg-slate-800'}`}>
+                  <Utensils size={20} /> Cardápio
+              </button>
+              
+              {/* ERP BUTTONS */}
+              <button onClick={() => { setActiveTab('INVENTORY'); setIsSidebarOpen(false); }} className={`flex items-center gap-3 w-full p-3 rounded transition-colors ${activeTab === 'INVENTORY' ? 'bg-blue-600' : 'hover:bg-slate-800'}`}>
+                  <Package size={20} /> Estoque
+              </button>
+              <button onClick={() => { setActiveTab('FINANCE'); setIsSidebarOpen(false); }} className={`flex items-center gap-3 w-full p-3 rounded transition-colors ${activeTab === 'FINANCE' ? 'bg-blue-600' : 'hover:bg-slate-800'}`}>
+                  <DollarSign size={20} /> Financeiro
+              </button>
+
+              <button onClick={() => { setActiveTab('TABLES'); setIsSidebarOpen(false); }} className={`flex items-center gap-3 w-full p-3 rounded transition-colors ${activeTab === 'TABLES' ? 'bg-blue-600' : 'hover:bg-slate-800'}`}>
+                  <QrCode size={20} /> Mesas & QR
+              </button>
+              <button onClick={() => { setActiveTab('STAFF'); setIsSidebarOpen(false); }} className={`flex items-center gap-3 w-full p-3 rounded transition-colors ${activeTab === 'STAFF' ? 'bg-blue-600' : 'hover:bg-slate-800'}`}>
+                  <Users size={20} /> Funcionários
+              </button>
+              
               {/* FEATURE LOCK UI FOR REPORTS */}
               <div className="relative group">
                   <button 
@@ -355,15 +423,6 @@ export const AdminDashboard: React.FC = () => {
                   </button>
               </div>
 
-              <button onClick={() => { setActiveTab('PRODUCTS'); setIsSidebarOpen(false); }} className={`flex items-center gap-3 w-full p-3 rounded transition-colors ${activeTab === 'PRODUCTS' ? 'bg-blue-600' : 'hover:bg-slate-800'}`}>
-                  <Utensils size={20} /> Cardápio
-              </button>
-              <button onClick={() => { setActiveTab('TABLES'); setIsSidebarOpen(false); }} className={`flex items-center gap-3 w-full p-3 rounded transition-colors ${activeTab === 'TABLES' ? 'bg-blue-600' : 'hover:bg-slate-800'}`}>
-                  <QrCode size={20} /> Mesas & QR
-              </button>
-              <button onClick={() => { setActiveTab('STAFF'); setIsSidebarOpen(false); }} className={`flex items-center gap-3 w-full p-3 rounded transition-colors ${activeTab === 'STAFF' ? 'bg-blue-600' : 'hover:bg-slate-800'}`}>
-                  <Users size={20} /> Funcionários
-              </button>
               <div className="border-t border-slate-700 my-2"></div>
               <button onClick={() => { setActiveTab('AUDIT'); setIsSidebarOpen(false); }} className={`flex items-center gap-3 w-full p-3 rounded transition-colors ${activeTab === 'AUDIT' ? 'bg-blue-600' : 'hover:bg-slate-800'}`}>
                   <ShieldCheck size={20} /> Auditoria
@@ -417,9 +476,17 @@ export const AdminDashboard: React.FC = () => {
                                     <div className="text-gray-500 text-sm mb-1 uppercase tracking-wider">Pedidos Ativos</div>
                                     <div className="text-3xl font-bold text-gray-800">{state.orders.length}</div>
                                 </div>
-                                <div className="bg-white p-6 rounded-xl shadow-sm border-l-4 border-purple-500">
-                                    <div className="text-gray-500 text-sm mb-1 uppercase tracking-wider">Funcionários</div>
-                                    <div className="text-3xl font-bold text-gray-800">{state.users.length}</div>
+                                <div className="bg-white p-6 rounded-xl shadow-sm border-l-4 border-yellow-500">
+                                    <div className="text-gray-500 text-sm mb-1 uppercase tracking-wider">Itens Baixo Estoque</div>
+                                    <div className="text-3xl font-bold text-gray-800">{state.inventory.filter(i => i.quantity <= i.minQuantity).length}</div>
+                                </div>
+                                <div className="bg-white p-6 rounded-xl shadow-sm border-l-4 border-red-500">
+                                    <div className="text-gray-500 text-sm mb-1 uppercase tracking-wider">Contas a Pagar (Hoje)</div>
+                                    <div className="text-3xl font-bold text-gray-800">
+                                        R$ {state.expenses
+                                            .filter(e => !e.isPaid && new Date(e.dueDate).toDateString() === new Date().toDateString())
+                                            .reduce((acc, e) => acc + e.amount, 0).toFixed(2)}
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -454,6 +521,262 @@ export const AdminDashboard: React.FC = () => {
                                     ))}
                                 </div>
                             )}
+                        </div>
+                    </div>
+                )}
+
+                {/* --- INVENTORY MODULE --- */}
+                {activeTab === 'INVENTORY' && (
+                    <div className="space-y-6">
+                        <div className="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border">
+                            <div>
+                                <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2"><Package size={24}/> Gestão de Estoque</h2>
+                                <p className="text-sm text-gray-500">Controle de ingredientes e produtos.</p>
+                            </div>
+                            <Button onClick={() => setEditingInventory({ id: '', name: '', unit: 'UN', quantity: 0, minQuantity: 5, costPrice: 0 })}>
+                                <Plus size={16}/> Novo Item
+                            </Button>
+                        </div>
+
+                        {editingInventory && (
+                            <div className="bg-white p-6 rounded-xl shadow-lg border border-blue-200 animate-fade-in">
+                                <h3 className="font-bold text-lg mb-4">Cadastrar Item de Estoque</h3>
+                                <form onSubmit={handleSaveInventory} className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                    <div className="col-span-2">
+                                        <label className="block text-xs font-bold text-gray-500">Nome</label>
+                                        <input required className="w-full border p-2 rounded" value={editingInventory.name} onChange={e => setEditingInventory({...editingInventory, name: e.target.value})} />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-500">Unidade</label>
+                                        <select className="w-full border p-2 rounded" value={editingInventory.unit} onChange={e => setEditingInventory({...editingInventory, unit: e.target.value})}>
+                                            <option value="UN">Unidade (UN)</option>
+                                            <option value="KG">Quilo (KG)</option>
+                                            <option value="LT">Litro (LT)</option>
+                                            <option value="CX">Caixa (CX)</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-500">Preço de Custo</label>
+                                        <input type="number" step="0.01" className="w-full border p-2 rounded" value={editingInventory.costPrice} onChange={e => setEditingInventory({...editingInventory, costPrice: parseFloat(e.target.value)})} />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-500">Estoque Inicial</label>
+                                        <input type="number" className="w-full border p-2 rounded" value={editingInventory.quantity} onChange={e => setEditingInventory({...editingInventory, quantity: parseFloat(e.target.value)})} />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-500">Alerta Mínimo</label>
+                                        <input type="number" className="w-full border p-2 rounded" value={editingInventory.minQuantity} onChange={e => setEditingInventory({...editingInventory, minQuantity: parseFloat(e.target.value)})} />
+                                    </div>
+                                    <div className="col-span-2 flex gap-2 items-end">
+                                        <Button type="button" variant="secondary" onClick={() => setEditingInventory(null)} className="flex-1">Cancelar</Button>
+                                        <Button type="submit" className="flex-1">Salvar</Button>
+                                    </div>
+                                </form>
+                            </div>
+                        )}
+
+                        {stockModal && (
+                            <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+                                <div className="bg-white p-6 rounded-xl w-full max-w-sm">
+                                    <h3 className="font-bold text-lg mb-4">
+                                        {stockModal.type === 'IN' ? 'Entrada de Estoque' : 'Saída/Baixa de Estoque'}
+                                    </h3>
+                                    <form onSubmit={handleStockUpdate} className="space-y-4">
+                                        <div>
+                                            <label className="block text-xs font-bold text-gray-500">Quantidade</label>
+                                            <input type="number" step="0.01" autoFocus required className="w-full border p-2 rounded text-lg font-bold" value={stockModal.quantity} onChange={e => setStockModal({...stockModal, quantity: e.target.value})} />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold text-gray-500">Motivo</label>
+                                            <input required className="w-full border p-2 rounded" placeholder={stockModal.type === 'IN' ? 'Compra, Correção...' : 'Uso, Validade, Perda...'} value={stockModal.reason} onChange={e => setStockModal({...stockModal, reason: e.target.value})} />
+                                        </div>
+                                        <div className="flex gap-2 pt-2">
+                                            <Button type="button" variant="secondary" onClick={() => setStockModal(null)} className="flex-1">Cancelar</Button>
+                                            <Button type="submit" className={`flex-1 ${stockModal.type === 'IN' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}`}>Confirmar</Button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+                            <table className="w-full text-left">
+                                <thead className="bg-gray-50 text-gray-600 text-sm">
+                                    <tr>
+                                        <th className="p-4">Item</th>
+                                        <th className="p-4 text-center">Unidade</th>
+                                        <th className="p-4 text-right">Estoque Atual</th>
+                                        <th className="p-4 text-right">Custo Unit.</th>
+                                        <th className="p-4 text-right">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y">
+                                    {state.inventory.map(item => (
+                                        <tr key={item.id} className="hover:bg-gray-50">
+                                            <td className="p-4 font-medium">
+                                                {item.name}
+                                                {item.quantity <= item.minQuantity && (
+                                                    <span className="ml-2 text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded font-bold">BAIXO</span>
+                                                )}
+                                            </td>
+                                            <td className="p-4 text-center text-gray-500 text-sm">{item.unit}</td>
+                                            <td className={`p-4 text-right font-bold ${item.quantity <= item.minQuantity ? 'text-red-600' : 'text-gray-800'}`}>
+                                                {item.quantity}
+                                            </td>
+                                            <td className="p-4 text-right text-sm">R$ {item.costPrice.toFixed(2)}</td>
+                                            <td className="p-4 flex justify-end gap-2">
+                                                <button 
+                                                    onClick={() => setStockModal({ itemId: item.id, type: 'IN', quantity: '', reason: '' })}
+                                                    className="p-2 bg-green-50 text-green-700 rounded hover:bg-green-100 font-bold text-xs flex items-center gap-1"
+                                                >
+                                                    <Plus size={14}/> Entrada
+                                                </button>
+                                                <button 
+                                                    onClick={() => setStockModal({ itemId: item.id, type: 'OUT', quantity: '', reason: '' })}
+                                                    className="p-2 bg-red-50 text-red-700 rounded hover:bg-red-100 font-bold text-xs flex items-center gap-1"
+                                                >
+                                                    <ArrowDown size={14}/> Saída
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                            {state.inventory.length === 0 && <div className="p-8 text-center text-gray-400">Nenhum item cadastrado.</div>}
+                        </div>
+                    </div>
+                )}
+
+                {/* --- FINANCE MODULE --- */}
+                {activeTab === 'FINANCE' && (
+                    <div className="space-y-6">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div className="bg-white p-6 rounded-xl shadow-sm border-l-4 border-green-500">
+                                <h3 className="text-gray-500 text-xs font-bold uppercase mb-1">Receita Total (Mês)</h3>
+                                <p className="text-2xl font-bold text-green-700">R$ {state.transactions.reduce((acc, t) => acc + t.amount, 0).toFixed(2)}</p>
+                            </div>
+                            <div className="bg-white p-6 rounded-xl shadow-sm border-l-4 border-red-500">
+                                <h3 className="text-gray-500 text-xs font-bold uppercase mb-1">Despesas Pagas (Mês)</h3>
+                                <p className="text-2xl font-bold text-red-700">
+                                    R$ {state.expenses.filter(e => e.isPaid).reduce((acc, e) => acc + e.amount, 0).toFixed(2)}
+                                </p>
+                            </div>
+                            <div className="bg-white p-6 rounded-xl shadow-sm border-l-4 border-blue-500">
+                                <h3 className="text-gray-500 text-xs font-bold uppercase mb-1">Saldo Líquido</h3>
+                                <p className="text-2xl font-bold text-blue-700">
+                                    R$ {(state.transactions.reduce((acc, t) => acc + t.amount, 0) - state.expenses.filter(e => e.isPaid).reduce((acc, e) => acc + e.amount, 0)).toFixed(2)}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border">
+                            <div>
+                                <h2 className="text-xl font-bold text-gray-800">Contas a Pagar</h2>
+                                <p className="text-sm text-gray-500">Gerencie suas despesas e fornecedores.</p>
+                            </div>
+                            <Button onClick={() => setEditingExpense({ description: '', amount: 0, category: 'Fornecedor', isPaid: false, dueDate: new Date() })}>
+                                <Plus size={16}/> Nova Despesa
+                            </Button>
+                        </div>
+
+                        {editingExpense && (
+                            <div className="bg-white p-6 rounded-xl shadow-lg border border-blue-200 animate-fade-in">
+                                <h3 className="font-bold text-lg mb-4">Lançar Despesa</h3>
+                                <form onSubmit={handleSaveExpense} className="grid grid-cols-2 gap-4">
+                                    <div className="col-span-2">
+                                        <label className="block text-xs font-bold text-gray-500">Descrição</label>
+                                        <input required className="w-full border p-2 rounded" value={editingExpense.description} onChange={e => setEditingExpense({...editingExpense, description: e.target.value})} />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-500">Valor (R$)</label>
+                                        <input required type="number" step="0.01" className="w-full border p-2 rounded" value={editingExpense.amount} onChange={e => setEditingExpense({...editingExpense, amount: parseFloat(e.target.value) as any})} />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-500">Categoria</label>
+                                        <select className="w-full border p-2 rounded" value={editingExpense.category} onChange={e => setEditingExpense({...editingExpense, category: e.target.value})}>
+                                            <option>Fornecedor</option>
+                                            <option>Aluguel</option>
+                                            <option>Pessoal</option>
+                                            <option>Manutenção</option>
+                                            <option>Impostos</option>
+                                            <option>Outros</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-500">Vencimento</label>
+                                        <input type="date" required className="w-full border p-2 rounded" 
+                                            value={editingExpense.dueDate ? new Date(editingExpense.dueDate).toISOString().split('T')[0] : ''} 
+                                            onChange={e => setEditingExpense({...editingExpense, dueDate: new Date(e.target.value)})} 
+                                        />
+                                    </div>
+                                    <div className="flex items-center">
+                                        <label className="flex items-center gap-2 cursor-pointer">
+                                            <input type="checkbox" checked={editingExpense.isPaid} onChange={e => setEditingExpense({...editingExpense, isPaid: e.target.checked})} className="w-5 h-5"/>
+                                            <span className="text-sm font-bold">Já foi pago?</span>
+                                        </label>
+                                    </div>
+                                    <div className="col-span-2 flex gap-2 pt-2">
+                                        <Button type="button" variant="secondary" onClick={() => setEditingExpense(null)} className="flex-1">Cancelar</Button>
+                                        <Button type="submit" className="flex-1">Salvar</Button>
+                                    </div>
+                                </form>
+                            </div>
+                        )}
+
+                        <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+                            <table className="w-full text-left">
+                                <thead className="bg-gray-50 text-gray-600 text-sm">
+                                    <tr>
+                                        <th className="p-4">Vencimento</th>
+                                        <th className="p-4">Descrição</th>
+                                        <th className="p-4">Categoria</th>
+                                        <th className="p-4">Valor</th>
+                                        <th className="p-4">Status</th>
+                                        <th className="p-4 text-right">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y">
+                                    {state.expenses.map(exp => (
+                                        <tr key={exp.id} className="hover:bg-gray-50">
+                                            <td className="p-4 text-sm font-mono text-gray-500">{new Date(exp.dueDate).toLocaleDateString()}</td>
+                                            <td className="p-4 font-medium">{exp.description}</td>
+                                            <td className="p-4 text-sm text-gray-500"><span className="bg-gray-100 px-2 py-1 rounded">{exp.category}</span></td>
+                                            <td className="p-4 font-bold">R$ {exp.amount.toFixed(2)}</td>
+                                            <td className="p-4">
+                                                {exp.isPaid ? (
+                                                    <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded font-bold flex items-center w-fit gap-1"><CheckSquare size={12}/> PAGO</span>
+                                                ) : (
+                                                    <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded font-bold flex items-center w-fit gap-1"><AlertTriangle size={12}/> ABERTO</span>
+                                                )}
+                                            </td>
+                                            <td className="p-4 text-right">
+                                                {!exp.isPaid && (
+                                                    <button 
+                                                        onClick={() => dispatch({ type: 'PAY_EXPENSE', expenseId: exp.id })}
+                                                        className="text-xs bg-blue-50 text-blue-600 px-3 py-1.5 rounded font-bold hover:bg-blue-100 mr-2"
+                                                    >
+                                                        Pagar
+                                                    </button>
+                                                )}
+                                                <button 
+                                                    onClick={() => {
+                                                        showConfirm({ 
+                                                            title: "Excluir Despesa", 
+                                                            message: "Confirma a exclusão?", 
+                                                            type: "ERROR", 
+                                                            onConfirm: () => dispatch({ type: 'DELETE_EXPENSE', expenseId: exp.id }) 
+                                                        });
+                                                    }}
+                                                    className="text-gray-400 hover:text-red-500"
+                                                >
+                                                    <Trash2 size={18}/>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                            {state.expenses.length === 0 && <div className="p-8 text-center text-gray-400">Nenhuma despesa registrada.</div>}
                         </div>
                     </div>
                 )}
@@ -770,10 +1093,14 @@ export const AdminDashboard: React.FC = () => {
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
-                                            <label className="block text-sm font-medium mb-1">Preço (R$)</label>
-                                            <input type="number" className="w-full border p-2 rounded" value={editingProduct.price} onChange={e => setEditingProduct({...editingProduct, price: parseFloat(e.target.value)})} />
+                                            <label className="block text-sm font-medium mb-1">Preço Venda (R$)</label>
+                                            <input type="number" step="0.01" className="w-full border p-2 rounded" value={editingProduct.price} onChange={e => setEditingProduct({...editingProduct, price: parseFloat(e.target.value)})} />
                                         </div>
                                         <div>
+                                            <label className="block text-sm font-medium mb-1 text-gray-500">Custo (Opcional)</label>
+                                            <input type="number" step="0.01" className="w-full border p-2 rounded bg-gray-50" value={editingProduct.costPrice || 0} onChange={e => setEditingProduct({...editingProduct, costPrice: parseFloat(e.target.value)})} />
+                                        </div>
+                                        <div className="col-span-2">
                                              <label className="block text-sm font-medium mb-1">Ordem (Manual)</label>
                                              <input type="number" className="w-full border p-2 rounded" value={editingProduct.sortOrder} onChange={e => setEditingProduct({...editingProduct, sortOrder: parseInt(e.target.value)})} />
                                         </div>

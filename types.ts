@@ -107,6 +107,7 @@ export interface Product {
   name: string;
   description: string;
   price: number;
+  costPrice?: number; // Novo: Preço de Custo
   category: string;
   type: ProductType;
   image: string; 
@@ -162,4 +163,33 @@ export interface DailyStats {
   totalRevenue: number;
   totalOrders: number;
   topProduct: string;
+}
+
+// --- NEW ERP TYPES ---
+
+export interface InventoryItem {
+    id: string;
+    name: string;
+    unit: string; // kg, lt, un
+    quantity: number;
+    minQuantity: number;
+    costPrice: number;
+}
+
+export interface Supplier {
+    id: string;
+    name: string;
+    phone: string;
+    contactName: string;
+}
+
+export interface Expense {
+    id: string;
+    description: string;
+    amount: number;
+    category: string;
+    dueDate: Date;
+    paidDate?: Date;
+    isPaid: boolean;
+    supplierId?: string;
 }
