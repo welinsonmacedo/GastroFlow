@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, useEffect, useState, useCallback } from 'react';
-import { Table, Order, Product, TableStatus, OrderStatus, ProductType, OrderItem, RestaurantTheme, User, AuditLog, Transaction, Role, ServiceCall, OnlineUser, PlanLimits, InventoryItem, Expense, Supplier } from '../types';
+import { Table, Order, Product, TableStatus, OrderStatus, ProductType, OrderItem, RestaurantTheme, User, AuditLog, Transaction, Role, ServiceCall, OnlineUser, PlanLimits, InventoryItem, Expense, Supplier, ProductRecipeItem } from '../types';
 import { getTenantSlug } from '../utils/tenant';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { useUI } from './UIContext';
@@ -277,7 +277,7 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
             const [
                 usersRes, productsRes, tablesRes, ordersRes, transactionsRes, auditRes, callsRes,
-                invRes, expRes, suppRes
+                invRes, expRes, suppRes, prodIngRes
             ] = await Promise.all([
                 supabase.from('staff').select('*').eq('tenant_id', tenant.id),
                 supabase.from('products').select('*').eq('tenant_id', tenant.id),
@@ -289,7 +289,8 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 // ERP Tables
                 supabase.from('inventory_items').select('*').eq('tenant_id', tenant.id),
                 supabase.from('expenses').select('*').eq('tenant_id', tenant.id).order('due_date', { ascending: true }),
-                supabase.from('suppliers').select('*').eq('tenant_id', tenant.id)
+                supabase.from('suppliers').select('*').eq('tenant_id', tenant.id),
+                supabase.from('product_ingredients').select('*').eq('tenant_id', tenant.id)
             ]);
 
             const mappedUsers: User[] = (usersRes.data || []).map(u => ({ 
@@ -302,19 +303,48 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 allowedRoutes: u.allowed_routes || []
             }));
             
-            const mappedProducts: Product[] = (productsRes.data || []).map(p => ({
-                id: p.id,
-                name: p.name,
-                description: p.description,
-                price: p.price,
-                costPrice: p.cost_price || 0,
-                category: p.category,
-                type: p.type as ProductType,
-                format: p.format || 'SIMPLE', // Default to SIMPLE if null
-                image: p.image,
-                isVisible: p.is_visible,
-                sortOrder: p.sort_order
+            const inventoryData = invRes.data || [];
+            const mappedInventory: InventoryItem[] = inventoryData.map(i => ({
+                id: i.id,
+                name: i.name,
+                unit: i.unit,
+                quantity: i.quantity,
+                minQuantity: i.min_quantity,
+                costPrice: i.cost_price
             }));
+
+            // Mapear Receitas
+            const recipes = prodIngRes.data || [];
+
+            const mappedProducts: Product[] = (productsRes.data || []).map(p => {
+                const productIngredients = recipes.filter((r: any) => r.product_id === p.id);
+                const recipeItems: ProductRecipeItem[] = productIngredients.map((r: any) => {
+                    const invItem = mappedInventory.find(i => i.id === r.inventory_item_id);
+                    return {
+                        inventoryItemId: r.inventory_item_id,
+                        inventoryItemName: invItem?.name || 'Desconhecido',
+                        quantity: r.quantity,
+                        unit: invItem?.unit,
+                        cost: invItem?.costPrice
+                    };
+                });
+
+                return {
+                    id: p.id,
+                    name: p.name,
+                    description: p.description,
+                    price: p.price,
+                    costPrice: p.cost_price || 0,
+                    category: p.category,
+                    type: p.type as ProductType,
+                    format: p.format || 'SIMPLE',
+                    linkedInventoryItemId: p.linked_inventory_item_id,
+                    recipe: recipeItems,
+                    image: p.image,
+                    isVisible: p.is_visible,
+                    sortOrder: p.sort_order
+                };
+            });
 
             const mappedTables: Table[] = (tablesRes.data || []).map(t => ({
                 id: t.id,
@@ -365,16 +395,6 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 tableId: c.table_id,
                 status: c.status,
                 timestamp: new Date(c.created_at)
-            }));
-
-            // Mapeamento ERP
-            const mappedInventory: InventoryItem[] = (invRes.data || []).map(i => ({
-                id: i.id,
-                name: i.name,
-                unit: i.unit,
-                quantity: i.quantity,
-                minQuantity: i.min_quantity,
-                costPrice: i.cost_price
             }));
 
             const mappedExpenses: Expense[] = (expRes.data || []).map(e => ({
@@ -595,6 +615,9 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const fetchProducts = async () => {
          const { data } = await supabase.from('products').select('*').eq('tenant_id', tenantId);
          if (data) {
+             // Precisamos de uma query separada ou ajustar a logica para trazer ingredientes em tempo real
+             // Simplificação: Dispara um reload completo de produtos se houver mudança
+             // Ou apenas mapeia o básico para UI
              const mapped = data.map((p: any) => ({
                 id: p.id, 
                 name: p.name, 
@@ -603,9 +626,12 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 category: p.category, 
                 type: p.type as ProductType, 
                 format: p.format || 'SIMPLE',
+                linkedInventoryItemId: p.linked_inventory_item_id,
                 image: p.image, 
                 isVisible: p.is_visible, 
-                sortOrder: p.sort_order
+                sortOrder: p.sort_order,
+                // Nota: Receita não vem no real-time simples, idealmente precisaria de join ou reload
+                recipe: [] 
             }));
             dispatchLocal({ type: 'REALTIME_UPDATE_PRODUCTS', products: mapped });
          }
@@ -843,7 +869,54 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                             status: 'PENDING'
                         };
                     });
+                    
                     await supabase.from('order_items').insert(itemsToInsert);
+
+                    // --- STOCK MANAGEMENT (BAIXA DE ESTOQUE) ---
+                    // Isso é feito no client-side por simplicidade, idealmente seria via RPC/Trigger no banco
+                    try {
+                        for (const item of action.items) {
+                            const product = state.products.find(p => p.id === item.productId);
+                            if (!product) continue;
+
+                            // 1. Produto Simples: Baixa direta no item vinculado
+                            if (product.format === 'SIMPLE' && product.linkedInventoryItemId) {
+                                const currentStock = state.inventory.find(i => i.id === product.linkedInventoryItemId)?.quantity || 0;
+                                const newQty = Number(currentStock) - Number(item.quantity);
+                                
+                                await supabase.from('inventory_items').update({ quantity: newQty }).eq('id', product.linkedInventoryItemId);
+                                await supabase.from('inventory_logs').insert({
+                                    tenant_id: tenantId,
+                                    item_id: product.linkedInventoryItemId,
+                                    type: 'SALE',
+                                    quantity: item.quantity,
+                                    reason: `Venda Pedido #${orderData.id.slice(0,4)}`,
+                                    user_name: 'Sistema'
+                                });
+                            } 
+                            // 2. Produto Composto: Baixa nos ingredientes da receita
+                            else if (product.format === 'COMPOSITE' && product.recipe) {
+                                for (const ing of product.recipe) {
+                                    const totalNeeded = Number(ing.quantity) * Number(item.quantity);
+                                    const currentStock = state.inventory.find(i => i.id === ing.inventoryItemId)?.quantity || 0;
+                                    const newQty = Number(currentStock) - totalNeeded;
+
+                                    await supabase.from('inventory_items').update({ quantity: newQty }).eq('id', ing.inventoryItemId);
+                                    await supabase.from('inventory_logs').insert({
+                                        tenant_id: tenantId,
+                                        item_id: ing.inventoryItemId,
+                                        type: 'SALE',
+                                        quantity: totalNeeded,
+                                        reason: `Venda ${product.name} (Pedido #${orderData.id.slice(0,4)})`,
+                                        user_name: 'Sistema'
+                                    });
+                                }
+                            }
+                        }
+                    } catch (err) {
+                        console.error("Erro ao dar baixa no estoque:", err);
+                        // Não bloqueia o pedido, mas loga o erro
+                    }
                 }
             }
             break;
@@ -890,7 +963,7 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                     showAlert({ title: "Limite Atingido", message: "Faça upgrade para adicionar mais produtos.", type: 'WARNING' });
                     return;
                  }
-                 await supabase.from('products').insert({
+                 const { data: newProd, error } = await supabase.from('products').insert({
                      tenant_id: tenantId,
                      name: action.product.name,
                      description: action.product.description,
@@ -898,11 +971,24 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                      cost_price: action.product.costPrice, 
                      category: action.product.category,
                      type: action.product.type,
-                     format: action.product.format, // Novo Campo
+                     format: action.product.format, 
+                     linked_inventory_item_id: action.product.linkedInventoryItemId,
                      image: action.product.image,
                      is_visible: action.product.isVisible,
                      sort_order: action.product.sortOrder
-                 });
+                 }).select().single();
+
+                 // Salvar Receita (Se houver)
+                 if (newProd && !error && action.product.format === 'COMPOSITE' && action.product.recipe) {
+                     const ingredients = action.product.recipe.map(r => ({
+                         tenant_id: tenantId,
+                         product_id: newProd.id,
+                         inventory_item_id: r.inventoryItemId,
+                         quantity: r.quantity
+                     }));
+                     await supabase.from('product_ingredients').insert(ingredients);
+                 }
+                 window.location.reload(); // Reload para atualizar receitas e joins corretamente
              }
              break;
         
@@ -915,11 +1001,25 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                      cost_price: action.product.costPrice, 
                      category: action.product.category,
                      type: action.product.type,
-                     format: action.product.format, // Novo Campo
+                     format: action.product.format, 
+                     linked_inventory_item_id: action.product.linkedInventoryItemId,
                      image: action.product.image,
                      is_visible: action.product.isVisible,
                      sort_order: action.product.sortOrder
                 }).eq('id', action.product.id);
+
+                // Atualizar Receita (Deletar e recriar para simplicidade)
+                if (action.product.format === 'COMPOSITE' && action.product.recipe) {
+                    await supabase.from('product_ingredients').delete().eq('product_id', action.product.id);
+                    const ingredients = action.product.recipe.map(r => ({
+                         tenant_id: tenantId,
+                         product_id: action.product.id,
+                         inventory_item_id: r.inventoryItemId,
+                         quantity: r.quantity
+                     }));
+                     await supabase.from('product_ingredients').insert(ingredients);
+                }
+                window.location.reload(); // Reload para garantir consistência
             }
             break;
         

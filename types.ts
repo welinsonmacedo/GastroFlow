@@ -102,6 +102,14 @@ export interface Transaction {
   cashierName: string;
 }
 
+export interface ProductRecipeItem {
+    inventoryItemId: string;
+    inventoryItemName?: string; // Para display
+    quantity: number;
+    unit?: string;
+    cost?: number; // Para cálculo de custo
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -111,6 +119,8 @@ export interface Product {
   category: string;
   type: ProductType;
   format?: 'SIMPLE' | 'COMPOSITE' | 'INGREDIENT'; // Novo: Formato do produto
+  linkedInventoryItemId?: string; // Para produtos SIMPLES
+  recipe?: ProductRecipeItem[]; // Para produtos COMPOSTOS
   image: string; 
   isVisible: boolean; 
   sortOrder: number; 

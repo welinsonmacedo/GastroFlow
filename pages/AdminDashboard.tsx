@@ -25,6 +25,10 @@ export const AdminDashboard: React.FC = () => {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isCreatingNew, setIsCreatingNew] = useState(false);
   const [draggedItemIndex, setDraggedItemIndex] = useState<number | null>(null);
+  
+  // Recipe Builder State (For Composite Products)
+  const [selectedIngredient, setSelectedIngredient] = useState<string>('');
+  const [ingredientQty, setIngredientQty] = useState<number>(1);
 
   // Staff state
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -248,17 +252,64 @@ export const AdminDashboard: React.FC = () => {
           format: 'SIMPLE',
           image: '',
           isVisible: true,
-          sortOrder: 0
+          sortOrder: 0,
+          recipe: []
       });
       setIsCreatingNew(true);
   };
 
-  // --- Effect to auto-hide ingredients ---
-  useEffect(() => {
-      if (editingProduct?.format === 'INGREDIENT') {
-          setEditingProduct(prev => prev ? ({ ...prev, isVisible: false }) : null);
+  const handleLinkInventoryItem = (invId: string) => {
+      const invItem = state.inventory.find(i => i.id === invId);
+      if (invItem && editingProduct) {
+          setEditingProduct({
+              ...editingProduct,
+              linkedInventoryItemId: invId,
+              name: invItem.name, // Auto-fill name
+              costPrice: invItem.costPrice
+          });
       }
-  }, [editingProduct?.format]);
+  };
+
+  const handleAddIngredient = () => {
+      if (!selectedIngredient || ingredientQty <= 0) return;
+      const invItem = state.inventory.find(i => i.id === selectedIngredient);
+      if (invItem && editingProduct) {
+          const currentRecipe = editingProduct.recipe || [];
+          const newRecipe = [...currentRecipe, {
+              inventoryItemId: invItem.id,
+              inventoryItemName: invItem.name,
+              quantity: ingredientQty,
+              unit: invItem.unit,
+              cost: invItem.costPrice
+          }];
+          
+          // Recalculate Total Cost
+          const totalCost = newRecipe.reduce((sum, item) => sum + ((item.cost || 0) * item.quantity), 0);
+
+          setEditingProduct({
+              ...editingProduct,
+              recipe: newRecipe,
+              costPrice: totalCost
+          });
+          setSelectedIngredient('');
+          setIngredientQty(1);
+      }
+  };
+
+  const handleRemoveIngredient = (index: number) => {
+      if (editingProduct && editingProduct.recipe) {
+          const newRecipe = [...editingProduct.recipe];
+          newRecipe.splice(index, 1);
+          
+          const totalCost = newRecipe.reduce((sum, item) => sum + ((item.cost || 0) * item.quantity), 0);
+
+          setEditingProduct({
+              ...editingProduct,
+              recipe: newRecipe,
+              costPrice: totalCost
+          });
+      }
+  };
 
   // Drag and Drop Handlers
   const handleDragStart = (index: number) => {
@@ -539,31 +590,120 @@ export const AdminDashboard: React.FC = () => {
                      <div className="flex justify-between items-center mb-6">
                         <div>
                             <h2 className="text-2xl font-bold text-gray-800">Gerenciar Cardápio</h2>
-                            <p className="text-sm text-gray-500">Adicione produtos e organize a ordem de exibição.</p>
+                            <p className="text-sm text-gray-500">Adicione produtos do estoque ou crie combinações.</p>
                         </div>
                         <Button onClick={handleAddProduct}>
-                            <Plus size={16} /> Adicionar
+                            <Plus size={16} /> Novo Item no Cardápio
                         </Button>
                     </div>
 
                     {editingProduct && (
                         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                            <div className="bg-white p-6 rounded-lg w-full max-w-lg shadow-xl max-h-[90vh] overflow-y-auto relative">
+                            <div className="bg-white p-6 rounded-lg w-full max-w-xl shadow-xl max-h-[90vh] overflow-y-auto relative">
                                 <button onClick={() => setEditingProduct(null)} className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"><X size={24} /></button>
-                                <h3 className="text-xl font-bold mb-4 pr-8">{isCreatingNew ? 'Novo Produto' : 'Editar Produto'}</h3>
+                                <h3 className="text-xl font-bold mb-4 pr-8">{isCreatingNew ? 'Novo Item de Cardápio' : 'Editar Item'}</h3>
                                 <div className="space-y-4">
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="col-span-2">
-                                            <label className="block text-sm font-medium mb-1">Nome</label>
-                                            <input className="w-full border p-2 rounded" value={editingProduct.name} onChange={e => setEditingProduct({...editingProduct, name: e.target.value})} />
+                                    
+                                    {/* TYPE SELECTION */}
+                                    <div className="bg-gray-50 p-4 rounded-lg border">
+                                        <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Tipo de Produto</label>
+                                        <div className="flex gap-4">
+                                            <label className="flex items-center gap-2 cursor-pointer">
+                                                <input 
+                                                    type="radio" 
+                                                    name="format" 
+                                                    checked={editingProduct.format === 'SIMPLE'} 
+                                                    onChange={() => setEditingProduct({...editingProduct, format: 'SIMPLE', linkedInventoryItemId: '', recipe: []})}
+                                                />
+                                                <span className="font-medium">Produto Simples (Revenda)</span>
+                                            </label>
+                                            <label className="flex items-center gap-2 cursor-pointer">
+                                                <input 
+                                                    type="radio" 
+                                                    name="format" 
+                                                    checked={editingProduct.format === 'COMPOSITE'} 
+                                                    onChange={() => setEditingProduct({...editingProduct, format: 'COMPOSITE', linkedInventoryItemId: undefined})}
+                                                />
+                                                <span className="font-medium">Produto Composto (Receita)</span>
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    {/* SIMPLE PRODUCT LOGIC */}
+                                    {editingProduct.format === 'SIMPLE' && (
+                                        <div className="animate-fade-in space-y-4">
+                                            <div>
+                                                <label className="block text-sm font-medium mb-1">Selecione do Estoque</label>
+                                                <select 
+                                                    className="w-full border p-2 rounded bg-white" 
+                                                    value={editingProduct.linkedInventoryItemId || ''} 
+                                                    onChange={(e) => handleLinkInventoryItem(e.target.value)}
+                                                >
+                                                    <option value="">Selecione...</option>
+                                                    {state.inventory.map(i => (
+                                                        <option key={i.id} value={i.id}>{i.name} (Estoque: {i.quantity} {i.unit})</option>
+                                                    ))}
+                                                </select>
+                                                <p className="text-xs text-gray-500 mt-1">O nome e o custo serão puxados automaticamente.</p>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* COMPOSITE PRODUCT LOGIC */}
+                                    {editingProduct.format === 'COMPOSITE' && (
+                                        <div className="animate-fade-in space-y-4">
+                                            <div>
+                                                <label className="block text-sm font-medium mb-1">Nome do Prato/Combo</label>
+                                                <input className="w-full border p-2 rounded" value={editingProduct.name} onChange={e => setEditingProduct({...editingProduct, name: e.target.value})} placeholder="Ex: X-Salada Especial" />
+                                            </div>
+                                            
+                                            {/* RECIPE BUILDER */}
+                                            <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
+                                                <h4 className="font-bold text-blue-800 text-sm mb-2 flex items-center gap-2"><Layers size={16}/> Ficha Técnica (Ingredientes)</h4>
+                                                <div className="flex gap-2 mb-3">
+                                                    <select 
+                                                        className="flex-1 border rounded p-1 text-sm"
+                                                        value={selectedIngredient}
+                                                        onChange={(e) => setSelectedIngredient(e.target.value)}
+                                                    >
+                                                        <option value="">Adicionar ingrediente...</option>
+                                                        {state.inventory.map(i => (
+                                                            <option key={i.id} value={i.id}>{i.name} ({i.unit}) - R${i.costPrice}</option>
+                                                        ))}
+                                                    </select>
+                                                    <input 
+                                                        type="number" 
+                                                        step="0.001" 
+                                                        className="w-20 border rounded p-1 text-sm" 
+                                                        placeholder="Qtd"
+                                                        value={ingredientQty}
+                                                        onChange={(e) => setIngredientQty(parseFloat(e.target.value))}
+                                                    />
+                                                    <button onClick={handleAddIngredient} className="bg-blue-600 text-white px-3 rounded hover:bg-blue-700"><Plus size={16}/></button>
+                                                </div>
+                                                
+                                                <div className="space-y-2 max-h-40 overflow-y-auto">
+                                                    {editingProduct.recipe?.map((item, idx) => (
+                                                        <div key={idx} className="flex justify-between items-center bg-white p-2 rounded text-sm border">
+                                                            <span>{item.quantity} {item.unit} - {item.inventoryItemName}</span>
+                                                            <button onClick={() => handleRemoveIngredient(idx)} className="text-red-500 hover:text-red-700"><X size={16}/></button>
+                                                        </div>
+                                                    ))}
+                                                    {(!editingProduct.recipe || editingProduct.recipe.length === 0) && <p className="text-xs text-gray-400 text-center">Nenhum ingrediente adicionado.</p>}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* COMMON FIELDS */}
+                                    <div className="grid grid-cols-2 gap-4 border-t pt-4">
+                                        <div>
+                                            <label className="block text-sm font-medium mb-1">Preço Venda (R$)</label>
+                                            <input type="number" step="0.01" className="w-full border p-2 rounded font-bold text-lg" value={editingProduct.price} onChange={e => setEditingProduct({...editingProduct, price: parseFloat(e.target.value)})} />
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-medium mb-1">Formato</label>
-                                            <select className="w-full border p-2 rounded" value={editingProduct.format || 'SIMPLE'} onChange={e => setEditingProduct({...editingProduct, format: e.target.value as any})}>
-                                                <option value="SIMPLE">Produto Simples</option>
-                                                <option value="COMPOSITE">Produto Composto</option>
-                                                <option value="INGREDIENT">Ingrediente</option>
-                                            </select>
+                                            <label className="block text-sm font-medium mb-1 text-gray-500">Custo Total (Calc.)</label>
+                                            <input disabled type="number" step="0.01" className="w-full border p-2 rounded bg-gray-100" value={editingProduct.costPrice?.toFixed(2) || 0} />
                                         </div>
                                         <div>
                                             <label className="block text-sm font-medium mb-1">Categoria</label>
@@ -578,52 +718,31 @@ export const AdminDashboard: React.FC = () => {
                                             </select>
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-medium mb-1">Tipo (Produção)</label>
+                                            <label className="block text-sm font-medium mb-1">Destino (KDS)</label>
                                             <select className="w-full border p-2 rounded" value={editingProduct.type} onChange={e => setEditingProduct({...editingProduct, type: e.target.value as ProductType})}>
                                                 <option value={ProductType.KITCHEN}>Cozinha</option>
                                                 <option value={ProductType.BAR}>Bar</option>
                                             </select>
                                         </div>
                                     </div>
+                                    
                                     <div>
-                                        <label className="block text-sm font-medium mb-1">Foto do Produto</label>
+                                        <label className="block text-sm font-medium mb-1">Foto</label>
                                         <ImageUploader value={editingProduct.image} onChange={(val) => setEditingProduct({...editingProduct, image: val})} />
                                     </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="block text-sm font-medium mb-1">Preço Venda (R$)</label>
-                                            <input type="number" step="0.01" className="w-full border p-2 rounded" value={editingProduct.price} onChange={e => setEditingProduct({...editingProduct, price: parseFloat(e.target.value)})} />
-                                        </div>
-                                        <div>
-                                            <label className="block text-sm font-medium mb-1 text-gray-500">Custo (Opcional)</label>
-                                            <input type="number" step="0.01" className="w-full border p-2 rounded bg-gray-50" value={editingProduct.costPrice || 0} onChange={e => setEditingProduct({...editingProduct, costPrice: parseFloat(e.target.value)})} />
-                                        </div>
-                                        <div className="col-span-2">
-                                             <label className="block text-sm font-medium mb-1">Ordem (Manual)</label>
-                                             <input type="number" className="w-full border p-2 rounded" value={editingProduct.sortOrder} onChange={e => setEditingProduct({...editingProduct, sortOrder: parseInt(e.target.value)})} />
-                                        </div>
-                                    </div>
+
                                     <div className="flex items-center gap-2">
-                                         <input 
-                                            type="checkbox" 
-                                            id="isVisible" 
-                                            checked={editingProduct.isVisible} 
-                                            onChange={e => setEditingProduct({...editingProduct, isVisible: e.target.checked})} 
-                                            className="w-4 h-4" 
-                                            disabled={editingProduct.format === 'INGREDIENT'} // Disable if Ingredient
-                                         />
-                                         <label htmlFor="isVisible" className={`text-sm font-medium cursor-pointer ${editingProduct.format === 'INGREDIENT' ? 'text-gray-400' : ''}`}>
-                                            {editingProduct.format === 'INGREDIENT' ? 'Ingredientes não aparecem no cardápio' : 'Visível no Cardápio'}
-                                         </label>
+                                         <input type="checkbox" id="isVisible" checked={editingProduct.isVisible} onChange={e => setEditingProduct({...editingProduct, isVisible: e.target.checked})} className="w-4 h-4" />
+                                         <label htmlFor="isVisible" className="text-sm font-medium cursor-pointer">Visível no Cardápio</label>
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium mb-1">Descrição</label>
-                                        <textarea className="w-full border p-2 rounded" rows={3} value={editingProduct.description} onChange={e => setEditingProduct({...editingProduct, description: e.target.value})} />
+                                        <label className="block text-sm font-medium mb-1">Descrição (Cardápio)</label>
+                                        <textarea className="w-full border p-2 rounded" rows={2} value={editingProduct.description} onChange={e => setEditingProduct({...editingProduct, description: e.target.value})} />
                                     </div>
                                 </div>
                                 <div className="mt-6 flex justify-end gap-2">
                                     <Button variant="secondary" onClick={() => setEditingProduct(null)}>Cancelar</Button>
-                                    <Button variant="success" onClick={handleProductSave}>Salvar</Button>
+                                    <Button variant="success" onClick={handleProductSave}>Salvar Produto</Button>
                                 </div>
                             </div>
                         </div>
@@ -637,9 +756,8 @@ export const AdminDashboard: React.FC = () => {
                                     <th className="p-4 w-16">Foto</th>
                                     <th className="p-4">Nome</th>
                                     <th className="p-4">Formato</th>
-                                    <th className="p-4">Categoria</th>
                                     <th className="p-4">Preço</th>
-                                    <th className="p-4">Status</th>
+                                    <th className="p-4">Lucro</th>
                                     <th className="p-4 text-right">Ações</th>
                                 </tr>
                             </thead>
@@ -664,16 +782,14 @@ export const AdminDashboard: React.FC = () => {
                                             <div className="text-[10px] text-gray-400 font-mono">Ordem: {product.sortOrder}</div>
                                         </td>
                                         <td className="p-4">
-                                            {product.format === 'COMPOSITE' && <span className="bg-purple-100 text-purple-700 px-2 py-1 rounded text-xs font-bold flex items-center gap-1 w-fit"><Layers size={12}/> COMPOSTO</span>}
-                                            {product.format === 'INGREDIENT' && <span className="bg-yellow-100 text-yellow-700 px-2 py-1 rounded text-xs font-bold flex items-center gap-1 w-fit"><Package size={12}/> INGREDIENTE</span>}
-                                            {(!product.format || product.format === 'SIMPLE') && <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs font-bold w-fit">SIMPLES</span>}
+                                            {product.format === 'COMPOSITE' ? 
+                                                <span className="bg-purple-100 text-purple-700 px-2 py-1 rounded text-xs font-bold flex items-center gap-1 w-fit"><Layers size={12}/> COMPOSTO</span> :
+                                                <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs font-bold w-fit">SIMPLES</span>
+                                            }
                                         </td>
-                                        <td className="p-4"><span className="px-2 py-1 bg-gray-100 rounded text-sm">{product.category}</span></td>
-                                        <td className="p-4">R$ {product.price.toFixed(2)}</td>
-                                        <td className="p-4">
-                                            <div className={`flex items-center gap-1 text-sm font-medium ${product.isVisible ? 'text-green-600' : 'text-gray-400'}`}>
-                                                {product.isVisible ? <><Eye size={16}/> Visível</> : <><EyeOff size={16}/> Oculto</>}
-                                            </div>
+                                        <td className="p-4 font-bold text-gray-800">R$ {product.price.toFixed(2)}</td>
+                                        <td className="p-4 text-sm text-green-600">
+                                            R$ {(product.price - (product.costPrice || 0)).toFixed(2)}
                                         </td>
                                         <td className="p-4 text-right">
                                             <div className="flex justify-end gap-2">
@@ -698,112 +814,6 @@ export const AdminDashboard: React.FC = () => {
                 </div>
             )}
 
-            {/* ... Other Tabs remain unchanged ... */}
-            
-            {activeTab === 'CUSTOMIZATION' && (
-                 <div className="max-w-3xl">
-                    <h2 className="text-2xl font-bold mb-6 text-gray-800">Personalizar App do Cliente</h2>
-                    <div className="bg-white p-6 rounded-xl shadow-sm space-y-8">
-                        {/* Customization Form */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                            <div className="space-y-4">
-                                <h3 className="font-bold text-gray-700 flex items-center gap-2"><Palette size={18} /> Identidade Visual</h3>
-                                <div>
-                                    <label className="block text-sm font-medium mb-1">Nome do Restaurante</label>
-                                    <input type="text" className="w-full border p-2 rounded" value={localTheme.restaurantName} onChange={e => setLocalTheme({...localTheme, restaurantName: e.target.value})} />
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-sm font-medium mb-1">Cor Principal</label>
-                                        <div className="flex gap-2 items-center">
-                                            <input type="color" className="h-10 w-10 cursor-pointer border rounded" value={localTheme.primaryColor} onChange={e => setLocalTheme({...localTheme, primaryColor: e.target.value})} />
-                                            <input type="text" className="flex-1 border p-2 rounded uppercase min-w-0" value={localTheme.primaryColor} onChange={e => setLocalTheme({...localTheme, primaryColor: e.target.value})} />
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium mb-1">Cor de Fundo</label>
-                                        <div className="flex gap-2 items-center">
-                                            <input type="color" className="h-10 w-10 cursor-pointer border rounded" value={localTheme.backgroundColor} onChange={e => setLocalTheme({...localTheme, backgroundColor: e.target.value})} />
-                                            <input type="text" className="flex-1 border p-2 rounded uppercase min-w-0" value={localTheme.backgroundColor} onChange={e => setLocalTheme({...localTheme, backgroundColor: e.target.value})} />
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="space-y-4">
-                                <h3 className="font-bold text-gray-700 flex items-center gap-2"><LayoutGrid size={18} /> Layout e Imagens</h3>
-                                <div>
-                                    <label className="block text-sm font-medium mb-1">Estilo do Cardápio</label>
-                                    <div className="flex gap-2">
-                                        <button 
-                                            onClick={() => setLocalTheme({...localTheme, viewMode: 'LIST'})}
-                                            className={`flex-1 py-2 border rounded flex items-center justify-center gap-2 ${localTheme.viewMode !== 'GRID' ? 'bg-blue-50 border-blue-500 text-blue-700 font-bold' : 'hover:bg-gray-50'}`}
-                                        >
-                                            <ListIcon size={16}/> Lista (Padrão)
-                                        </button>
-                                        <button 
-                                            onClick={() => setLocalTheme({...localTheme, viewMode: 'GRID'})}
-                                            className={`flex-1 py-2 border rounded flex items-center justify-center gap-2 ${localTheme.viewMode === 'GRID' ? 'bg-blue-50 border-blue-500 text-blue-700 font-bold' : 'hover:bg-gray-50'}`}
-                                        >
-                                            <LayoutGrid size={16}/> Grade (Fotos)
-                                        </button>
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium mb-1">Logo do Restaurante</label>
-                                    <ImageUploader value={localTheme.logoUrl} onChange={(val) => setLocalTheme({...localTheme, logoUrl: val})} />
-                                </div>
-                            </div>
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium mb-1 flex items-center gap-2"><ImageIcon size={16}/> Imagem de Capa (Banner)</label>
-                            <p className="text-xs text-gray-500 mb-2">Aparece no topo do cardápio digital.</p>
-                            <ImageUploader value={localTheme.bannerUrl || ''} onChange={(val) => setLocalTheme({...localTheme, bannerUrl: val})} />
-                        </div>
-
-                        <div className="pt-4 border-t">
-                            <Button onClick={() => { dispatch({ type: 'UPDATE_THEME', theme: localTheme }); showAlert({ title: "Sucesso", message: "Tema salvo com sucesso!", type: 'SUCCESS' }); }} className="w-full py-3 text-lg">
-                                <Save size={20} /> Salvar Personalização
-                            </Button>
-                        </div>
-                    </div>
-                 </div>
-            )}
-             {activeTab === 'TABLES' && (
-                <div>
-                     <div className="flex justify-between items-center mb-6">
-                        <div>
-                            <h2 className="text-2xl font-bold text-gray-800">Mesas & QR Codes</h2>
-                            <p className="text-sm text-gray-500">Gerencie a quantidade de mesas e imprima os QR Codes.</p>
-                        </div>
-                        <Button onClick={handleAddTable}>
-                            <Plus size={16} /> Nova Mesa
-                        </Button>
-                    </div>
-                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                        {state.tables.map(table => (
-                            <div key={table.id} className="bg-white p-6 rounded-xl shadow-sm flex flex-col items-center gap-4 border border-gray-100 relative group">
-                                <button 
-                                    onClick={() => handleDeleteTable(table.id)}
-                                    className="absolute top-2 right-2 p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors"
-                                    title="Excluir Mesa"
-                                >
-                                    <Trash2 size={16} />
-                                </button>
-                                <h3 className="text-xl font-bold text-gray-800">Mesa {table.number}</h3>
-                                <QRCodeGenerator tableId={table.id} size={150} />
-                                <div className="w-full flex gap-1">
-                                    <a href={getTableUrl(table.id)} target="_blank" className="flex-1 text-xs bg-blue-50 text-blue-600 hover:bg-blue-100 py-2 rounded text-center flex items-center justify-center gap-1 font-medium"><ExternalLink size={12} /> Link</a>
-                                    <button onClick={() => navigator.clipboard.writeText(getTableUrl(table.id))} className="px-3 bg-gray-100 text-gray-600 hover:bg-gray-200 rounded text-xs flex items-center justify-center" title="Copiar Link"><Copy size={12} /></button>
-                                </div>
-                                <Button variant="secondary" size="sm" className="w-full" onClick={() => handlePrint(table.id)}><Printer size={16} /> Imprimir</Button>
-                            </div>
-                        ))}
-                     </div>
-                </div>
-            )}
-            
             {/* ... Other Tabs (INVENTORY, FINANCE, REPORTS, STAFF) stay same ... */}
             {activeTab === 'INVENTORY' && (
                     <div className="space-y-6">
@@ -1202,7 +1212,6 @@ export const AdminDashboard: React.FC = () => {
             {activeTab === 'STAFF' && (
                 <div>
                     <h2 className="text-2xl font-bold mb-6 text-gray-800">Gerenciar Funcionários</h2>
-                    {/* ... Staff Component Content ... */}
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                         <div className="bg-white p-6 rounded-xl shadow-sm h-fit">
                             <h3 className="font-bold mb-4 text-lg">{editingUser ? 'Editar Funcionário' : 'Novo Funcionário'}</h3>
