@@ -601,21 +601,27 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                     const currentQty = Number(currentItem.quantity);
                     const currentCost = Number(currentItem.costPrice);
                     const incomingQty = Number(item.quantity);
-                    let incomingCost = Number(item.unitPrice);
+                    
+                    // Base cost (from invoice unit price)
+                    let incomingTotalCost = item.totalPrice; 
 
                     // Distribute tax proportionally if enabled
                     if (distributeTax && totalItemsValue > 0 && taxAmount > 0) {
                         const itemShareRatio = item.totalPrice / totalItemsValue;
                         const taxShare = taxAmount * itemShareRatio;
-                        // Tax share per unit
-                        const taxPerUnit = taxShare / incomingQty;
-                        incomingCost += taxPerUnit;
+                        incomingTotalCost += taxShare;
                     }
+                    
+                    // Effective Unit Cost for incoming batch
+                    const incomingUnitCost = incomingTotalCost / incomingQty;
 
                     // Weighted Average Cost Calculation
-                    let newCost = incomingCost;
+                    // Formula: ((OldQty * OldCost) + (NewQty * NewCost)) / (OldQty + NewQty)
+                    let newWeightedCost = incomingUnitCost;
                     if (currentQty > 0) {
-                        newCost = ((currentQty * currentCost) + (incomingQty * incomingCost)) / (currentQty + incomingQty);
+                        const oldTotalValue = currentQty * currentCost;
+                        const newTotalValue = oldTotalValue + incomingTotalCost;
+                        newWeightedCost = newTotalValue / (currentQty + incomingQty);
                     }
 
                     const newQty = currentQty + incomingQty;
@@ -623,12 +629,12 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                     // DB Update
                     await supabase.from('inventory_items').update({
                         quantity: newQty,
-                        cost_price: newCost
+                        cost_price: newWeightedCost
                     }).eq('id', item.inventoryItemId);
 
                     // Sync Product Cost if linked
                     await supabase.from('products').update({
-                        cost_price: newCost
+                        cost_price: newWeightedCost
                     }).eq('linked_inventory_item_id', item.inventoryItemId);
 
                     // Log
@@ -644,7 +650,7 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                     // Optimistic update for this item
                     updatedInventory = updatedInventory.map(i => 
                         i.id === item.inventoryItemId 
-                        ? { ...i, quantity: newQty, costPrice: newCost } 
+                        ? { ...i, quantity: newQty, costPrice: newWeightedCost } 
                         : i
                     );
                 }
