@@ -1415,7 +1415,7 @@ export const AdminDashboard: React.FC = () => {
                             <h2 className="text-2xl font-bold text-gray-800">Financeiro</h2>
                             <p className="text-sm text-gray-500">Contas a pagar e despesas.</p>
                         </div>
-                        <Button onClick={() => setEditingExpense({ description: '', amount: 0, category: 'Outros', dueDate: new Date().toISOString().split('T')[0], isPaid: false })}><Plus size={16}/> Nova Despesa</Button>
+                        <Button onClick={() => setEditingExpense({ description: '', amount: 0, category: 'Outros', dueDate: new Date().toISOString().split('T')[0] as any, isPaid: false })}><Plus size={16}/> Nova Despesa</Button>
                     </div>
                     
                     <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
@@ -1451,7 +1451,7 @@ export const AdminDashboard: React.FC = () => {
                                         </td>
                                     </tr>
                                 ))}
-                                {state.expenses.length === 0 && <tr><td colSpan={6} className="p-8 text-center text-gray-400">Nenhuma despesa registrada.</td></tr>}
+                                {state.expenses.length === 0 && <tr><td colSpan={6} className="p-8 text-center text-gray-400">Nenhum despesa registrada.</td></tr>}
                             </tbody>
                         </table>
                     </div>
@@ -1474,7 +1474,7 @@ export const AdminDashboard: React.FC = () => {
                                     </select>
                                     <div>
                                         <label className="block text-xs font-bold mb-1">Vencimento</label>
-                                        <input type="date" className="w-full border p-2 rounded" value={editingExpense.dueDate as any} onChange={e => setEditingExpense({...editingExpense, dueDate: e.target.value as any})} />
+                                        <input type="date" className="w-full border p-2 rounded" value={editingExpense.dueDate ? new Date(editingExpense.dueDate).toISOString().split('T')[0] : ''} onChange={e => setEditingExpense({...editingExpense, dueDate: e.target.value as any})} />
                                     </div>
                                     <div className="flex items-center gap-2 mt-2">
                                         <input type="checkbox" checked={editingExpense.isPaid} onChange={e => setEditingExpense({...editingExpense, isPaid: e.target.checked})} id="paid-check"/>
