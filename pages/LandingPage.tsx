@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ChefHat, CheckCircle, Smartphone, BarChart3, ShieldCheck, MessageCircle, ArrowRight, Star, Send, Menu, X, LogIn, Zap, Monitor, LayoutDashboard, QrCode, MonitorPlay, PieChart, TrendingUp, ListChecks } from 'lucide-react';
+import { ChefHat, CheckCircle, Smartphone, BarChart3, ShieldCheck, MessageCircle, ArrowRight, Star, Send, Menu, X, LogIn, Zap, Monitor, LayoutDashboard, QrCode, MonitorPlay, PieChart, TrendingUp, ListChecks, Package, Users, DollarSign, Truck, Settings } from 'lucide-react';
 import { useSaaS } from '../context/SaaSContext';
+import { Plan } from '../types';
 
 const FeatureCard = ({ icon, title, desc }: { icon: React.ReactNode, title: string, desc: string }) => (
   <div className="bg-white p-8 rounded-2xl shadow-lg border border-slate-100 hover:shadow-xl transition-shadow flex flex-col items-center text-center h-full">
@@ -11,6 +12,23 @@ const FeatureCard = ({ icon, title, desc }: { icon: React.ReactNode, title: stri
     <h3 className="text-xl font-bold text-slate-900 mb-3">{title}</h3>
     <p className="text-slate-500 leading-relaxed">{desc}</p>
   </div>
+);
+
+const ModuleCard = ({ icon, title, items, colorClass }: { icon: React.ReactNode, title: string, items: string[], colorClass: string }) => (
+    <div className="bg-white rounded-2xl p-6 shadow-md border border-slate-100 flex flex-col h-full hover:-translate-y-1 transition-transform duration-300">
+        <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 ${colorClass} text-white shadow-lg`}>
+            {icon}
+        </div>
+        <h3 className="text-lg font-bold text-slate-800 mb-3">{title}</h3>
+        <ul className="space-y-2">
+            {items.map((item, idx) => (
+                <li key={idx} className="flex items-center gap-2 text-sm text-slate-600">
+                    <div className={`w-1.5 h-1.5 rounded-full ${colorClass}`}></div>
+                    {item}
+                </li>
+            ))}
+        </ul>
+    </div>
 );
 
 const ContactForm = ({ whatsappNumber }: { whatsappNumber: string }) => {
@@ -65,36 +83,63 @@ const ContactForm = ({ whatsappNumber }: { whatsappNumber: string }) => {
   );
 };
 
-const PricingCard = ({ title, price, period, features, isPopular, cta, onClick }: any) => (
-  <div className={`relative bg-white rounded-2xl p-8 border flex flex-col ${isPopular ? 'border-blue-500 shadow-2xl scale-105 z-10' : 'border-slate-200 shadow-sm'}`}>
-    {isPopular && (
-      <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-blue-600 text-white px-4 py-1 rounded-full text-sm font-bold shadow-lg">
-        Mais Popular
+const PricingCard = ({ plan, onClick }: { plan: Plan, onClick: () => void }) => {
+    // Gera lista de features baseada nos LIMITES ativados no painel do CEO
+    const dynamicFeatures = [];
+    
+    if (plan.limits?.allowTableMgmt) dynamicFeatures.push("Gestão de Mesas & QR Code");
+    if (plan.limits?.allowKds) dynamicFeatures.push("KDS (Tela de Cozinha)");
+    if (plan.limits?.allowCashier) dynamicFeatures.push("Frente de Caixa (PDV)");
+    if (plan.limits?.allowInventory) dynamicFeatures.push("Controle de Estoque & Fichas");
+    if (plan.limits?.allowPurchases) dynamicFeatures.push("Gestão de Compras & Fornecedores");
+    if (plan.limits?.allowExpenses) dynamicFeatures.push("Financeiro (Contas a Pagar)");
+    if (plan.limits?.allowStaff) dynamicFeatures.push("Gestão de Equipe & Permissões");
+    if (plan.limits?.allowCustomization) dynamicFeatures.push("App Personalizável (White Label)");
+    if (plan.limits?.allowReports) dynamicFeatures.push("Relatórios Gerenciais");
+
+    // Limites numéricos
+    const limitsDesc = [
+        plan.limits?.maxTables === -1 ? "Mesas Ilimitadas" : `Até ${plan.limits?.maxTables} Mesas`,
+        plan.limits?.maxProducts === -1 ? "Produtos Ilimitados" : `Até ${plan.limits?.maxProducts} Produtos`,
+        plan.limits?.maxStaff === -1 ? "Equipe Ilimitada" : `Até ${plan.limits?.maxStaff} Funcionários`,
+    ];
+
+    // Combina tudo
+    const allFeatures = [...limitsDesc, ...dynamicFeatures, ...(plan.features || [])];
+    // Remove duplicatas simples
+    const uniqueFeatures = Array.from(new Set(allFeatures));
+
+    return (
+      <div className={`relative bg-white rounded-2xl p-8 border flex flex-col ${plan.is_popular ? 'border-blue-500 shadow-2xl scale-105 z-10' : 'border-slate-200 shadow-sm'}`}>
+        {plan.is_popular && (
+          <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-blue-600 text-white px-4 py-1 rounded-full text-sm font-bold shadow-lg">
+            Mais Popular
+          </div>
+        )}
+        <div className="text-center mb-8">
+          <h3 className="text-lg font-bold text-slate-600 mb-2">{plan.name}</h3>
+          <div className="flex items-baseline justify-center gap-1">
+            <span className="text-4xl font-extrabold text-slate-900">{plan.price}</span>
+            <span className="text-slate-500 text-sm">{plan.period}</span>
+          </div>
+        </div>
+        <ul className="space-y-4 mb-8 flex-1">
+          {uniqueFeatures.map((feature: string, idx: number) => (
+            <li key={idx} className="flex items-start gap-3 text-sm text-slate-600">
+              <CheckCircle className="text-green-500 shrink-0" size={18} />
+              {feature}
+            </li>
+          ))}
+        </ul>
+        <button 
+          onClick={onClick}
+          className={`w-full py-4 rounded-xl font-bold transition-all ${plan.is_popular ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-500/30' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
+        >
+          {plan.button_text}
+        </button>
       </div>
-    )}
-    <div className="text-center mb-8">
-      <h3 className="text-lg font-bold text-slate-600 mb-2">{title}</h3>
-      <div className="flex items-baseline justify-center gap-1">
-        <span className="text-4xl font-extrabold text-slate-900">{price}</span>
-        <span className="text-slate-500 text-sm">{period}</span>
-      </div>
-    </div>
-    <ul className="space-y-4 mb-8 flex-1">
-      {features.map((feature: string, idx: number) => (
-        <li key={idx} className="flex items-start gap-3 text-sm text-slate-600">
-          <CheckCircle className="text-green-500 shrink-0" size={18} />
-          {feature}
-        </li>
-      ))}
-    </ul>
-    <button 
-      onClick={onClick}
-      className={`w-full py-4 rounded-xl font-bold transition-all ${isPopular ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-500/30' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'}`}
-    >
-      {cta}
-    </button>
-  </div>
-);
+    );
+};
 
 export const LandingPage: React.FC = () => {
   const { state } = useSaaS();
@@ -108,7 +153,7 @@ export const LandingPage: React.FC = () => {
 
   // Se os planos ainda não foram carregados do DB, usa um fallback visual ou espera
   const displayPlans = state.plans.length > 0 ? state.plans : [
-      { id: '1', name: 'Starter', price: 'Carregando...', features: [], is_popular: false, button_text: '...', period: '' }
+      { id: '1', key: 'FREE', name: 'Carregando...', price: '...', features: [], is_popular: false, button_text: '...', period: '', limits: { maxTables:0, maxProducts:0, maxStaff:0, allowKds:false, allowCashier:false } }
   ];
 
   return (
@@ -138,7 +183,7 @@ export const LandingPage: React.FC = () => {
             {/* Desktop Menu */}
             <div className="hidden md:flex gap-8 items-center">
                <a href="#features" className="text-sm font-medium text-slate-600 hover:text-blue-600 transition-colors">Funcionalidades</a>
-               <a href="#showcase" className="text-sm font-medium text-slate-600 hover:text-blue-600 transition-colors">Como Funciona</a>
+               <a href="#modules" className="text-sm font-medium text-slate-600 hover:text-blue-600 transition-colors">Gestão</a>
                <a href="#pricing" className="text-sm font-medium text-slate-600 hover:text-blue-600 transition-colors">Planos</a>
                <a href="#contact" className="text-sm font-medium text-slate-600 hover:text-blue-600 transition-colors">Contato</a>
             </div>
@@ -177,7 +222,7 @@ export const LandingPage: React.FC = () => {
              </Link>
              <hr className="border-slate-100" />
              <a href="#features" className="text-slate-600 font-medium p-2 hover:bg-gray-50 rounded" onClick={() => setIsMobileMenuOpen(false)}>Funcionalidades</a>
-             <a href="#showcase" className="text-slate-600 font-medium p-2 hover:bg-gray-50 rounded" onClick={() => setIsMobileMenuOpen(false)}>Como Funciona</a>
+             <a href="#modules" className="text-slate-600 font-medium p-2 hover:bg-gray-50 rounded" onClick={() => setIsMobileMenuOpen(false)}>Módulos de Gestão</a>
              <a href="#pricing" className="text-slate-600 font-medium p-2 hover:bg-gray-50 rounded" onClick={() => setIsMobileMenuOpen(false)}>Planos e Preços</a>
              <a href="#contact" className="text-slate-600 font-medium p-2 hover:bg-gray-50 rounded" onClick={() => setIsMobileMenuOpen(false)}>Contato</a>
              <button 
@@ -264,8 +309,54 @@ export const LandingPage: React.FC = () => {
         </div>
       </div>
 
+      {/* --- NEW: VISUAL MODULES SHOWCASE (FIGURES) --- */}
+      <div id="modules" className="py-24 bg-slate-50 border-t border-slate-200">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="flex flex-col md:flex-row gap-12 items-center mb-16">
+                  <div className="md:w-1/2">
+                      <div className="inline-flex items-center gap-2 bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-xs font-bold uppercase mb-4">
+                          <LayoutDashboard size={14} /> Sistema Modular
+                      </div>
+                      <h2 className="text-3xl md:text-4xl font-extrabold text-slate-900 mb-6">
+                          Gestão Completa e Integrada
+                      </h2>
+                      <p className="text-lg text-slate-600 leading-relaxed">
+                          Não é apenas um cardápio digital. O GastroFlow é um ERP completo modular. Você ativa apenas o que precisa, mantendo o sistema limpo e eficiente.
+                      </p>
+                  </div>
+                  <div className="md:w-1/2 grid grid-cols-2 gap-4">
+                      {/* Visual Cards representing the modules */}
+                      <ModuleCard 
+                          icon={<Package size={24} />}
+                          title="Estoque & Fichas"
+                          colorClass="bg-orange-500"
+                          items={["Controle de Insumos", "Ficha Técnica de Pratos", "Baixa Automática", "Alertas de Nível Mínimo"]}
+                      />
+                      <ModuleCard 
+                          icon={<DollarSign size={24} />}
+                          title="Financeiro"
+                          colorClass="bg-green-600"
+                          items={["Contas a Pagar", "Fluxo de Caixa", "DRE Simplificado", "Gestão de Lucro"]}
+                      />
+                      <ModuleCard 
+                          icon={<Truck size={24} />}
+                          title="Compras"
+                          colorClass="bg-blue-600"
+                          items={["Gestão de Fornecedores", "Entrada de Nota Fiscal", "Histórico de Preços", "Sugestão de Compra"]}
+                      />
+                      <ModuleCard 
+                          icon={<Users size={24} />}
+                          title="Equipe"
+                          colorClass="bg-purple-600"
+                          items={["Controle de Acesso", "Metas e Comissões", "Auditoria de Ações", "Escala de Trabalho"]}
+                      />
+                  </div>
+              </div>
+          </div>
+      </div>
+
       {/* --- Visual Showcase Section (Illustrations) --- */}
-      <div id="showcase" className="py-24 bg-slate-50 border-t border-slate-200">
+      <div className="py-24 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-32">
             
             {/* Block 1: QR Code Illustration */}
@@ -361,72 +452,11 @@ export const LandingPage: React.FC = () => {
                 </div>
             </div>
 
-            {/* Block 3: Admin Illustration */}
-            <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-24">
-                <div className="lg:w-1/2 relative flex justify-center items-center group w-full">
-                    <div className="absolute inset-0 bg-emerald-100 rounded-full blur-3xl opacity-60 scale-90 group-hover:scale-100 transition-transform duration-1000"></div>
-                    {/* Dashboard Illustration */}
-                    <div className="relative bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm border border-slate-100 transform group-hover:-translate-y-2 transition-transform duration-500">
-                        <div className="flex justify-between items-center mb-6">
-                            <div className="w-24 h-4 bg-slate-100 rounded-full"></div>
-                            <div className="w-8 h-8 bg-slate-100 rounded-full"></div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-4 mb-6">
-                            <div className="bg-emerald-50 p-4 rounded-xl">
-                                <TrendingUp size={24} className="text-emerald-600 mb-2" />
-                                <div className="w-12 h-3 bg-emerald-200 rounded mb-1"></div>
-                                <div className="w-16 h-2 bg-emerald-100 rounded"></div>
-                            </div>
-                            <div className="bg-blue-50 p-4 rounded-xl">
-                                <PieChart size={24} className="text-blue-600 mb-2" />
-                                <div className="w-12 h-3 bg-blue-200 rounded mb-1"></div>
-                                <div className="w-16 h-2 bg-blue-100 rounded"></div>
-                            </div>
-                        </div>
-                        <div className="space-y-3">
-                            <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 bg-white rounded-md shadow-sm flex items-center justify-center"><ListChecks size={16} className="text-slate-400"/></div>
-                                    <div className="w-20 h-3 bg-slate-200 rounded"></div>
-                                </div>
-                                <div className="w-10 h-3 bg-slate-200 rounded"></div>
-                            </div>
-                            <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg opacity-60">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 bg-white rounded-md shadow-sm flex items-center justify-center"><ListChecks size={16} className="text-slate-400"/></div>
-                                    <div className="w-16 h-3 bg-slate-200 rounded"></div>
-                                </div>
-                                <div className="w-10 h-3 bg-slate-200 rounded"></div>
-                            </div>
-                        </div>
-                        {/* Floating Badge */}
-                        <div className="absolute -right-4 top-10 bg-white p-3 rounded-xl shadow-lg border border-slate-100 flex items-center gap-3 animate-bounce-slow">
-                            <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                            <span className="text-xs font-bold text-slate-600">Lucro +15%</span>
-                        </div>
-                    </div>
-                </div>
-                <div className="lg:w-1/2">
-                    <div className="inline-flex items-center gap-2 bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-xs font-bold uppercase mb-4">
-                        <LayoutDashboard size={14} /> Gestão Total
-                    </div>
-                    <h3 className="text-3xl md:text-4xl font-extrabold text-slate-900 mb-6">Seu restaurante na palma da mão.</h3>
-                    <p className="text-lg text-slate-600 mb-6 leading-relaxed">
-                        Acompanhe o faturamento em tempo real, gerencie funcionários e edite seu cardápio em segundos. Tome decisões baseadas em dados, não em "achismo".
-                    </p>
-                    <ul className="space-y-3">
-                        <li className="flex items-center gap-3 text-slate-700 font-medium"><CheckCircle className="text-green-500" size={20}/> Relatórios financeiros detalhados</li>
-                        <li className="flex items-center gap-3 text-slate-700 font-medium"><CheckCircle className="text-green-500" size={20}/> Controle de acesso de funcionários</li>
-                        <li className="flex items-center gap-3 text-slate-700 font-medium"><CheckCircle className="text-green-500" size={20}/> Edição de preços instantânea</li>
-                    </ul>
-                </div>
-            </div>
-
         </div>
       </div>
 
       {/* --- Lead Form Section --- */}
-      <div id="contact" className="py-24 bg-white border-y border-slate-200">
+      <div id="contact" className="py-24 bg-slate-50 border-y border-slate-200">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col md:flex-row border border-slate-100">
                 <div className="bg-blue-700 p-8 md:w-2/5 flex flex-col justify-between text-white">
@@ -452,7 +482,7 @@ export const LandingPage: React.FC = () => {
       </div>
 
       {/* --- Pricing --- */}
-      <div id="pricing" className="py-24 bg-slate-50">
+      <div id="pricing" className="py-24 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-16">
                 <h2 className="text-3xl font-extrabold text-slate-900">Planos flexíveis</h2>
@@ -463,12 +493,7 @@ export const LandingPage: React.FC = () => {
                 {displayPlans.map(plan => (
                     <PricingCard 
                         key={plan.id}
-                        title={plan.name} 
-                        price={plan.price} 
-                        period={plan.period}
-                        features={plan.features}
-                        isPopular={plan.is_popular}
-                        cta={plan.button_text}
+                        plan={plan}
                         onClick={openWhatsApp}
                     />
                 ))}

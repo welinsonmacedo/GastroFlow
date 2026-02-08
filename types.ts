@@ -108,6 +108,28 @@ export interface Transaction {
   cashierName: string;
 }
 
+// --- CASH REGISTER TYPES (NOVO) ---
+export interface CashSession {
+    id: string;
+    openedAt: Date;
+    closedAt?: Date;
+    initialAmount: number; // Fundo de caixa
+    finalAmount?: number; // Valor informado no fechamento
+    status: 'OPEN' | 'CLOSED';
+    operatorName: string;
+}
+
+export interface CashMovement {
+    id: string;
+    sessionId: string;
+    type: 'BLEED' | 'SUPPLY'; // Sangria ou Suprimento
+    amount: number;
+    reason: string;
+    timestamp: Date;
+    userName: string;
+}
+// ----------------------------------
+
 // --- ERP TYPES UPDATED ---
 
 export type InventoryType = 'INGREDIENT' | 'RESALE' | 'COMPOSITE';

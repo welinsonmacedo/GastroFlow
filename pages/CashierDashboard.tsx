@@ -3,13 +3,22 @@ import { useRestaurant } from '../context/RestaurantContext';
 import { useUI } from '../context/UIContext';
 import { TableStatus, Product, ProductType } from '../types';
 import { Button } from '../components/Button';
-import { DollarSign, CreditCard, Smartphone, History, Receipt, ArrowLeft, ShoppingCart, Search, Plus, Minus, Trash2, Tag, Box } from 'lucide-react';
+import { DollarSign, CreditCard, Smartphone, History, Receipt, ArrowLeft, ShoppingCart, Search, Plus, Minus, Trash2, Tag, Box, AlertTriangle, ArrowDown, Lock, Wallet, ArrowUp } from 'lucide-react';
 
 export const CashierDashboard: React.FC = () => {
   const { state, dispatch } = useRestaurant();
   const { showAlert, showConfirm } = useUI();
-  const [activeTab, setActiveTab] = useState<'ACTIVE' | 'HISTORY' | 'PDV'>('ACTIVE');
+  const [activeTab, setActiveTab] = useState<'ACTIVE' | 'HISTORY' | 'PDV' | 'MANAGE'>('ACTIVE');
   const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
+
+  // --- Cashier Management States ---
+  const [openRegisterAmount, setOpenRegisterAmount] = useState('');
+  const [bleedAmount, setBleedAmount] = useState('');
+  const [bleedReason, setBleedReason] = useState('');
+  const [closeCountedAmount, setCloseCountedAmount] = useState('');
+  
+  const [bleedModalOpen, setBleedModalOpen] = useState(false);
+  const [closeModalOpen, setCloseModalOpen] = useState(false);
 
   // --- PDV States ---
   const [posCart, setPosCart] = useState<{ product: Product; quantity: number; notes: string }[]>([]);
@@ -18,7 +27,6 @@ export const CashierDashboard: React.FC = () => {
   const [customerName, setCustomerName] = useState('');
 
   const occupiedTables = state.tables.filter(t => t.status !== TableStatus.AVAILABLE);
-  
   const selectedTable = state.tables.find(t => t.id === selectedTableId);
   const tableOrders = state.orders.filter(o => o.tableId === selectedTableId && !o.isPaid);
   
@@ -29,8 +37,71 @@ export const CashierDashboard: React.FC = () => {
     }, 0)
   , 0);
 
+  // --- Helper: Calcula Totais da Sessão Atual ---
+  const sessionSales = state.transactions.filter(t => 
+      state.activeCashSession && new Date(t.timestamp) >= new Date(state.activeCashSession.openedAt)
+  );
+  
+  const totalSalesCash = sessionSales.filter(t => t.method === 'CASH').reduce((acc, t) => acc + t.amount, 0);
+  const totalSalesCard = sessionSales.filter(t => t.method === 'CARD' || t.method === 'CREDIT' || t.method === 'DEBIT').reduce((acc, t) => acc + t.amount, 0);
+  const totalSalesPix = sessionSales.filter(t => t.method === 'PIX').reduce((acc, t) => acc + t.amount, 0);
+  
+  const totalBleed = state.cashMovements.filter(m => m.type === 'BLEED').reduce((acc, m) => acc + m.amount, 0);
+  // Expected Cash in Drawer = Initial + Cash Sales - Bleed
+  const expectedCash = (state.activeCashSession?.initialAmount || 0) + totalSalesCash - totalBleed;
+
+  // --- Handlers ---
+
+  const handleOpenRegister = (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!openRegisterAmount) return;
+      dispatch({ type: 'OPEN_CASH_REGISTER', initialAmount: parseFloat(openRegisterAmount) });
+      setOpenRegisterAmount('');
+  };
+
+  const handleBleed = (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!bleedAmount || !bleedReason) return;
+      
+      if (parseFloat(bleedAmount) > expectedCash) {
+          showAlert({ title: "Saldo Insuficiente", message: "O valor da sangria é maior que o dinheiro disponível em caixa.", type: 'WARNING' });
+          return;
+      }
+
+      dispatch({ type: 'CASH_BLEED', amount: parseFloat(bleedAmount), reason: bleedReason });
+      setBleedModalOpen(false);
+      setBleedAmount('');
+      setBleedReason('');
+      showAlert({ title: "Sangria Realizada", message: "Valor retirado do caixa.", type: 'SUCCESS' });
+  };
+
+  const handleCloseRegister = () => {
+      const counted = parseFloat(closeCountedAmount) || 0;
+      const diff = counted - expectedCash;
+      
+      const confirmMessage = diff !== 0 
+          ? `Há uma diferença de R$ ${diff.toFixed(2)} (${diff > 0 ? 'Sobra' : 'Falta'}). Confirmar fechamento?`
+          : "Valores conferem. Confirmar fechamento?";
+
+      showConfirm({
+          title: "Fechar Caixa",
+          message: confirmMessage,
+          confirmText: "Fechar Agora",
+          onConfirm: () => {
+              dispatch({ type: 'CLOSE_CASH_REGISTER', finalAmount: counted });
+              setCloseModalOpen(false);
+              setCloseCountedAmount('');
+              setActiveTab('ACTIVE'); // Reset view
+          }
+      });
+  };
+
   // --- Payment Handler (Tables) ---
   const handlePayment = (method: 'CASH' | 'CREDIT' | 'DEBIT' | 'PIX') => {
+    if (!state.activeCashSession) {
+        showAlert({ title: "Caixa Fechado", message: "Abra o caixa antes de receber.", type: 'ERROR' });
+        return;
+    }
     if (!selectedTableId) return;
     const methodLabel = method === 'CREDIT' ? 'Cartão de Crédito' : method === 'DEBIT' ? 'Cartão de Débito' : method;
     
@@ -74,6 +145,10 @@ export const CashierDashboard: React.FC = () => {
   const posTotal = posCart.reduce((acc, item) => acc + (item.product.price * item.quantity), 0);
 
   const handlePosCheckout = (method: 'CASH' | 'CREDIT' | 'DEBIT' | 'PIX') => {
+      if (!state.activeCashSession) {
+          showAlert({ title: "Caixa Fechado", message: "Abra o caixa antes de vender.", type: 'ERROR' });
+          return;
+      }
       if (posCart.length === 0) return;
       const methodLabel = method === 'CREDIT' ? 'Cartão de Crédito' : method === 'DEBIT' ? 'Cartão de Débito' : method;
 
@@ -98,8 +173,123 @@ export const CashierDashboard: React.FC = () => {
       });
   };
 
+  // --- TELA DE CAIXA FECHADO ---
+  if (!state.activeCashSession) {
+      return (
+          <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
+              <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md text-center">
+                  <div className="bg-red-100 p-6 rounded-full inline-block mb-6">
+                      <Lock size={48} className="text-red-500" />
+                  </div>
+                  <h1 className="text-2xl font-bold text-gray-800 mb-2">Caixa Fechado</h1>
+                  <p className="text-gray-500 mb-8">Informe o fundo de caixa para iniciar as operações.</p>
+                  
+                  <form onSubmit={handleOpenRegister}>
+                      <div className="mb-6">
+                          <label className="block text-left text-sm font-bold text-gray-700 mb-2">Fundo de Troco (R$)</label>
+                          <input 
+                              type="number" 
+                              step="0.01"
+                              autoFocus
+                              className="w-full text-center text-3xl font-bold border-2 border-gray-300 rounded-xl p-4 focus:border-blue-500 outline-none"
+                              placeholder="0.00"
+                              value={openRegisterAmount}
+                              onChange={e => setOpenRegisterAmount(e.target.value)}
+                          />
+                      </div>
+                      <Button type="submit" className="w-full py-4 text-lg" disabled={!openRegisterAmount}>
+                          ABRIR CAIXA
+                      </Button>
+                  </form>
+              </div>
+          </div>
+      );
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col lg:flex-row h-full">
+    <div className="min-h-screen bg-gray-50 flex flex-col lg:flex-row h-full relative">
+        {/* MODAL SANGRIA */}
+        {bleedModalOpen && (
+            <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm animate-fade-in">
+                    <h3 className="font-bold text-lg mb-4 text-red-600 flex items-center gap-2"><ArrowDown size={20}/> Realizar Sangria</h3>
+                    <form onSubmit={handleBleed} className="space-y-4">
+                        <div>
+                            <label className="block text-xs font-bold mb-1">Valor (R$)</label>
+                            <input autoFocus type="number" step="0.01" className="w-full border p-2 rounded text-lg font-bold" value={bleedAmount} onChange={e => setBleedAmount(e.target.value)} required />
+                            <p className="text-xs text-gray-500 mt-1">Disponível em dinheiro: R$ {expectedCash.toFixed(2)}</p>
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold mb-1">Motivo</label>
+                            <input type="text" className="w-full border p-2 rounded" placeholder="Ex: Pagamento fornecedor, retirada..." value={bleedReason} onChange={e => setBleedReason(e.target.value)} required />
+                        </div>
+                        <div className="flex gap-2">
+                            <Button type="button" variant="secondary" onClick={() => setBleedModalOpen(false)} className="flex-1">Cancelar</Button>
+                            <Button type="submit" variant="danger" className="flex-1">Confirmar Retirada</Button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        )}
+
+        {/* MODAL FECHAMENTO */}
+        {closeModalOpen && (
+            <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-lg animate-fade-in max-h-[90vh] overflow-y-auto">
+                    <h3 className="font-bold text-xl mb-6 text-gray-800 border-b pb-2">Fechamento de Caixa</h3>
+                    
+                    <div className="space-y-4 mb-6">
+                        <div className="flex justify-between items-center text-sm">
+                            <span className="text-gray-600">Fundo Inicial</span>
+                            <span className="font-bold">R$ {state.activeCashSession.initialAmount.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-sm">
+                            <span className="text-gray-600">Vendas (Dinheiro)</span>
+                            <span className="font-bold text-green-600">+ R$ {totalSalesCash.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-sm">
+                            <span className="text-gray-600">Sangrias</span>
+                            <span className="font-bold text-red-600">- R$ {totalBleed.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-lg font-bold bg-gray-100 p-2 rounded">
+                            <span>Esperado em Gaveta</span>
+                            <span>R$ {expectedCash.toFixed(2)}</span>
+                        </div>
+                        
+                        <div className="pt-2 border-t mt-2">
+                            <div className="flex justify-between text-xs text-gray-500">
+                                <span>Cartão: R$ {totalSalesCard.toFixed(2)}</span>
+                                <span>Pix: R$ {totalSalesPix.toFixed(2)}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="mb-6">
+                        <label className="block text-sm font-bold text-gray-700 mb-2">Valor Conferido (Contagem)</label>
+                        <input 
+                            type="number" 
+                            step="0.01"
+                            className="w-full text-center text-2xl font-bold border-2 border-blue-500 rounded-xl p-3 focus:outline-none bg-blue-50"
+                            placeholder="0.00"
+                            value={closeCountedAmount}
+                            onChange={e => setCloseCountedAmount(e.target.value)}
+                            autoFocus
+                        />
+                        {closeCountedAmount && (
+                            <p className={`text-center text-sm mt-2 font-bold ${(parseFloat(closeCountedAmount) - expectedCash) < 0 ? 'text-red-500' : 'text-green-500'}`}>
+                                Diferença: R$ {(parseFloat(closeCountedAmount) - expectedCash).toFixed(2)}
+                            </p>
+                        )}
+                    </div>
+
+                    <div className="flex gap-3">
+                        <Button type="button" variant="secondary" onClick={() => setCloseModalOpen(false)} className="flex-1">Cancelar</Button>
+                        <Button onClick={handleCloseRegister} className="flex-1 bg-slate-800 hover:bg-slate-900" disabled={!closeCountedAmount}>Concluir Fechamento</Button>
+                    </div>
+                </div>
+            </div>
+        )}
+
         {/* Sidebar Mini (Horizontal on mobile, Vertical on desktop) */}
         <div className="w-full lg:w-20 bg-slate-900 text-white flex flex-row lg:flex-col items-center justify-center lg:justify-start py-4 lg:py-6 gap-6 shrink-0 z-10 sticky top-0 lg:h-screen">
             <button 
@@ -122,6 +312,13 @@ export const CashierDashboard: React.FC = () => {
                 title="Histórico de Vendas"
             >
                 <History size={24} />
+            </button>
+            <button 
+                onClick={() => setActiveTab('MANAGE')}
+                className={`p-3 rounded-xl transition-all mt-auto ${activeTab === 'MANAGE' ? 'bg-red-600 shadow-lg' : 'hover:bg-slate-800 text-slate-400'}`}
+                title="Gestão de Caixa (Sangria/Fechar)"
+            >
+                <Wallet size={24} />
             </button>
         </div>
 
@@ -412,6 +609,81 @@ export const CashierDashboard: React.FC = () => {
                             </tbody>
                        </table>
                    </div>
+              </div>
+          </div>
+      )}
+
+      {activeTab === 'MANAGE' && (
+          <div className="flex-1 p-4 lg:p-8 h-screen overflow-y-auto">
+              <h2 className="text-2xl font-bold text-gray-800 mb-6">Gestão de Caixa</h2>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl">
+                  {/* Cards de Ação */}
+                  <div 
+                      onClick={() => setBleedModalOpen(true)} 
+                      className="bg-white p-6 rounded-xl shadow-sm border border-l-4 border-l-red-500 cursor-pointer hover:shadow-md transition-all flex flex-col items-center text-center gap-2 group"
+                  >
+                      <div className="p-4 bg-red-50 rounded-full group-hover:bg-red-100 text-red-600"><ArrowDown size={32} /></div>
+                      <h3 className="text-xl font-bold text-gray-800">Sangria</h3>
+                      <p className="text-sm text-gray-500">Retirada de dinheiro para pagamentos ou segurança.</p>
+                  </div>
+
+                  <div 
+                      onClick={() => setCloseModalOpen(true)} 
+                      className="bg-white p-6 rounded-xl shadow-sm border border-l-4 border-l-slate-800 cursor-pointer hover:shadow-md transition-all flex flex-col items-center text-center gap-2 group"
+                  >
+                      <div className="p-4 bg-slate-50 rounded-full group-hover:bg-slate-100 text-slate-800"><Lock size={32} /></div>
+                      <h3 className="text-xl font-bold text-gray-800">Fechar Caixa</h3>
+                      <p className="text-sm text-gray-500">Conferência final e encerramento do turno.</p>
+                  </div>
+              </div>
+
+              {/* Resumo do Turno */}
+              <div className="mt-8 bg-white rounded-xl shadow-sm border p-6 max-w-4xl">
+                  <h3 className="font-bold text-lg mb-4 flex items-center gap-2"><History size={20}/> Resumo Financeiro do Turno</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div className="bg-gray-50 p-3 rounded-lg">
+                            <span className="text-xs text-gray-500 uppercase font-bold">Fundo Inicial</span>
+                            <div className="font-bold text-xl">R$ {state.activeCashSession?.initialAmount.toFixed(2)}</div>
+                        </div>
+                        <div className="bg-green-50 p-3 rounded-lg text-green-800">
+                            <span className="text-xs uppercase font-bold">Vendas (Dinheiro)</span>
+                            <div className="font-bold text-xl">+ R$ {totalSalesCash.toFixed(2)}</div>
+                        </div>
+                        <div className="bg-red-50 p-3 rounded-lg text-red-800">
+                            <span className="text-xs uppercase font-bold">Sangrias</span>
+                            <div className="font-bold text-xl">- R$ {totalBleed.toFixed(2)}</div>
+                        </div>
+                        <div className="bg-blue-50 p-3 rounded-lg text-blue-800">
+                            <span className="text-xs uppercase font-bold">Em Gaveta (Est.)</span>
+                            <div className="font-bold text-xl">R$ {expectedCash.toFixed(2)}</div>
+                        </div>
+                  </div>
+                  
+                  <h4 className="font-bold text-sm mt-6 mb-2">Movimentações do Turno</h4>
+                  <div className="overflow-x-auto border rounded-lg">
+                      <table className="w-full text-sm text-left">
+                          <thead className="bg-gray-100">
+                              <tr>
+                                  <th className="p-2">Hora</th>
+                                  <th className="p-2">Tipo</th>
+                                  <th className="p-2">Motivo</th>
+                                  <th className="p-2 text-right">Valor</th>
+                              </tr>
+                          </thead>
+                          <tbody>
+                              {state.cashMovements.map(m => (
+                                  <tr key={m.id} className="border-b last:border-0">
+                                      <td className="p-2">{m.timestamp.toLocaleTimeString()}</td>
+                                      <td className="p-2"><span className="bg-red-100 text-red-800 px-2 py-0.5 rounded text-xs font-bold">{m.type}</span></td>
+                                      <td className="p-2">{m.reason}</td>
+                                      <td className="p-2 text-right font-bold text-red-600">- R$ {m.amount.toFixed(2)}</td>
+                                  </tr>
+                              ))}
+                              {state.cashMovements.length === 0 && <tr><td colSpan={4} className="p-4 text-center text-gray-400">Nenhuma movimentação extra.</td></tr>}
+                          </tbody>
+                      </table>
+                  </div>
               </div>
           </div>
       )}

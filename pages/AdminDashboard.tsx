@@ -5,7 +5,7 @@ import { Button } from '../components/Button';
 import { QRCodeGenerator } from '../components/QRCodeGenerator';
 import { ImageUploader } from '../components/ImageUploader';
 import { Product, ProductType, Role, User, InventoryItem, Expense, InventoryType, Supplier, PurchaseItemInput, PurchaseInstallment } from '../types';
-import { LayoutDashboard, Utensils, QrCode, Printer, ExternalLink, Palette, Eye, EyeOff, Save, Copy, Plus, Users, ShieldCheck, Trash2, Edit, AlertTriangle, FileBarChart, X, ArrowUp, ArrowDown, LayoutGrid, List as ListIcon, Image as ImageIcon, Calendar, TrendingUp, Search, Loader2, Menu, Activity, CheckSquare, GripVertical, Link as LinkIcon, Share2, Lock, BookOpen, Package, DollarSign, Archive, TrendingDown, RefreshCcw, Layers, ArrowLeft, Truck, FileText, ClipboardList } from 'lucide-react';
+import { LayoutDashboard, Utensils, QrCode, Printer, ExternalLink, Palette, Eye, EyeOff, Save, Copy, Plus, Users, ShieldCheck, Trash2, Edit, AlertTriangle, FileBarChart, X, ArrowUp, ArrowDown, LayoutGrid, List as ListIcon, Image as ImageIcon, Calendar, TrendingUp, Search, Loader2, Menu, Activity, CheckSquare, GripVertical, Link as LinkIcon, Share2, Lock, BookOpen, Package, DollarSign, Archive, TrendingDown, RefreshCcw, Layers, ArrowLeft, Truck, FileText, ClipboardList, FileSpreadsheet, PieChart, CreditCard } from 'lucide-react';
 import { getTenantSlug } from '../utils/tenant';
 import { supabase } from '../lib/supabase';
 import { Link } from 'react-router-dom';
@@ -13,7 +13,7 @@ import { Link } from 'react-router-dom';
 export const AdminDashboard: React.FC = () => {
   const { state, dispatch } = useRestaurant();
   const { showAlert, showConfirm } = useUI();
-  const [activeTab, setActiveTab] = useState<'DASHBOARD' | 'PRODUCTS' | 'TABLES' | 'CUSTOMIZATION' | 'STAFF' | 'AUDIT' | 'REPORTS' | 'INVENTORY' | 'FINANCE'>('DASHBOARD');
+  const [activeTab, setActiveTab] = useState<'DASHBOARD' | 'PRODUCTS' | 'TABLES' | 'CUSTOMIZATION' | 'STAFF' | 'AUDIT' | 'REPORTS' | 'ACCOUNTING' | 'INVENTORY' | 'FINANCE'>('DASHBOARD');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [localTheme, setLocalTheme] = useState(state.theme);
 
@@ -68,11 +68,18 @@ export const AdminDashboard: React.FC = () => {
   // Finance State
   const [editingExpense, setEditingExpense] = useState<Partial<Expense> | null>(null);
 
-  // Report State
-  const [reportDateStart, setReportDateStart] = useState(new Date().toISOString().split('T')[0]);
-  const [reportDateEnd, setReportDateEnd] = useState(new Date().toISOString().split('T')[0]);
-  const [reportData, setReportData] = useState<any>({ transactions: [], topProducts: [], totalSales: 0, salesByMethod: {} });
-  const [loadingReport, setLoadingReport] = useState(false);
+  // Accounting / Report State
+  const [accountingDateStart, setAccountingDateStart] = useState(new Date(new Date().setDate(1)).toISOString().split('T')[0]); // 1st of month
+  const [accountingDateEnd, setAccountingDateEnd] = useState(new Date().toISOString().split('T')[0]);
+  const [accountingData, setAccountingData] = useState<any>({ 
+      revenue: 0, 
+      expenses: 0, 
+      netIncome: 0, 
+      byMethod: {}, 
+      expensesByCategory: {},
+      transactionsCount: 0 
+  });
+  const [loadingAccounting, setLoadingAccounting] = useState(false);
 
   // Helpers
   const getTableUrl = (tableId: string) => `${window.location.origin}/client/table/${tableId}?restaurant=${state.tenantSlug || getTenantSlug()}`;
@@ -86,7 +93,6 @@ export const AdminDashboard: React.FC = () => {
       printWindow.document.close();
     }
   };
-  const handlePrintReport = () => window.print();
   
   const copyInviteLink = (userEmail?: string) => {
       if (!userEmail) return showAlert({ title: "Atenção", message: "Sem email cadastrado.", type: 'WARNING' });
@@ -95,20 +101,68 @@ export const AdminDashboard: React.FC = () => {
       navigator.clipboard.writeText(link).then(() => showAlert({ title: "Copiado!", message: "Link copiado.", type: 'SUCCESS' }));
   };
 
-  // --- REPORT FETCHING ---
-  const fetchReportData = useCallback(async () => {
-      if (!state.tenantId || !state.planLimits.allowReports) return;
-      setLoadingReport(true);
-      const start = reportDateStart + ' 00:00:00';
-      const end = reportDateEnd + ' 23:59:59';
-      try {
-          const { data: transactions } = await supabase.from('transactions').select('*').eq('tenant_id', state.tenantId).gte('created_at', start).lte('created_at', end);
-          const totalSales = transactions?.reduce((acc, t) => acc + t.amount, 0) || 0;
-          setReportData({ transactions: transactions || [], topProducts: [], totalSales, salesByMethod: {} });
-      } catch (error) { console.error(error); } finally { setLoadingReport(false); }
-  }, [state.tenantId, reportDateStart, reportDateEnd, state.planLimits.allowReports]);
+  // --- ACCOUNTING FETCHING ---
+  const fetchAccountingData = useCallback(async () => {
+      if (!state.tenantId) return;
+      setLoadingAccounting(true);
+      
+      const start = accountingDateStart + ' 00:00:00';
+      const end = accountingDateEnd + ' 23:59:59';
 
-  useEffect(() => { if (activeTab === 'REPORTS') fetchReportData(); }, [activeTab, fetchReportData]);
+      try {
+          // 1. Fetch Transactions (Revenue)
+          const { data: trans } = await supabase
+            .from('transactions')
+            .select('*')
+            .eq('tenant_id', state.tenantId)
+            .gte('created_at', start)
+            .lte('created_at', end);
+
+          // 2. Fetch Expenses (Cost)
+          const { data: exps } = await supabase
+            .from('expenses')
+            .select('*')
+            .eq('tenant_id', state.tenantId)
+            .gte('due_date', accountingDateStart) // Use due date for cash flow proxy or accrued
+            .lte('due_date', accountingDateEnd);
+
+          const revenue = trans?.reduce((acc, t) => acc + t.amount, 0) || 0;
+          const expensesTotal = exps?.reduce((acc, e) => acc + e.amount, 0) || 0;
+          
+          // Group by Method
+          const byMethod: any = {};
+          trans?.forEach(t => {
+              byMethod[t.method] = (byMethod[t.method] || 0) + t.amount;
+          });
+
+          // Group Expenses
+          const expByCat: any = {};
+          exps?.forEach(e => {
+              expByCat[e.category] = (expByCat[e.category] || 0) + e.amount;
+          });
+
+          setAccountingData({
+              revenue,
+              expenses: expensesTotal,
+              netIncome: revenue - expensesTotal,
+              byMethod,
+              expensesByCategory: expByCat,
+              transactionsCount: trans?.length || 0,
+              transactionsList: trans || [],
+              expensesList: exps || []
+          });
+
+      } catch (error) {
+          console.error(error);
+          showAlert({ title: "Erro", message: "Falha ao carregar dados contábeis.", type: 'ERROR' });
+      } finally {
+          setLoadingAccounting(false);
+      }
+  }, [state.tenantId, accountingDateStart, accountingDateEnd]);
+
+  useEffect(() => { 
+      if (activeTab === 'ACCOUNTING') fetchAccountingData(); 
+  }, [activeTab]); // Fetch on mount of tab, but filter change requires manual click usually, or useEffect dependency
 
   // --- INVENTORY LOGIC ---
   const handleAddIngredientToRecipe = () => {
@@ -351,7 +405,7 @@ export const AdminDashboard: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-100 flex relative">
-        <div className={`bg-slate-900 text-white w-64 p-6 fixed h-full z-50 transition-transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0`}>
+        <div className={`bg-slate-900 text-white w-64 p-6 fixed h-full z-50 transition-transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0 print:hidden`}>
             <div className="flex justify-between items-center mb-10">
                 <h1 className="text-xl font-bold">Admin Panel</h1>
                 <button onClick={() => setIsSidebarOpen(false)} className="md:hidden"><X /></button>
@@ -368,6 +422,11 @@ export const AdminDashboard: React.FC = () => {
                 
                 {(planLimits.allowExpenses || planLimits.allowPurchases) && (
                     <button onClick={() => setActiveTab('FINANCE')} className={`w-full text-left p-3 rounded flex items-center gap-3 ${activeTab==='FINANCE'?'bg-blue-600':''}`}><DollarSign size={18}/> Financeiro</button>
+                )}
+                
+                {/* NEW ACCOUNTING MODULE */}
+                {planLimits.allowReports && (
+                    <button onClick={() => setActiveTab('ACCOUNTING')} className={`w-full text-left p-3 rounded flex items-center gap-3 ${activeTab==='ACCOUNTING'?'bg-blue-600':''}`}><FileSpreadsheet size={18}/> Contabilidade</button>
                 )}
                 
                 {planLimits.allowStaff && (
@@ -387,7 +446,7 @@ export const AdminDashboard: React.FC = () => {
         </div>
 
         <div className="flex-1 p-4 md:p-8 h-screen overflow-y-auto">
-            <button onClick={() => setIsSidebarOpen(true)} className="md:hidden mb-4 p-2 bg-white rounded shadow"><Menu /></button>
+            <button onClick={() => setIsSidebarOpen(true)} className="md:hidden mb-4 p-2 bg-white rounded shadow print:hidden"><Menu /></button>
 
             {activeTab === 'DASHBOARD' && (
                 <div>
@@ -403,6 +462,135 @@ export const AdminDashboard: React.FC = () => {
                                 <div className="text-3xl font-bold">{state.inventory.filter(i => i.quantity <= i.minQuantity).length}</div>
                             </div>
                         )}
+                    </div>
+                </div>
+            )}
+
+            {/* --- NEW ACCOUNTING MODULE --- */}
+            {activeTab === 'ACCOUNTING' && planLimits.allowReports && (
+                <div className="space-y-6">
+                    {/* Header Filters */}
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-6 rounded-xl shadow-sm gap-4 print:hidden">
+                        <div>
+                            <h2 className="text-2xl font-bold text-gray-800">Relatório Contábil (DRE)</h2>
+                            <p className="text-sm text-gray-500">Extrato financeiro para contabilidade e gestão.</p>
+                        </div>
+                        <div className="flex flex-col md:flex-row gap-2 items-end">
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500">Início</label>
+                                <input type="date" className="border p-2 rounded" value={accountingDateStart} onChange={e => setAccountingDateStart(e.target.value)} />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500">Fim</label>
+                                <input type="date" className="border p-2 rounded" value={accountingDateEnd} onChange={e => setAccountingDateEnd(e.target.value)} />
+                            </div>
+                            <Button onClick={fetchAccountingData} disabled={loadingAccounting}>
+                                {loadingAccounting ? <Loader2 className="animate-spin" size={16}/> : <RefreshCcw size={16}/>} Atualizar
+                            </Button>
+                            <Button variant="secondary" onClick={() => window.print()}>
+                                <Printer size={16}/> Imprimir
+                            </Button>
+                        </div>
+                    </div>
+
+                    {/* PRINTABLE REPORT AREA */}
+                    <div className="bg-white p-8 rounded-xl shadow-sm print:shadow-none print:p-0">
+                        
+                        {/* Print Header */}
+                        <div className="hidden print:block mb-8 border-b pb-4">
+                            <h1 className="text-2xl font-bold">{state.theme.restaurantName} - Relatório Contábil</h1>
+                            <p className="text-gray-500">Período: {new Date(accountingDateStart).toLocaleDateString()} até {new Date(accountingDateEnd).toLocaleDateString()}</p>
+                        </div>
+
+                        {/* Executive Summary (DRE Simples) */}
+                        <div className="mb-8">
+                            <h3 className="font-bold text-lg mb-4 text-gray-800 border-b pb-2">DRE Gerencial (Resumo)</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
+                                <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 print:border-gray-300">
+                                    <span className="block text-xs font-bold text-blue-600 uppercase mb-1">Receita Bruta (Vendas)</span>
+                                    <span className="text-2xl font-bold text-gray-900">R$ {accountingData.revenue.toFixed(2)}</span>
+                                    <p className="text-xs text-gray-500 mt-1">{accountingData.transactionsCount} transações</p>
+                                </div>
+                                <div className="bg-red-50 p-4 rounded-lg border border-red-100 print:border-gray-300">
+                                    <span className="block text-xs font-bold text-red-600 uppercase mb-1">Despesas Operacionais</span>
+                                    <span className="text-2xl font-bold text-gray-900">R$ {accountingData.expenses.toFixed(2)}</span>
+                                    <p className="text-xs text-gray-500 mt-1">Compras e Contas</p>
+                                </div>
+                                <div className={`p-4 rounded-lg border ${accountingData.netIncome >= 0 ? 'bg-green-50 border-green-100' : 'bg-orange-50 border-orange-100'} print:border-gray-300`}>
+                                    <span className={`block text-xs font-bold uppercase mb-1 ${accountingData.netIncome >= 0 ? 'text-green-600' : 'text-orange-600'}`}>Resultado Líquido</span>
+                                    <span className="text-2xl font-bold text-gray-900">R$ {accountingData.netIncome.toFixed(2)}</span>
+                                    <p className="text-xs text-gray-500 mt-1">Lucro/Prejuízo Operacional</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Detailed Sections Grid */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            
+                            {/* Breakdown by Payment Method */}
+                            <div>
+                                <h3 className="font-bold text-md mb-4 flex items-center gap-2"><CreditCard size={18}/> Detalhamento por Método</h3>
+                                <table className="w-full text-sm border collapse">
+                                    <thead className="bg-gray-50 print:bg-gray-200">
+                                        <tr>
+                                            <th className="border p-2 text-left">Método</th>
+                                            <th className="border p-2 text-right">Valor</th>
+                                            <th className="border p-2 text-right">%</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {Object.entries(accountingData.byMethod).map(([method, amount]: any) => (
+                                            <tr key={method}>
+                                                <td className="border p-2 font-medium">
+                                                    {method === 'CREDIT' ? 'Cartão Crédito' : 
+                                                     method === 'DEBIT' ? 'Cartão Débito' : 
+                                                     method === 'PIX' ? 'Pix' : 
+                                                     method === 'CASH' ? 'Dinheiro' : method}
+                                                </td>
+                                                <td className="border p-2 text-right">R$ {amount.toFixed(2)}</td>
+                                                <td className="border p-2 text-right text-gray-500">
+                                                    {((amount / accountingData.revenue) * 100).toFixed(1)}%
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            {/* Expenses Breakdown */}
+                            <div>
+                                <h3 className="font-bold text-md mb-4 flex items-center gap-2"><TrendingDown size={18}/> Despesas por Categoria</h3>
+                                <table className="w-full text-sm border collapse">
+                                    <thead className="bg-gray-50 print:bg-gray-200">
+                                        <tr>
+                                            <th className="border p-2 text-left">Categoria</th>
+                                            <th className="border p-2 text-right">Valor</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {Object.keys(accountingData.expensesByCategory).length === 0 && <tr><td colSpan={2} className="p-4 text-center text-gray-400">Sem despesas no período.</td></tr>}
+                                        {Object.entries(accountingData.expensesByCategory).map(([cat, amount]: any) => (
+                                            <tr key={cat}>
+                                                <td className="border p-2">{cat}</td>
+                                                <td className="border p-2 text-right">R$ {amount.toFixed(2)}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        {/* Signatures Area (Print Only) */}
+                        <div className="hidden print:flex mt-20 pt-10 border-t border-gray-300 justify-between gap-10">
+                            <div className="flex-1 text-center">
+                                <div className="border-t border-black w-2/3 mx-auto mb-2"></div>
+                                <p className="text-xs font-bold">Responsável Financeiro</p>
+                            </div>
+                            <div className="flex-1 text-center">
+                                <div className="border-t border-black w-2/3 mx-auto mb-2"></div>
+                                <p className="text-xs font-bold">Contador(a)</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}
