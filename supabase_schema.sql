@@ -1,11 +1,15 @@
 
 -- ⚠️ ATENÇÃO: RODE ESTE SCRIPT NO "SQL EDITOR" DO SUPABASE ⚠️
 
--- 1. Alterar tabela de inventory_items para suportar tipos
+-- 1. Alterar tabela de inventory_items para suportar tipos e imagem
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='inventory_items' AND column_name='type') THEN
         ALTER TABLE inventory_items ADD COLUMN type TEXT DEFAULT 'INGREDIENT'; -- 'INGREDIENT' (Matéria Prima), 'RESALE' (Revenda), 'COMPOSITE' (Produzido)
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='inventory_items' AND column_name='image') THEN
+        ALTER TABLE inventory_items ADD COLUMN image TEXT;
     END IF;
 END $$;
 

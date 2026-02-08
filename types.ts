@@ -150,6 +150,7 @@ export interface InventoryItem {
     minQuantity: number;
     costPrice: number;
     type: InventoryType; // Novo campo
+    image?: string; // Novo campo para imagem do estoque
     recipe?: InventoryRecipeItem[]; // Apenas para COMPOSITE
 }
 

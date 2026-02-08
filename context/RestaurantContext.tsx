@@ -295,6 +295,7 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 return {
                     id: i.id, name: i.name, unit: i.unit, quantity: i.quantity, minQuantity: i.min_quantity, costPrice: i.cost_price,
                     type: i.type || 'INGREDIENT',
+                    image: i.image, // Load Image
                     recipe: recipeItems
                 };
             });
@@ -444,7 +445,7 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     // ... (Existing Actions: ADD_INVENTORY_ITEM, PROCESS_PURCHASE, etc - Mantidos) ...
     // --- ERP HANDLERS ---
     if (action.type === 'ADD_INVENTORY_ITEM' && tenantId) {
-        // 1. Create the Item
+        // 1. Create the Item with IMAGE
         const { data: newItem, error } = await supabase.from('inventory_items').insert({
             tenant_id: tenantId,
             name: action.item.name,
@@ -452,7 +453,8 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             quantity: action.item.quantity,
             min_quantity: action.item.minQuantity,
             cost_price: action.item.costPrice,
-            type: action.item.type
+            type: action.item.type,
+            image: action.item.image // Save Image
         }).select().single();
 
         if (newItem && !error) {
@@ -543,7 +545,9 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         return;
     }
 
-    // --- NEW: INVENTORY ADJUSTMENT ---
+    // ... (Remainder of the file: PROCESS_INVENTORY_ADJUSTMENT, ADD_SUPPLIER, etc.)
+    // ... Copying existing logic for brevity as it remains unchanged ...
+    
     if (action.type === 'PROCESS_INVENTORY_ADJUSTMENT' && tenantId) {
         try {
             for (const adj of action.adjustments) {
@@ -553,10 +557,7 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                     const diff = adj.realQty - currentQty;
 
                     if (diff !== 0) {
-                        // Atualiza Estoque
                         await supabase.from('inventory_items').update({ quantity: adj.realQty }).eq('id', adj.itemId);
-                        
-                        // Cria Log
                         await supabase.from('inventory_logs').insert({
                             tenant_id: tenantId,
                             item_id: adj.itemId,
@@ -569,9 +570,7 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 }
             }
             logAudit(tenantId, 'INVENTORY_ADJUSTMENT', `Inventário realizado por ${state.currentUser?.name}`);
-        } catch (e) {
-            console.error(e);
-        }
+        } catch (e) { console.error(e); }
         return;
     }
 
@@ -598,7 +597,7 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         
         await supabase.from('products').insert({
             tenant_id: tenantId,
-            linked_inventory_item_id: action.product.linkedInventoryItemId, // IMPORTANT
+            linked_inventory_item_id: action.product.linkedInventoryItemId,
             name: action.product.name,
             description: action.product.description,
             price: action.product.price,
@@ -613,7 +612,6 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
 
     if (action.type === 'UPDATE_PRODUCT' && tenantId) {
-        // Agora atualizamos apenas os dados de "Vitrine", o vínculo de estoque não muda
         await supabase.from('products').update({
             name: action.product.name,
             description: action.product.description,
@@ -627,7 +625,6 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         return;
     }
 
-    // --- POS SALE (DIRECT SALE) ---
     if (action.type === 'PROCESS_POS_SALE' && tenantId) {
         if (!state.activeCashSession) {
             showAlert({ title: "Caixa Fechado", message: "Abra o caixa antes de realizar vendas.", type: 'ERROR' });
@@ -636,8 +633,8 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
         const { data: orderData, error } = await supabase.from('orders').insert({
             tenant_id: tenantId,
-            table_id: null, // Sem mesa associada
-            status: 'DELIVERED', // Já entregue/finalizado
+            table_id: null,
+            status: 'DELIVERED',
             is_paid: true
         }).select().single();
 
@@ -658,7 +655,6 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             });
             await supabase.from('order_items').insert(itemsToInsert);
 
-            // Register Transaction
             const itemsSummary = action.sale.items.map(i => `${i.quantity}x ${state.products.find(p => p.id === i.productId)?.name}`).join(', ');
             await supabase.from('transactions').insert({
                 tenant_id: tenantId,
@@ -670,7 +666,6 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 cashier_name: state.currentUser?.name || 'Caixa'
             });
 
-            // --- STOCK DEDUCTION LOGIC (Copied from PLACE_ORDER but adapted) ---
             for (const item of action.sale.items) {
                 const product = state.products.find(p => p.id === item.productId);
                 if (!product || !product.linkedInventoryItemId) continue;
@@ -712,7 +707,6 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         return;
     }
 
-    // --- ORDER LOGIC WITH AUTOMATIC STOCK DEDUCTION ---
     if (action.type === 'PLACE_ORDER' && tenantId) {
         const { data: orderData, error } = await supabase.from('orders').insert({
             tenant_id: tenantId,
@@ -738,8 +732,6 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             });
             await supabase.from('order_items').insert(itemsToInsert);
 
-            // --- STOCK DEDUCTION LOGIC ---
-            // Finds the LINKED inventory item for each product sold
             for (const item of action.items) {
                 const product = state.products.find(p => p.id === item.productId);
                 if (!product || !product.linkedInventoryItemId) continue;
@@ -748,7 +740,6 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 if (!invItem) continue;
 
                 if (invItem.type === 'RESALE') {
-                    // Direct Deduction
                     const newQty = Number(invItem.quantity) - Number(item.quantity);
                     await supabase.from('inventory_items').update({ quantity: newQty }).eq('id', invItem.id);
                     await supabase.from('inventory_logs').insert({
@@ -760,13 +751,11 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                         user_name: 'Sistema'
                     });
                 } else if (invItem.type === 'COMPOSITE' && invItem.recipe) {
-                    // Recipe Deduction
                     for (const recipeItem of invItem.recipe) {
                         const ingredient = state.inventory.find(i => i.id === recipeItem.ingredientId);
                         if(ingredient) {
                             const totalNeeded = Number(recipeItem.quantity) * Number(item.quantity);
                             const newQty = Number(ingredient.quantity) - totalNeeded;
-                            
                             await supabase.from('inventory_items').update({ quantity: newQty }).eq('id', ingredient.id);
                             await supabase.from('inventory_logs').insert({
                                 tenant_id: tenantId,
@@ -788,10 +777,9 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             showAlert({ title: "Caixa Fechado", message: "Abra o caixa antes de receber pagamentos.", type: 'ERROR' });
             return;
         }
-        dispatchLocal(action); // Default behavior via trigger if any
+        dispatchLocal(action);
     }
 
-    // Default handlers
     switch (action.type) {
         case 'UPDATE_STOCK':
             if (tenantId) {
@@ -804,7 +792,6 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             }
             break;
         case 'DELETE_PRODUCT': if (tenantId) await supabase.from('products').delete().eq('id', action.productId); break;
-        // ... Other generic handlers (UPDATE_ITEM_STATUS, PROCESS_PAYMENT, etc) passed through
         default: dispatchLocal(action);
     }
   };
