@@ -177,9 +177,9 @@ export const ClientApp: React.FC = () => {
 
   const cartTotal = cart.reduce((acc, item) => acc + (item.product.price * item.quantity), 0);
   
-  // Filter products: Must be visible AND NOT an ingredient
+  // Filter products: Must be visible
   const visibleProducts = state.products
-    .filter(p => p.isVisible && p.format !== 'INGREDIENT')
+    .filter(p => p.isVisible)
     .sort((a, b) => (a.sortOrder || 99) - (b.sortOrder || 99));
 
   return (

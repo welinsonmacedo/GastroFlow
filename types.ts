@@ -5,7 +5,7 @@ export enum Role {
   KITCHEN = 'KITCHEN',
   CASHIER = 'CASHIER',
   ADMIN = 'ADMIN',
-  SUPER_ADMIN = 'SUPER_ADMIN' // Dono do Sistema
+  SUPER_ADMIN = 'SUPER_ADMIN'
 }
 
 export enum TableStatus {
@@ -32,9 +32,9 @@ export enum OrderStatus {
 export type PlanType = 'FREE' | 'PRO' | 'ENTERPRISE';
 
 export interface PlanLimits {
-    maxTables: number;   // -1 para infinito
-    maxProducts: number; // -1 para infinito
-    maxStaff: number;    // -1 para infinito
+    maxTables: number;
+    maxProducts: number;
+    maxStaff: number;
     allowKds: boolean;
     allowCashier: boolean;
     allowReports?: boolean;
@@ -46,8 +46,8 @@ export interface Plan {
     name: string;
     price: string;
     period: string;
-    features: string[]; // Texto de exibição
-    limits?: PlanLimits; // Configuração real
+    features: string[];
+    limits?: PlanLimits;
     is_popular: boolean;
     button_text: string;
 }
@@ -61,18 +61,18 @@ export interface RestaurantTenant {
   status: 'ACTIVE' | 'INACTIVE';
   plan: PlanType;
   joinedAt: Date;
-  requestCount?: number; // Nova métrica de uso
+  requestCount?: number;
 }
 // ------------------
 
 export interface User {
   id: string;
-  auth_user_id?: string; // ID do Supabase Auth
+  auth_user_id?: string;
   name: string;
-  email?: string; // Email opcional para contato/login
+  email?: string;
   role: Role;
   pin: string; 
-  allowedRoutes?: string[]; // Nova propriedade para permissões granulares
+  allowedRoutes?: string[];
 }
 
 export interface OnlineUser {
@@ -96,31 +96,45 @@ export interface Transaction {
   tableId: string;
   tableNumber: number;
   amount: number;
-  method: 'CASH' | 'CARD' | 'PIX' | 'CREDIT' | 'DEBIT'; // Atualizado
+  method: 'CASH' | 'CARD' | 'PIX' | 'CREDIT' | 'DEBIT';
   timestamp: Date;
   itemsSummary: string;
   cashierName: string;
 }
 
-export interface ProductRecipeItem {
-    inventoryItemId: string;
-    inventoryItemName?: string; // Para display
+// --- ERP TYPES UPDATED ---
+
+export type InventoryType = 'INGREDIENT' | 'RESALE' | 'COMPOSITE';
+
+export interface InventoryRecipeItem {
+    ingredientId: string;
+    ingredientName: string;
     quantity: number;
-    unit?: string;
-    cost?: number; // Para cálculo de custo
+    unit: string;
+    cost: number;
 }
 
+export interface InventoryItem {
+    id: string;
+    name: string;
+    unit: string; // kg, lt, un
+    quantity: number;
+    minQuantity: number;
+    costPrice: number;
+    type: InventoryType; // Novo campo
+    recipe?: InventoryRecipeItem[]; // Apenas para COMPOSITE
+}
+
+// Product agora é apenas uma "Vitrine" para um InventoryItem
 export interface Product {
   id: string;
-  name: string;
+  linkedInventoryItemId: string; // Obrigatório agora
+  name: string; // Pode ser diferente do estoque (nome comercial)
   description: string;
-  price: number;
-  costPrice?: number; // Novo: Preço de Custo
+  price: number; // Preço de Venda
+  costPrice?: number; // Vem do estoque
   category: string;
-  type: ProductType;
-  format?: 'SIMPLE' | 'COMPOSITE' | 'INGREDIENT'; // Novo: Formato do produto
-  linkedInventoryItemId?: string; // Para produtos SIMPLES
-  recipe?: ProductRecipeItem[]; // Para produtos COMPOSTOS
+  type: ProductType; // KITCHEN / BAR
   image: string; 
   isVisible: boolean; 
   sortOrder: number; 
@@ -165,26 +179,9 @@ export interface RestaurantTheme {
   backgroundColor: string;
   fontColor: string;
   logoUrl: string;
-  bannerUrl?: string; // Novo: Imagem de capa
+  bannerUrl?: string;
   restaurantName: string;
-  viewMode?: 'LIST' | 'GRID'; // Novo: Layout do cardápio
-}
-
-export interface DailyStats {
-  totalRevenue: number;
-  totalOrders: number;
-  topProduct: string;
-}
-
-// --- NEW ERP TYPES ---
-
-export interface InventoryItem {
-    id: string;
-    name: string;
-    unit: string; // kg, lt, un
-    quantity: number;
-    minQuantity: number;
-    costPrice: number;
+  viewMode?: 'LIST' | 'GRID';
 }
 
 export interface Supplier {
