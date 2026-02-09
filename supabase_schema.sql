@@ -67,7 +67,7 @@ FOR EACH ROW
 EXECUTE FUNCTION deduct_inventory_on_order();
 
 
--- 3. Recriar Função RPC de Venda (Transação Atômica) com CORREÇÃO DO PRODUCT_NAME
+-- 3. Recriar Função RPC de Venda (Transação Atômica) com CORREÇÃO DO PRODUCT_PRICE
 CREATE OR REPLACE FUNCTION process_pos_sale(
     p_tenant_id UUID,
     p_customer_name TEXT,
@@ -83,6 +83,7 @@ DECLARE
     v_notes TEXT;
     v_product_name TEXT;
     v_product_type TEXT;
+    v_product_price NUMERIC; -- Nova variável para preço
 BEGIN
     -- 1. Criar Pedido (Header)
     INSERT INTO orders (tenant_id, status, is_paid, customer_name)
@@ -97,8 +98,8 @@ BEGIN
         v_quantity := (v_item->>'quantity')::NUMERIC;
         v_notes := COALESCE(v_item->>'notes', '');
 
-        -- Buscar dados do produto (Nome e Tipo) para preencher colunas NOT NULL
-        SELECT name, type INTO v_product_name, v_product_type
+        -- Buscar dados do produto (Nome, Tipo e Preço) para preencher colunas NOT NULL
+        SELECT name, type, price INTO v_product_name, v_product_type, v_product_price
         FROM products
         WHERE id = v_product_id;
 
@@ -106,9 +107,10 @@ BEGIN
         IF v_product_name IS NULL THEN
             v_product_name := 'Produto Desconhecido';
             v_product_type := 'KITCHEN';
+            v_product_price := 0;
         END IF;
 
-        INSERT INTO order_items (tenant_id, order_id, product_id, quantity, notes, status, product_name, product_type)
+        INSERT INTO order_items (tenant_id, order_id, product_id, quantity, notes, status, product_name, product_type, product_price)
         VALUES (
             p_tenant_id, 
             v_order_id, 
@@ -117,7 +119,8 @@ BEGIN
             v_notes, 
             'DELIVERED',
             v_product_name,
-            v_product_type
+            v_product_type,
+            v_product_price
         );
     END LOOP;
 

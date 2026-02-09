@@ -205,8 +205,9 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                         quantity: i.quantity, 
                         notes: i.notes || '', 
                         status: 'PENDING',
-                        product_name: product?.name || 'Item Removido', // Required for Not Null constraint
-                        product_type: product?.type || 'KITCHEN'
+                        product_name: product?.name || 'Item Removido', 
+                        product_type: product?.type || 'KITCHEN',
+                        product_price: product?.price || 0 // FIX: Send product_price
                     };
                 });
                 await supabase.from('order_items').insert(items);
