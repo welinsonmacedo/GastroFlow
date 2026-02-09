@@ -4,7 +4,7 @@ import { useRestaurant } from '../../context/RestaurantContext';
 import { useUI } from '../../context/UIContext';
 import { Button } from '../../components/Button';
 import { ImageUploader } from '../../components/ImageUploader';
-import { Palette, LayoutTemplate, Type, Image as ImageIcon, Smartphone, ChefHat, Plus, Search, ShoppingCart, Building2, MapPin, Phone, FileText, Save, Loader2 } from 'lucide-react';
+import { Palette, LayoutTemplate, Type, Image as ImageIcon, Smartphone, ChefHat, Plus, Search, ShoppingCart, Building2, MapPin, Phone, FileText, Save, Loader2, Store } from 'lucide-react';
 import { RestaurantBusinessInfo } from '../../types';
 
 export const AdminSettings: React.FC = () => {
@@ -25,7 +25,7 @@ export const AdminSettings: React.FC = () => {
 
   const handleSaveTheme = async () => {
       await dispatch({ type: 'UPDATE_THEME', theme: localTheme });
-      showAlert({ title: 'Sucesso', message: 'Identidade visual atualizada!', type: 'SUCCESS' });
+      showAlert({ title: 'Sucesso', message: 'Configurações visuais atualizadas!', type: 'SUCCESS' });
   };
 
   const handleSaveBusiness = async () => {
@@ -103,19 +103,24 @@ export const AdminSettings: React.FC = () => {
   return (
     <div className="max-w-7xl mx-auto animate-fade-in pb-10">
         
+        <header className="mb-8">
+            <h2 className="text-2xl font-bold text-gray-800">Configurações Gerais</h2>
+            <p className="text-gray-500">Gerencie a aparência do app e os dados do estabelecimento.</p>
+        </header>
+
         {/* Navigation Tabs */}
         <div className="flex gap-4 mb-8 border-b">
             <button 
                 onClick={() => setActiveTab('VISUAL')} 
                 className={`px-4 py-3 font-bold text-sm flex items-center gap-2 border-b-2 transition-colors ${activeTab === 'VISUAL' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
             >
-                <Palette size={18}/> Identidade Visual
+                <Palette size={18}/> Aparência & App
             </button>
             <button 
                 onClick={() => setActiveTab('BUSINESS')} 
                 className={`px-4 py-3 font-bold text-sm flex items-center gap-2 border-b-2 transition-colors ${activeTab === 'BUSINESS' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-800'}`}
             >
-                <Building2 size={18}/> Dados da Empresa
+                <Store size={18}/> Dados do Estabelecimento
             </button>
         </div>
 
@@ -125,10 +130,10 @@ export const AdminSettings: React.FC = () => {
                 <div className="flex-1 space-y-6">
                     <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
                         <h2 className="text-xl font-bold mb-1 text-gray-800 flex items-center gap-2"><LayoutTemplate className="text-blue-600"/> Marca & Cores</h2>
-                        <p className="text-sm text-gray-500 mb-6">Defina como seus clientes verão o cardápio.</p>
+                        <p className="text-sm text-gray-500 mb-6">Defina como seus clientes verão o cardápio digital.</p>
                         <div className="space-y-5">
                             <div>
-                                <label className="block text-xs font-bold mb-1 text-gray-600 uppercase tracking-wider">Nome do Restaurante</label>
+                                <label className="block text-xs font-bold mb-1 text-gray-600 uppercase tracking-wider">Nome de Exibição (App)</label>
                                 <input className="w-full border-2 border-gray-200 p-3 rounded-xl text-sm focus:border-blue-500 focus:outline-none" value={localTheme.restaurantName} onChange={e => setLocalTheme({...localTheme, restaurantName: e.target.value})} placeholder="Ex: Burguer King" />
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -162,7 +167,7 @@ export const AdminSettings: React.FC = () => {
                             </div>
                         </div>
                     </div>
-                    <Button onClick={handleSaveTheme} className="w-full py-4 text-lg shadow-lg">Salvar e Publicar Visual</Button>
+                    <Button onClick={handleSaveTheme} className="w-full py-4 text-lg shadow-lg">Salvar Configurações</Button>
                 </div>
                 <div className="lg:w-[350px] shrink-0">
                     <div className="sticky top-6">
@@ -177,8 +182,8 @@ export const AdminSettings: React.FC = () => {
         {activeTab === 'BUSINESS' && (
             <div className="max-w-3xl mx-auto">
                 <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-200">
-                    <h2 className="text-xl font-bold mb-1 text-gray-800 flex items-center gap-2"><Building2 className="text-orange-600"/> Dados Cadastrais</h2>
-                    <p className="text-sm text-gray-500 mb-8">Informações legais para exibição em notas e rodapé.</p>
+                    <h2 className="text-xl font-bold mb-1 text-gray-800 flex items-center gap-2"><Building2 className="text-orange-600"/> Dados da Empresa</h2>
+                    <p className="text-sm text-gray-500 mb-8">Estes dados aparecem nas notas impressas e no rodapé do sistema.</p>
 
                     <div className="space-y-6">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -280,7 +285,7 @@ export const AdminSettings: React.FC = () => {
                         </div>
 
                         <Button onClick={handleSaveBusiness} className="w-full py-4 text-lg shadow-lg flex items-center justify-center gap-2">
-                            <Save size={20} /> Salvar Dados da Empresa
+                            <Save size={20} /> Salvar Dados
                         </Button>
                     </div>
                 </div>

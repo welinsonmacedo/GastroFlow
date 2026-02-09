@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { useRestaurant } from '../context/RestaurantContext';
 import { Link } from 'react-router-dom';
 import { 
-    LayoutDashboard, Utensils, QrCode, Palette, Users, 
+    LayoutDashboard, Utensils, QrCode, Settings, Users, 
     FileSpreadsheet, Package, DollarSign, ArrowLeft, Menu, X, BookOpen 
 } from 'lucide-react';
 
@@ -71,7 +71,7 @@ export const AdminDashboard: React.FC = () => {
                 <NavButton tab="STAFF" label="Equipe & Acesso" icon={Users} requiredFeature="allowStaff" />
                 
                 <div className="pt-4 pb-2 text-xs font-bold text-slate-500 uppercase">Sistema</div>
-                <NavButton tab="CUSTOMIZATION" label="Personalização" icon={Palette} requiredFeature="allowCustomization" />
+                <NavButton tab="CUSTOMIZATION" label="Configurações" icon={Settings} requiredFeature="allowCustomization" />
             </nav>
 
             <div className="pt-6 border-t border-slate-800 mt-auto space-y-1">

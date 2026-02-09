@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useRestaurant } from '../../context/RestaurantContext';
 import { useUI } from '../../context/UIContext';
@@ -31,12 +32,114 @@ export const AdminTables: React.FC = () => {
   }
   
   const handlePrint = (tableId: string) => {
+    const table = state.tables.find(t => t.id === tableId);
+    const tableNumber = table ? table.number : tableId.replace('t', '');
+    const restaurantName = state.theme.restaurantName || 'Restaurante';
+
     const targetUrl = getTableUrl(tableId);
     const encodedUrl = encodeURIComponent(targetUrl);
-    const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodedUrl}&bgcolor=ffffff`;
+    // Increased size for better print quality
+    const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodedUrl}&bgcolor=ffffff`;
+    
     const printWindow = window.open('', '_blank');
     if (printWindow) {
-      printWindow.document.write(`<html><head><title>Mesa ${tableId}</title></head><body style="text-align:center;"><h1>Mesa ${tableId.replace('t','')}</h1><img src="${qrImageUrl}" onload="window.print();window.close()" /></body></html>`);
+      printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>Mesa ${tableNumber} - QR Code</title>
+            <style>
+              @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+              body {
+                font-family: 'Inter', sans-serif;
+                margin: 0;
+                padding: 0;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                height: 100vh;
+                background-color: #fff;
+              }
+              .card {
+                border: 2px dashed #000;
+                padding: 40px;
+                border-radius: 20px;
+                text-align: center;
+                width: 320px;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+              }
+              .welcome {
+                font-size: 16px;
+                text-transform: uppercase;
+                letter-spacing: 2px;
+                color: #555;
+                margin-bottom: 5px;
+              }
+              .restaurant-name {
+                font-size: 24px;
+                font-weight: 900;
+                margin-bottom: 20px;
+                line-height: 1.2;
+              }
+              .table-wrapper {
+                background: #000;
+                color: #fff;
+                padding: 5px 20px;
+                border-radius: 50px;
+                margin-bottom: 10px;
+              }
+              .table-label {
+                font-size: 12px;
+                font-weight: 700;
+                text-transform: uppercase;
+              }
+              .table-number {
+                font-size: 48px;
+                font-weight: 900;
+                line-height: 1;
+                margin: 10px 0;
+              }
+              .qr-img {
+                width: 220px;
+                height: 220px;
+                margin: 10px 0;
+              }
+              .instruction {
+                font-size: 14px;
+                font-weight: 500;
+                color: #333;
+                margin-top: 10px;
+              }
+              @media print {
+                body { height: auto; display: block; }
+                .card { margin: 20px auto; page-break-inside: avoid; border: 2px solid #000; }
+              }
+            </style>
+          </head>
+          <body>
+            <div class="card">
+              <div class="welcome">Seja Bem-vindo!</div>
+              <div class="restaurant-name">${restaurantName}</div>
+              
+              <div class="table-number">Mesa ${tableNumber}</div>
+              
+              <img src="${qrImageUrl}" class="qr-img" />
+              
+              <div class="instruction">Aponte a câmera do seu celular<br/>para acessar o cardápio e pedir.</div>
+            </div>
+            <script>
+              window.onload = function() {
+                setTimeout(function() {
+                  window.print();
+                  window.close();
+                }, 500);
+              }
+            </script>
+          </body>
+        </html>
+      `);
       printWindow.document.close();
     }
   };
