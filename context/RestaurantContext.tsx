@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
 import { Table, Order, Product, TableStatus, OrderStatus, RestaurantTheme, ServiceCall, PlanLimits, User, Role, POSSaleData, ProductType, RestaurantBusinessInfo } from '../types';
 import { getTenantSlug } from '../utils/tenant';
@@ -32,6 +31,7 @@ type Action =
   | { type: 'REALTIME_UPDATE_ORDERS'; orders: Order[] }
   | { type: 'REALTIME_UPDATE_PRODUCTS'; products: Product[] }
   | { type: 'REALTIME_UPDATE_SERVICE_CALLS'; calls: ServiceCall[] }
+  | { type: 'REALTIME_UPDATE_USERS'; users: User[] }
   | { type: 'UPDATE_THEME'; theme: RestaurantTheme }
   | { type: 'UPDATE_BUSINESS_INFO'; info: RestaurantBusinessInfo } // New
   | { type: 'UNLOCK_AUDIO' }
@@ -89,6 +89,7 @@ const restaurantReducer = (state: RestaurantState, action: Action): RestaurantSt
     case 'REALTIME_UPDATE_ORDERS': return { ...state, orders: action.orders };
     case 'REALTIME_UPDATE_PRODUCTS': return { ...state, products: action.products };
     case 'REALTIME_UPDATE_SERVICE_CALLS': return { ...state, serviceCalls: action.calls };
+    case 'REALTIME_UPDATE_USERS': return { ...state, users: action.users };
     case 'UPDATE_THEME': return { ...state, theme: action.theme };
     case 'UPDATE_BUSINESS_INFO': return { ...state, businessInfo: action.info };
     case 'UNLOCK_AUDIO': return { ...state, audioUnlocked: true };
@@ -136,7 +137,7 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 items: (o.items || []).map((i: any) => ({ id: i.id, productId: i.product_id, quantity: i.quantity, notes: i.notes, status: i.status, productName: i.product_name, productType: i.product_type }))
             }));
             const mappedCalls = (callsRes.data || []).map(c => ({ id: c.id, tableId: c.table_id, status: c.status, timestamp: new Date(c.created_at) }));
-            const mappedUsers = (staffRes.data || []).map(u => ({ id: u.id, name: u.name, role: u.role, pin: u.pin, email: u.email, auth_user_id: u.auth_user_id }));
+            const mappedUsers = (staffRes.data || []).map(u => ({ id: u.id, name: u.name, role: u.role, pin: u.pin, email: u.email, auth_user_id: u.auth_user_id, allowedRoutes: u.allowed_routes || [] }));
 
             dispatchLocal({
                 type: 'INIT_DATA',
@@ -195,6 +196,21 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         const { data } = await supabase.from('service_calls').select('*').eq('tenant_id', tenantId).eq('status', 'PENDING');
         if (data) dispatchLocal({ type: 'REALTIME_UPDATE_SERVICE_CALLS', calls: data.map(c => ({ id: c.id, tableId: c.table_id, status: c.status, timestamp: new Date(c.created_at) })) });
     }
+    const fetchUsers = async () => {
+        const { data } = await supabase.from('staff').select('*').eq('tenant_id', tenantId);
+        if (data) {
+             const mappedUsers = data.map(u => ({ 
+                 id: u.id, 
+                 name: u.name, 
+                 role: u.role, 
+                 pin: u.pin, 
+                 email: u.email, 
+                 auth_user_id: u.auth_user_id,
+                 allowedRoutes: u.allowed_routes || [] 
+             }));
+             dispatchLocal({ type: 'REALTIME_UPDATE_USERS', users: mappedUsers });
+        }
+    }
 
     const channel = supabase.channel(`rest_ops:${tenantId}`)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'restaurant_tables', filter: `tenant_id=eq.${tenantId}` }, fetchTables)
@@ -202,6 +218,7 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         .on('postgres_changes', { event: '*', schema: 'public', table: 'order_items', filter: `tenant_id=eq.${tenantId}` }, fetchOrders)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'products', filter: `tenant_id=eq.${tenantId}` }, fetchProducts)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'service_calls', filter: `tenant_id=eq.${tenantId}` }, fetchCalls)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'staff', filter: `tenant_id=eq.${tenantId}` }, fetchUsers)
         .subscribe();
 
     return () => { supabase.removeChannel(channel); };
@@ -311,8 +328,25 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             break;
 
         // --- Users ---
-        case 'ADD_USER': await supabase.from('staff').insert({ tenant_id: tenantId, name: action.user.name, role: action.user.role, pin: action.user.pin, email: action.user.email }); break;
-        case 'UPDATE_USER': await supabase.from('staff').update({ name: action.user.name, role: action.user.role, pin: action.user.pin, email: action.user.email }).eq('id', action.user.id); break;
+        case 'ADD_USER': 
+            await supabase.from('staff').insert({ 
+                tenant_id: tenantId, 
+                name: action.user.name, 
+                role: action.user.role, 
+                pin: action.user.pin, 
+                email: action.user.email,
+                allowed_routes: action.user.allowedRoutes 
+            }); 
+            break;
+        case 'UPDATE_USER': 
+            await supabase.from('staff').update({ 
+                name: action.user.name, 
+                role: action.user.role, 
+                pin: action.user.pin, 
+                email: action.user.email,
+                allowed_routes: action.user.allowedRoutes
+            }).eq('id', action.user.id); 
+            break;
         case 'DELETE_USER': await supabase.from('staff').delete().eq('id', action.userId); break;
 
         default: dispatchLocal(action);

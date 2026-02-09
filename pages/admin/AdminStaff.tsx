@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useRestaurant } from '../../context/RestaurantContext';
 import { useUI } from '../../context/UIContext';
@@ -11,6 +12,7 @@ export const AdminStaff: React.FC = () => {
   const { state, dispatch } = useRestaurant();
   const { showAlert, showConfirm } = useUI();
   
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [userForm, setUserForm] = useState<Partial<User>>({ name: '', role: Role.WAITER, pin: '', email: '', allowedRoutes: [] });
   const [copiedInviteId, setCopiedInviteId] = useState<string | null>(null);
@@ -38,6 +40,7 @@ export const AdminStaff: React.FC = () => {
       
       setEditingUser(null);
       setUserForm({ name: '', role: Role.WAITER, pin: '', email: '', allowedRoutes: [] });
+      setIsModalOpen(false);
       showAlert({ title: "Sucesso", message: "Usuário salvo! Se for novo, envie o link de convite.", type: 'SUCCESS' });
   };
 
@@ -62,7 +65,13 @@ export const AdminStaff: React.FC = () => {
                 <h2 className="text-2xl font-bold text-gray-800">Equipe</h2>
                 <p className="text-sm text-gray-500">Gerencie usuários e permissões de acesso.</p>
             </div>
-            <Button onClick={() => { setEditingUser(null); setUserForm({ name: '', role: Role.WAITER, pin: '', email: '', allowedRoutes: [] }); }}><UserPlus size={16}/> Novo Usuário</Button>
+            <Button onClick={() => { 
+                setEditingUser(null); 
+                setUserForm({ name: '', role: Role.WAITER, pin: '', email: '', allowedRoutes: [] }); 
+                setIsModalOpen(true);
+            }}>
+                <UserPlus size={16}/> Novo Usuário
+            </Button>
         </div>
         
         <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
@@ -110,7 +119,11 @@ export const AdminStaff: React.FC = () => {
                                 </td>
                                 <td className="p-4 text-right">
                                     <div className="flex items-center justify-end gap-2">
-                                        <button onClick={() => { setEditingUser(user); setUserForm(user); }} className="text-blue-600 hover:bg-blue-50 p-2 rounded transition-colors" title="Editar"><Edit size={16}/></button>
+                                        <button onClick={() => { 
+                                            setEditingUser(user); 
+                                            setUserForm(user); 
+                                            setIsModalOpen(true);
+                                        }} className="text-blue-600 hover:bg-blue-50 p-2 rounded transition-colors" title="Editar"><Edit size={16}/></button>
                                         <button onClick={() => showConfirm({ title: 'Excluir Usuário', message: 'Confirma a exclusão? O acesso será revogado.', onConfirm: () => dispatch({ type: 'DELETE_USER', userId: user.id }) })} className="text-red-600 hover:bg-red-50 p-2 rounded transition-colors" title="Excluir"><Trash2 size={16}/></button>
                                     </div>
                                 </td>
@@ -122,10 +135,10 @@ export const AdminStaff: React.FC = () => {
         </div>
 
         <Modal 
-            isOpen={!!userForm.name || !!editingUser} 
-            onClose={() => { setEditingUser(null); setUserForm({ name: '', role: Role.WAITER, pin: '', email: '', allowedRoutes: [] }); }}
+            isOpen={isModalOpen} 
+            onClose={() => setIsModalOpen(false)}
             title={editingUser ? 'Editar Usuário' : 'Novo Membro da Equipe'}
-            variant="dialog" // Keep small
+            variant="dialog"
             maxWidth="md"
         >
             <form onSubmit={handleSaveUser} className="space-y-4">
@@ -164,7 +177,7 @@ export const AdminStaff: React.FC = () => {
                 )}
 
                 <div className="flex gap-2 pt-2">
-                    <Button type="button" variant="secondary" onClick={() => { setEditingUser(null); setUserForm({ name: '', role: Role.WAITER, pin: '', email: '', allowedRoutes: [] }); }} className="flex-1">Cancelar</Button>
+                    <Button type="button" variant="secondary" onClick={() => setIsModalOpen(false)} className="flex-1">Cancelar</Button>
                     <Button type="submit" className="flex-1">Salvar Usuário</Button>
                 </div>
             </form>
