@@ -6,7 +6,10 @@ DROP FUNCTION IF EXISTS process_pos_sale(UUID, TEXT, NUMERIC, TEXT, JSONB);
 DROP TRIGGER IF EXISTS trg_deduct_stock ON order_items;
 DROP FUNCTION IF EXISTS deduct_inventory_on_order();
 
--- 2. Recriar Trigger de Estoque (Mais Robusto)
+-- 2. Adicionar coluna de Dados da Empresa na tabela tenants (JSONB para flexibilidade)
+ALTER TABLE tenants ADD COLUMN IF NOT EXISTS business_info JSONB DEFAULT '{}';
+
+-- 3. Recriar Trigger de Estoque (Mais Robusto)
 CREATE OR REPLACE FUNCTION deduct_inventory_on_order() RETURNS TRIGGER AS $$
 DECLARE
     v_linked_item_id UUID;
@@ -67,7 +70,7 @@ FOR EACH ROW
 EXECUTE FUNCTION deduct_inventory_on_order();
 
 
--- 3. Recriar Função RPC de Venda (Transação Atômica) com CORREÇÃO DO PRODUCT_PRICE
+-- 4. Recriar Função RPC de Venda (Transação Atômica) com CORREÇÃO DO PRODUCT_PRICE
 CREATE OR REPLACE FUNCTION process_pos_sale(
     p_tenant_id UUID,
     p_customer_name TEXT,
@@ -138,13 +141,13 @@ EXCEPTION
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- 4. Garantir Permissões
+-- 5. Garantir Permissões
 ALTER FUNCTION process_pos_sale(UUID, TEXT, NUMERIC, TEXT, JSONB) OWNER TO postgres;
 GRANT EXECUTE ON FUNCTION process_pos_sale(UUID, TEXT, NUMERIC, TEXT, JSONB) TO authenticated;
 GRANT EXECUTE ON FUNCTION process_pos_sale(UUID, TEXT, NUMERIC, TEXT, JSONB) TO service_role;
 GRANT EXECUTE ON FUNCTION process_pos_sale(UUID, TEXT, NUMERIC, TEXT, JSONB) TO anon;
 
--- 5. Publicar Tabelas no Realtime (Garante que o Front atualize)
+-- 6. Publicar Tabelas no Realtime (Garante que o Front atualize)
 ALTER PUBLICATION supabase_realtime ADD TABLE orders;
 ALTER PUBLICATION supabase_realtime ADD TABLE transactions;
 ALTER PUBLICATION supabase_realtime ADD TABLE order_items;

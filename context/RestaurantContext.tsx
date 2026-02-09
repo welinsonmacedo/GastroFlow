@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
-import { Table, Order, Product, TableStatus, OrderStatus, RestaurantTheme, ServiceCall, PlanLimits, User, Role, POSSaleData, ProductType } from '../types';
+import { Table, Order, Product, TableStatus, OrderStatus, RestaurantTheme, ServiceCall, PlanLimits, User, Role, POSSaleData, ProductType, RestaurantBusinessInfo } from '../types';
 import { getTenantSlug } from '../utils/tenant';
 import { supabase } from '../lib/supabase';
 import { useUI } from './UIContext';
@@ -17,6 +17,7 @@ interface RestaurantState {
   products: Product[];
   orders: Order[];
   theme: RestaurantTheme;
+  businessInfo: RestaurantBusinessInfo; // New
   serviceCalls: ServiceCall[];
   users: User[]; // Needed for PIN checks
   audioUnlocked: boolean;
@@ -32,6 +33,7 @@ type Action =
   | { type: 'REALTIME_UPDATE_PRODUCTS'; products: Product[] }
   | { type: 'REALTIME_UPDATE_SERVICE_CALLS'; calls: ServiceCall[] }
   | { type: 'UPDATE_THEME'; theme: RestaurantTheme }
+  | { type: 'UPDATE_BUSINESS_INFO'; info: RestaurantBusinessInfo } // New
   | { type: 'UNLOCK_AUDIO' }
   // Actions that trigger DB changes
   | { type: 'ADD_TABLE' }
@@ -60,8 +62,9 @@ const initialState: RestaurantState = {
   planLimits: { maxTables: -1, maxProducts: -1, maxStaff: -1, allowKds: true, allowCashier: true, allowReports: true, allowInventory: true, allowPurchases: true, allowExpenses: true, allowStaff: true, allowTableMgmt: true, allowCustomization: true },
   tables: [], products: [], orders: [],
   theme: { primaryColor: '#000', backgroundColor: '#fff', fontColor: '#000', logoUrl: '', restaurantName: 'Carregando...' },
+  businessInfo: {}, 
   serviceCalls: [], users: [],
-  audioUnlocked: true // Alterado para true para pular tela de bloqueio
+  audioUnlocked: true 
 };
 
 const RestaurantContext = createContext<{
@@ -87,6 +90,7 @@ const restaurantReducer = (state: RestaurantState, action: Action): RestaurantSt
     case 'REALTIME_UPDATE_PRODUCTS': return { ...state, products: action.products };
     case 'REALTIME_UPDATE_SERVICE_CALLS': return { ...state, serviceCalls: action.calls };
     case 'UPDATE_THEME': return { ...state, theme: action.theme };
+    case 'UPDATE_BUSINESS_INFO': return { ...state, businessInfo: action.info };
     case 'UNLOCK_AUDIO': return { ...state, audioUnlocked: true };
     default: return state;
   }
@@ -138,6 +142,7 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 type: 'INIT_DATA',
                 payload: {
                     tenantSlug: slug, tenantId: tenant.id, theme: tenant.theme_config || initialState.theme,
+                    businessInfo: tenant.business_info || {}, // Load Business Info
                     planLimits: currentLimits, tables: mappedTables, products: mappedProducts, orders: mappedOrders, serviceCalls: mappedCalls, users: mappedUsers
                 }
             });
@@ -271,9 +276,13 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             break;
         case 'DELETE_PRODUCT': await supabase.from('products').delete().eq('id', action.productId); break;
 
-        // --- Theme ---
+        // --- Settings ---
         case 'UPDATE_THEME':
             await supabase.from('tenants').update({ theme_config: action.theme }).eq('id', tenantId);
+            dispatchLocal(action);
+            break;
+        case 'UPDATE_BUSINESS_INFO':
+            await supabase.from('tenants').update({ business_info: action.info }).eq('id', tenantId);
             dispatchLocal(action);
             break;
 

@@ -58,6 +58,23 @@ export interface Plan {
     button_text: string;
 }
 
+export interface RestaurantBusinessInfo {
+    cnpj?: string;
+    phone?: string;
+    email?: string;
+    address?: {
+        cep: string;
+        street: string;
+        number: string;
+        complement?: string;
+        neighborhood: string;
+        city: string;
+        state: string;
+    };
+    instagram?: string;
+    website?: string;
+}
+
 export interface RestaurantTenant {
   id: string;
   name: string;
@@ -68,6 +85,7 @@ export interface RestaurantTenant {
   plan: PlanType;
   joinedAt: Date;
   requestCount?: number;
+  businessInfo?: RestaurantBusinessInfo; // New Field
 }
 // ------------------
 
