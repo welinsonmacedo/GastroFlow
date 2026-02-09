@@ -1,5 +1,7 @@
+
 import React, { useState } from 'react';
 import { useRestaurant } from '../../context/RestaurantContext';
+import { useInventory } from '../../context/InventoryContext';
 import { useUI } from '../../context/UIContext';
 import { Button } from '../../components/Button';
 import { ImageUploader } from '../../components/ImageUploader';
@@ -8,9 +10,10 @@ import { InventoryItem, Supplier, PurchaseItemInput, PurchaseInstallment } from 
 import { Plus, Trash2, Edit, ArrowDown, Info, Layers, ClipboardList, FileText, Truck, X, AlertTriangle, User as UserIcon, Phone, MapPin, Loader2 } from 'lucide-react';
 
 export const AdminInventory: React.FC = () => {
-  const { state, dispatch } = useRestaurant();
+  const { state: restState } = useRestaurant();
+  const { state: invState, addInventoryItem, updateInventoryItem, updateStock, processInventoryAdjustment, addSupplier, deleteSupplier, processPurchase } = useInventory();
   const { showAlert, showConfirm } = useUI();
-  const { planLimits } = state;
+  const { planLimits } = restState;
 
   // --- Inventory Item State ---
   const [editingInventory, setEditingInventory] = useState<Partial<InventoryItem> | null>(null);
@@ -75,14 +78,14 @@ export const AdminInventory: React.FC = () => {
 
   const handleAddIngredientToRecipe = () => {
       if(!selectedIngredientAdd) return;
-      const ing = state.inventory.find(i => i.id === selectedIngredientAdd);
+      const ing = invState.inventory.find(i => i.id === selectedIngredientAdd);
       if(ing) {
           setInvRecipeStep([...invRecipeStep, { ingredientId: ing.id, qty: 1 }]);
           setSelectedIngredientAdd('');
       }
   };
 
-  const handleSaveInventoryItem = (e: React.FormEvent) => {
+  const handleSaveInventoryItem = async (e: React.FormEvent) => {
       e.preventDefault();
       if(!editingInventory || !editingInventory.name) return;
 
@@ -92,7 +95,7 @@ export const AdminInventory: React.FC = () => {
       if (finalItem.type === 'COMPOSITE') {
           finalItem.recipe = invRecipeStep;
           const cost = invRecipeStep.reduce((acc: number, step: any) => {
-              const ing = state.inventory.find(i => i.id === step.ingredientId);
+              const ing = invState.inventory.find(i => i.id === step.ingredientId);
               return acc + ((ing?.costPrice || 0) * step.qty);
           }, 0);
           finalItem.costPrice = cost;
@@ -100,10 +103,10 @@ export const AdminInventory: React.FC = () => {
 
       // Check if ID exists to determine UPDATE or CREATE
       if (finalItem.id) {
-          dispatch({ type: 'UPDATE_INVENTORY_ITEM', item: finalItem as InventoryItem });
+          await updateInventoryItem(finalItem as InventoryItem);
           showAlert({ title: "Sucesso", message: "Item atualizado com sucesso!", type: 'SUCCESS' });
       } else {
-          dispatch({ type: 'ADD_INVENTORY_ITEM', item: finalItem as InventoryItem });
+          await addInventoryItem(finalItem as InventoryItem);
           showAlert({ title: "Sucesso", message: "Item cadastrado no estoque!", type: 'SUCCESS' });
       }
 
@@ -111,36 +114,30 @@ export const AdminInventory: React.FC = () => {
       setInvRecipeStep([]);
   };
 
-  const handleStockUpdate = (e: React.FormEvent) => {
+  const handleStockUpdate = async (e: React.FormEvent) => {
       e.preventDefault();
       if(!stockModal) return;
-      dispatch({ 
-          type: 'UPDATE_STOCK', 
-          itemId: stockModal.itemId, 
-          operation: stockModal.type, 
-          quantity: parseFloat(stockModal.quantity), 
-          reason: stockModal.reason 
-      });
+      await updateStock(stockModal.itemId, parseFloat(stockModal.quantity), stockModal.type, stockModal.reason);
       setStockModal(null);
       showAlert({ title: "Sucesso", message: "Movimentação registrada!", type: 'SUCCESS' });
   };
 
   const handleInventoryInit = () => {
       const initialCounts: {[key:string]: number} = {};
-      state.inventory.filter(i => i.type !== 'COMPOSITE').forEach(i => {
+      invState.inventory.filter(i => i.type !== 'COMPOSITE').forEach(i => {
           initialCounts[i.id] = i.quantity;
       });
       setInventoryCounts(initialCounts);
       setInventoryModalOpen(true);
   };
 
-  const handleInventorySave = () => {
+  const handleInventorySave = async () => {
       const adjustments = Object.keys(inventoryCounts).map(itemId => ({
           itemId,
           realQty: inventoryCounts[itemId]
       }));
       
-      dispatch({ type: 'PROCESS_INVENTORY_ADJUSTMENT', adjustments });
+      await processInventoryAdjustment(adjustments);
       setInventoryModalOpen(false);
       showAlert({ title: "Sucesso", message: "Inventário atualizado com sucesso!", type: 'SUCCESS' });
   };
@@ -179,10 +176,10 @@ export const AdminInventory: React.FC = () => {
       }
   };
 
-  const handleAddSupplier = (e: React.FormEvent) => {
+  const handleAddSupplier = async (e: React.FormEvent) => {
       e.preventDefault();
       if(!newSupplier.name) return;
-      dispatch({ type: 'ADD_SUPPLIER', supplier: { ...newSupplier, id: '' } as Supplier });
+      await addSupplier({ ...newSupplier, id: '' } as Supplier);
       setNewSupplier({ name: '', contactName: '', phone: '', cnpj: '', ie: '', email: '', cep: '', address: '', number: '', complement: '', city: '', state: '' });
       showAlert({ title: "Sucesso", message: "Fornecedor adicionado!", type: 'SUCCESS' });
   };
@@ -192,7 +189,7 @@ export const AdminInventory: React.FC = () => {
           title: "Excluir Fornecedor",
           message: "Confirma a exclusão deste fornecedor?",
           type: 'WARNING',
-          onConfirm: () => dispatch({ type: 'DELETE_SUPPLIER', supplierId: id })
+          onConfirm: async () => await deleteSupplier(id)
       });
   };
 
@@ -201,7 +198,7 @@ export const AdminInventory: React.FC = () => {
   const handleAddItemToPurchase = () => {
       if (!tempPurchaseItem.itemId || tempPurchaseItem.quantity <= 0) return;
       
-      const item = state.inventory.find(i => i.id === tempPurchaseItem.itemId);
+      const item = invState.inventory.find(i => i.id === tempPurchaseItem.itemId);
       if(!item) return;
 
       const newItem: PurchaseItemInput = {
@@ -260,7 +257,7 @@ export const AdminInventory: React.FC = () => {
       setPaymentInstallments(newInstallments);
   };
 
-  const submitPurchaseEntry = (e: React.FormEvent) => {
+  const submitPurchaseEntry = async (e: React.FormEvent) => {
       e.preventDefault();
       if(!purchaseForm.supplierId || !purchaseForm.invoiceNumber || purchaseForm.items.length === 0) {
           showAlert({ title: "Erro", message: "Preencha o fornecedor, número da nota e adicione itens.", type: 'ERROR' });
@@ -287,14 +284,11 @@ export const AdminInventory: React.FC = () => {
           return;
       }
 
-      dispatch({
-          type: 'PROCESS_PURCHASE',
-          purchase: {
-              ...purchaseForm,
-              date: new Date(purchaseForm.date),
-              totalAmount: grandTotal,
-              installments: finalInstallments
-          }
+      await processPurchase({
+          ...purchaseForm,
+          date: new Date(purchaseForm.date),
+          totalAmount: grandTotal,
+          installments: finalInstallments
       });
 
       setPurchaseModalOpen(false);
@@ -418,7 +412,7 @@ export const AdminInventory: React.FC = () => {
                         </tr>
                     </thead>
                     <tbody className="divide-y">
-                        {state.suppliers.map(s => (
+                        {invState.suppliers.map(s => (
                             <tr key={s.id} className="hover:bg-gray-50">
                                 <td className="p-2">
                                     <div className="font-medium text-gray-800">{s.name}</div>
@@ -437,7 +431,7 @@ export const AdminInventory: React.FC = () => {
                                 </td>
                             </tr>
                         ))}
-                        {state.suppliers.length === 0 && <tr><td colSpan={4} className="p-4 text-center text-gray-400">Nenhum fornecedor cadastrado.</td></tr>}
+                        {invState.suppliers.length === 0 && <tr><td colSpan={4} className="p-4 text-center text-gray-400">Nenhum fornecedor cadastrado.</td></tr>}
                     </tbody>
                 </table>
             </div>
@@ -463,8 +457,8 @@ export const AdminInventory: React.FC = () => {
                         </tr>
                     </thead>
                     <tbody className="divide-y">
-                        {state.inventoryLogs.map(log => {
-                            const item = state.inventory.find(i => i.id === log.item_id);
+                        {invState.inventoryLogs.map(log => {
+                            const item = invState.inventory.find(i => i.id === log.item_id);
                             return (
                                 <tr key={log.id} className="hover:bg-gray-50">
                                     <td className="p-3 whitespace-nowrap">{log.created_at.toLocaleString()}</td>
@@ -485,7 +479,7 @@ export const AdminInventory: React.FC = () => {
                                 </tr>
                             );
                         })}
-                        {state.inventoryLogs.length === 0 && <tr><td colSpan={6} className="p-8 text-center text-gray-400">Nenhum histórico recente.</td></tr>}
+                        {invState.inventoryLogs.length === 0 && <tr><td colSpan={6} className="p-8 text-center text-gray-400">Nenhum histórico recente.</td></tr>}
                     </tbody>
                 </table>
             </div>
@@ -504,7 +498,7 @@ export const AdminInventory: React.FC = () => {
                         <label className="block text-xs font-bold mb-1">Fornecedor</label>
                         <select className="w-full border p-2 rounded" value={purchaseForm.supplierId} onChange={e => setPurchaseForm({...purchaseForm, supplierId: e.target.value})}>
                             <option value="">Selecione...</option>
-                            {state.suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                            {invState.suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                         </select>
                     </div>
                     <div>
@@ -523,7 +517,7 @@ export const AdminInventory: React.FC = () => {
                             <label className="text-xs text-gray-500">Item do Estoque</label>
                             <select className="w-full border p-2 rounded text-sm" value={tempPurchaseItem.itemId} onChange={e => setTempPurchaseItem({...tempPurchaseItem, itemId: e.target.value})}>
                                 <option value="">Selecione o produto...</option>
-                                {state.inventory.filter(i => i.type !== 'COMPOSITE').map(i => (
+                                {invState.inventory.filter(i => i.type !== 'COMPOSITE').map(i => (
                                     <option key={i.id} value={i.id}>{i.name} ({i.unit})</option>
                                 ))}
                             </select>
@@ -552,7 +546,7 @@ export const AdminInventory: React.FC = () => {
                     </thead>
                     <tbody>
                         {purchaseForm.items.map((item, idx) => {
-                            const invItem = state.inventory.find(i => i.id === item.inventoryItemId);
+                            const invItem = invState.inventory.find(i => i.id === item.inventoryItemId);
                             let effectiveUnitCost = item.unitPrice;
                             const hasTax = purchaseForm.distributeTax && purchaseForm.taxAmount > 0;
                             if (hasTax && purchaseItemsTotal > 0) {
@@ -729,7 +723,7 @@ export const AdminInventory: React.FC = () => {
                         <div className="flex gap-2 mb-2">
                             <select className="flex-1 border p-1 text-sm rounded" value={selectedIngredientAdd} onChange={e => setSelectedIngredientAdd(e.target.value)}>
                                 <option value="">Adicionar ingrediente...</option>
-                                {state.inventory.filter(i => i.type !== 'COMPOSITE').map(i => (
+                                {invState.inventory.filter(i => i.type !== 'COMPOSITE').map(i => (
                                     <option key={i.id} value={i.id}>{i.name} ({i.unit})</option>
                                 ))}
                             </select>
@@ -737,7 +731,7 @@ export const AdminInventory: React.FC = () => {
                         </div>
                         <div className="space-y-2 max-h-40 overflow-y-auto">
                             {invRecipeStep.map((step, idx) => {
-                                const ing = state.inventory.find(i => i.id === step.ingredientId);
+                                const ing = invState.inventory.find(i => i.id === step.ingredientId);
                                 return (
                                     <div key={idx} className="flex justify-between items-center text-sm bg-white p-2 rounded border">
                                         <span>{ing?.name}</span>
@@ -761,7 +755,7 @@ export const AdminInventory: React.FC = () => {
                         </div>
                         <div className="mt-2 text-right text-sm font-bold text-gray-600">
                             Custo Estimado: R$ {invRecipeStep.reduce((acc, step) => {
-                                const ing = state.inventory.find(i => i.id === step.ingredientId);
+                                const ing = invState.inventory.find(i => i.id === step.ingredientId);
                                 return acc + ((ing?.costPrice || 0) * step.qty);
                             }, 0).toFixed(2)}
                         </div>
@@ -807,7 +801,7 @@ export const AdminInventory: React.FC = () => {
                             </tr>
                         </thead>
                         <tbody className="divide-y">
-                            {state.inventory.filter(i => i.type !== 'COMPOSITE').map(item => {
+                            {invState.inventory.filter(i => i.type !== 'COMPOSITE').map(item => {
                                 const currentQty = item.quantity;
                                 const realQty = inventoryCounts[item.id] ?? currentQty;
                                 const diff = realQty - currentQty;
@@ -857,7 +851,7 @@ export const AdminInventory: React.FC = () => {
                         </tr>
                     </thead>
                     <tbody className="divide-y">
-                        {state.inventory.map(item => (
+                        {invState.inventory.map(item => (
                             <tr key={item.id} className="hover:bg-gray-50">
                                 <td className="p-4 font-medium flex items-center gap-3">
                                     {item.image && <img src={item.image} className="w-8 h-8 rounded object-cover border" alt="" />}

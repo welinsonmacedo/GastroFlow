@@ -1,5 +1,7 @@
+
 import React, { useState } from 'react';
 import { useRestaurant } from '../../context/RestaurantContext';
+import { useInventory } from '../../context/InventoryContext';
 import { useUI } from '../../context/UIContext';
 import { Button } from '../../components/Button';
 import { Modal } from '../../components/Modal';
@@ -8,7 +10,8 @@ import { Product, ProductType } from '../../types';
 import { Plus, GripVertical, Edit, Eye, EyeOff, Trash2, ArrowDownUp, Tag } from 'lucide-react';
 
 export const AdminProducts: React.FC = () => {
-  const { state, dispatch } = useRestaurant();
+  const { state: restState, dispatch } = useRestaurant();
+  const { state: invState } = useInventory();
   const { showAlert, showConfirm } = useUI();
   
   const [menuModalOpen, setMenuModalOpen] = useState(false);
@@ -35,13 +38,13 @@ export const AdminProducts: React.FC = () => {
       name: ''
   });
 
-  const availableForMenu = state.inventory.filter(i => 
+  const availableForMenu = invState.inventory.filter(i => 
       (i.type === 'RESALE' || i.type === 'COMPOSITE') && 
-      !state.products.some(p => p.linkedInventoryItemId === i.id)
+      !restState.products.some(p => p.linkedInventoryItemId === i.id)
   );
 
-  const sortedProducts = [...state.products].sort((a,b) => (a.sortOrder || 0) - (b.sortOrder || 0));
-  const categories = ['Todas', ...Array.from(new Set(state.products.map(p => p.category)))];
+  const sortedProducts = [...restState.products].sort((a,b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+  const categories = ['Todas', ...Array.from(new Set(restState.products.map(p => p.category)))];
 
   const handleOpenAdd = () => {
       setProductForm({
@@ -100,7 +103,7 @@ export const AdminProducts: React.FC = () => {
               showAlert({ title: "Erro", message: "Selecione um item do estoque.", type: 'ERROR' });
               return;
           }
-          const stockItem = state.inventory.find(i => i.id === selectedStockId);
+          const stockItem = invState.inventory.find(i => i.id === selectedStockId);
           if (!stockItem) return;
 
           await dispatch({
@@ -115,7 +118,7 @@ export const AdminProducts: React.FC = () => {
                   description: productForm.description,
                   image: productForm.image || stockItem.image || '',
                   isVisible: productForm.isVisible,
-                  sortOrder: state.products.length + 1
+                  sortOrder: restState.products.length + 1
               } as Product
           });
       }
@@ -253,7 +256,7 @@ export const AdminProducts: React.FC = () => {
                             onChange={e => {
                                 const id = e.target.value;
                                 setSelectedStockId(id);
-                                const item = state.inventory.find(i => i.id === id);
+                                const item = invState.inventory.find(i => i.id === id);
                                 if (item) {
                                     setProductForm(prev => ({
                                         ...prev,

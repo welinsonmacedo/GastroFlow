@@ -1,5 +1,7 @@
+
 import React, { useState } from 'react';
 import { useRestaurant } from '../../context/RestaurantContext';
+import { useFinance } from '../../context/FinanceContext';
 import { useUI } from '../../context/UIContext';
 import { Button } from '../../components/Button';
 import { Modal } from '../../components/Modal';
@@ -7,14 +9,15 @@ import { Expense } from '../../types';
 import { Plus, CheckSquare, Trash2 } from 'lucide-react';
 
 export const AdminFinance: React.FC = () => {
-  const { state, dispatch } = useRestaurant();
+  const { state: restState } = useRestaurant();
+  const { state: finState, addExpense, payExpense, deleteExpense } = useFinance();
   const { showConfirm, showAlert } = useUI();
   const [editingExpense, setEditingExpense] = useState<Partial<Expense> | null>(null);
 
-  const handleSaveExpense = (e: React.FormEvent) => {
+  const handleSaveExpense = async (e: React.FormEvent) => {
       e.preventDefault();
       if(editingExpense) {
-          dispatch({ type: 'ADD_EXPENSE', expense: { ...editingExpense, id: Math.random().toString(), isPaid: editingExpense.isPaid || false } as Expense });
+          await addExpense({ ...editingExpense, id: Math.random().toString(), isPaid: editingExpense.isPaid || false } as Expense);
           setEditingExpense(null);
           showAlert({ title: "Sucesso", message: "Despesa registrada!", type: 'SUCCESS' });
       }
@@ -24,11 +27,21 @@ export const AdminFinance: React.FC = () => {
       showConfirm({
           title: "Dar Baixa",
           message: "Confirmar pagamento desta conta?",
-          onConfirm: () => {
-              dispatch({ type: 'PAY_EXPENSE', expenseId: id });
+          onConfirm: async () => {
+              await payExpense(id);
               showAlert({ title: "Sucesso", message: "Pagamento registrado.", type: 'SUCCESS' });
           }
       });
+  };
+
+  const handleDeleteExpense = (id: string) => {
+        showConfirm({ 
+            title: 'Excluir', 
+            message: 'Remover despesa?', 
+            onConfirm: async () => {
+                await deleteExpense(id);
+            } 
+        });
   };
 
   return (
@@ -54,7 +67,7 @@ export const AdminFinance: React.FC = () => {
                     </tr>
                 </thead>
                 <tbody className="divide-y text-sm">
-                    {state.expenses.map(expense => (
+                    {finState.expenses.map(expense => (
                         <tr key={expense.id} className={`hover:bg-gray-50 transition-colors ${expense.isPaid ? 'opacity-60 bg-gray-50' : ''}`}>
                             <td className="p-4">{new Date(expense.dueDate).toLocaleDateString()}</td>
                             <td className="p-4 font-medium">{expense.description}</td>
@@ -70,11 +83,11 @@ export const AdminFinance: React.FC = () => {
                                 {!expense.isPaid && (
                                     <button onClick={() => handlePayExpense(expense.id)} className="text-green-600 p-2 rounded hover:bg-green-50 mr-2 transition-colors" title="Marcar como Pago"><CheckSquare size={18}/></button>
                                 )}
-                                <button onClick={() => showConfirm({ title: 'Excluir', message: 'Remover despesa?', onConfirm: () => dispatch({ type: 'DELETE_EXPENSE', expenseId: expense.id }) })} className="text-red-500 hover:bg-red-50 p-2 rounded transition-colors"><Trash2 size={18}/></button>
+                                <button onClick={() => handleDeleteExpense(expense.id)} className="text-red-500 hover:bg-red-50 p-2 rounded transition-colors"><Trash2 size={18}/></button>
                             </td>
                         </tr>
                     ))}
-                    {state.expenses.length === 0 && <tr><td colSpan={6} className="p-8 text-center text-gray-400">Nenhuma despesa registrada.</td></tr>}
+                    {finState.expenses.length === 0 && <tr><td colSpan={6} className="p-8 text-center text-gray-400">Nenhuma despesa registrada.</td></tr>}
                 </tbody>
             </table>
         </div>

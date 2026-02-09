@@ -1,4 +1,5 @@
 
+
 export enum Role {
   CLIENT = 'CLIENT',
   WAITER = 'WAITER',
@@ -152,6 +153,16 @@ export interface InventoryItem {
     type: InventoryType; // Novo campo
     image?: string; // Novo campo para imagem do estoque
     recipe?: InventoryRecipeItem[]; // Apenas para COMPOSITE
+}
+
+export interface InventoryLog {
+    id: string;
+    item_id: string;
+    type: 'IN' | 'OUT' | 'SALE' | 'LOSS';
+    quantity: number;
+    reason: string;
+    user_name: string;
+    created_at: Date;
 }
 
 // Product agora é apenas uma "Vitrine" para um InventoryItem
