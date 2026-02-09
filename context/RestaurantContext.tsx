@@ -1,5 +1,4 @@
 
-
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
 import { Table, Order, Product, TableStatus, OrderStatus, RestaurantTheme, ServiceCall, PlanLimits, User, Role, POSSaleData, ProductType } from '../types';
 import { getTenantSlug } from '../utils/tenant';
@@ -62,7 +61,7 @@ const initialState: RestaurantState = {
   tables: [], products: [], orders: [],
   theme: { primaryColor: '#000', backgroundColor: '#fff', fontColor: '#000', logoUrl: '', restaurantName: 'Carregando...' },
   serviceCalls: [], users: [],
-  audioUnlocked: false
+  audioUnlocked: true // Alterado para true para pular tela de bloqueio
 };
 
 const RestaurantContext = createContext<{
@@ -205,13 +204,28 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             }
             break;
         case 'PROCESS_POS_SALE':
-            // RPC handles Order Creation + Transaction. Inventory Logic runs via DB Triggers.
-            const { error: posError } = await supabase.rpc('process_pos_sale', {
-                p_tenant_id: tenantId, p_customer_name: action.sale.customerName, p_total_amount: action.sale.totalAmount,
-                p_method: action.sale.method, p_items: action.sale.items
+            // CRITICAL: Ensure robust error handling for POS
+            if (!tenantId) throw new Error("Sessão perdida. Recarregue a página.");
+            
+            const { data: rpcData, error: posError } = await supabase.rpc('process_pos_sale', {
+                p_tenant_id: tenantId,
+                p_customer_name: action.sale.customerName,
+                p_total_amount: action.sale.totalAmount,
+                p_method: action.sale.method,
+                p_items: action.sale.items
             });
-            if (posError) showAlert({ title: "Erro na Venda", message: "Falha ao registrar.", type: 'ERROR' });
+
+            if (posError) {
+                console.error("POS Error:", posError);
+                throw new Error(posError.message || "Erro ao processar venda no servidor.");
+            }
+            
+            if (rpcData && rpcData.success === false) {
+                 console.error("POS Logic Error:", rpcData.error);
+                 throw new Error(rpcData.error || "Erro de lógica na venda.");
+            }
             break;
+
         case 'PROCESS_PAYMENT':
             await supabase.from('orders').update({ is_paid: true, status: 'DELIVERED' }).eq('table_id', action.tableId).eq('is_paid', false);
             await supabase.from('restaurant_tables').update({ status: 'AVAILABLE', customer_name: null, access_code: null }).eq('id', action.tableId);

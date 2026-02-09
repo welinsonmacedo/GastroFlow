@@ -5,12 +5,12 @@ import { useFinance } from '../context/FinanceContext';
 import { useUI } from '../context/UIContext';
 import { TableStatus, Product } from '../types';
 import { Button } from '../components/Button';
-import { DollarSign, History, ShoppingCart, Search, Plus, Wallet, Receipt, Trash2, User } from 'lucide-react';
+import { DollarSign, History, ShoppingCart, Search, Plus, Wallet, Receipt, Trash2, User, Loader2 } from 'lucide-react';
 import { Modal } from '../components/Modal';
 
 export const CashierDashboard: React.FC = () => {
   const { state: restState, dispatch: restDispatch } = useRestaurant();
-  const { state: finState, openRegister, closeRegister, bleedRegister } = useFinance();
+  const { state: finState, openRegister, closeRegister, bleedRegister, refreshTransactions } = useFinance();
   const { showAlert, showConfirm } = useUI();
   
   const [activeTab, setActiveTab] = useState<'ACTIVE' | 'HISTORY' | 'PDV' | 'MANAGE'>('ACTIVE');
@@ -28,6 +28,7 @@ export const CashierDashboard: React.FC = () => {
   const [posCart, setPosCart] = useState<{ product: Product; quantity: number; notes: string }[]>([]);
   const [posSearch, setPosSearch] = useState('');
   const [customerName, setCustomerName] = useState('');
+  const [processingSale, setProcessingSale] = useState(false);
 
   // Derived Data
   const occupiedTables = restState.tables.filter(t => t.status !== TableStatus.AVAILABLE);
@@ -53,25 +54,39 @@ export const CashierDashboard: React.FC = () => {
       setPosCart(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handlePosSale = (method: 'CASH' | 'CREDIT' | 'DEBIT' | 'PIX') => {
+  const handlePosSale = async (method: 'CASH' | 'CREDIT' | 'DEBIT' | 'PIX') => {
       if (!finState.activeCashSession) return showAlert({ title: "Caixa Fechado", message: "Abra o caixa antes de vender.", type: 'ERROR' });
       if (posCart.length === 0) return showAlert({ title: "Carrinho Vazio", message: "Adicione produtos.", type: 'WARNING' });
 
+      setProcessingSale(true);
       const total = posCart.reduce((acc, item) => acc + (item.product.price * item.quantity), 0);
 
-      restDispatch({
-          type: 'PROCESS_POS_SALE',
-          sale: {
-              customerName: customerName || 'Consumidor Final',
-              items: posCart.map(i => ({ productId: i.product.id, quantity: i.quantity, notes: i.notes })),
-              totalAmount: total,
-              method
-          }
-      });
+      try {
+          // AWAIT dispatch. Context handles throwing error if RPC fails.
+          await restDispatch({
+              type: 'PROCESS_POS_SALE',
+              sale: {
+                  customerName: customerName || 'Consumidor Final',
+                  items: posCart.map(i => ({ productId: i.product.id, quantity: i.quantity, notes: i.notes })),
+                  totalAmount: total,
+                  method
+              }
+          });
 
-      setPosCart([]);
-      setCustomerName('');
-      showAlert({ title: "Venda Registrada", message: `Venda de R$ ${total.toFixed(2)} realizada!`, type: 'SUCCESS' });
+          // Only clear if successful
+          setPosCart([]);
+          setCustomerName('');
+          showAlert({ title: "Venda Registrada", message: `Venda de R$ ${total.toFixed(2)} realizada!`, type: 'SUCCESS' });
+          
+          // Force transaction list refresh (FinanceContext) to show item immediately
+          await refreshTransactions();
+
+      } catch (error: any) {
+          console.error("Sale Failed", error);
+          showAlert({ title: "Erro na Venda", message: error.message || "Não foi possível salvar a venda.", type: 'ERROR' });
+      } finally {
+          setProcessingSale(false);
+      }
   };
 
   // --- MANAGEMENT HANDLERS ---
@@ -103,6 +118,8 @@ export const CashierDashboard: React.FC = () => {
               restDispatch({ type: 'PROCESS_PAYMENT', tableId: selectedTableId, amount: totalAmount, method });
               setSelectedTableId(null);
               showAlert({ title: "Sucesso", message: "Pago!", type: 'SUCCESS' });
+              // Refresh finance data to show new transaction
+              setTimeout(() => refreshTransactions(), 500); 
           }
       });
   };
@@ -264,11 +281,12 @@ export const CashierDashboard: React.FC = () => {
                                   <span className="text-blue-600">R$ {posTotal.toFixed(2)}</span>
                               </div>
                               <div className="grid grid-cols-2 gap-2">
-                                  <Button onClick={() => handlePosSale('CASH')} size="sm">Dinheiro</Button>
-                                  <Button onClick={() => handlePosSale('PIX')} size="sm" className="bg-emerald-600 hover:bg-emerald-700">Pix</Button>
-                                  <Button onClick={() => handlePosSale('DEBIT')} size="sm" variant="secondary">Débito</Button>
-                                  <Button onClick={() => handlePosSale('CREDIT')} size="sm" variant="secondary">Crédito</Button>
+                                  <Button onClick={() => handlePosSale('CASH')} size="sm" disabled={processingSale}>Dinheiro</Button>
+                                  <Button onClick={() => handlePosSale('PIX')} size="sm" className="bg-emerald-600 hover:bg-emerald-700" disabled={processingSale}>Pix</Button>
+                                  <Button onClick={() => handlePosSale('DEBIT')} size="sm" variant="secondary" disabled={processingSale}>Débito</Button>
+                                  <Button onClick={() => handlePosSale('CREDIT')} size="sm" variant="secondary" disabled={processingSale}>Crédito</Button>
                               </div>
+                              {processingSale && <div className="text-center mt-2 text-sm text-blue-600 flex items-center justify-center gap-2"><Loader2 className="animate-spin" size={14}/> Processando...</div>}
                           </div>
                       </div>
                   </div>
@@ -276,7 +294,10 @@ export const CashierDashboard: React.FC = () => {
 
               {activeTab === 'HISTORY' && (
                   <div className="bg-white rounded-xl shadow-sm border p-6">
-                      <h2 className="text-xl font-bold mb-6 flex items-center gap-2"><History size={24}/> Histórico de Vendas (Últimas 50)</h2>
+                      <div className="flex justify-between items-center mb-6">
+                          <h2 className="text-xl font-bold flex items-center gap-2"><History size={24}/> Histórico de Vendas (Últimas 50)</h2>
+                          <Button size="sm" variant="secondary" onClick={() => refreshTransactions()}>Atualizar</Button>
+                      </div>
                       <div className="overflow-x-auto">
                           <table className="w-full text-left">
                               <thead className="bg-gray-50 border-b">
