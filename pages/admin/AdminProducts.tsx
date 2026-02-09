@@ -17,8 +17,6 @@ export const AdminProducts: React.FC = () => {
   const [draggedItemIndex, setDraggedItemIndex] = useState<number | null>(null);
   const [filterCategory, setFilterCategory] = useState('Todas');
   
-  // Form para "Adicionar do Estoque" ou "Editar"
-  // Usamos strings para preço para facilitar edição (evitar 0 preso ou NaN)
   const [productForm, setProductForm] = useState<{
       name: string;
       price: string;
@@ -74,7 +72,7 @@ export const AdminProducts: React.FC = () => {
       setMenuModalOpen(true);
   };
 
-  const handleSaveProduct = (e: React.FormEvent) => {
+  const handleSaveProduct = async (e: React.FormEvent) => {
       e.preventDefault();
       
       const priceValue = parseFloat(productForm.price);
@@ -84,7 +82,7 @@ export const AdminProducts: React.FC = () => {
       }
 
       if (editingProduct) {
-          dispatch({ 
+          await dispatch({ 
               type: 'UPDATE_PRODUCT', 
               product: { 
                   ...editingProduct, 
@@ -97,7 +95,6 @@ export const AdminProducts: React.FC = () => {
                   isVisible: productForm.isVisible
               } as Product 
           });
-          showAlert({ title: "Atualizado", message: "Produto atualizado com sucesso.", type: 'SUCCESS' });
       } else {
           if (!selectedStockId) {
               showAlert({ title: "Erro", message: "Selecione um item do estoque.", type: 'ERROR' });
@@ -106,7 +103,7 @@ export const AdminProducts: React.FC = () => {
           const stockItem = state.inventory.find(i => i.id === selectedStockId);
           if (!stockItem) return;
 
-          dispatch({
+          await dispatch({
               type: 'ADD_PRODUCT_TO_MENU',
               product: {
                   linkedInventoryItemId: stockItem.id,
@@ -121,7 +118,6 @@ export const AdminProducts: React.FC = () => {
                   sortOrder: state.products.length + 1
               } as Product
           });
-          showAlert({ title: "Adicionado", message: "Item do estoque adicionado ao cardápio.", type: 'SUCCESS' });
       }
       setMenuModalOpen(false);
   };
