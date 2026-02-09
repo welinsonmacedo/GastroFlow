@@ -173,7 +173,23 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
     const fetchProducts = async () => {
         const { data } = await supabase.from('products').select('*').eq('tenant_id', tenantId);
-        if (data) dispatchLocal({ type: 'REALTIME_UPDATE_PRODUCTS', products: data.map(p => ({ ...p, linkedInventoryItemId: p.linked_inventory_item_id, costPrice: p.cost_price })) });
+        if (data) {
+            // FIX: Map snake_case DB columns to camelCase Product props correctly
+            const mappedProducts = data.map(p => ({
+                id: p.id,
+                linkedInventoryItemId: p.linked_inventory_item_id,
+                name: p.name,
+                description: p.description,
+                price: p.price,
+                costPrice: p.cost_price,
+                category: p.category,
+                type: p.type,
+                image: p.image,
+                isVisible: p.is_visible,
+                sortOrder: p.sort_order
+            }));
+            dispatchLocal({ type: 'REALTIME_UPDATE_PRODUCTS', products: mappedProducts });
+        }
     }
     const fetchCalls = async () => {
         const { data } = await supabase.from('service_calls').select('*').eq('tenant_id', tenantId).eq('status', 'PENDING');
