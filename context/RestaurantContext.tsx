@@ -212,7 +212,7 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 p_customer_name: action.sale.customerName,
                 p_total_amount: action.sale.totalAmount,
                 p_method: action.sale.method,
-                p_items: action.sale.items
+                p_items: action.sale.items // Ensure items match JSONB array format expected by SQL
             });
 
             if (posError) {

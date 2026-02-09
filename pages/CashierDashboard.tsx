@@ -59,15 +59,22 @@ export const CashierDashboard: React.FC = () => {
       if (posCart.length === 0) return showAlert({ title: "Carrinho Vazio", message: "Adicione produtos.", type: 'WARNING' });
 
       setProcessingSale(true);
+      
+      // Sanitização de dados para evitar erros de NULL no Supabase
       const total = posCart.reduce((acc, item) => acc + (item.product.price * item.quantity), 0);
+      const cleanItems = posCart.map(i => ({ 
+          productId: i.product.id, 
+          quantity: Number(i.quantity), 
+          notes: i.notes || '' // Garante string vazia se for null/undefined
+      }));
 
       try {
           await restDispatch({
               type: 'PROCESS_POS_SALE',
               sale: {
-                  customerName: customerName || 'Consumidor Final',
-                  items: posCart.map(i => ({ productId: i.product.id, quantity: i.quantity, notes: i.notes })),
-                  totalAmount: total,
+                  customerName: customerName.trim() || 'Consumidor Final',
+                  items: cleanItems,
+                  totalAmount: Number(total.toFixed(2)),
                   method
               }
           });
