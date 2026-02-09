@@ -1,5 +1,4 @@
 
-
 export enum Role {
   CLIENT = 'CLIENT',
   WAITER = 'WAITER',
@@ -273,6 +272,8 @@ export interface Expense {
     paidDate?: Date;
     isPaid: boolean;
     supplierId?: string;
+    isRecurring?: boolean; // NEW
+    paymentMethod?: 'CASH' | 'BANK'; // NEW
 }
 
 export interface POSSaleData {

@@ -39,8 +39,10 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const fetchData = async () => {
       if (!tenantId) return;
+      
+      // Fetching more transactions for better dashboard overview (last 500 instead of 50)
       const [transRes, expRes, sessionRes] = await Promise.all([
-          supabase.from('transactions').select('*').eq('tenant_id', tenantId).order('created_at', { ascending: false }).limit(50),
+          supabase.from('transactions').select('*').eq('tenant_id', tenantId).order('created_at', { ascending: false }).limit(200),
           supabase.from('expenses').select('*').eq('tenant_id', tenantId).order('due_date', { ascending: true }),
           supabase.from('cash_sessions').select('*').eq('tenant_id', tenantId).eq('status', 'OPEN').maybeSingle()
       ]);
@@ -52,7 +54,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
       const mappedExpenses = (expRes.data || []).map((e: any) => ({
           id: e.id, description: e.description, amount: e.amount, category: e.category, dueDate: new Date(e.due_date),
-          paidDate: e.paid_date ? new Date(e.paid_date) : undefined, isPaid: e.is_paid, supplierId: e.supplier_id
+          paidDate: e.paid_date ? new Date(e.paid_date) : undefined, isPaid: e.is_paid, supplierId: e.supplier_id,
+          isRecurring: e.is_recurring, paymentMethod: e.payment_method
       }));
 
       let activeSession = null;
@@ -104,7 +107,16 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const addExpense = async (expense: Expense) => {
       if(!tenantId) return;
-      await supabase.from('expenses').insert({ tenant_id: tenantId, description: expense.description, amount: expense.amount, category: expense.category, due_date: expense.dueDate, is_paid: expense.isPaid });
+      await supabase.from('expenses').insert({ 
+          tenant_id: tenantId, 
+          description: expense.description, 
+          amount: expense.amount, 
+          category: expense.category, 
+          due_date: expense.dueDate, 
+          is_paid: expense.isPaid,
+          is_recurring: expense.isRecurring,
+          payment_method: expense.paymentMethod
+      });
   };
 
   const payExpense = async (expenseId: string) => {
