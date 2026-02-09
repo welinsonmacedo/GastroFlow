@@ -7,7 +7,7 @@ import { Button } from '../../components/Button';
 import { ImageUploader } from '../../components/ImageUploader';
 import { Modal } from '../../components/Modal';
 import { InventoryItem, Supplier, PurchaseItemInput, PurchaseInstallment } from '../../types';
-import { Plus, Trash2, Edit, ArrowDown, Info, Layers, ClipboardList, FileText, Truck, X, AlertTriangle, User as UserIcon, Phone, MapPin, Loader2 } from 'lucide-react';
+import { Plus, Trash2, Edit, ArrowDown, Info, Layers, ClipboardList, FileText, Truck, X, AlertTriangle, User as UserIcon, Phone, MapPin, Loader2, Calculator } from 'lucide-react';
 
 export const AdminInventory: React.FC = () => {
   const { state: restState } = useRestaurant();
@@ -85,33 +85,40 @@ export const AdminInventory: React.FC = () => {
       }
   };
 
+  // Dynamic Cost Calculation for Hint
+  const calculatedRecipeCost = invRecipeStep.reduce((acc, step) => {
+      const ing = invState.inventory.find(i => i.id === step.ingredientId);
+      return acc + ((ing?.costPrice || 0) * step.qty);
+  }, 0);
+
   const handleSaveInventoryItem = async (e: React.FormEvent) => {
       e.preventDefault();
       if(!editingInventory || !editingInventory.name) return;
 
       const finalItem: any = { ...editingInventory };
       
-      // Recalculate cost for composite items
+      // Ensure recipe is attached for composite items
       if (finalItem.type === 'COMPOSITE') {
           finalItem.recipe = invRecipeStep;
-          const cost = invRecipeStep.reduce((acc: number, step: any) => {
-              const ing = invState.inventory.find(i => i.id === step.ingredientId);
-              return acc + ((ing?.costPrice || 0) * step.qty);
-          }, 0);
-          finalItem.costPrice = cost;
+          // NOTE: We do NOT force calculatedRecipeCost here anymore. 
+          // We respect the manually entered finalItem.costPrice.
       }
 
       // Check if ID exists to determine UPDATE or CREATE
-      if (finalItem.id) {
-          await updateInventoryItem(finalItem as InventoryItem);
-          showAlert({ title: "Sucesso", message: "Item atualizado com sucesso!", type: 'SUCCESS' });
-      } else {
-          await addInventoryItem(finalItem as InventoryItem);
-          showAlert({ title: "Sucesso", message: "Item cadastrado no estoque!", type: 'SUCCESS' });
+      try {
+          if (finalItem.id) {
+              await updateInventoryItem(finalItem as InventoryItem);
+              showAlert({ title: "Sucesso", message: "Item atualizado com sucesso!", type: 'SUCCESS' });
+          } else {
+              await addInventoryItem(finalItem as InventoryItem);
+              showAlert({ title: "Sucesso", message: "Item cadastrado no estoque!", type: 'SUCCESS' });
+          }
+          setEditingInventory(null);
+          setInvRecipeStep([]);
+      } catch (error) {
+          console.error(error);
+          showAlert({ title: "Erro", message: "Erro ao salvar item.", type: 'ERROR' });
       }
-
-      setEditingInventory(null);
-      setInvRecipeStep([]);
   };
 
   const handleStockUpdate = async (e: React.FormEvent) => {
@@ -319,6 +326,9 @@ export const AdminInventory: React.FC = () => {
             </div>
         </div>
 
+        {/* --- MODALS (Suppliers, History, Purchase) omitted for brevity as they remain unchanged... --- */}
+        {/* ... Include Supplier, History, Purchase Modals ... */}
+        
         {/* --- MODAL DE FORNECEDORES --- */}
         <Modal 
             isOpen={supplierModalOpen} 
@@ -675,26 +685,44 @@ export const AdminInventory: React.FC = () => {
                             <option value="GR">GR</option>
                         </select>
                     </div>
-                    {editingInventory?.type !== 'COMPOSITE' && (
-                        <div>
-                            <label className="block text-xs font-bold">
-                                {editingInventory?.id ? 'Custo Médio (R$)' : 'Custo Inicial (R$)'}
-                            </label>
-                            <input 
-                                type="number" 
-                                step="0.01" 
-                                className={`w-full border p-2 rounded ${editingInventory?.id ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''}`}
-                                value={editingInventory?.costPrice || 0} 
-                                onChange={e => setEditingInventory(prev => ({...prev!, costPrice: parseFloat(e.target.value)}))} 
-                                disabled={!!editingInventory?.id} // Disable cost editing if exists (managed by purchase)
-                            />
-                            {editingInventory?.id && (
-                                <p className="text-[10px] text-blue-600 mt-1 flex items-center gap-1">
-                                    <Info size={10}/> Gerenciado via Notas de Entrada ou Ajuste Manual
-                                </p>
-                            )}
-                        </div>
-                    )}
+                    
+                    {/* COST INPUT SECTION (UPDATED) */}
+                    <div>
+                        <label className="block text-xs font-bold">
+                            {editingInventory?.id && editingInventory.type !== 'COMPOSITE' ? 'Custo Médio (R$)' : 'Custo (R$)'}
+                        </label>
+                        <input 
+                            type="number" 
+                            step="0.01" 
+                            className={`w-full border p-2 rounded ${editingInventory?.id && editingInventory.type !== 'COMPOSITE' ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''}`}
+                            value={editingInventory?.costPrice || 0} 
+                            onChange={e => setEditingInventory(prev => ({...prev!, costPrice: parseFloat(e.target.value)}))} 
+                            // Only disable if it's an existing raw material (managed by purchase history)
+                            // Allow editing for Composite items or new items
+                            disabled={!!editingInventory?.id && editingInventory.type !== 'COMPOSITE'} 
+                        />
+                        
+                        {/* Hint for Composite Products */}
+                        {editingInventory?.type === 'COMPOSITE' && (
+                            <div className="mt-1 text-xs flex justify-between items-center bg-blue-50 p-2 rounded border border-blue-100 text-blue-800">
+                                <span className="flex items-center gap-1"><Calculator size={10}/> Sugestão (Soma): <strong>R$ {calculatedRecipeCost.toFixed(2)}</strong></span>
+                                <button 
+                                    type="button" 
+                                    onClick={() => setEditingInventory(prev => ({...prev!, costPrice: calculatedRecipeCost}))}
+                                    className="text-[10px] underline hover:text-blue-600 font-bold ml-2"
+                                >
+                                    Usar este valor
+                                </button>
+                            </div>
+                        )}
+
+                        {editingInventory?.id && editingInventory.type !== 'COMPOSITE' && (
+                            <p className="text-[10px] text-blue-600 mt-1 flex items-center gap-1">
+                                <Info size={10}/> Gerenciado via Notas de Entrada ou Ajuste Manual
+                            </p>
+                        )}
+                    </div>
+
                     {editingInventory?.type !== 'COMPOSITE' && (
                         <div>
                             <label className="block text-xs font-bold">Estoque Atual</label>
@@ -754,10 +782,7 @@ export const AdminInventory: React.FC = () => {
                             })}
                         </div>
                         <div className="mt-2 text-right text-sm font-bold text-gray-600">
-                            Custo Estimado: R$ {invRecipeStep.reduce((acc, step) => {
-                                const ing = invState.inventory.find(i => i.id === step.ingredientId);
-                                return acc + ((ing?.costPrice || 0) * step.qty);
-                            }, 0).toFixed(2)}
+                            Custo Estimado dos Ingredientes: R$ {calculatedRecipeCost.toFixed(2)}
                         </div>
                     </div>
                 )}
