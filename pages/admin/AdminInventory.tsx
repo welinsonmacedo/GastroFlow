@@ -99,9 +99,13 @@ export const AdminInventory: React.FC = () => {
       
       // Ensure recipe is attached for composite items
       if (finalItem.type === 'COMPOSITE') {
-          finalItem.recipe = invRecipeStep;
-          // NOTE: We do NOT force calculatedRecipeCost here anymore. 
-          // We respect the manually entered finalItem.costPrice.
+          // IMPORTANTE: Mapear 'qty' (state local) para 'quantity' (esperado pelo Context/DB)
+          finalItem.recipe = invRecipeStep.map(step => ({
+              ingredientId: step.ingredientId,
+              quantity: step.qty, 
+              // Campos opcionais para satisfazer tipos, se necessário
+              ingredientName: '', unit: '', cost: 0
+          }));
       }
 
       // Check if ID exists to determine UPDATE or CREATE
