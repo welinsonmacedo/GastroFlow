@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ChefHat, CheckCircle, Smartphone, BarChart3, ShieldCheck, MessageCircle, ArrowRight, Star, Send, Menu, X, LogIn, Zap, Monitor, LayoutDashboard, QrCode, MonitorPlay, PieChart, TrendingUp, ListChecks, Package, Users, DollarSign, Truck, Settings } from 'lucide-react';
@@ -83,7 +84,7 @@ const ContactForm = ({ whatsappNumber }: { whatsappNumber: string }) => {
   );
 };
 
-const PricingCard = ({ plan, onClick }: { plan: Plan, onClick: () => void }) => {
+const PricingCard: React.FC<{ plan: Plan, onClick: () => void }> = ({ plan, onClick }) => {
     // Gera lista de features baseada nos LIMITES ativados no painel do CEO
     const dynamicFeatures = [];
     

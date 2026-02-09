@@ -1,9 +1,10 @@
+
 import React, { useState } from 'react';
 import { useRestaurant } from '../context/RestaurantContext';
 import { Link } from 'react-router-dom';
 import { 
     LayoutDashboard, Utensils, QrCode, Palette, Users, 
-    FileSpreadsheet, Package, DollarSign, ArrowLeft, Menu, X 
+    FileSpreadsheet, Package, DollarSign, ArrowLeft, Menu, X, BookOpen 
 } from 'lucide-react';
 
 // Sub-Pages Import
@@ -73,7 +74,10 @@ export const AdminDashboard: React.FC = () => {
                 <NavButton tab="CUSTOMIZATION" label="Personalização" icon={Palette} requiredFeature="allowCustomization" />
             </nav>
 
-            <div className="pt-6 border-t border-slate-800 mt-auto">
+            <div className="pt-6 border-t border-slate-800 mt-auto space-y-1">
+                <Link to="/manual" target="_blank" className="w-full text-left p-3 rounded-lg flex items-center gap-3 text-slate-400 hover:bg-slate-800 hover:text-white transition-colors">
+                    <BookOpen size={20}/> <span className="font-medium">Manual do Sistema</span>
+                </Link>
                 <Link to="/" className="w-full text-left p-3 rounded-lg flex items-center gap-3 text-red-400 hover:bg-slate-800 hover:text-red-300 transition-colors">
                     <ArrowLeft size={20}/> <span className="font-medium">Sair do Painel</span>
                 </Link>

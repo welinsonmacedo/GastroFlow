@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { PropsWithChildren } from 'react';
 import { BrowserRouter, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthProvider'; // NEW
 import { RestaurantProvider, useRestaurant } from './context/RestaurantContext';
@@ -27,8 +27,7 @@ import { Role } from './types';
 import { getTenantSlug } from './utils/tenant';
 
 // --- Protected Route Helper ---
-interface ProtectedRouteProps {
-    children: React.ReactElement;
+interface ProtectedRouteProps extends PropsWithChildren {
     allowedRoles?: Role[];
     requiredRoute?: string;
     requiredFeature?: 'allowKds' | 'allowCashier' | 'allowReports';
@@ -55,15 +54,15 @@ const ProtectedRestaurantRoute = ({ children, allowedRoles, requiredRoute, requi
     if (allowedRoles && !checkPermission(allowedRoles)) {
          return <div className="p-10 text-center text-red-500">Acesso Negado.</div>;
     }
-    return children;
+    return <>{children}</>;
 };
 
-const ProtectedSaaSRoute = ({ children }: { children: React.ReactElement }) => {
+const ProtectedSaaSRoute = ({ children }: PropsWithChildren) => {
     const { state } = useSaaS();
     if (!state.isAuthenticated) {
         return <Navigate to="/sys-admin" replace />;
     }
-    return children;
+    return <>{children}</>;
 };
 
 const TenantNavigation = () => {
