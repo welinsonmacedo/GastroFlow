@@ -497,6 +497,51 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         }
     };
 
+    // Helper: Products
+    const fetchProducts = async () => {
+        const { data } = await supabase.from('products').select('*').eq('tenant_id', tenantId);
+        if (data) {
+             const mapped: Product[] = data.map(p => ({
+                id: p.id,
+                linkedInventoryItemId: p.linked_inventory_item_id, 
+                name: p.name, description: p.description, price: p.price, costPrice: p.cost_price || 0,
+                category: p.category, type: p.type, image: p.image, isVisible: p.is_visible, sortOrder: p.sort_order
+            }));
+            dispatchLocal({ type: 'REALTIME_UPDATE_PRODUCTS', products: mapped });
+        }
+    }
+
+    // Helper: Tables
+    const fetchTables = async () => {
+        const { data } = await supabase.from('restaurant_tables').select('*').eq('tenant_id', tenantId).order('number');
+        if (data) {
+            const mapped = data.map(t => ({ id: t.id, number: t.number, status: t.status, customerName: t.customer_name || '', accessCode: t.access_code || '' }));
+            dispatchLocal({ type: 'REALTIME_UPDATE_TABLES', tables: mapped });
+        }
+    }
+
+    // Helper: Orders
+    const fetchOrders = async () => {
+        const yesterday = new Date(); yesterday.setHours(yesterday.getHours() - 24);
+        const { data } = await supabase.from('orders').select(`*, items:order_items (*)`).eq('tenant_id', tenantId).gte('created_at', yesterday.toISOString());
+        if (data) {
+            const mapped = data.map(o => ({
+                id: o.id, tableId: o.table_id, timestamp: new Date(o.created_at), isPaid: o.is_paid,
+                items: (o.items || []).map((i: any) => ({ id: i.id, productId: i.product_id, quantity: i.quantity, notes: i.notes, status: i.status, productName: i.product_name, productType: i.product_type }))
+            }));
+            dispatchLocal({ type: 'REALTIME_UPDATE_ORDERS', orders: mapped });
+        }
+    }
+
+    // Helper: Service Calls
+    const fetchServiceCalls = async () => {
+        const { data } = await supabase.from('service_calls').select('*').eq('tenant_id', tenantId).eq('status', 'PENDING');
+        if (data) {
+            const mapped = data.map(c => ({ id: c.id, tableId: c.table_id, status: c.status, timestamp: new Date(c.created_at) }));
+            dispatchLocal({ type: 'REALTIME_UPDATE_SERVICE_CALLS', calls: mapped });
+        }
+    }
+
     const channel = supabase.channel(`restaurant_updates:${tenantId}`)
         // Inventory Updates
         .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory_items', filter: `tenant_id=eq.${tenantId}` }, fetchInventory)
@@ -505,7 +550,12 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         // Cashier Updates
         .on('postgres_changes', { event: '*', schema: 'public', table: 'cash_sessions', filter: `tenant_id=eq.${tenantId}` }, fetchCashData)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'cash_movements', filter: `tenant_id=eq.${tenantId}` }, fetchCashData)
-        // ... Other existing table listeners would be here (Tables, Orders, etc.) ...
+        // Main Core Updates (Added)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'products', filter: `tenant_id=eq.${tenantId}` }, fetchProducts)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'restaurant_tables', filter: `tenant_id=eq.${tenantId}` }, fetchTables)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `tenant_id=eq.${tenantId}` }, fetchOrders)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'order_items', filter: `tenant_id=eq.${tenantId}` }, fetchOrders)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'service_calls', filter: `tenant_id=eq.${tenantId}` }, fetchServiceCalls)
         .subscribe();
 
     return () => { supabase.removeChannel(channel); }
