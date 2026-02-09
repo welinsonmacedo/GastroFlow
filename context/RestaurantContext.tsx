@@ -858,30 +858,35 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             return;
         }
         
+        const price = isNaN(Number(action.product.price)) ? 0 : Number(action.product.price);
+        const costPrice = isNaN(Number(action.product.costPrice)) ? 0 : Number(action.product.costPrice);
+
         await supabase.from('products').insert({
             tenant_id: tenantId,
             linked_inventory_item_id: action.product.linkedInventoryItemId,
-            name: action.product.name,
-            description: action.product.description,
-            price: action.product.price,
-            cost_price: action.product.costPrice,
-            category: action.product.category,
-            type: action.product.type,
-            image: action.product.image,
-            is_visible: action.product.isVisible,
-            sort_order: action.product.sortOrder
+            name: action.product.name || 'Novo Produto',
+            description: action.product.description || '',
+            price: price,
+            cost_price: costPrice,
+            category: action.product.category || 'Outros',
+            type: action.product.type || 'KITCHEN',
+            image: action.product.image || '',
+            is_visible: action.product.isVisible !== false,
+            sort_order: action.product.sortOrder || 0
         });
         return;
     }
 
     if (action.type === 'UPDATE_PRODUCT' && tenantId) {
+        const price = isNaN(Number(action.product.price)) ? 0 : Number(action.product.price);
+        
         await supabase.from('products').update({
             name: action.product.name,
-            description: action.product.description,
-            price: action.product.price,
+            description: action.product.description || '',
+            price: price,
             category: action.product.category,
             type: action.product.type,
-            image: action.product.image,
+            image: action.product.image || '',
             is_visible: action.product.isVisible,
             sort_order: action.product.sortOrder
         }).eq('id', action.product.id);

@@ -18,8 +18,17 @@ export const AdminProducts: React.FC = () => {
   const [filterCategory, setFilterCategory] = useState('Todas');
   
   // Form para "Adicionar do Estoque" ou "Editar"
-  const [productForm, setProductForm] = useState<Partial<Product>>({
-      price: 0,
+  // Usamos strings para preço para facilitar edição (evitar 0 preso ou NaN)
+  const [productForm, setProductForm] = useState<{
+      name: string;
+      price: string;
+      category: string;
+      description: string;
+      image: string;
+      type: ProductType;
+      isVisible: boolean;
+  }>({
+      price: '',
       category: 'Lanches',
       type: ProductType.KITCHEN,
       image: '',
@@ -38,7 +47,7 @@ export const AdminProducts: React.FC = () => {
 
   const handleOpenAdd = () => {
       setProductForm({
-        price: 0,
+        price: '',
         category: 'Lanches',
         type: ProductType.KITCHEN,
         image: '',
@@ -53,28 +62,62 @@ export const AdminProducts: React.FC = () => {
 
   const handleOpenEdit = (product: Product) => {
       setEditingProduct(product);
-      setProductForm({ ...product });
+      setProductForm({
+          name: product.name,
+          price: product.price.toString(),
+          category: product.category,
+          description: product.description || '',
+          image: product.image || '',
+          type: product.type,
+          isVisible: product.isVisible
+      });
       setMenuModalOpen(true);
   };
 
   const handleSaveProduct = (e: React.FormEvent) => {
       e.preventDefault();
+      
+      const priceValue = parseFloat(productForm.price);
+      if (isNaN(priceValue) || priceValue < 0) {
+          showAlert({ title: "Preço Inválido", message: "Insira um preço válido.", type: 'ERROR' });
+          return;
+      }
+
       if (editingProduct) {
-          dispatch({ type: 'UPDATE_PRODUCT', product: { ...editingProduct, ...productForm } as Product });
+          dispatch({ 
+              type: 'UPDATE_PRODUCT', 
+              product: { 
+                  ...editingProduct, 
+                  name: productForm.name,
+                  price: priceValue,
+                  category: productForm.category,
+                  description: productForm.description,
+                  image: productForm.image,
+                  type: productForm.type,
+                  isVisible: productForm.isVisible
+              } as Product 
+          });
           showAlert({ title: "Atualizado", message: "Produto atualizado com sucesso.", type: 'SUCCESS' });
       } else {
-          if (!selectedStockId) return;
+          if (!selectedStockId) {
+              showAlert({ title: "Erro", message: "Selecione um item do estoque.", type: 'ERROR' });
+              return;
+          }
           const stockItem = state.inventory.find(i => i.id === selectedStockId);
           if (!stockItem) return;
 
           dispatch({
               type: 'ADD_PRODUCT_TO_MENU',
               product: {
-                  ...productForm,
                   linkedInventoryItemId: stockItem.id,
                   name: productForm.name || stockItem.name,
-                  costPrice: stockItem.costPrice,
-                  image: productForm.image || stockItem.image,
+                  price: priceValue,
+                  costPrice: stockItem.costPrice || 0,
+                  category: productForm.category,
+                  type: productForm.type,
+                  description: productForm.description,
+                  image: productForm.image || stockItem.image || '',
+                  isVisible: productForm.isVisible,
                   sortOrder: state.products.length + 1
               } as Product
           });
@@ -197,12 +240,12 @@ export const AdminProducts: React.FC = () => {
             </div>
         </div>
 
-        {/* Modal de Adicionar/Editar - USANDO NOVO VARIANT */}
+        {/* Modal de Adicionar/Editar */}
         <Modal 
             isOpen={menuModalOpen} 
             onClose={() => setMenuModalOpen(false)}
             title={editingProduct ? 'Editar Produto' : 'Adicionar ao Cardápio'}
-            variant="page" // Modo Página (Sidebar Aware)
+            variant="page"
         >
             <form onSubmit={handleSaveProduct} className="space-y-6">
                 {!editingProduct && (
@@ -255,8 +298,9 @@ export const AdminProducts: React.FC = () => {
                             step="0.01" 
                             className="w-full border p-3 rounded-lg text-xl font-bold text-green-700 focus:ring-2 focus:ring-green-500 outline-none" 
                             value={productForm.price} 
-                            onChange={e => setProductForm({...productForm, price: parseFloat(e.target.value)})} 
+                            onChange={e => setProductForm({...productForm, price: e.target.value})} 
                             required
+                            placeholder="0.00"
                         />
                     </div>
                     <div>
