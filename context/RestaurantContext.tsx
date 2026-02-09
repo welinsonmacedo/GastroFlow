@@ -196,10 +196,19 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         case 'PLACE_ORDER':
             const { data: order } = await supabase.from('orders').insert({ tenant_id: tenantId, table_id: action.tableId, status: 'PENDING', is_paid: false }).select().single();
             if (order) {
-                const items = action.items.map(i => ({
-                    tenant_id: tenantId, order_id: order.id, product_id: i.productId, quantity: i.quantity, notes: i.notes, status: 'PENDING',
-                    product_type: state.products.find(p => p.id === i.productId)?.type || 'KITCHEN'
-                }));
+                const items = action.items.map(i => {
+                    const product = state.products.find(p => p.id === i.productId);
+                    return {
+                        tenant_id: tenantId, 
+                        order_id: order.id, 
+                        product_id: i.productId, 
+                        quantity: i.quantity, 
+                        notes: i.notes || '', 
+                        status: 'PENDING',
+                        product_name: product?.name || 'Item Removido', // Required for Not Null constraint
+                        product_type: product?.type || 'KITCHEN'
+                    };
+                });
                 await supabase.from('order_items').insert(items);
             }
             break;

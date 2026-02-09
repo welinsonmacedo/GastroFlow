@@ -43,9 +43,6 @@ BEGIN
             UPDATE inventory_items
             SET quantity = quantity - (r_recipe.quantity * NEW.quantity)
             WHERE id = r_recipe.ingredient_item_id;
-            
-            -- Log (Opcional, removido se causar erro de permissão, mas ideal manter)
-            -- INSERT INTO inventory_logs ...
         END LOOP;
     ELSE
         -- Baixar item direto (Revenda/Ingrediente)
@@ -70,7 +67,7 @@ FOR EACH ROW
 EXECUTE FUNCTION deduct_inventory_on_order();
 
 
--- 3. Recriar Função RPC de Venda (Transação Atômica)
+-- 3. Recriar Função RPC de Venda (Transação Atômica) com CORREÇÃO DO PRODUCT_NAME
 CREATE OR REPLACE FUNCTION process_pos_sale(
     p_tenant_id UUID,
     p_customer_name TEXT,
@@ -84,6 +81,8 @@ DECLARE
     v_product_id UUID;
     v_quantity NUMERIC;
     v_notes TEXT;
+    v_product_name TEXT;
+    v_product_type TEXT;
 BEGIN
     -- 1. Criar Pedido (Header)
     INSERT INTO orders (tenant_id, status, is_paid, customer_name)
@@ -98,7 +97,18 @@ BEGIN
         v_quantity := (v_item->>'quantity')::NUMERIC;
         v_notes := COALESCE(v_item->>'notes', '');
 
-        INSERT INTO order_items (tenant_id, order_id, product_id, quantity, notes, status, product_type)
+        -- Buscar dados do produto (Nome e Tipo) para preencher colunas NOT NULL
+        SELECT name, type INTO v_product_name, v_product_type
+        FROM products
+        WHERE id = v_product_id;
+
+        -- Fallback de segurança se produto foi deletado
+        IF v_product_name IS NULL THEN
+            v_product_name := 'Produto Desconhecido';
+            v_product_type := 'KITCHEN';
+        END IF;
+
+        INSERT INTO order_items (tenant_id, order_id, product_id, quantity, notes, status, product_name, product_type)
         VALUES (
             p_tenant_id, 
             v_order_id, 
@@ -106,7 +116,8 @@ BEGIN
             v_quantity, 
             v_notes, 
             'DELIVERED',
-            'KITCHEN' -- Default
+            v_product_name,
+            v_product_type
         );
     END LOOP;
 
