@@ -18,6 +18,24 @@ export const AdminSettings: React.FC = () => {
 
   // --- COMPONENTE DE PREVIEW (CELULAR) ---
   const MobilePreview = () => {
+      // Filtrar produtos reais para o preview (Top 5 visíveis)
+      const realProducts = state.products.filter(p => p.isVisible).slice(0, 5);
+      
+      // Fallback se não houver produtos cadastrados
+      const hasProducts = realProducts.length > 0;
+      const displayProducts = hasProducts ? realProducts : [1, 2, 3].map((_, i) => ({
+          id: `mock-${i}`,
+          name: 'Produto Exemplo',
+          description: 'Descrição do item aparecerá aqui...',
+          price: 25.00,
+          image: `https://source.unsplash.com/random/200x200?food&sig=${i}`
+      }));
+
+      // Extrair categorias únicas para o mock da navegação
+      const categories = hasProducts 
+        ? Array.from(new Set(state.products.map(p => p.category))).slice(0, 3) 
+        : ['Lanches', 'Bebidas', 'Sobremesas'];
+
       return (
           <div className="relative mx-auto border-gray-800 bg-gray-800 border-[14px] rounded-[2.5rem] h-[600px] w-[300px] shadow-xl overflow-hidden flex flex-col">
               <div className="h-[32px] w-[3px] bg-gray-800 absolute -left-[17px] top-[72px] rounded-l-lg"></div>
@@ -78,23 +96,29 @@ export const AdminSettings: React.FC = () => {
 
                   {/* CATEGORIES */}
                   <div className="flex gap-2 overflow-x-auto p-3 scrollbar-hide text-xs font-bold text-gray-600">
-                      <span style={{ color: localTheme.primaryColor, borderBottom: `2px solid ${localTheme.primaryColor}` }} className="pb-1">Lanches</span>
-                      <span className="opacity-50 pb-1">Bebidas</span>
-                      <span className="opacity-50 pb-1">Sobremesas</span>
+                      {categories.map((cat, idx) => (
+                          <span key={idx} style={idx === 0 ? { color: localTheme.primaryColor, borderBottom: `2px solid ${localTheme.primaryColor}` } : {}} className={`pb-1 whitespace-nowrap ${idx !== 0 ? 'opacity-50' : ''}`}>
+                              {cat}
+                          </span>
+                      ))}
                   </div>
 
                   {/* PRODUCTS LIST */}
                   <div className={`p-3 pt-0 grid gap-3 ${localTheme.viewMode === 'GRID' ? 'grid-cols-2' : 'grid-cols-1'}`}>
-                      {[1, 2, 3].map((_, i) => (
+                      {displayProducts.map((product: any, i: number) => (
                           <div key={i} className={`bg-white rounded-xl p-2 shadow-sm border border-gray-100 flex ${localTheme.viewMode === 'GRID' ? 'flex-col' : 'flex-row gap-3 items-center'}`}>
-                              <div className={`${localTheme.viewMode === 'GRID' ? 'w-full h-20 mb-2' : 'w-16 h-16 shrink-0'} bg-gray-100 rounded-lg overflow-hidden`}>
-                                  <img src={`https://source.unsplash.com/random/200x200?burger&sig=${i}`} className="w-full h-full object-cover opacity-80" alt="Demo" />
+                              <div className={`${localTheme.viewMode === 'GRID' ? 'w-full h-20 mb-2' : 'w-16 h-16 shrink-0'} bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center`}>
+                                  {product.image ? (
+                                      <img src={product.image} className="w-full h-full object-cover" alt="Produto" />
+                                  ) : (
+                                      <ImageIcon size={24} className="text-gray-300" />
+                                  )}
                               </div>
                               <div className="flex-1 min-w-0">
-                                  <h4 className="font-bold text-gray-800 text-xs truncate">X-Burger Especial</h4>
-                                  <p className="text-[10px] text-gray-400 line-clamp-1">Pão, carne, queijo, salada...</p>
+                                  <h4 className="font-bold text-gray-800 text-xs truncate">{product.name}</h4>
+                                  <p className="text-[10px] text-gray-400 line-clamp-1">{product.description || 'Sem descrição'}</p>
                                   <div className="flex justify-between items-center mt-1">
-                                      <span className="font-bold text-xs" style={{ color: localTheme.primaryColor }}>R$ 25,00</span>
+                                      <span className="font-bold text-xs" style={{ color: localTheme.primaryColor }}>R$ {Number(product.price).toFixed(2)}</span>
                                       <div className="w-5 h-5 rounded-full flex items-center justify-center text-white text-[10px]" style={{ backgroundColor: localTheme.primaryColor }}>
                                           <Plus size={10} />
                                       </div>
