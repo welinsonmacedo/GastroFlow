@@ -19,7 +19,7 @@ import { AdminSettings } from './admin/AdminSettings';
 
 export const AdminDashboard: React.FC = () => {
   const { state } = useRestaurant();
-  const { planLimits } = state;
+  const { planLimits, tenantSlug } = state;
   const [activeTab, setActiveTab] = useState<'DASHBOARD' | 'PRODUCTS' | 'TABLES' | 'CUSTOMIZATION' | 'STAFF' | 'ACCOUNTING' | 'INVENTORY' | 'FINANCE'>('DASHBOARD');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
@@ -75,7 +75,8 @@ export const AdminDashboard: React.FC = () => {
             </nav>
 
             <div className="pt-6 border-t border-slate-800 mt-auto space-y-1">
-                <Link to="/manual" target="_blank" className="w-full text-left p-3 rounded-lg flex items-center gap-3 text-slate-400 hover:bg-slate-800 hover:text-white transition-colors">
+                {/* Correção aqui: Adicionando ?restaurant=slug */}
+                <Link to={`/manual?restaurant=${tenantSlug}`} target="_blank" className="w-full text-left p-3 rounded-lg flex items-center gap-3 text-slate-400 hover:bg-slate-800 hover:text-white transition-colors">
                     <BookOpen size={20}/> <span className="font-medium">Manual do Sistema</span>
                 </Link>
                 <Link to="/" className="w-full text-left p-3 rounded-lg flex items-center gap-3 text-red-400 hover:bg-slate-800 hover:text-red-300 transition-colors">

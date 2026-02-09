@@ -27,7 +27,8 @@ import { Role } from './types';
 import { getTenantSlug } from './utils/tenant';
 
 // --- Protected Route Helper ---
-interface ProtectedRouteProps extends PropsWithChildren {
+interface ProtectedRouteProps {
+    children: React.ReactNode;
     allowedRoles?: Role[];
     requiredRoute?: string;
     requiredFeature?: 'allowKds' | 'allowCashier' | 'allowReports';
