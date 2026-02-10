@@ -1,5 +1,6 @@
+
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
-import { Table, Order, Product, TableStatus, OrderStatus, RestaurantTheme, ServiceCall, PlanLimits, User, Role, POSSaleData, ProductType, RestaurantBusinessInfo } from '../types';
+import { Table, Order, Product, RestaurantTheme, ServiceCall, PlanLimits, User, Role, POSSaleData, RestaurantBusinessInfo, OrderStatus } from '../types';
 import { getTenantSlug } from '../utils/tenant';
 import { supabase } from '../lib/supabase';
 import { useUI } from './UIContext';
@@ -64,7 +65,7 @@ const initialState: RestaurantState = {
   theme: { primaryColor: '#000', backgroundColor: '#fff', fontColor: '#000', logoUrl: '', restaurantName: 'Carregando...' },
   businessInfo: {}, 
   serviceCalls: [], users: [],
-  audioUnlocked: true 
+  audioUnlocked: false // IMPORTANTE: False por padrão para forçar o clique de desbloqueio
 };
 
 const RestaurantContext = createContext<{
@@ -175,7 +176,6 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const fetchProducts = async () => {
         const { data } = await supabase.from('products').select('*').eq('tenant_id', tenantId);
         if (data) {
-            // FIX: Map snake_case DB columns to camelCase Product props correctly
             const mappedProducts = data.map(p => ({
                 id: p.id,
                 linkedInventoryItemId: p.linked_inventory_item_id,
@@ -245,14 +245,13 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                         status: 'PENDING',
                         product_name: product?.name || 'Item Removido', 
                         product_type: product?.type || 'KITCHEN',
-                        product_price: product?.price || 0 // FIX: Send product_price
+                        product_price: product?.price || 0 
                     };
                 });
                 await supabase.from('order_items').insert(items);
             }
             break;
         case 'PROCESS_POS_SALE':
-            // CRITICAL: Ensure robust error handling for POS
             if (!tenantId) throw new Error("Sessão perdida. Recarregue a página.");
             
             const { data: rpcData, error: posError } = await supabase.rpc('process_pos_sale', {
@@ -260,7 +259,7 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 p_customer_name: action.sale.customerName,
                 p_total_amount: action.sale.totalAmount,
                 p_method: action.sale.method,
-                p_items: action.sale.items // Ensure items match JSONB array format expected by SQL
+                p_items: action.sale.items 
             });
 
             if (posError) {
@@ -277,10 +276,9 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         case 'PROCESS_PAYMENT':
             await supabase.from('orders').update({ is_paid: true, status: 'DELIVERED' }).eq('table_id', action.tableId).eq('is_paid', false);
             await supabase.from('restaurant_tables').update({ status: 'AVAILABLE', customer_name: null, access_code: null }).eq('id', action.tableId);
-            // Also creates transaction record
             await supabase.from('transactions').insert({
                 tenant_id: tenantId, table_id: action.tableId, amount: action.amount, method: action.method,
-                items_summary: 'Mesa ' + state.tables.find(t => t.id === action.tableId)?.number, cashier_name: 'Caixa' // Ideally get current user
+                items_summary: 'Mesa ' + state.tables.find(t => t.id === action.tableId)?.number, cashier_name: 'Caixa' 
             });
             break;
         case 'UPDATE_ITEM_STATUS':
@@ -295,7 +293,6 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         case 'DELETE_TABLE': await supabase.from('restaurant_tables').delete().eq('id', action.tableId); break;
         case 'OPEN_TABLE': await supabase.from('restaurant_tables').update({ status: 'OCCUPIED', customer_name: action.customerName, access_code: action.accessCode }).eq('id', action.tableId); break;
         case 'CLOSE_TABLE':
-            // Cancel pending orders and free table
             await supabase.from('orders').update({ status: 'CANCELLED' }).eq('table_id', action.tableId).eq('tenant_id', tenantId).neq('status', 'DELIVERED').eq('is_paid', false);
             await supabase.from('restaurant_tables').update({ status: 'AVAILABLE', customer_name: null, access_code: null }).eq('id', action.tableId);
             break;

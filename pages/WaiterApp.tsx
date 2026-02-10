@@ -1,19 +1,31 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect, useRef } from 'react';
 import { useRestaurant } from '../context/RestaurantContext';
 import { useUI } from '../context/UIContext';
 import { TableStatus, OrderStatus, ProductType, Product } from '../types';
 import { Button } from '../components/Button';
-import { CheckCircle, Coffee, User, Key, X, Bell, Plus, Minus, Search, ShoppingCart, ChevronRight, Utensils, Trash2, ArrowLeft, Volume2, Edit3, MessageSquare, ChevronUp, ChevronDown } from 'lucide-react';
+import { CheckCircle, Coffee, User, Key, X, Bell, Plus, Minus, Search, ShoppingCart, ChevronRight, Utensils, Trash2, ArrowLeft, Volume2, Edit3, MessageSquare, ChevronUp, ChevronDown, AlertTriangle } from 'lucide-react';
+
+// Som de "Ding" em Base64 para garantir carregamento instantâneo e evitar bloqueios de rede no mobile
+const BELL_SOUND_BASE64 = "data:audio/mp3;base64,//uQRAAAAWMSLwUIYAAsYkXgoQwAEaYLWfkWgAI0wWs/ItAAAG84AA0WAgAAAAAAABZsAAAAtAAAAAAAABaAAAAAABZAAABcAAABjAAAA//uQRAAAAWMSLwUIYAAsYkXgoQwAEaYLWfkWgAI0wWs/ItAAAG84AA0WAgAAAAAAABZsAAAAtAAAAAAAABaAAAAAABZAAABcAAABjAAAA"; 
+// (Nota: Em produção, uma string real seria muito longa. Usarei uma URL CDN confiável como fallback, mas mantendo a lógica de tocar imediatamente)
+const FALLBACK_SOUND_URL = "https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3";
 
 export const WaiterApp: React.FC = () => {
   const { state, dispatch } = useRestaurant();
   const { showAlert, showConfirm } = useUI();
   
+  // Refs para controle de áudio e estado anterior
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const prevCallsCount = useRef(0);
+  const prevReadyCount = useRef(0);
+
   // States
   const [selectedTableForOpen, setSelectedTableForOpen] = useState<string | null>(null);
   const [selectedTableForAction, setSelectedTableForAction] = useState<string | null>(null); // Menu de opções
   const [orderingTableId, setOrderingTableId] = useState<string | null>(null); // Modo Pedido
   const [isReadyToServeOpen, setIsReadyToServeOpen] = useState(false); // Mobile drawer
+  const [isIos, setIsIos] = useState(false);
   
   // Order Form States
   const [customerName, setCustomerName] = useState('');
@@ -37,8 +49,49 @@ export const WaiterApp: React.FC = () => {
   
   const pendingCalls = state.serviceCalls.filter(c => c.status === 'PENDING');
 
+  // --- LÓGICA DE ÁUDIO ---
+  useEffect(() => {
+      // Detecta iOS para mostrar aviso
+      const isIOSDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+      setIsIos(isIOSDevice);
+
+      // Inicializa o objeto de áudio
+      audioRef.current = new Audio(FALLBACK_SOUND_URL);
+      audioRef.current.preload = 'auto';
+  }, []);
+
+  useEffect(() => {
+      // Verifica se houve aumento no número de chamados ou pedidos prontos
+      const hasNewCalls = pendingCalls.length > prevCallsCount.current;
+      const hasNewReadyItems = readyToServeItems.length > prevReadyCount.current;
+
+      if (state.audioUnlocked && (hasNewCalls || hasNewReadyItems)) {
+          // Tenta tocar o som
+          audioRef.current?.play().catch(err => console.warn("Autoplay bloqueado pelo navegador", err));
+          
+          // Vibração (apenas Android)
+          if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+      }
+
+      // Atualiza as refs para a próxima comparação
+      prevCallsCount.current = pendingCalls.length;
+      prevReadyCount.current = readyToServeItems.length;
+  }, [pendingCalls.length, readyToServeItems.length, state.audioUnlocked]);
+
   const enableAudio = () => {
-      dispatch({ type: 'UNLOCK_AUDIO' });
+      if (audioRef.current) {
+          // Toca o som para o usuário OUVIR e confirmar que funcionou
+          audioRef.current.play()
+            .then(() => {
+                dispatch({ type: 'UNLOCK_AUDIO' });
+            })
+            .catch(err => {
+                console.error("Erro ao desbloquear áudio", err);
+                alert("Não foi possível ativar o som. Verifique as permissões do navegador.");
+            });
+      } else {
+          dispatch({ type: 'UNLOCK_AUDIO' });
+      }
   };
 
   // --- Handlers ---
@@ -148,20 +201,30 @@ export const WaiterApp: React.FC = () => {
   // --- AUDIO UNLOCK SCREEN ---
   if (!state.audioUnlocked) {
     return (
-        <div className="min-h-screen bg-white flex items-center justify-center p-4">
-            <div className="text-center space-y-6 max-w-sm">
-                <div className="bg-blue-100 p-8 rounded-full inline-block mb-4 shadow-lg animate-pulse">
-                    <Bell size={64} className="text-blue-600" />
+        <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
+            <div className="text-center space-y-6 max-w-sm w-full bg-white p-8 rounded-2xl shadow-2xl">
+                <div className="bg-blue-100 p-6 rounded-full inline-block mb-2 shadow-inner animate-bounce">
+                    <Bell size={48} className="text-blue-600" />
                 </div>
-                <h1 className="text-3xl font-bold text-gray-800">App do Garçom</h1>
-                <p className="text-gray-500">
-                    Toque no botão abaixo para ativar os sons de notificação e começar a atender.
+                <h1 className="text-2xl font-bold text-gray-800">Ativar Notificações</h1>
+                <p className="text-gray-500 text-sm">
+                    Para receber alertas sonoros de novos pedidos, precisamos da sua permissão.
                 </p>
+                
+                {isIos && (
+                    <div className="bg-yellow-50 border border-yellow-200 p-3 rounded-lg text-xs text-yellow-800 flex items-start gap-2 text-left">
+                        <AlertTriangle size={16} className="shrink-0 mt-0.5"/>
+                        <span>
+                            <strong>Atenção iPhone:</strong> Verifique se a chave lateral de "Silencioso" está desligada, senão o som não tocará.
+                        </span>
+                    </div>
+                )}
+
                 <button 
                   onClick={enableAudio}
-                  className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 px-10 rounded-xl shadow-lg w-full flex items-center justify-center gap-3 text-lg"
+                  className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 px-6 rounded-xl shadow-lg w-full flex items-center justify-center gap-3 text-lg active:scale-95 transition-transform"
                 >
-                    <Volume2 size={24} /> ATIVAR SOM
+                    <Volume2 size={24} /> ATIVAR SISTEMA
                 </button>
             </div>
         </div>
@@ -183,8 +246,7 @@ export const WaiterApp: React.FC = () => {
 
       return (
           <div className="min-h-screen bg-gray-50 flex flex-col h-screen overflow-hidden">
-              
-              {/* MODAL DE OBSERVAÇÃO RÁPIDA */}
+              {/* MODAL DE OBSERVAÇÃO RÁPIDA (Mantido igual) */}
               {quickAddModal && (
                   <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
                       <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm overflow-hidden animate-fade-in">
@@ -221,7 +283,7 @@ export const WaiterApp: React.FC = () => {
               )}
 
               {/* Header */}
-              <header className="bg-white border-b p-4 shadow-sm flex items-center justify-between shrink-0">
+              <header className="bg-white border-b p-4 shadow-sm flex items-center justify-between shrink-0 safe-area-top">
                   <div className="flex items-center gap-2">
                       <button onClick={() => setOrderingTableId(null)} className="p-2 hover:bg-gray-100 rounded-full">
                           <ArrowLeft size={24} className="text-gray-600"/>
@@ -268,7 +330,7 @@ export const WaiterApp: React.FC = () => {
                       </div>
 
                       {/* Product List */}
-                      <div className="flex-1 overflow-y-auto p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 content-start">
+                      <div className="flex-1 overflow-y-auto p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 content-start pb-24">
                           {filteredProducts.map(product => {
                               const inCart = cart.find(i => i.product.id === product.id);
                               return (
@@ -312,7 +374,7 @@ export const WaiterApp: React.FC = () => {
 
                   {/* Right: Cart Summary (Desktop Only or Toggle) */}
                   {cart.length > 0 && (
-                      <div className="w-full md:w-80 bg-white border-l shadow-xl flex flex-col z-20 absolute md:relative bottom-0 h-[60vh] md:h-auto rounded-t-2xl md:rounded-none">
+                      <div className="w-full md:w-80 bg-white border-l shadow-xl flex flex-col z-20 absolute md:relative bottom-0 h-[60vh] md:h-auto rounded-t-2xl md:rounded-none safe-area-bottom">
                           <div className="p-4 bg-gray-50 border-b flex justify-between items-center">
                               <h3 className="font-bold flex items-center gap-2"><ShoppingCart size={18}/> Resumo</h3>
                               <span className="bg-blue-100 text-blue-700 text-xs px-2 py-1 rounded-full font-bold">{cart.reduce((a,b)=>a+b.quantity,0)} itens</span>
@@ -368,13 +430,16 @@ export const WaiterApp: React.FC = () => {
       
       {/* Alert Overlay for Service Calls - Shows on top if any call exists */}
       {pendingCalls.length > 0 && (
-          <div className="fixed top-20 left-0 right-0 z-30 flex justify-center px-4 pointer-events-none">
-              <div className="bg-red-600 text-white px-6 py-3 rounded-full shadow-2xl animate-bounce flex items-center gap-3 pointer-events-auto cursor-pointer" onClick={() => resolveCall(pendingCalls[0].id)}>
+          <div className="fixed top-4 left-0 right-0 z-30 flex justify-center px-4">
+              <div 
+                className="bg-red-600 text-white px-6 py-4 rounded-full shadow-2xl animate-bounce flex items-center gap-3 cursor-pointer hover:bg-red-700 transition-colors border-4 border-white"
+                onClick={() => resolveCall(pendingCalls[0].id)}
+              >
                   <Bell size={24} className="fill-white"/>
                   <span className="font-bold text-lg">
                       MESA {state.tables.find(t => t.id === pendingCalls[0].tableId)?.number} CHAMANDO!
                   </span>
-                  <div className="bg-white text-red-600 text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center">
+                  <div className="bg-white text-red-600 text-sm font-bold w-7 h-7 rounded-full flex items-center justify-center">
                       {pendingCalls.length}
                   </div>
               </div>
@@ -448,12 +513,21 @@ export const WaiterApp: React.FC = () => {
 
       {/* Left Column: Tables Management */}
       <div className="lg:col-span-2 space-y-6">
-        <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-            Mesas 
-            <span className="text-xs font-normal bg-green-100 text-green-700 px-2 py-1 rounded-full flex items-center gap-1">
-                <Volume2 size={12}/> Som Ativo
-            </span>
-        </h1>
+        <div className="flex justify-between items-center">
+            <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+                Mesas 
+                {state.audioUnlocked ? (
+                    <span className="text-xs font-normal bg-green-100 text-green-700 px-2 py-1 rounded-full flex items-center gap-1">
+                        <Volume2 size={12}/> Som Ativo
+                    </span>
+                ) : (
+                    <span className="text-xs font-normal bg-red-100 text-red-700 px-2 py-1 rounded-full flex items-center gap-1 cursor-pointer" onClick={enableAudio}>
+                        <Volume2 size={12}/> Som Inativo
+                    </span>
+                )}
+            </h1>
+            <button onClick={enableAudio} className="text-xs text-blue-600 underline">Testar Som</button>
+        </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
           {state.tables.map(table => {
             const hasCall = pendingCalls.find(c => c.tableId === table.id);
@@ -471,15 +545,15 @@ export const WaiterApp: React.FC = () => {
               <div className="text-3xl md:text-4xl font-bold mb-1 text-gray-700">{table.number}</div>
               
               {hasCall && (
-                  <div className="absolute top-2 right-2 bg-red-600 text-white p-2 rounded-full animate-bounce">
+                  <div className="absolute top-2 right-2 bg-red-600 text-white p-2 rounded-full animate-bounce shadow-lg">
                       <Bell size={20} fill="white" />
                   </div>
               )}
               
               {table.status === TableStatus.OCCUPIED && (
-                <div className="flex flex-col items-center">
-                   <div className="flex items-center gap-1 text-sm font-medium text-blue-800 mb-1 truncate max-w-full">
-                      <User size={12} /> <span className="truncate">{table.customerName}</span>
+                <div className="flex flex-col items-center w-full">
+                   <div className="flex items-center justify-center gap-1 text-sm font-medium text-blue-800 mb-1 w-full">
+                      <User size={12} className="shrink-0" /> <span className="truncate max-w-[80%]">{table.customerName}</span>
                    </div>
                    <div className="hidden sm:flex items-center gap-1 text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded">
                       <Key size={10} /> {table.accessCode}
@@ -491,6 +565,7 @@ export const WaiterApp: React.FC = () => {
                  ${hasCall ? 'bg-red-600 text-white' : ''}
                  ${!hasCall && table.status === TableStatus.OCCUPIED ? 'bg-blue-100 text-blue-700' : ''}
                  ${!hasCall && table.status === TableStatus.AVAILABLE ? 'bg-gray-200 text-gray-600' : ''}
+                 ${!hasCall && table.status === TableStatus.WAITING_PAYMENT ? 'bg-yellow-100 text-yellow-700' : ''}
               `}>
                 {hasCall ? 'CHAMANDO' : (
                     <>
@@ -506,8 +581,7 @@ export const WaiterApp: React.FC = () => {
         </div>
       </div>
 
-      {/* Right Column: Action Center (Ready to Serve) - Stacks on bottom on mobile */}
-      {/* Mobile: Collapsible Drawer / Desktop: Sticky Column */}
+      {/* Right Column: Action Center (Ready to Serve) */}
       <div 
         className={`bg-white rounded-t-xl lg:rounded-xl shadow-[0_-4px_10px_rgba(0,0,0,0.1)] lg:shadow-lg border border-gray-100 
             fixed bottom-0 left-0 right-0 z-20 lg:static lg:h-fit lg:sticky lg:top-4 transition-all duration-300
@@ -515,11 +589,11 @@ export const WaiterApp: React.FC = () => {
         `}
       >
         <div 
-            className="p-4 flex items-center justify-between border-b cursor-pointer lg:cursor-default"
+            className="p-4 flex items-center justify-between border-b cursor-pointer lg:cursor-default bg-white lg:rounded-t-xl"
             onClick={() => setIsReadyToServeOpen(!isReadyToServeOpen)}
         >
             <div className="flex items-center gap-2">
-                <div className="bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold animate-pulse">
+                <div className={`rounded-full w-8 h-8 flex items-center justify-center font-bold ${readyToServeItems.length > 0 ? 'bg-green-500 text-white animate-pulse' : 'bg-gray-200 text-gray-500'}`}>
                     {readyToServeItems.length}
                 </div>
                 <h2 className="text-xl font-bold text-gray-800">Para Servir</h2>
@@ -531,14 +605,17 @@ export const WaiterApp: React.FC = () => {
 
         <div className="p-4 space-y-4 overflow-y-auto h-[calc(100%-64px)] lg:max-h-[80vh]">
             {readyToServeItems.length === 0 && (
-                <div className="text-center text-gray-400 py-10">Tudo entregue!</div>
+                <div className="text-center text-gray-400 py-10 flex flex-col items-center">
+                    <CheckCircle size={48} className="opacity-20 mb-2"/>
+                    <p>Tudo entregue!</p>
+                </div>
             )}
             {readyToServeItems.map((item, idx) => {
                 const table = state.tables.find(t => t.id === item.tableId);
                 return (
-                    <div key={`${item.id}-${idx}`} className="border rounded-lg p-3 bg-gray-50 hover:bg-white transition-colors">
+                    <div key={`${item.id}-${idx}`} className="border rounded-lg p-3 bg-gray-50 hover:bg-white transition-colors shadow-sm">
                         <div className="flex justify-between items-start mb-2">
-                            <span className="font-bold text-lg bg-black text-white px-2 rounded">M-{table?.number}</span>
+                            <span className="font-bold text-lg bg-slate-800 text-white px-2 rounded">M-{table?.number}</span>
                             {item.productType === ProductType.BAR ? (
                                 <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded font-bold flex items-center gap-1">
                                     <Coffee size={12}/> BAR
@@ -549,13 +626,12 @@ export const WaiterApp: React.FC = () => {
                                 </span>
                             )}
                         </div>
-                        <div className="font-medium text-gray-800 mb-1">{item.quantity}x {item.productName}</div>
-                        {item.notes && <div className="text-xs text-red-500 italic mb-2">Nota: {item.notes}</div>}
+                        <div className="font-medium text-gray-800 mb-1 text-lg">{item.quantity}x {item.productName}</div>
+                        {item.notes && <div className="text-xs text-red-600 italic mb-2 bg-red-50 p-1 rounded border border-red-100">Nota: {item.notes}</div>}
                         
                         <Button 
                             size="sm" 
-                            variant="success" 
-                            className="w-full"
+                            className="w-full bg-green-600 hover:bg-green-700 text-white font-bold"
                             onClick={(e) => { e.stopPropagation(); markDelivered(item.orderId, item.id); }}
                         >
                             Marcar Entregue

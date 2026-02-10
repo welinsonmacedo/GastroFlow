@@ -148,7 +148,11 @@ GRANT EXECUTE ON FUNCTION process_pos_sale(UUID, TEXT, NUMERIC, TEXT, JSONB) TO 
 GRANT EXECUTE ON FUNCTION process_pos_sale(UUID, TEXT, NUMERIC, TEXT, JSONB) TO anon;
 
 -- 6. Publicar Tabelas no Realtime (Garante que o Front atualize)
+-- Isso corrige o problema de precisar recarregar a página
 ALTER PUBLICATION supabase_realtime ADD TABLE orders;
 ALTER PUBLICATION supabase_realtime ADD TABLE transactions;
 ALTER PUBLICATION supabase_realtime ADD TABLE order_items;
 ALTER PUBLICATION supabase_realtime ADD TABLE inventory_items;
+ALTER PUBLICATION supabase_realtime ADD TABLE service_calls;
+ALTER PUBLICATION supabase_realtime ADD TABLE restaurant_tables;
+ALTER PUBLICATION supabase_realtime ADD TABLE staff;
