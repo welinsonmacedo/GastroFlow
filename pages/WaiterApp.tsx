@@ -4,7 +4,7 @@ import { useRestaurant } from '../context/RestaurantContext';
 import { useUI } from '../context/UIContext';
 import { TableStatus, OrderStatus, ProductType, Product, OrderItem } from '../types';
 import { Button } from '../components/Button';
-import { CheckCircle, Coffee, User, Key, X, Bell, Plus, Minus, Search, ShoppingCart, ChevronRight, Utensils, Trash2, ArrowLeft, Volume2, Edit3, MessageSquare, ChevronUp, ChevronDown, AlertTriangle, Zap } from 'lucide-react';
+import { CheckCircle, Coffee, User, Key, X, Bell, Plus, Minus, Search, ShoppingCart, ChevronRight, Utensils, Trash2, ArrowLeft, Volume2, Edit3, MessageSquare, ChevronUp, ChevronDown, AlertTriangle, Zap, Clock, UtensilsCrossed } from 'lucide-react';
 
 // Som de "Ding" em Base64
 const BELL_SOUND_BASE64 = "data:audio/mp3;base64,//uQRAAAAWMSLwUIYAAsYkXgoQwAEaYLWfkWgAI0wWs/ItAAAG84AA0WAgAAAAAAABZsAAAAtAAAAAAAABaAAAAAABZAAABcAAABjAAAA//uQRAAAAWMSLwUIYAAsYkXgoQwAEaYLWfkWgAI0wWs/ItAAAG84AA0WAgAAAAAAABZsAAAAtAAAAAAAABaAAAAAABZAAABcAAABjAAAA"; 
@@ -33,7 +33,14 @@ export const WaiterApp: React.FC = () => {
   const [cart, setCart] = useState<{ product: Product; quantity: number; notes: string }[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('Todos');
-  const [quickAddModal, setQuickAddModal] = useState<{ product: Product; qty: number; note: string } | null>(null);
+  
+  // Modal de Adição Rápida / Detalhes
+  const [quickAddModal, setQuickAddModal] = useState<{ 
+      product: Product; 
+      qty: number; 
+      note: string;
+      drinkTiming: 'IMMEDIATE' | 'WITH_FOOD'; // Novo estado para timing de bebida
+  } | null>(null);
 
   // --- ITEM FILTER LOGIC ---
   const isWaiterItem = (item: OrderItem) => {
@@ -162,15 +169,41 @@ export const WaiterApp: React.FC = () => {
 
   const addToCart = (product: Product, quantity = 1, notes = '') => {
     setCart(prev => {
+      // Se tiver nota, adiciona como novo item
       if (notes) return [...prev, { product, quantity, notes }];
+      
+      // Se não tiver nota, tenta agrupar com item existente sem nota
       const existing = prev.find(item => item.product.id === product.id && !item.notes);
       if (existing) return prev.map(item => item.product.id === product.id && !item.notes ? { ...item, quantity: item.quantity + quantity } : item);
+      
       return [...prev, { product, quantity, notes: '' }];
     });
   };
 
+  const openProductModal = (product: Product) => {
+      setQuickAddModal({ 
+          product, 
+          qty: 1, 
+          note: '',
+          drinkTiming: 'IMMEDIATE' // Default
+      });
+  };
+
   const confirmQuickAdd = () => {
-      if (quickAddModal) { addToCart(quickAddModal.product, quickAddModal.qty, quickAddModal.note); setQuickAddModal(null); }
+      if (quickAddModal) { 
+          let finalNote = quickAddModal.note;
+          
+          // Lógica para Bebidas: Adiciona prefixo de timing se for bebida
+          if (quickAddModal.product.category === 'Bebidas') {
+              const timingPrefix = quickAddModal.drinkTiming === 'IMMEDIATE' 
+                  ? '[ENTREGA IMEDIATA] ' 
+                  : '[ENTREGAR COM COMIDA] ';
+              finalNote = timingPrefix + finalNote;
+          }
+
+          addToCart(quickAddModal.product, quickAddModal.qty, finalNote.trim()); 
+          setQuickAddModal(null); 
+      }
   };
 
   const updateQuantity = (productId: string, delta: number) => {
@@ -233,12 +266,73 @@ export const WaiterApp: React.FC = () => {
           <div className="flex flex-col h-full overflow-hidden bg-gray-50">
               {quickAddModal && (
                   <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-                      <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm overflow-hidden animate-fade-in">
-                          <div className="bg-slate-900 text-white p-4 flex justify-between items-center"><h3 className="font-bold">{quickAddModal.product.name}</h3><button onClick={() => setQuickAddModal(null)}><X size={20}/></button></div>
-                          <div className="p-6 space-y-4">
-                              <div><label className="block text-sm font-bold text-gray-700 mb-2">Quantidade</label><div className="flex items-center gap-4 bg-gray-100 p-2 rounded-lg justify-center"><button onClick={() => setQuickAddModal({...quickAddModal, qty: Math.max(1, quickAddModal.qty - 1)})} className="p-2 bg-white rounded shadow-sm"><Minus size={20}/></button><span className="text-xl font-bold w-8 text-center">{quickAddModal.qty}</span><button onClick={() => setQuickAddModal({...quickAddModal, qty: quickAddModal.qty + 1})} className="p-2 bg-white rounded shadow-sm"><Plus size={20}/></button></div></div>
-                              <div><label className="block text-sm font-bold text-gray-700 mb-2">Observação</label><textarea className="w-full border rounded-lg p-3 text-sm" rows={3} placeholder="Ex: Sem cebola..." value={quickAddModal.note} onChange={(e) => setQuickAddModal({...quickAddModal, note: e.target.value})} autoFocus /></div>
-                              <Button onClick={confirmQuickAdd} className="w-full py-3 text-lg">Adicionar ao Pedido</Button>
+                      <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm overflow-hidden animate-fade-in flex flex-col max-h-[90vh]">
+                          <div className="bg-slate-900 text-white p-4 flex justify-between items-center shrink-0">
+                              <h3 className="font-bold text-lg truncate pr-4">{quickAddModal.product.name}</h3>
+                              <button onClick={() => setQuickAddModal(null)}><X size={24}/></button>
+                          </div>
+                          
+                          <div className="p-6 space-y-6 overflow-y-auto">
+                              {/* Seletor de Quantidade */}
+                              <div>
+                                  <label className="block text-sm font-bold text-gray-700 mb-2 text-center uppercase tracking-wider">Quantidade</label>
+                                  <div className="flex items-center gap-6 justify-center">
+                                      <button onClick={() => setQuickAddModal({...quickAddModal, qty: Math.max(1, quickAddModal.qty - 1)})} className="p-4 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors shadow-sm"><Minus size={24}/></button>
+                                      <span className="text-4xl font-bold w-16 text-center text-blue-600">{quickAddModal.qty}</span>
+                                      <button onClick={() => setQuickAddModal({...quickAddModal, qty: quickAddModal.qty + 1})} className="p-4 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors shadow-sm"><Plus size={24}/></button>
+                                  </div>
+                              </div>
+
+                              {/* Seletor de Timing (Apenas para Bebidas) */}
+                              {quickAddModal.product.category === 'Bebidas' && (
+                                  <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
+                                      <label className="block text-sm font-bold text-blue-800 mb-3 flex items-center gap-2">
+                                          <Clock size={16}/> Momento da Entrega
+                                      </label>
+                                      <div className="grid grid-cols-2 gap-3">
+                                          <button 
+                                              onClick={() => setQuickAddModal({...quickAddModal, drinkTiming: 'IMMEDIATE'})}
+                                              className={`p-3 rounded-lg border-2 flex flex-col items-center justify-center gap-1 transition-all
+                                                  ${quickAddModal.drinkTiming === 'IMMEDIATE' 
+                                                      ? 'border-blue-500 bg-blue-100 text-blue-700 font-bold' 
+                                                      : 'border-transparent bg-white text-gray-500 hover:bg-gray-50'}`}
+                                          >
+                                              <Zap size={20} className={quickAddModal.drinkTiming === 'IMMEDIATE' ? "fill-blue-700" : ""}/>
+                                              <span className="text-xs">Imediata</span>
+                                          </button>
+                                          <button 
+                                              onClick={() => setQuickAddModal({...quickAddModal, drinkTiming: 'WITH_FOOD'})}
+                                              className={`p-3 rounded-lg border-2 flex flex-col items-center justify-center gap-1 transition-all
+                                                  ${quickAddModal.drinkTiming === 'WITH_FOOD' 
+                                                      ? 'border-orange-500 bg-orange-100 text-orange-700 font-bold' 
+                                                      : 'border-transparent bg-white text-gray-500 hover:bg-gray-50'}`}
+                                          >
+                                              <UtensilsCrossed size={20}/>
+                                              <span className="text-xs">Com Comida</span>
+                                          </button>
+                                      </div>
+                                  </div>
+                              )}
+
+                              {/* Campo de Observação */}
+                              <div>
+                                  <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                                      <Edit3 size={16}/> Observação para Cozinha/Bar
+                                  </label>
+                                  <textarea 
+                                      className="w-full border-2 border-gray-200 rounded-xl p-3 text-base focus:border-blue-500 focus:outline-none transition-colors" 
+                                      rows={3} 
+                                      placeholder="Ex: Sem cebola, com gelo e limão..." 
+                                      value={quickAddModal.note} 
+                                      onChange={(e) => setQuickAddModal({...quickAddModal, note: e.target.value})} 
+                                  />
+                              </div>
+                          </div>
+
+                          <div className="p-4 border-t bg-gray-50 shrink-0">
+                              <Button onClick={confirmQuickAdd} className="w-full py-4 text-lg shadow-lg flex items-center justify-center gap-2">
+                                  Adicionar R$ {(quickAddModal.product.price * quickAddModal.qty).toFixed(2)}
+                              </Button>
                           </div>
                       </div>
                   </div>
@@ -257,11 +351,18 @@ export const WaiterApp: React.FC = () => {
                           {filteredProducts.map(product => {
                               const inCart = cart.find(i => i.product.id === product.id);
                               return (
-                                  <div key={product.id} className={`bg-white p-3 rounded-xl border shadow-sm flex justify-between items-center transition-all ${inCart ? 'border-blue-500 ring-1 ring-blue-500 bg-blue-50' : ''}`}>
+                                  <div key={product.id} onClick={() => openProductModal(product)} className={`bg-white p-3 rounded-xl border shadow-sm flex justify-between items-center transition-all cursor-pointer active:scale-95 ${inCart ? 'border-blue-500 ring-1 ring-blue-500 bg-blue-50' : ''}`}>
                                       <div className="flex-1 min-w-0 pr-2"><div className="font-bold text-gray-800 truncate">{product.name}</div><div className="text-sm text-gray-500">R$ {product.price.toFixed(2)}</div></div>
                                       <div className="flex items-center gap-2">
-                                          <button onClick={() => setQuickAddModal({ product, qty: 1, note: '' })} className="bg-gray-100 p-2 rounded-lg text-gray-600 hover:text-yellow-700"><Edit3 size={20} /></button>
-                                          {inCart && !inCart.notes ? (<div className="flex items-center gap-3 bg-white px-2 py-1 rounded-lg border shadow-sm"><button onClick={() => updateQuantity(product.id, -1)} className="p-1 hover:text-red-500"><Minus size={18}/></button><span className="font-bold w-4 text-center">{inCart.quantity}</span><button onClick={() => updateQuantity(product.id, 1)} className="p-1 hover:text-green-500"><Plus size={18}/></button></div>) : (<button onClick={() => addToCart(product)} className="bg-blue-600 p-2 rounded-lg text-white hover:bg-blue-700 shadow-sm"><Plus size={20} /></button>)}
+                                          {inCart && !inCart.notes ? (
+                                              <div className="flex items-center gap-3 bg-white px-2 py-1 rounded-lg border shadow-sm" onClick={(e) => e.stopPropagation()}>
+                                                  <button onClick={() => updateQuantity(product.id, -1)} className="p-1 hover:text-red-500"><Minus size={18}/></button>
+                                                  <span className="font-bold w-4 text-center">{inCart.quantity}</span>
+                                                  <button onClick={() => updateQuantity(product.id, 1)} className="p-1 hover:text-green-500"><Plus size={18}/></button>
+                                              </div>
+                                          ) : (
+                                              <div className="bg-blue-600 p-2 rounded-lg text-white hover:bg-blue-700 shadow-sm"><Plus size={20} /></div>
+                                          )}
                                       </div>
                                   </div>
                               );
