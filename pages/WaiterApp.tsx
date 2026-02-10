@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useRestaurant } from '../context/RestaurantContext';
 import { useUI } from '../context/UIContext';
-import { TableStatus, OrderStatus, ProductType, Product } from '../types';
+import { TableStatus, OrderStatus, ProductType, Product, OrderItem } from '../types';
 import { Button } from '../components/Button';
 import { CheckCircle, Coffee, User, Key, X, Bell, Plus, Minus, Search, ShoppingCart, ChevronRight, Utensils, Trash2, ArrowLeft, Volume2, Edit3, MessageSquare, ChevronUp, ChevronDown, AlertTriangle, Zap } from 'lucide-react';
 
@@ -35,12 +35,24 @@ export const WaiterApp: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>('Todos');
   const [quickAddModal, setQuickAddModal] = useState<{ product: Product; qty: number; note: string } | null>(null);
 
+  // --- ITEM FILTER LOGIC ---
+  const isWaiterItem = (item: OrderItem) => {
+      const product = state.products.find(p => p.id === item.productId);
+      const isDrink = product ? product.category === 'Bebidas' : false;
+
+      // 1. Itens de Cozinha que estão PRONTOS (Cozinheiro finalizou)
+      if (item.status === OrderStatus.READY && item.productType === ProductType.KITCHEN) return true;
+
+      // 2. Itens de BAR que estão PENDENTES (Garçom deve pegar/fazer)
+      //    OU Itens que são Bebidas (mesmo marcados como Kitchen por erro)
+      if (item.status === OrderStatus.PENDING && (item.productType === ProductType.BAR || isDrink)) return true;
+
+      return false;
+  };
+
   const readyToServeItems = state.orders.flatMap(order => 
     order.items
-      .filter(item => 
-        (item.status === OrderStatus.READY && item.productType === ProductType.KITCHEN) || 
-        (item.status === OrderStatus.PENDING && item.productType === ProductType.BAR)
-      )
+      .filter(item => isWaiterItem(item))
       .map(item => ({ ...item, tableId: order.tableId, orderId: order.id }))
   );
   
@@ -178,7 +190,7 @@ export const WaiterApp: React.FC = () => {
   // --- AUDIO UNLOCK SCREEN ---
   if (!state.audioUnlocked) {
     return (
-        <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
+        <div className="h-full bg-slate-900 flex items-center justify-center p-4">
             <div className="text-center space-y-6 max-w-sm w-full bg-white p-8 rounded-2xl shadow-2xl">
                 <div className="bg-blue-100 p-6 rounded-full inline-block mb-2 shadow-inner animate-bounce">
                     <Bell size={48} className="text-blue-600" />
@@ -218,7 +230,7 @@ export const WaiterApp: React.FC = () => {
       const categories = ['Todos', ...Array.from(new Set(state.products.map(p => p.category)))];
 
       return (
-          <div className="min-h-screen bg-gray-50 flex flex-col h-screen overflow-hidden">
+          <div className="flex flex-col h-full overflow-hidden bg-gray-50">
               {quickAddModal && (
                   <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
                       <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm overflow-hidden animate-fade-in">
@@ -270,7 +282,7 @@ export const WaiterApp: React.FC = () => {
 
   // --- VIEW: DASHBOARD ---
   return (
-    <div className="min-h-screen bg-gray-100 p-4 lg:p-6 grid grid-cols-1 lg:grid-cols-3 gap-6 relative pb-24 lg:pb-6">
+    <div className="min-h-full bg-gray-100 p-4 lg:p-6 grid grid-cols-1 lg:grid-cols-3 gap-6 relative pb-24 lg:pb-6">
       {pendingCalls.length > 0 && (
           <div className="fixed top-4 left-0 right-0 z-30 flex justify-center px-4">
               <div className="bg-red-600 text-white px-6 py-4 rounded-full shadow-2xl animate-bounce flex items-center gap-3 cursor-pointer hover:bg-red-700 border-4 border-white" onClick={() => resolveCall(pendingCalls[0].id)}>
@@ -327,9 +339,11 @@ export const WaiterApp: React.FC = () => {
             {readyToServeItems.length === 0 && <div className="text-center text-gray-400 py-10 flex flex-col items-center"><CheckCircle size={48} className="opacity-20 mb-2"/><p>Tudo entregue!</p></div>}
             {readyToServeItems.map((item, idx) => {
                 const table = state.tables.find(t => t.id === item.tableId);
+                const isBarItem = item.productType === ProductType.BAR || state.products.find(p => p.id === item.productId)?.category === 'Bebidas';
+                
                 return (
                     <div key={`${item.id}-${idx}`} className="border rounded-lg p-3 bg-gray-50 hover:bg-white transition-colors shadow-sm">
-                        <div className="flex justify-between items-start mb-2"><span className="font-bold text-lg bg-slate-800 text-white px-2 rounded">M-{table?.number}</span>{item.productType === ProductType.BAR ? (<span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded font-bold flex items-center gap-1"><Coffee size={12}/> BAR</span>) : (<span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded font-bold flex items-center gap-1"><CheckCircle size={12}/> COZINHA PRONTA</span>)}</div>
+                        <div className="flex justify-between items-start mb-2"><span className="font-bold text-lg bg-slate-800 text-white px-2 rounded">M-{table?.number}</span>{isBarItem ? (<span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded font-bold flex items-center gap-1"><Coffee size={12}/> BAR</span>) : (<span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded font-bold flex items-center gap-1"><CheckCircle size={12}/> COZINHA PRONTA</span>)}</div>
                         <div className="font-medium text-gray-800 mb-1 text-lg">{item.quantity}x {item.productName}</div>
                         {item.notes && <div className="text-xs text-red-600 italic mb-2 bg-red-50 p-1 rounded border border-red-100">Nota: {item.notes}</div>}
                         <Button size="sm" className="w-full bg-green-600 hover:bg-green-700 text-white font-bold" onClick={(e) => { e.stopPropagation(); markDelivered(item.orderId, item.id); }}>Marcar Entregue</Button>

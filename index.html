@@ -58,8 +58,9 @@
       #root {
         height: 100%;
         width: 100%;
-        overflow-y: auto; /* O scroll acontece DENTRO do app, não no navegador */
-        -webkit-overflow-scrolling: touch; /* Scroll suave no iOS */
+        overflow: hidden; /* MUDANÇA: O root não rola mais, o container interno do App rolará */
+        display: flex;
+        flex-direction: column;
       }
 
       /* Custom scrollbar for KDS */

@@ -100,7 +100,7 @@ const TenantNavigation = () => {
     };
 
     return (
-        <div className="hidden md:flex bg-white border-b px-6 py-3 justify-between items-center sticky top-0 z-50 shadow-sm">
+        <div className="hidden md:flex bg-white border-b px-6 py-3 justify-between items-center sticky top-0 z-50 shadow-sm shrink-0">
             <div className="font-bold text-xl flex items-center gap-2 text-blue-600">
                 {restState.theme.logoUrl && <img src={restState.theme.logoUrl} className="h-8 w-8 object-contain" />}
                 {!restState.theme.logoUrl && <ChefHat />} 
@@ -145,9 +145,9 @@ const TenantApp = () => {
     }
 
     return (
-        <div className="pb-16 md:pb-0 min-h-screen flex flex-col">
+        <div className="h-full flex flex-col bg-gray-50 overflow-hidden">
             <TenantNavigation />
-            <div className="flex-1 overflow-auto">
+            <div className="flex-1 overflow-y-auto overflow-x-hidden relative scroll-smooth">
                 <Routes>
                     <Route path="/" element={<Navigate to={`/login${window.location.search}`} replace />} />
                     <Route path="/login" element={<Login />} />

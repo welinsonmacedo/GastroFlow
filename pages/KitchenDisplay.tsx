@@ -1,7 +1,7 @@
 
 import React, { useEffect, useRef } from 'react';
 import { useRestaurant } from '../context/RestaurantContext';
-import { OrderStatus, ProductType } from '../types';
+import { OrderStatus, ProductType, OrderItem } from '../types';
 import { Clock, Check, ChefHat, CheckCircle, AlertTriangle, Volume2, Zap } from 'lucide-react';
 
 const BELL_SOUND_BASE64 = "data:audio/mp3;base64,//uQRAAAAWMSLwUIYAAsYkXgoQwAEaYLWfkWgAI0wWs/ItAAAG84AA0WAgAAAAAAABZsAAAAtAAAAAAAABaAAAAAABZAAABcAAABjAAAA//uQRAAAAWMSLwUIYAAsYkXgoQwAEaYLWfkWgAI0wWs/ItAAAG84AA0WAgAAAAAAABZsAAAAtAAAAAAAABaAAAAAABZAAABcAAABjAAAA"; 
@@ -14,9 +14,20 @@ export const KitchenDisplay: React.FC = () => {
   const prevOrdersCount = useRef(0);
   const wakeLockRef = useRef<any>(null);
 
+  // --- FILTER LOGIC ---
+  // Função auxiliar para garantir que bebidas nunca apareçam na cozinha
+  const isKitchenItem = (item: OrderItem) => {
+      // Busca o produto original para verificar a categoria
+      const product = state.products.find(p => p.id === item.productId);
+      const isDrink = product ? product.category === 'Bebidas' : false;
+      
+      // Só mostra se for Tipo KITCHEN E NÃO for Bebida
+      return item.productType === ProductType.KITCHEN && !isDrink;
+  };
+
   const activeOrders = state.orders.filter(order => 
     order.items.some(item => 
-      item.productType === ProductType.KITCHEN && 
+      isKitchenItem(item) && 
       (item.status === OrderStatus.PENDING || item.status === OrderStatus.PREPARING)
     )
   );
@@ -88,7 +99,7 @@ export const KitchenDisplay: React.FC = () => {
       if(!order) return;
 
       order.items.forEach(item => {
-          if(item.productType === ProductType.KITCHEN && (item.status === OrderStatus.PENDING || item.status === OrderStatus.PREPARING)) {
+          if(isKitchenItem(item) && (item.status === OrderStatus.PENDING || item.status === OrderStatus.PREPARING)) {
               updateItemStatus(orderId, item.id, OrderStatus.READY);
           }
       });
@@ -96,7 +107,7 @@ export const KitchenDisplay: React.FC = () => {
 
   if (!state.audioUnlocked) {
       return (
-          <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
+          <div className="h-full bg-slate-900 flex items-center justify-center p-4">
               <div className="text-center text-white space-y-6 max-w-md bg-slate-800 p-8 rounded-2xl shadow-2xl border border-slate-700">
                   <div className="bg-slate-900 p-6 rounded-full inline-block mb-4 shadow-inner animate-pulse border-2 border-yellow-500">
                       <ChefHat size={64} className="text-yellow-500" />
@@ -115,8 +126,8 @@ export const KitchenDisplay: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100 p-4">
-      <header className="mb-6 flex justify-between items-center">
+    <div className="h-full flex flex-col bg-slate-900 text-slate-100 p-4 overflow-hidden">
+      <header className="mb-6 flex justify-between items-center shrink-0">
         <h1 className="text-3xl font-bold flex items-center gap-3">
             <ChefHat className="text-yellow-500" /> Cozinha (KDS)
         </h1>
@@ -130,9 +141,9 @@ export const KitchenDisplay: React.FC = () => {
         </div>
       </header>
 
-      <div className="flex gap-4 overflow-x-auto pb-4 kds-scroll min-h-[calc(100vh-100px)]">
+      <div className="flex-1 flex gap-4 overflow-x-auto pb-4 kds-scroll">
         {activeOrders.length === 0 && (
-            <div className="w-full h-full flex flex-col items-center justify-center text-slate-600 gap-4 mt-20">
+            <div className="w-full h-full flex flex-col items-center justify-center text-slate-600 gap-4">
                 <ChefHat size={64} className="opacity-20"/>
                 <div className="text-2xl font-bold">Sem Pedidos Pendentes</div>
                 <p className="text-slate-500">Tudo limpo por aqui, chef!</p>
@@ -145,16 +156,16 @@ export const KitchenDisplay: React.FC = () => {
           const isLate = elapsedMinutes > 20;
           
           return (
-            <div key={order.id} className="min-w-[320px] max-w-[320px] bg-slate-800 rounded-xl overflow-hidden border border-slate-700 flex flex-col shadow-xl animate-fade-in">
-              <div className={`p-4 flex justify-between items-center ${isLate ? 'bg-red-700 animate-pulse' : 'bg-slate-700'}`}>
+            <div key={order.id} className="min-w-[320px] max-w-[320px] bg-slate-800 rounded-xl overflow-hidden border border-slate-700 flex flex-col shadow-xl animate-fade-in h-full max-h-full">
+              <div className={`p-4 flex justify-between items-center shrink-0 ${isLate ? 'bg-red-700 animate-pulse' : 'bg-slate-700'}`}>
                 <div><div className="font-bold text-3xl">Mesa {table?.number}</div><div className="text-xs opacity-75">#{order.id.slice(0,4)}</div></div>
                 <div className="flex flex-col items-end"><div className="flex items-center gap-1 text-lg font-mono font-bold bg-black/20 px-2 rounded"><Clock size={18} /> {elapsedMinutes}m</div></div>
               </div>
-              <div className="bg-slate-750 p-2 border-b border-slate-700 flex justify-end">
+              <div className="bg-slate-750 p-2 border-b border-slate-700 flex justify-end shrink-0">
                   <button onClick={() => completeAllOrderItems(order.id)} className="text-xs bg-green-700 hover:bg-green-600 text-white px-3 py-2 rounded flex items-center gap-2 font-bold w-full justify-center transition-colors"><CheckCircle size={14}/> CONCLUIR TODOS</button>
               </div>
-              <div className="p-2 flex-1 space-y-2 overflow-y-auto max-h-[60vh]">
-                {order.items.filter(item => item.productType === ProductType.KITCHEN && item.status !== OrderStatus.DELIVERED).map(item => (
+              <div className="p-2 flex-1 space-y-2 overflow-y-auto">
+                {order.items.filter(item => isKitchenItem(item) && item.status !== OrderStatus.DELIVERED).map(item => (
                     <div key={item.id} className={`p-3 rounded-lg border-l-4 transition-all relative ${item.status === OrderStatus.PENDING ? 'bg-slate-700 border-yellow-500 animate-[pulse_2s_infinite]' : ''} ${item.status === OrderStatus.PREPARING ? 'bg-blue-900/40 border-blue-500' : ''} ${item.status === OrderStatus.READY ? 'bg-green-900/40 border-green-500 opacity-60 grayscale' : ''}`}>
                         <div className="flex justify-between items-start mb-1"><span className="font-bold text-xl text-white">{item.quantity}x {item.productName}</span></div>
                         {item.notes && <div className="bg-yellow-100 text-red-700 font-bold text-sm p-2 rounded border-2 border-red-500 flex items-start gap-2 mb-2 shadow-sm animate-pulse"><AlertTriangle size={16} className="shrink-0 mt-0.5" fill="orange" /> <span className="uppercase">{item.notes}</span></div>}
