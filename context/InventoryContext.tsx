@@ -85,8 +85,8 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const addInventoryItem = async (item: InventoryItem) => {
       if(!tenantId) return;
       const { data: newItem, error } = await supabase.from('inventory_items').insert({
-          tenant_id: tenantId, name: item.name, unit: item.unit, quantity: item.quantity,
-          min_quantity: item.minQuantity, cost_price: item.costPrice, type: item.type, image: item.image,
+          tenant_id: tenantId, name: item.name, unit: item.unit, quantity: item.quantity || 0,
+          min_quantity: item.minQuantity || 0, cost_price: item.costPrice || 0, type: item.type, image: item.image,
           is_extra: item.isExtra 
       }).select().single();
 
@@ -128,6 +128,7 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       await supabase.from('inventory_logs').insert({
           tenant_id: tenantId, item_id: itemId, type: operation, quantity, reason, user_name: userName
       });
+      fetchData();
   };
 
   const processInventoryAdjustment = async (adjustments: { itemId: string; realQty: number }[]) => {
@@ -163,35 +164,40 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       try {
           const itemsTotal = purchase.items.reduce((acc, i) => acc + i.totalPrice, 0);
           
-          // 1. Atualizar Estoque e Preços de Custo
           for (const item of purchase.items) {
               let effectiveUnitCost = item.unitPrice;
-              
-              // Distribuir impostos/frete no custo se solicitado
               if (purchase.distributeTax && purchase.taxAmount > 0 && itemsTotal > 0) {
                   const taxShare = (item.totalPrice / itemsTotal) * purchase.taxAmount;
                   effectiveUnitCost = (item.totalPrice + taxShare) / item.quantity;
               }
 
-              await updateStock(item.inventoryItemId, item.quantity, 'IN', `Compra Nota ${purchase.invoiceNumber}`);
-              await supabase.from('inventory_items').update({ cost_price: effectiveUnitCost }).eq('id', item.inventoryItemId);
+              // Atualiza estoque e preço de custo
+              const invItem = state.inventory.find(i => i.id === item.inventoryItemId);
+              const newQty = (invItem?.quantity || 0) + item.quantity;
+              
+              await supabase.from('inventory_items').update({ 
+                  quantity: newQty,
+                  cost_price: effectiveUnitCost 
+              }).eq('id', item.inventoryItemId);
+
+              await supabase.from('inventory_logs').insert({
+                  tenant_id: tenantId, item_id: item.inventoryItemId, type: 'IN', quantity: item.quantity, 
+                  reason: `Compra Nota ${purchase.invoiceNumber}`, user_name: 'Admin'
+              });
           }
 
-          // 2. Gerar Financeiro (Contas a Pagar)
+          // Financeiro
           const supplierName = state.suppliers.find(s => s.id === purchase.supplierId)?.name || 'Fornecedor';
-          
-          const expensesToCreate = purchase.installments.map((inst, idx) => ({
+          await supabase.from('expenses').insert({
               tenant_id: tenantId,
-              description: `Nota ${purchase.invoiceNumber} - Parcela ${idx + 1}/${purchase.installments.length} (${supplierName})`,
-              amount: inst.amount,
+              description: `Compra Nota ${purchase.invoiceNumber} (${supplierName})`,
+              amount: purchase.totalAmount,
               category: 'Fornecedor',
-              due_date: inst.dueDate,
+              due_date: purchase.date,
               is_paid: false,
               payment_method: 'BANK',
               supplier_id: purchase.supplierId
-          }));
-
-          await supabase.from('expenses').insert(expensesToCreate);
+          });
           
           fetchData();
       } catch (error) {

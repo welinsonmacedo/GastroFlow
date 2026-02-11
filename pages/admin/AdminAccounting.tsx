@@ -75,7 +75,7 @@ export const AdminAccounting: React.FC = () => {
               cmvTotal += (qty * cost);
           });
 
-          const taxes = grossRev * 0.06; // Simulação 6% Simples
+          const taxes = grossRev * 0.06; // Simulação 6% Simples Nacional
           const netRevenue = grossRev - taxes;
           const grossProfit = netRevenue - cmvTotal;
 
@@ -142,14 +142,6 @@ export const AdminAccounting: React.FC = () => {
                 </div>
             </div>
         </div>
-
-        {!data.hasData && !loading && (
-            <div className="bg-amber-50 border-2 border-amber-200 p-8 rounded-3xl text-center">
-                <AlertCircle className="mx-auto text-amber-500 mb-4" size={48}/>
-                <h3 className="text-lg font-bold text-amber-800">Sem dados para este período</h3>
-                <p className="text-amber-700 text-sm">Realize vendas ou lance despesas para visualizar o DRE.</p>
-            </div>
-        )}
 
         {data.hasData && (
             <>
