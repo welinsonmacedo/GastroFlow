@@ -6,8 +6,8 @@ import { useUI } from '../../context/UIContext';
 import { Button } from '../../components/Button';
 import { Modal } from '../../components/Modal';
 import { ImageUploader } from '../../components/ImageUploader';
-import { Product, ProductType } from '../../types';
-import { Plus, GripVertical, Edit, Eye, EyeOff, Trash2, ArrowDownUp, Tag } from 'lucide-react';
+import { Product, ProductType, ProductExtra } from '../../types';
+import { Plus, GripVertical, Edit, Eye, EyeOff, Trash2, ArrowDownUp, Tag, Layers } from 'lucide-react';
 
 export const AdminProducts: React.FC = () => {
   const { state: restState, dispatch } = useRestaurant();
@@ -20,6 +20,11 @@ export const AdminProducts: React.FC = () => {
   const [draggedItemIndex, setDraggedItemIndex] = useState<number | null>(null);
   const [filterCategory, setFilterCategory] = useState('Todas');
   
+  // State for Extras Management
+  const [productExtras, setProductExtras] = useState<ProductExtra[]>([]);
+  const [newExtraName, setNewExtraName] = useState('');
+  const [newExtraPrice, setNewExtraPrice] = useState('');
+
   const [productForm, setProductForm] = useState<{
       name: string;
       price: string;
@@ -58,6 +63,7 @@ export const AdminProducts: React.FC = () => {
       });
       setSelectedStockId('');
       setEditingProduct(null);
+      setProductExtras([]);
       setMenuModalOpen(true);
   };
 
@@ -72,7 +78,20 @@ export const AdminProducts: React.FC = () => {
           type: product.type,
           isVisible: product.isVisible
       });
+      setProductExtras(product.extras || []);
       setMenuModalOpen(true);
+  };
+
+  const handleAddExtra = () => {
+      if (newExtraName && newExtraPrice) {
+          setProductExtras([...productExtras, { name: newExtraName, price: parseFloat(newExtraPrice) }]);
+          setNewExtraName('');
+          setNewExtraPrice('');
+      }
+  };
+
+  const handleRemoveExtra = (index: number) => {
+      setProductExtras(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleSaveProduct = async (e: React.FormEvent) => {
@@ -95,7 +114,8 @@ export const AdminProducts: React.FC = () => {
                   description: productForm.description,
                   image: productForm.image,
                   type: productForm.type,
-                  isVisible: productForm.isVisible
+                  isVisible: productForm.isVisible,
+                  extras: productExtras
               } as Product 
           });
       } else {
@@ -118,7 +138,8 @@ export const AdminProducts: React.FC = () => {
                   description: productForm.description,
                   image: productForm.image || stockItem.image || '',
                   isVisible: productForm.isVisible,
-                  sortOrder: restState.products.length + 1
+                  sortOrder: restState.products.length + 1,
+                  extras: productExtras
               } as Product
           });
       }
@@ -209,22 +230,16 @@ export const AdminProducts: React.FC = () => {
                                 <div className="font-bold text-gray-800 truncate">{product.name}</div>
                                 <div className="text-xs text-gray-500 flex items-center gap-2">
                                     <span className="bg-gray-100 px-2 py-0.5 rounded">{product.category}</span>
-                                    {product.costPrice && <span>Custo: R$ {product.costPrice.toFixed(2)}</span>}
+                                    {product.extras && product.extras.length > 0 && (
+                                        <span className="bg-orange-50 text-orange-600 px-2 py-0.5 rounded flex items-center gap-1">
+                                            <Layers size={10}/> {product.extras.length} Adicionais
+                                        </span>
+                                    )}
                                 </div>
                             </div>
                             <div className="text-right font-bold text-blue-600 w-24">
                                 R$ {product.price.toFixed(2)}
                             </div>
-                            <button 
-                                onClick={() => dispatch({type: 'UPDATE_PRODUCT', product: {...product, isVisible: !product.isVisible}})}
-                                className={`p-2 rounded-lg transition-all flex items-center gap-2 text-xs font-bold
-                                    ${product.isVisible ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}
-                                `}
-                                title={product.isVisible ? "Visível no Cardápio" : "Oculto do Cliente"}
-                            >
-                                {product.isVisible ? <Eye size={16}/> : <EyeOff size={16}/>}
-                                <span className="hidden md:inline">{product.isVisible ? 'Visível' : 'Oculto'}</span>
-                            </button>
                             <div className="flex gap-1 border-l pl-3 ml-2">
                                 <button onClick={() => handleOpenEdit(product)} className="p-2 text-blue-600 hover:bg-blue-50 rounded transition-colors" title="Editar Detalhes">
                                     <Edit size={18}/>
@@ -272,9 +287,6 @@ export const AdminProducts: React.FC = () => {
                                 <option key={i.id} value={i.id}>{i.name} ({i.unit})</option>
                             ))}
                         </select>
-                        <p className="text-xs text-blue-600 mt-2">
-                            Apenas itens marcados como <strong>Revenda</strong> ou <strong>Produzido</strong> no estoque aparecem aqui.
-                        </p>
                     </div>
                 )}
 
@@ -285,7 +297,6 @@ export const AdminProducts: React.FC = () => {
                             className="w-full border p-3 rounded-lg text-base focus:ring-2 focus:ring-blue-500 outline-none" 
                             value={productForm.name} 
                             onChange={e => setProductForm({...productForm, name: e.target.value})} 
-                            placeholder="Ex: X-Bacon Especial"
                             required
                         />
                     </div>
@@ -299,7 +310,6 @@ export const AdminProducts: React.FC = () => {
                             value={productForm.price} 
                             onChange={e => setProductForm({...productForm, price: e.target.value})} 
                             required
-                            placeholder="0.00"
                         />
                     </div>
                     <div>
@@ -316,17 +326,52 @@ export const AdminProducts: React.FC = () => {
                     </div>
 
                     <div className="md:col-span-2">
-                        <label className="block text-sm font-bold mb-1 text-gray-500 uppercase">Descrição (App Cliente)</label>
+                        <label className="block text-sm font-bold mb-1 text-gray-500 uppercase">Descrição</label>
                         <textarea 
-                            className="w-full border p-3 rounded-lg text-base h-24 resize-none focus:ring-2 focus:ring-blue-500 outline-none" 
+                            className="w-full border p-3 rounded-lg text-base h-20 resize-none focus:ring-2 focus:ring-blue-500 outline-none" 
                             value={productForm.description} 
                             onChange={e => setProductForm({...productForm, description: e.target.value})} 
-                            placeholder="Ingredientes, modo de preparo..."
                         />
                     </div>
 
+                    {/* SEÇÃO DE ADICIONAIS/EXTRAS */}
+                    <div className="md:col-span-2 bg-orange-50 p-4 rounded-xl border border-orange-100">
+                        <h4 className="text-sm font-bold text-orange-800 mb-3 flex items-center gap-2"><Layers size={16}/> Itens Adicionais (Extras)</h4>
+                        
+                        <div className="flex gap-2 mb-3">
+                            <input 
+                                className="flex-1 border p-2 rounded text-sm" 
+                                placeholder="Nome (Ex: Bacon, Borda)" 
+                                value={newExtraName} 
+                                onChange={e => setNewExtraName(e.target.value)} 
+                            />
+                            <input 
+                                type="number" 
+                                step="0.01"
+                                className="w-24 border p-2 rounded text-sm" 
+                                placeholder="Preço" 
+                                value={newExtraPrice} 
+                                onChange={e => setNewExtraPrice(e.target.value)} 
+                            />
+                            <Button size="sm" type="button" onClick={handleAddExtra} disabled={!newExtraName}><Plus size={16}/></Button>
+                        </div>
+
+                        <div className="space-y-2 max-h-40 overflow-y-auto">
+                            {productExtras.map((extra, idx) => (
+                                <div key={idx} className="flex justify-between items-center bg-white p-2 rounded border border-orange-200 shadow-sm text-sm">
+                                    <span className="font-medium text-gray-700">{extra.name}</span>
+                                    <div className="flex items-center gap-3">
+                                        <span className="font-bold text-green-600">+ R$ {extra.price.toFixed(2)}</span>
+                                        <button type="button" onClick={() => handleRemoveExtra(idx)} className="text-red-400 hover:text-red-600"><Trash2 size={14}/></button>
+                                    </div>
+                                </div>
+                            ))}
+                            {productExtras.length === 0 && <p className="text-xs text-orange-400 italic text-center py-2">Nenhum adicional cadastrado.</p>}
+                        </div>
+                    </div>
+
                     <div className="md:col-span-2">
-                        <label className="block text-sm font-bold mb-1 text-gray-500 uppercase">Imagem do Produto</label>
+                        <label className="block text-sm font-bold mb-1 text-gray-500 uppercase">Imagem</label>
                         <ImageUploader 
                             value={productForm.image || ''} 
                             onChange={(val) => setProductForm({...productForm, image: val})} 

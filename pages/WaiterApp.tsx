@@ -2,9 +2,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useRestaurant } from '../context/RestaurantContext';
 import { useUI } from '../context/UIContext';
-import { TableStatus, OrderStatus, ProductType, Product, OrderItem } from '../types';
+import { TableStatus, OrderStatus, ProductType, Product, OrderItem, ProductExtra } from '../types';
 import { Button } from '../components/Button';
-import { CheckCircle, Coffee, User, Key, X, Bell, Plus, Minus, Search, ShoppingCart, ChevronRight, Utensils, Trash2, ArrowLeft, Volume2, Edit3, MessageSquare, ChevronUp, ChevronDown, AlertTriangle, Zap, Clock, UtensilsCrossed } from 'lucide-react';
+import { CheckCircle, Coffee, User, Key, X, Bell, Plus, Minus, Search, ShoppingCart, ChevronRight, Utensils, Trash2, ArrowLeft, Volume2, Edit3, MessageSquare, ChevronUp, ChevronDown, AlertTriangle, Zap, Clock, UtensilsCrossed, CheckSquare, Square } from 'lucide-react';
 
 // Som de "Ding" em Base64
 const BELL_SOUND_BASE64 = "data:audio/mp3;base64,//uQRAAAAWMSLwUIYAAsYkXgoQwAEaYLWfkWgAI0wWs/ItAAAG84AA0WAgAAAAAAABZsAAAAtAAAAAAAABaAAAAAABZAAABcAAABjAAAA//uQRAAAAWMSLwUIYAAsYkXgoQwAEaYLWfkWgAI0wWs/ItAAAG84AA0WAgAAAAAAABZsAAAAtAAAAAAAABaAAAAAABZAAABcAAABjAAAA"; 
@@ -40,6 +40,7 @@ export const WaiterApp: React.FC = () => {
       qty: number; 
       note: string;
       drinkTiming: 'IMMEDIATE' | 'WITH_FOOD'; // Novo estado para timing de bebida
+      selectedExtras: ProductExtra[];
   } | null>(null);
 
   // --- ITEM FILTER LOGIC ---
@@ -173,8 +174,8 @@ export const WaiterApp: React.FC = () => {
       if (notes) return [...prev, { product, quantity, notes }];
       
       // Se não tiver nota, tenta agrupar com item existente sem nota
-      const existing = prev.find(item => item.product.id === product.id && !item.notes);
-      if (existing) return prev.map(item => item.product.id === product.id && !item.notes ? { ...item, quantity: item.quantity + quantity } : item);
+      const existing = prev.find(item => item.product.id === product.id && !item.notes && item.product.price === product.price);
+      if (existing) return prev.map(item => item.product.id === product.id && !item.notes && item.product.price === product.price ? { ...item, quantity: item.quantity + quantity } : item);
       
       return [...prev, { product, quantity, notes: '' }];
     });
@@ -185,15 +186,36 @@ export const WaiterApp: React.FC = () => {
           product, 
           qty: 1, 
           note: '',
-          drinkTiming: 'IMMEDIATE' // Default
+          drinkTiming: 'IMMEDIATE', // Default
+          selectedExtras: []
       });
+  };
+
+  const toggleExtra = (extra: ProductExtra) => {
+      if (!quickAddModal) return;
+      setQuickAddModal(prev => {
+          if (!prev) return null;
+          const exists = prev.selectedExtras.some(e => e.name === extra.name);
+          return {
+              ...prev,
+              selectedExtras: exists 
+                  ? prev.selectedExtras.filter(e => e.name !== extra.name)
+                  : [...prev.selectedExtras, extra]
+          };
+      });
+  };
+
+  const calculateTotal = () => {
+      if (!quickAddModal) return 0;
+      const extrasTotal = quickAddModal.selectedExtras.reduce((acc, extra) => acc + extra.price, 0);
+      return (quickAddModal.product.price + extrasTotal) * quickAddModal.qty;
   };
 
   const confirmQuickAdd = () => {
       if (quickAddModal) { 
           let finalNote = quickAddModal.note;
           
-          // Lógica para Bebidas: Adiciona prefixo de timing se for bebida
+          // Lógica para Bebidas
           if (quickAddModal.product.category === 'Bebidas') {
               const timingPrefix = quickAddModal.drinkTiming === 'IMMEDIATE' 
                   ? '[ENTREGA IMEDIATA] ' 
@@ -201,7 +223,20 @@ export const WaiterApp: React.FC = () => {
               finalNote = timingPrefix + finalNote;
           }
 
-          addToCart(quickAddModal.product, quickAddModal.qty, finalNote.trim()); 
+          // Adiciona Extras na nota
+          if (quickAddModal.selectedExtras.length > 0) {
+              const extrasString = quickAddModal.selectedExtras.map(e => `+ ${e.name}`).join(', ');
+              finalNote = finalNote ? `${finalNote}\nAdicionais: ${extrasString}` : `Adicionais: ${extrasString}`;
+          }
+
+          // Ajusta preço do produto virtualmente
+          const extrasPrice = quickAddModal.selectedExtras.reduce((acc, e) => acc + e.price, 0);
+          const adjustedProduct = {
+              ...quickAddModal.product,
+              price: quickAddModal.product.price + extrasPrice
+          };
+
+          addToCart(adjustedProduct, quickAddModal.qty, finalNote.trim()); 
           setQuickAddModal(null); 
       }
   };
@@ -314,6 +349,33 @@ export const WaiterApp: React.FC = () => {
                                   </div>
                               )}
 
+                              {/* Seletor de EXTRAS */}
+                              {quickAddModal.product.extras && quickAddModal.product.extras.length > 0 && (
+                                  <div className="border-t border-b py-4">
+                                      <label className="block text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+                                          <Plus size={16} className="text-green-600"/> Adicionais
+                                      </label>
+                                      <div className="space-y-2">
+                                          {quickAddModal.product.extras.map((extra, idx) => {
+                                              const isSelected = quickAddModal.selectedExtras.some(e => e.name === extra.name);
+                                              return (
+                                                  <div 
+                                                      key={idx} 
+                                                      onClick={() => toggleExtra(extra)}
+                                                      className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-all ${isSelected ? 'bg-orange-50 border-orange-300' : 'bg-white border-gray-100 hover:bg-gray-50'}`}
+                                                  >
+                                                      <div className="flex items-center gap-3">
+                                                          {isSelected ? <CheckSquare size={20} className="text-orange-600"/> : <Square size={20} className="text-gray-300"/>}
+                                                          <span className={`text-sm ${isSelected ? 'font-bold text-gray-800' : 'text-gray-600'}`}>{extra.name}</span>
+                                                      </div>
+                                                      <span className="text-sm font-bold text-gray-500">+ R$ {extra.price.toFixed(2)}</span>
+                                                  </div>
+                                              );
+                                          })}
+                                      </div>
+                                  </div>
+                              )}
+
                               {/* Campo de Observação */}
                               <div>
                                   <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
@@ -331,7 +393,7 @@ export const WaiterApp: React.FC = () => {
 
                           <div className="p-4 border-t bg-gray-50 shrink-0">
                               <Button onClick={confirmQuickAdd} className="w-full py-4 text-lg shadow-lg flex items-center justify-center gap-2">
-                                  Adicionar R$ {(quickAddModal.product.price * quickAddModal.qty).toFixed(2)}
+                                  Adicionar R$ {calculateTotal().toFixed(2)}
                               </Button>
                           </div>
                       </div>
@@ -372,7 +434,7 @@ export const WaiterApp: React.FC = () => {
                   {cart.length > 0 && (
                       <div className="w-full md:w-80 bg-white border-l shadow-xl flex flex-col z-20 absolute md:relative bottom-0 h-[60vh] md:h-auto rounded-t-2xl md:rounded-none safe-area-bottom">
                           <div className="p-4 bg-gray-50 border-b flex justify-between items-center"><h3 className="font-bold flex items-center gap-2"><ShoppingCart size={18}/> Resumo</h3><span className="bg-blue-100 text-blue-700 text-xs px-2 py-1 rounded-full font-bold">{cart.reduce((a,b)=>a+b.quantity,0)} itens</span></div>
-                          <div className="flex-1 overflow-y-auto p-4 space-y-4">{cart.map((item, idx) => (<div key={`${item.product.id}-${idx}`} className="text-sm border-b pb-3 last:border-0"><div className="flex justify-between items-start mb-1"><span className="font-medium text-gray-800">{item.quantity}x {item.product.name}</span><span className="font-bold">R$ {(item.product.price * item.quantity).toFixed(2)}</span></div>{item.notes ? (<div className="text-xs bg-yellow-50 text-yellow-800 p-2 rounded flex items-start gap-1 mt-1 border border-yellow-100"><MessageSquare size={12} className="mt-0.5 shrink-0"/> {item.notes}</div>) : (<input placeholder="Adicionar obs..." className="w-full text-xs border-b border-dashed bg-transparent focus:outline-none text-gray-400 mt-1" onBlur={(e) => { const val = e.target.value; if(val) setCart(prev => prev.map((p, i) => i === idx ? { ...p, notes: val } : p)); }}/>)}</div>))}</div>
+                          <div className="flex-1 overflow-y-auto p-4 space-y-4">{cart.map((item, idx) => (<div key={`${item.product.id}-${idx}`} className="text-sm border-b pb-3 last:border-0"><div className="flex justify-between items-start mb-1"><span className="font-medium text-gray-800">{item.quantity}x {item.product.name}</span><span className="font-bold">R$ {(item.product.price * item.quantity).toFixed(2)}</span></div>{item.notes ? (<div className="text-xs bg-yellow-50 text-yellow-800 p-2 rounded flex items-start gap-1 mt-1 border border-yellow-100 whitespace-pre-line"><MessageSquare size={12} className="mt-0.5 shrink-0"/> {item.notes}</div>) : (<input placeholder="Adicionar obs..." className="w-full text-xs border-b border-dashed bg-transparent focus:outline-none text-gray-400 mt-1" onBlur={(e) => { const val = e.target.value; if(val) setCart(prev => prev.map((p, i) => i === idx ? { ...p, notes: val } : p)); }}/>)}</div>))}</div>
                           <div className="p-4 border-t bg-gray-50"><div className="flex justify-between items-center text-xl font-bold text-gray-800 mb-4"><span>Total</span><span>R$ {cartTotal.toFixed(2)}</span></div><Button onClick={submitOrder} className="w-full py-3 text-lg shadow-lg">Enviar Pedido <Utensils size={18} /></Button></div>
                       </div>
                   )}
@@ -446,7 +508,7 @@ export const WaiterApp: React.FC = () => {
                     <div key={`${item.id}-${idx}`} className="border rounded-lg p-3 bg-gray-50 hover:bg-white transition-colors shadow-sm">
                         <div className="flex justify-between items-start mb-2"><span className="font-bold text-lg bg-slate-800 text-white px-2 rounded">M-{table?.number}</span>{isBarItem ? (<span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded font-bold flex items-center gap-1"><Coffee size={12}/> BAR</span>) : (<span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded font-bold flex items-center gap-1"><CheckCircle size={12}/> COZINHA PRONTA</span>)}</div>
                         <div className="font-medium text-gray-800 mb-1 text-lg">{item.quantity}x {item.productName}</div>
-                        {item.notes && <div className="text-xs text-red-600 italic mb-2 bg-red-50 p-1 rounded border border-red-100">Nota: {item.notes}</div>}
+                        {item.notes && <div className="text-xs text-red-600 italic mb-2 bg-red-50 p-1 rounded border border-red-100 whitespace-pre-line">Nota: {item.notes}</div>}
                         <Button size="sm" className="w-full bg-green-600 hover:bg-green-700 text-white font-bold" onClick={(e) => { e.stopPropagation(); markDelivered(item.orderId, item.id); }}>Marcar Entregue</Button>
                     </div>
                 );

@@ -182,6 +182,12 @@ export interface InventoryLog {
     created_at: Date;
 }
 
+// --- NEW: Product Extras ---
+export interface ProductExtra {
+    name: string;
+    price: number;
+}
+
 // Product agora é apenas uma "Vitrine" para um InventoryItem
 export interface Product {
   id: string;
@@ -194,7 +200,8 @@ export interface Product {
   type: ProductType; // KITCHEN / BAR
   image: string; 
   isVisible: boolean; 
-  sortOrder: number; 
+  sortOrder: number;
+  extras?: ProductExtra[]; // Lista de opcionais (Borda, Adicionais)
 }
 
 export interface OrderItem {
