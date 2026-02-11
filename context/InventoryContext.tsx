@@ -2,7 +2,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { InventoryItem, InventoryRecipeItem, InventoryLog, Supplier, PurchaseEntry } from '../types';
 import { supabase } from '../lib/supabase';
-import { useRestaurant } from './RestaurantContext'; // Para pegar o tenantId
+import { useRestaurant } from './RestaurantContext'; 
 import { useUI } from './UIContext';
 
 interface InventoryState {
@@ -35,7 +35,6 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     suppliers: [],
   });
 
-  // --- Data Fetching ---
   const fetchData = useCallback(async () => {
         if (!tenantId) return;
 
@@ -62,7 +61,8 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
                 return {
                     id: i.id, name: i.name, unit: i.unit, quantity: i.quantity, minQuantity: i.min_quantity, 
-                    costPrice: i.cost_price, type: i.type || 'INGREDIENT', image: i.image, recipe: recipeItems
+                    costPrice: i.cost_price, type: i.type || 'INGREDIENT', image: i.image, recipe: recipeItems,
+                    isExtra: i.is_extra || false
                 };
             });
             
@@ -76,30 +76,24 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         }
     }, [tenantId]);
 
-  // --- Realtime Subscriptions ---
   useEffect(() => {
     if (!tenantId) return;
-
     fetchData();
-
-    // Subscribe to changes - AGORA INCLUINDO inventory_recipes
     const channel = supabase.channel(`inventory_ctx:${tenantId}`)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory_items', filter: `tenant_id=eq.${tenantId}` }, fetchData)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory_recipes', filter: `tenant_id=eq.${tenantId}` }, fetchData)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory_logs', filter: `tenant_id=eq.${tenantId}` }, fetchData)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'suppliers', filter: `tenant_id=eq.${tenantId}` }, fetchData)
         .subscribe();
-
     return () => { supabase.removeChannel(channel); };
   }, [tenantId, fetchData]);
-
-  // --- Actions ---
 
   const addInventoryItem = async (item: InventoryItem) => {
       if(!tenantId) return;
       const { data: newItem, error } = await supabase.from('inventory_items').insert({
           tenant_id: tenantId, name: item.name, unit: item.unit, quantity: item.quantity,
-          min_quantity: item.minQuantity, cost_price: item.costPrice, type: item.type, image: item.image 
+          min_quantity: item.minQuantity, cost_price: item.costPrice, type: item.type, image: item.image,
+          is_extra: item.isExtra 
       }).select().single();
 
       if (!error && newItem && item.type === 'COMPOSITE' && item.recipe) {
@@ -108,21 +102,19 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           }));
           await supabase.from('inventory_recipes').insert(recipes);
       }
-      fetchData(); // Force refresh
+      fetchData();
   };
 
   const updateInventoryItem = async (item: InventoryItem) => {
       if(!tenantId) return;
       await supabase.from('inventory_items').update({
           name: item.name, unit: item.unit, min_quantity: item.minQuantity,
-          cost_price: item.costPrice, image: item.image, type: item.type
+          cost_price: item.costPrice, image: item.image, type: item.type,
+          is_extra: item.isExtra
       }).eq('id', item.id);
 
       if (item.type === 'COMPOSITE' && item.recipe) {
-          // Delete old recipes
           await supabase.from('inventory_recipes').delete().eq('parent_item_id', item.id);
-          
-          // Insert new ones
           if (item.recipe.length > 0) {
               const recipes = item.recipe.map(r => ({
                   tenant_id: tenantId, parent_item_id: item.id, ingredient_item_id: r.ingredientId, quantity: r.quantity
@@ -130,21 +122,18 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
               await supabase.from('inventory_recipes').insert(recipes);
           }
       }
-      fetchData(); // Force refresh
+      fetchData();
   };
 
   const updateStock = async (itemId: string, quantity: number, operation: 'IN' | 'OUT', reason: string, userName: string = 'Sistema') => {
       if(!tenantId) return;
       const item = state.inventory.find(i => i.id === itemId);
       if (!item) return;
-
       const newQty = operation === 'IN' ? item.quantity + quantity : item.quantity - quantity;
-      
       await supabase.from('inventory_items').update({ quantity: newQty }).eq('id', itemId);
       await supabase.from('inventory_logs').insert({
           tenant_id: tenantId, item_id: itemId, type: operation, quantity, reason, user_name: userName
       });
-      // fetchData is triggered by realtime, but we can force it too if needed
   };
 
   const processInventoryAdjustment = async (adjustments: { itemId: string; realQty: number }[]) => {

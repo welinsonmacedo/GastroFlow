@@ -98,7 +98,6 @@ export interface User {
   allowedRoutes?: string[];
 }
 
-// Added InventoryRecipeItem to satisfy context/InventoryContext.tsx
 export interface InventoryRecipeItem {
   ingredientId: string;
   ingredientName: string;
@@ -107,7 +106,6 @@ export interface InventoryRecipeItem {
   cost?: number;
 }
 
-// Added InventoryType as it's used in AdminDashboard.tsx
 export type InventoryType = 'INGREDIENT' | 'RESALE' | 'COMPOSITE';
 
 export interface InventoryItem {
@@ -119,11 +117,10 @@ export interface InventoryItem {
     costPrice: number;
     type: InventoryType;
     image?: string;
-    // Added recipe to InventoryItem to satisfy context/InventoryContext.tsx and pages/admin/AdminInventory.tsx
     recipe?: InventoryRecipeItem[];
+    isExtra: boolean; // Indica se é um adicional
 }
 
-// Added InventoryLog to satisfy context/InventoryContext.tsx
 export interface InventoryLog {
   id: string;
   item_id: string;
@@ -134,7 +131,6 @@ export interface InventoryLog {
   created_at: Date;
 }
 
-// Product agora é a vitrine
 export interface Product {
   id: string;
   linkedInventoryItemId: string;
@@ -147,8 +143,8 @@ export interface Product {
   image: string; 
   isVisible: boolean; 
   sortOrder: number;
-  isExtra: boolean; // Indica se é um adicional
-  linkedExtraIds?: string[]; // IDs de outros produtos que são adicionais deste
+  isExtra: boolean; 
+  linkedExtraIds?: string[]; 
 }
 
 export interface OrderItem {
@@ -254,7 +250,6 @@ export interface POSSaleData {
     method: 'CASH' | 'CARD' | 'PIX' | 'CREDIT' | 'DEBIT';
 }
 
-// Added Transaction, CashSession, and CashMovement to satisfy context/FinanceContext.tsx
 export interface Transaction {
   id: string;
   tableId: string;
@@ -284,7 +279,6 @@ export interface CashMovement {
   userName: string;
 }
 
-// Added AuditLog to satisfy data/mockDb.ts
 export interface AuditLog {
   id: string;
   tenant_id: string;
