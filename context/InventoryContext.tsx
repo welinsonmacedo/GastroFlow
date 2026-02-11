@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { InventoryItem, InventoryRecipeItem, InventoryLog, Supplier, PurchaseEntry } from '../types';
+import { InventoryItem, InventoryRecipeItem, InventoryLog, Supplier, PurchaseEntry, InventoryType } from '../types';
 import { supabase } from '../lib/supabase';
 import { useRestaurant } from './RestaurantContext'; 
 import { useUI } from './UIContext';
@@ -61,8 +61,15 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
                 });
 
                 return {
-                    id: i.id, name: i.name, unit: i.unit, quantity: i.quantity, minQuantity: i.min_quantity, 
-                    costPrice: i.cost_price, type: i.type || 'INGREDIENT', image: i.image, recipe: recipeItems,
+                    id: i.id, 
+                    name: i.name, 
+                    unit: i.unit, 
+                    quantity: i.quantity, 
+                    minQuantity: i.min_quantity, 
+                    costPrice: i.cost_price, 
+                    type: (i.type || 'INGREDIENT').toUpperCase() as InventoryType, 
+                    image: i.image, 
+                    recipe: recipeItems,
                     isExtra: i.is_extra || false
                 };
             });
@@ -71,11 +78,10 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
                 id: l.id, item_id: l.item_id, type: l.type, quantity: l.quantity, reason: l.reason, user_name: l.user_name, created_at: new Date(l.created_at)
             }));
 
-            // Mapeamento correto dos campos do banco (snake_case) para o frontend (camelCase)
             const mappedSuppliers = (suppRes.data || []).map((s: any) => ({
                 id: s.id,
                 name: s.name,
-                contactName: s.contact_name, // Mapeando contact_name -> contactName
+                contactName: s.contact_name,
                 phone: s.phone,
                 email: s.email,
                 cnpj: s.cnpj,
@@ -99,28 +105,55 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const addInventoryItem = async (item: InventoryItem) => {
       if(!tenantId) return;
-      const { data: newItem, error } = await supabase.from('inventory_items').insert({
-          tenant_id: tenantId, name: item.name, unit: item.unit, quantity: item.quantity || 0,
-          min_quantity: item.minQuantity || 0, cost_price: item.costPrice || 0, type: item.type, image: item.image,
+      
+      const payload = {
+          tenant_id: tenantId, 
+          name: item.name, 
+          unit: item.unit, 
+          quantity: item.quantity || 0,
+          min_quantity: item.minQuantity || 0, 
+          cost_price: item.costPrice || 0, 
+          type: item.type, 
+          image: item.image,
           is_extra: item.isExtra 
-      }).select().single();
+      };
 
-      if (!error && newItem && item.type === 'COMPOSITE' && item.recipe) {
+      const { data: newItem, error } = await supabase.from('inventory_items').insert(payload).select().single();
+
+      if (error) {
+          console.error("Erro ao adicionar item:", error);
+          throw new Error(`Erro ao salvar item: ${error.message}`);
+      }
+
+      if (newItem && item.type === 'COMPOSITE' && item.recipe && item.recipe.length > 0) {
           const recipes = item.recipe.map(r => ({
               tenant_id: tenantId, parent_item_id: newItem.id, ingredient_item_id: r.ingredientId, quantity: r.quantity
           }));
-          await supabase.from('inventory_recipes').insert(recipes);
+          const { error: recipeError } = await supabase.from('inventory_recipes').insert(recipes);
+          if (recipeError) console.error("Erro ao salvar receita:", recipeError);
       }
       fetchData();
   };
 
   const updateInventoryItem = async (item: InventoryItem) => {
       if(!tenantId) return;
-      await supabase.from('inventory_items').update({
-          name: item.name, unit: item.unit, min_quantity: item.minQuantity,
-          cost_price: item.costPrice, image: item.image, type: item.type,
+      
+      const payload = {
+          name: item.name, 
+          unit: item.unit, 
+          min_quantity: item.minQuantity,
+          cost_price: item.costPrice, 
+          image: item.image, 
+          type: item.type,
           is_extra: item.isExtra
-      }).eq('id', item.id);
+      };
+
+      const { error } = await supabase.from('inventory_items').update(payload).eq('id', item.id);
+
+      if (error) {
+          console.error("Erro ao atualizar item:", error);
+          throw new Error(`Erro ao atualizar item: ${error.message}`);
+      }
 
       if (item.type === 'COMPOSITE' && item.recipe) {
           await supabase.from('inventory_recipes').delete().eq('parent_item_id', item.id);
@@ -164,11 +197,10 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const addSupplier = async (supplier: Supplier) => {
       if(!tenantId) return;
       
-      // Mapeamento correto para o banco de dados (snake_case)
       const payload = {
           tenant_id: tenantId,
           name: supplier.name,
-          contact_name: supplier.contactName, // Mapeando contactName -> contact_name
+          contact_name: supplier.contactName,
           phone: supplier.phone,
           email: supplier.email,
           cnpj: supplier.cnpj,
@@ -183,10 +215,7 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
       const { error } = await supabase.from('suppliers').insert(payload);
       
-      if (error) {
-          console.error("Erro ao adicionar fornecedor:", error);
-          throw error;
-      }
+      if (error) throw error;
       
       fetchData();
   };
@@ -209,7 +238,6 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
                   effectiveUnitCost = (item.totalPrice + taxShare) / item.quantity;
               }
 
-              // Atualiza estoque e preço de custo
               const invItem = state.inventory.find(i => i.id === item.inventoryItemId);
               const newQty = (invItem?.quantity || 0) + item.quantity;
               
@@ -224,7 +252,6 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
               });
           }
 
-          // Financeiro
           const supplierName = state.suppliers.find(s => s.id === purchase.supplierId)?.name || 'Fornecedor';
           await supabase.from('expenses').insert({
               tenant_id: tenantId,
