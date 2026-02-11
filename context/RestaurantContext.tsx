@@ -97,7 +97,8 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             tables: (tablesRes.data || []).map(t => ({ id: t.id, number: t.number, status: t.status, customerName: t.customer_name || '', accessCode: t.access_code || '' })),
             products: (productsRes.data || []).map(p => ({
                 id: p.id, linkedInventoryItemId: p.linked_inventory_item_id, name: p.name, description: p.description, price: p.price, costPrice: p.cost_price || 0,
-                category: p.category, type: p.type, image: p.image, isVisible: p.is_visible, sortOrder: p.sort_order, isExtra: p.is_extra || false, linkedExtraIds: p.linked_extra_ids || []
+                category: p.category, type: p.type, image: p.image, isVisible: p.is_visible, sortOrder: p.sort_order, 
+                isExtra: p.is_extra || false, linkedExtraIds: p.linked_extra_ids || []
             })),
             orders: (ordersRes.data || []).map(o => ({
                 id: o.id, tableId: o.table_id, timestamp: new Date(o.created_at), isPaid: o.is_paid,
@@ -173,15 +174,31 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         case 'CLOSE_TABLE': await supabase.from('restaurant_tables').update({ status: 'AVAILABLE', customer_name: null, access_code: null }).eq('id', action.tableId); break;
         case 'ADD_PRODUCT_TO_MENU': 
             await supabase.from('products').insert({
-                tenant_id: tenantId, name: action.product.name, price: action.product.price, cost_price: action.product.costPrice,
-                category: action.product.category, type: action.product.type, image: action.product.image, is_visible: action.product.isVisible,
-                sort_order: action.product.sortOrder, linked_inventory_item_id: action.product.linkedInventoryItemId
+                tenant_id: tenantId, 
+                name: action.product.name, 
+                price: action.product.price, 
+                cost_price: action.product.costPrice,
+                category: action.product.category, 
+                type: action.product.type, 
+                image: action.product.image, 
+                is_visible: action.product.isVisible,
+                sort_order: action.product.sortOrder, 
+                linked_inventory_item_id: action.product.linkedInventoryItemId,
+                is_extra: action.product.isExtra,
+                linked_extra_ids: action.product.linkedExtraIds
             }); 
             break;
         case 'UPDATE_PRODUCT':
             await supabase.from('products').update({
-                name: action.product.name, price: action.product.price, category: action.product.category, description: action.product.description,
-                image: action.product.image, is_visible: action.product.isVisible, sort_order: action.product.sortOrder
+                name: action.product.name, 
+                price: action.product.price, 
+                category: action.product.category, 
+                description: action.product.description,
+                image: action.product.image, 
+                is_visible: action.product.isVisible, 
+                sort_order: action.product.sortOrder,
+                is_extra: action.product.isExtra,
+                linked_extra_ids: action.product.linkedExtraIds
             }).eq('id', action.product.id);
             break;
         case 'DELETE_PRODUCT': await supabase.from('products').delete().eq('id', action.productId); break;
