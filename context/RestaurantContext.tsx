@@ -101,7 +101,7 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             })),
             orders: (ordersRes.data || []).map(o => ({
                 id: o.id, tableId: o.table_id, timestamp: new Date(o.created_at), isPaid: o.is_paid,
-                items: (o.items || []).map((i: any) => ({ id: i.id, productId: i.product_id, quantity: i.quantity, notes: i.notes, status: i.status, productName: i.product_name, productType: i.product_type, productPrice: i.product_price, productCostPrice: Number(i.product_cost_price) || 0 }))
+                items: (o.items || []).map((i: any) => ({ id: i.id, productId: i.product_id, quantity: i.quantity, notes: i.notes, status: i.status, productName: i.product_name, productType: i.product_type, productPrice: i.product_price, productCostPrice: i.product_cost_price || 0 }))
             })),
             serviceCalls: (callsRes.data || []).map(c => ({ id: c.id, tableId: c.table_id, status: c.status, timestamp: new Date(c.created_at) })),
             users: (staffRes.data || []).map(u => ({ id: u.id, name: u.name, role: u.role, pin: u.pin, email: u.email, auth_user_id: u.auth_user_id, allowedRoutes: u.allowed_routes || [] }))
@@ -144,7 +144,7 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                     return {
                         tenant_id: tenantId, order_id: order.id, product_id: i.productId, quantity: i.quantity, notes: i.notes || '', status: 'PENDING',
                         product_name: product?.name || 'Item', product_type: product?.type || 'KITCHEN',
-                        product_price: Number(product?.price) || 0, product_cost_price: Number(product?.costPrice) || 0
+                        product_price: product?.price || 0, product_cost_price: product?.costPrice || 0
                     };
                 });
                 await supabase.from('order_items').insert(items);
