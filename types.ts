@@ -36,14 +36,14 @@ export interface PlanLimits {
     maxProducts: number;
     maxStaff: number;
     allowKds: boolean;
-    allowCashier: boolean; // PDV
+    allowCashier: boolean;
     allowReports?: boolean;
-    allowInventory?: boolean; // Estoque
-    allowPurchases?: boolean; // Compras
-    allowExpenses?: boolean; // Despesas
-    allowStaff?: boolean; // Gestão de Equipe
-    allowTableMgmt?: boolean; // Gestão de Mesas/QR
-    allowCustomization?: boolean; // Personalização do App
+    allowInventory?: boolean;
+    allowPurchases?: boolean;
+    allowExpenses?: boolean;
+    allowStaff?: boolean;
+    allowTableMgmt?: boolean;
+    allowCustomization?: boolean;
 }
 
 export interface Plan {
@@ -85,9 +85,8 @@ export interface RestaurantTenant {
   plan: PlanType;
   joinedAt: Date;
   requestCount?: number;
-  businessInfo?: RestaurantBusinessInfo; // New Field
+  businessInfo?: RestaurantBusinessInfo;
 }
-// ------------------
 
 export interface User {
   id: string;
@@ -99,109 +98,57 @@ export interface User {
   allowedRoutes?: string[];
 }
 
-export interface OnlineUser {
-    id: string;
-    name: string;
-    role: Role;
-    onlineAt: Date;
-}
-
-export interface AuditLog {
-  id: string;
-  userId: string;
-  userName: string;
-  action: string;
-  details: string;
-  timestamp: Date;
-}
-
-export interface Transaction {
-  id: string;
-  tableId: string;
-  tableNumber: number;
-  amount: number;
-  method: 'CASH' | 'CARD' | 'PIX' | 'CREDIT' | 'DEBIT';
-  timestamp: Date;
-  itemsSummary: string;
-  cashierName: string;
-}
-
-// --- CASH REGISTER TYPES (NOVO) ---
-export interface CashSession {
-    id: string;
-    openedAt: Date;
-    closedAt?: Date;
-    initialAmount: number; // Fundo de caixa
-    finalAmount?: number; // Valor informado no fechamento
-    status: 'OPEN' | 'CLOSED';
-    operatorName: string;
-}
-
-export interface CashMovement {
-    id: string;
-    sessionId: string;
-    type: 'BLEED' | 'SUPPLY'; // Sangria ou Suprimento
-    amount: number;
-    reason: string;
-    timestamp: Date;
-    userName: string;
-}
-// ----------------------------------
-
-// --- ERP TYPES UPDATED ---
-
-export type InventoryType = 'INGREDIENT' | 'RESALE' | 'COMPOSITE';
-
+// Added InventoryRecipeItem to satisfy context/InventoryContext.tsx
 export interface InventoryRecipeItem {
-    ingredientId: string;
-    ingredientName: string;
-    quantity: number;
-    unit: string;
-    cost: number;
+  ingredientId: string;
+  ingredientName: string;
+  quantity: number;
+  unit?: string;
+  cost?: number;
 }
+
+// Added InventoryType as it's used in AdminDashboard.tsx
+export type InventoryType = 'INGREDIENT' | 'RESALE' | 'COMPOSITE';
 
 export interface InventoryItem {
     id: string;
     name: string;
-    unit: string; // kg, lt, un, gr
+    unit: string;
     quantity: number;
     minQuantity: number;
     costPrice: number;
-    type: InventoryType; // Novo campo
-    image?: string; // Novo campo para imagem do estoque
-    recipe?: InventoryRecipeItem[]; // Apenas para COMPOSITE
+    type: InventoryType;
+    image?: string;
+    // Added recipe to InventoryItem to satisfy context/InventoryContext.tsx and pages/admin/AdminInventory.tsx
+    recipe?: InventoryRecipeItem[];
 }
 
+// Added InventoryLog to satisfy context/InventoryContext.tsx
 export interface InventoryLog {
-    id: string;
-    item_id: string;
-    type: 'IN' | 'OUT' | 'SALE' | 'LOSS';
-    quantity: number;
-    reason: string;
-    user_name: string;
-    created_at: Date;
+  id: string;
+  item_id: string;
+  type: 'IN' | 'OUT' | 'SALE' | 'LOSS';
+  quantity: number;
+  reason: string;
+  user_name: string;
+  created_at: Date;
 }
 
-// --- NEW: Product Extras ---
-export interface ProductExtra {
-    name: string;
-    price: number;
-}
-
-// Product agora é apenas uma "Vitrine" para um InventoryItem
+// Product agora é a vitrine
 export interface Product {
   id: string;
-  linkedInventoryItemId: string; // Obrigatório agora
-  name: string; // Pode ser diferente do estoque (nome comercial)
+  linkedInventoryItemId: string;
+  name: string;
   description: string;
-  price: number; // Preço de Venda
-  costPrice?: number; // Vem do estoque
+  price: number;
+  costPrice?: number;
   category: string;
-  type: ProductType; // KITCHEN / BAR
+  type: ProductType;
   image: string; 
   isVisible: boolean; 
   sortOrder: number;
-  extras?: ProductExtra[]; // Lista de opcionais (Borda, Adicionais)
+  isExtra: boolean; // Indica se é um adicional
+  linkedExtraIds?: string[]; // IDs de outros produtos que são adicionais deste
 }
 
 export interface OrderItem {
@@ -253,9 +200,8 @@ export interface Supplier {
     name: string;
     contactName: string;
     phone: string;
-    // Fiscal & Address
     cnpj?: string;
-    ie?: string; // Inscrição Estadual
+    ie?: string;
     email?: string;
     cep?: string;
     address?: string;
@@ -279,12 +225,12 @@ export interface PurchaseInstallment {
 
 export interface PurchaseEntry {
     supplierId: string;
-    invoiceNumber: string; // Numero da Nota
+    invoiceNumber: string;
     date: Date;
     items: PurchaseItemInput[];
     totalAmount: number;
-    taxAmount: number; // Impostos
-    distributeTax: boolean; // Distribuir no custo?
+    taxAmount: number;
+    distributeTax: boolean;
     installments: PurchaseInstallment[];
 }
 
@@ -297,8 +243,8 @@ export interface Expense {
     paidDate?: Date;
     isPaid: boolean;
     supplierId?: string;
-    isRecurring?: boolean; // NEW
-    paymentMethod?: 'CASH' | 'BANK'; // NEW
+    isRecurring?: boolean;
+    paymentMethod?: 'CASH' | 'BANK';
 }
 
 export interface POSSaleData {
@@ -306,4 +252,43 @@ export interface POSSaleData {
     items: { productId: string; quantity: number; notes: string }[];
     totalAmount: number;
     method: 'CASH' | 'CARD' | 'PIX' | 'CREDIT' | 'DEBIT';
+}
+
+// Added Transaction, CashSession, and CashMovement to satisfy context/FinanceContext.tsx
+export interface Transaction {
+  id: string;
+  tableId: string;
+  tableNumber: number;
+  amount: number;
+  method: string;
+  timestamp: Date;
+  itemsSummary: string;
+  cashierName: string;
+}
+
+export interface CashSession {
+  id: string;
+  openedAt: Date;
+  initialAmount: number;
+  status: 'OPEN' | 'CLOSED';
+  operatorName: string;
+}
+
+export interface CashMovement {
+  id: string;
+  sessionId: string;
+  type: 'BLEED' | 'SUPPLY';
+  amount: number;
+  reason: string;
+  timestamp: Date;
+  userName: string;
+}
+
+// Added AuditLog to satisfy data/mockDb.ts
+export interface AuditLog {
+  id: string;
+  tenant_id: string;
+  action: string;
+  details: any;
+  created_at: Date;
 }

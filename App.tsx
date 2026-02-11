@@ -28,13 +28,13 @@ import { getTenantSlug } from './utils/tenant';
 
 // --- Protected Route Helper ---
 interface ProtectedRouteProps {
-    children: React.ReactNode;
     allowedRoles?: Role[];
     requiredRoute?: string;
     requiredFeature?: 'allowKds' | 'allowCashier' | 'allowReports';
 }
 
-const ProtectedRestaurantRoute = ({ children, allowedRoles, requiredRoute, requiredFeature }: ProtectedRouteProps) => {
+// Updated to use PropsWithChildren to explicitly allow children nodes in the TS component definition
+const ProtectedRestaurantRoute = ({ children, allowedRoles, requiredRoute, requiredFeature }: PropsWithChildren<ProtectedRouteProps>) => {
     const { state: authState, checkPermission } = useAuth();
     const { state: restState } = useRestaurant();
     

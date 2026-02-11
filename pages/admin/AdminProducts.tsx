@@ -6,8 +6,8 @@ import { useUI } from '../../context/UIContext';
 import { Button } from '../../components/Button';
 import { Modal } from '../../components/Modal';
 import { ImageUploader } from '../../components/ImageUploader';
-import { Product, ProductType, ProductExtra } from '../../types';
-import { Plus, GripVertical, Edit, Eye, EyeOff, Trash2, ArrowDownUp, Tag, Layers } from 'lucide-react';
+import { Product, ProductType } from '../../types';
+import { Plus, GripVertical, Edit, Eye, EyeOff, Trash2, ArrowDownUp, Tag, Layers, CheckSquare, Square, Info } from 'lucide-react';
 
 export const AdminProducts: React.FC = () => {
   const { state: restState, dispatch } = useRestaurant();
@@ -21,9 +21,8 @@ export const AdminProducts: React.FC = () => {
   const [filterCategory, setFilterCategory] = useState('Todas');
   
   // State for Extras Management
-  const [productExtras, setProductExtras] = useState<ProductExtra[]>([]);
-  const [newExtraName, setNewExtraName] = useState('');
-  const [newExtraPrice, setNewExtraPrice] = useState('');
+  const [isExtra, setIsExtra] = useState(false);
+  const [selectedExtraIds, setSelectedExtraIds] = useState<string[]>([]);
 
   const [productForm, setProductForm] = useState<{
       name: string;
@@ -45,11 +44,14 @@ export const AdminProducts: React.FC = () => {
 
   const availableForMenu = invState.inventory.filter(i => 
       (i.type === 'RESALE' || i.type === 'COMPOSITE') && 
-      !restState.products.some(p => p.linkedInventoryItemId === i.id)
+      !restState.products.some(p => p.linkedInventoryItemId === i.id && !editingProduct)
   );
 
   const sortedProducts = [...restState.products].sort((a,b) => (a.sortOrder || 0) - (b.sortOrder || 0));
-  const categories = ['Todas', ...Array.from(new Set(restState.products.map(p => p.category)))];
+  const categories = ['Todas', ...Array.from(new Set(restState.products.filter(p => !p.isExtra).map(p => p.category)))];
+  
+  // Todos os produtos que foram marcados como adicionais
+  const allAvailableExtras = restState.products.filter(p => p.isExtra && p.id !== editingProduct?.id);
 
   const handleOpenAdd = () => {
       setProductForm({
@@ -63,7 +65,8 @@ export const AdminProducts: React.FC = () => {
       });
       setSelectedStockId('');
       setEditingProduct(null);
-      setProductExtras([]);
+      setIsExtra(false);
+      setSelectedExtraIds([]);
       setMenuModalOpen(true);
   };
 
@@ -78,20 +81,15 @@ export const AdminProducts: React.FC = () => {
           type: product.type,
           isVisible: product.isVisible
       });
-      setProductExtras(product.extras || []);
+      setIsExtra(product.isExtra || false);
+      setSelectedExtraIds(product.linkedExtraIds || []);
       setMenuModalOpen(true);
   };
 
-  const handleAddExtra = () => {
-      if (newExtraName && newExtraPrice) {
-          setProductExtras([...productExtras, { name: newExtraName, price: parseFloat(newExtraPrice) }]);
-          setNewExtraName('');
-          setNewExtraPrice('');
-      }
-  };
-
-  const handleRemoveExtra = (index: number) => {
-      setProductExtras(prev => prev.filter((_, i) => i !== index));
+  const toggleExtraSelection = (id: string) => {
+      setSelectedExtraIds(prev => 
+          prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+      );
   };
 
   const handleSaveProduct = async (e: React.FormEvent) => {
@@ -115,7 +113,8 @@ export const AdminProducts: React.FC = () => {
                   image: productForm.image,
                   type: productForm.type,
                   isVisible: productForm.isVisible,
-                  extras: productExtras
+                  isExtra: isExtra,
+                  linkedExtraIds: isExtra ? [] : selectedExtraIds // Adicionais não têm outros adicionais
               } as Product 
           });
       } else {
@@ -139,7 +138,8 @@ export const AdminProducts: React.FC = () => {
                   image: productForm.image || stockItem.image || '',
                   isVisible: productForm.isVisible,
                   sortOrder: restState.products.length + 1,
-                  extras: productExtras
+                  isExtra: isExtra,
+                  linkedExtraIds: isExtra ? [] : selectedExtraIds
               } as Product
           });
       }
@@ -162,9 +162,13 @@ export const AdminProducts: React.FC = () => {
       setDraggedItemIndex(null);
   };
 
-  const displayedProducts = filterCategory === 'Todas' 
-      ? sortedProducts 
-      : sortedProducts.filter(p => p.category === filterCategory);
+  const displayedProducts = sortedProducts.filter(p => {
+      const matchCategory = filterCategory === 'Todas' || p.category === filterCategory;
+      const matchType = filterCategory === 'Adicionais' ? p.isExtra : (filterCategory === 'Todas' ? true : !p.isExtra);
+      return matchCategory && matchType;
+  });
+
+  const finalCategories = [...categories, 'Adicionais'];
 
   return (
     <div className="space-y-6 animate-fade-in pb-20">
@@ -173,7 +177,7 @@ export const AdminProducts: React.FC = () => {
                 <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
                     <ArrowDownUp size={24} className="text-blue-600"/> Organizar Cardápio
                 </h2>
-                <p className="text-sm text-gray-500">Defina o que aparece para o cliente e a ordem de exibição.</p>
+                <p className="text-sm text-gray-500">Defina o que aparece para o cliente e vincule adicionais.</p>
             </div>
             <Button onClick={handleOpenAdd} className="w-full md:w-auto">
                 <Plus size={18}/> Adicionar do Estoque
@@ -181,7 +185,7 @@ export const AdminProducts: React.FC = () => {
         </div>
 
         <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-            {categories.map(cat => (
+            {finalCategories.map(cat => (
                 <button
                     key={cat}
                     onClick={() => setFilterCategory(cat)}
@@ -197,13 +201,6 @@ export const AdminProducts: React.FC = () => {
         </div>
 
         <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
-            {displayedProducts.length === 0 && (
-                <div className="p-12 text-center text-gray-400 flex flex-col items-center">
-                    <Tag size={48} className="mb-4 opacity-20"/>
-                    <p>Nenhum produto encontrado.</p>
-                </div>
-            )}
-
             <div className="divide-y divide-gray-100">
                 {displayedProducts.map((product, index) => {
                     const realIndex = sortedProducts.findIndex(p => p.id === product.id);
@@ -220,19 +217,18 @@ export const AdminProducts: React.FC = () => {
                                 <GripVertical size={20} />
                             </div>
                             <div className="w-12 h-12 rounded-lg bg-gray-100 border overflow-hidden shrink-0">
-                                {product.image ? (
-                                    <img src={product.image} className="w-full h-full object-cover" alt="" />
-                                ) : (
-                                    <div className="w-full h-full flex items-center justify-center text-gray-300"><Tag size={16}/></div>
-                                )}
+                                <img src={product.image || 'https://via.placeholder.com/150'} className="w-full h-full object-cover" alt="" />
                             </div>
                             <div className="flex-1 min-w-0">
-                                <div className="font-bold text-gray-800 truncate">{product.name}</div>
+                                <div className="font-bold text-gray-800 truncate flex items-center gap-2">
+                                    {product.name}
+                                    {product.isExtra && <span className="bg-orange-100 text-orange-600 text-[10px] px-1.5 py-0.5 rounded-full uppercase">Adicional</span>}
+                                </div>
                                 <div className="text-xs text-gray-500 flex items-center gap-2">
                                     <span className="bg-gray-100 px-2 py-0.5 rounded">{product.category}</span>
-                                    {product.extras && product.extras.length > 0 && (
-                                        <span className="bg-orange-50 text-orange-600 px-2 py-0.5 rounded flex items-center gap-1">
-                                            <Layers size={10}/> {product.extras.length} Adicionais
+                                    {product.linkedExtraIds && product.linkedExtraIds.length > 0 && (
+                                        <span className="bg-blue-50 text-blue-600 px-2 py-0.5 rounded flex items-center gap-1">
+                                            <Layers size={10}/> {product.linkedExtraIds.length} Opcionais vinculados
                                         </span>
                                     )}
                                 </div>
@@ -241,16 +237,19 @@ export const AdminProducts: React.FC = () => {
                                 R$ {product.price.toFixed(2)}
                             </div>
                             <div className="flex gap-1 border-l pl-3 ml-2">
-                                <button onClick={() => handleOpenEdit(product)} className="p-2 text-blue-600 hover:bg-blue-50 rounded transition-colors" title="Editar Detalhes">
+                                <button onClick={() => handleOpenEdit(product)} className="p-2 text-blue-600 hover:bg-blue-50 rounded transition-colors">
                                     <Edit size={18}/>
                                 </button>
-                                <button onClick={() => showConfirm({ title: 'Remover do Cardápio', message: 'O item continuará no estoque, mas sumirá das vendas.', onConfirm: () => dispatch({type: 'DELETE_PRODUCT', productId: product.id}) })} className="p-2 text-red-400 hover:bg-red-50 rounded transition-colors" title="Remover">
+                                <button onClick={() => showConfirm({ title: 'Remover do Cardápio', message: 'O item continuará no estoque.', onConfirm: () => dispatch({type: 'DELETE_PRODUCT', productId: product.id}) })} className="p-2 text-red-400 hover:bg-red-50 rounded transition-colors">
                                     <Trash2 size={18}/>
                                 </button>
                             </div>
                         </div>
                     );
                 })}
+                {displayedProducts.length === 0 && (
+                    <div className="p-12 text-center text-gray-400">Nenhum produto nesta categoria.</div>
+                )}
             </div>
         </div>
 
@@ -273,11 +272,7 @@ export const AdminProducts: React.FC = () => {
                                 setSelectedStockId(id);
                                 const item = invState.inventory.find(i => i.id === id);
                                 if (item) {
-                                    setProductForm(prev => ({
-                                        ...prev,
-                                        name: item.name,
-                                        image: item.image || ''
-                                    }));
+                                    setProductForm(prev => ({ ...prev, name: item.name, image: item.image || '' }));
                                 }
                             }}
                             required
@@ -291,91 +286,70 @@ export const AdminProducts: React.FC = () => {
                 )}
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="md:col-span-2 flex items-center justify-between bg-orange-50 p-4 rounded-xl border border-orange-100">
+                        <div className="flex items-center gap-3">
+                            <Layers className="text-orange-600" />
+                            <div>
+                                <h4 className="font-bold text-orange-900 text-sm">Este produto é um Adicional/Extra?</h4>
+                                <p className="text-xs text-orange-700">Adicionais não aparecem no menu principal, mas podem ser escolhidos em outros pratos.</p>
+                            </div>
+                        </div>
+                        <button 
+                            type="button"
+                            onClick={() => setIsExtra(!isExtra)}
+                            className={`p-2 rounded-lg transition-colors ${isExtra ? 'bg-orange-600 text-white' : 'bg-white text-gray-300 border'}`}
+                        >
+                            {isExtra ? <CheckSquare size={24}/> : <Square size={24}/>}
+                        </button>
+                    </div>
+
                     <div className="md:col-span-2">
                         <label className="block text-sm font-bold mb-1 text-gray-500 uppercase">Nome de Exibição</label>
-                        <input 
-                            className="w-full border p-3 rounded-lg text-base focus:ring-2 focus:ring-blue-500 outline-none" 
-                            value={productForm.name} 
-                            onChange={e => setProductForm({...productForm, name: e.target.value})} 
-                            required
-                        />
+                        <input className="w-full border p-3 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" value={productForm.name} onChange={e => setProductForm({...productForm, name: e.target.value})} required />
                     </div>
 
                     <div>
                         <label className="block text-sm font-bold mb-1 text-gray-500 uppercase">Preço de Venda (R$)</label>
-                        <input 
-                            type="number" 
-                            step="0.01" 
-                            className="w-full border p-3 rounded-lg text-xl font-bold text-green-700 focus:ring-2 focus:ring-green-500 outline-none" 
-                            value={productForm.price} 
-                            onChange={e => setProductForm({...productForm, price: e.target.value})} 
-                            required
-                        />
+                        <input type="number" step="0.01" className="w-full border p-3 rounded-lg text-xl font-bold text-green-700 focus:ring-2 focus:ring-green-500 outline-none" value={productForm.price} onChange={e => setProductForm({...productForm, price: e.target.value})} required />
                     </div>
                     <div>
                         <label className="block text-sm font-bold mb-1 text-gray-500 uppercase">Categoria</label>
-                        <select 
-                            className="w-full border p-3 rounded-lg text-base bg-white focus:ring-2 focus:ring-blue-500 outline-none" 
-                            value={productForm.category} 
-                            onChange={e => setProductForm({...productForm, category: e.target.value})}
-                        >
+                        <select className="w-full border p-3 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 outline-none" value={productForm.category} onChange={e => setProductForm({...productForm, category: e.target.value})} >
                             {['Promocoes', 'Lanches', 'Pizzas', 'Pratos Principais', 'Acompanhamentos', 'Bebidas', 'Sobremesas'].map(c => (
                                 <option key={c} value={c}>{c}</option>
                             ))}
                         </select>
                     </div>
 
+                    {!isExtra && (
+                        <div className="md:col-span-2 bg-blue-50 p-4 rounded-xl border border-blue-100">
+                            <h4 className="text-sm font-bold text-blue-800 mb-3 flex items-center gap-2"><Layers size={16}/> Vincular Adicionais Disponíveis</h4>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto">
+                                {allAvailableExtras.map(extra => (
+                                    <div 
+                                        key={extra.id} 
+                                        onClick={() => toggleExtraSelection(extra.id)}
+                                        className={`flex items-center justify-between p-2 rounded border cursor-pointer transition-colors ${selectedExtraIds.includes(extra.id) ? 'bg-white border-blue-500 ring-1 ring-blue-500' : 'bg-white/50 border-gray-200 opacity-60'}`}
+                                    >
+                                        <span className="text-xs font-medium">{extra.name}</span>
+                                        <span className="text-[10px] font-bold text-blue-600">+ R$ {extra.price.toFixed(2)}</span>
+                                    </div>
+                                ))}
+                                {allAvailableExtras.length === 0 && (
+                                    <p className="text-xs text-blue-400 italic flex items-center gap-1"><Info size={12}/> Nenhum produto cadastrado como "Adicional" ainda.</p>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
                     <div className="md:col-span-2">
                         <label className="block text-sm font-bold mb-1 text-gray-500 uppercase">Descrição</label>
-                        <textarea 
-                            className="w-full border p-3 rounded-lg text-base h-20 resize-none focus:ring-2 focus:ring-blue-500 outline-none" 
-                            value={productForm.description} 
-                            onChange={e => setProductForm({...productForm, description: e.target.value})} 
-                        />
-                    </div>
-
-                    {/* SEÇÃO DE ADICIONAIS/EXTRAS */}
-                    <div className="md:col-span-2 bg-orange-50 p-4 rounded-xl border border-orange-100">
-                        <h4 className="text-sm font-bold text-orange-800 mb-3 flex items-center gap-2"><Layers size={16}/> Itens Adicionais (Extras)</h4>
-                        
-                        <div className="flex gap-2 mb-3">
-                            <input 
-                                className="flex-1 border p-2 rounded text-sm" 
-                                placeholder="Nome (Ex: Bacon, Borda)" 
-                                value={newExtraName} 
-                                onChange={e => setNewExtraName(e.target.value)} 
-                            />
-                            <input 
-                                type="number" 
-                                step="0.01"
-                                className="w-24 border p-2 rounded text-sm" 
-                                placeholder="Preço" 
-                                value={newExtraPrice} 
-                                onChange={e => setNewExtraPrice(e.target.value)} 
-                            />
-                            <Button size="sm" type="button" onClick={handleAddExtra} disabled={!newExtraName}><Plus size={16}/></Button>
-                        </div>
-
-                        <div className="space-y-2 max-h-40 overflow-y-auto">
-                            {productExtras.map((extra, idx) => (
-                                <div key={idx} className="flex justify-between items-center bg-white p-2 rounded border border-orange-200 shadow-sm text-sm">
-                                    <span className="font-medium text-gray-700">{extra.name}</span>
-                                    <div className="flex items-center gap-3">
-                                        <span className="font-bold text-green-600">+ R$ {extra.price.toFixed(2)}</span>
-                                        <button type="button" onClick={() => handleRemoveExtra(idx)} className="text-red-400 hover:text-red-600"><Trash2 size={14}/></button>
-                                    </div>
-                                </div>
-                            ))}
-                            {productExtras.length === 0 && <p className="text-xs text-orange-400 italic text-center py-2">Nenhum adicional cadastrado.</p>}
-                        </div>
+                        <textarea className="w-full border p-3 rounded-lg h-20 resize-none focus:ring-2 focus:ring-blue-500 outline-none" value={productForm.description} onChange={e => setProductForm({...productForm, description: e.target.value})} />
                     </div>
 
                     <div className="md:col-span-2">
                         <label className="block text-sm font-bold mb-1 text-gray-500 uppercase">Imagem</label>
-                        <ImageUploader 
-                            value={productForm.image || ''} 
-                            onChange={(val) => setProductForm({...productForm, image: val})} 
-                        />
+                        <ImageUploader value={productForm.image || ''} onChange={(val) => setProductForm({...productForm, image: val})} />
                     </div>
                 </div>
 
