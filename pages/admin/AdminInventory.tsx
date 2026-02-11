@@ -6,12 +6,12 @@ import { useUI } from '../../context/UIContext';
 import { Button } from '../../components/Button';
 import { ImageUploader } from '../../components/ImageUploader';
 import { Modal } from '../../components/Modal';
-import { InventoryItem, InventoryType, Supplier, PurchaseItemInput, PurchaseInstallment } from '../../types';
-import { Plus, Trash2, Edit, ArrowDown, Layers, ClipboardList, FileText, Truck, X, Star, CheckSquare, Square, Info } from 'lucide-react';
+import { InventoryItem, InventoryType } from '../../types';
+import { Plus, Trash2, Edit, ArrowDown, Layers, ClipboardList, Star, CheckSquare, Square, Info } from 'lucide-react';
 
 export const AdminInventory: React.FC = () => {
   const { state: restState } = useRestaurant();
-  const { state: invState, addInventoryItem, updateInventoryItem, updateStock, processInventoryAdjustment, addSupplier, deleteSupplier, processPurchase } = useInventory();
+  const { state: invState, addInventoryItem, updateInventoryItem, updateStock, processInventoryAdjustment } = useInventory();
   const { showAlert, showConfirm } = useUI();
   
   const [editingInventory, setEditingInventory] = useState<Partial<InventoryItem> | null>(null);
@@ -46,7 +46,7 @@ export const AdminInventory: React.FC = () => {
   return (
     <div className="space-y-6 animate-fade-in pb-10">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-6 rounded-xl shadow-sm border gap-4">
-            <div><h2 className="text-2xl font-bold text-gray-800">Estoque Geral</h2><p className="text-sm text-gray-500">Gestão de insumos e adicionais.</p></div>
+            <div><h2 className="text-2xl font-bold text-gray-800">Estoque Geral</h2><p className="text-sm text-gray-500">Gestão de insumos e produtos.</p></div>
             <div className="flex gap-2">
                 <Button onClick={() => setInventoryModalOpen(true)} variant="secondary" className="bg-yellow-50 text-yellow-700 border-yellow-100"><ClipboardList size={16}/> Balanço</Button>
                 <Button onClick={() => setEditingInventory({ name: '', unit: 'UN', type: 'INGREDIENT', quantity: 0, minQuantity: 5, costPrice: 0, isExtra: false })}><Plus size={16}/> Novo Item</Button>
