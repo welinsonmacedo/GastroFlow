@@ -56,7 +56,7 @@ type RestaurantAction =
 const initialState: RestaurantState = {
   tenantId: null,
   tenantSlug: null,
-  isValidTenant: false,
+  isValidTenant: true, // Começa como true para não piscar erro
   isInactiveTenant: false,
   isLoading: true,
   theme: DEFAULT_THEME,
@@ -96,62 +96,83 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   const fetchAllData = useCallback(async (tenantId: string) => {
     const yesterday = new Date(); yesterday.setHours(yesterday.getHours() - 24);
-    const [tables, products, orders, items, calls, staff, tenants] = await Promise.all([
-      supabase.from('restaurant_tables').select('*').eq('tenant_id', tenantId).order('number', { ascending: true }),
-      supabase.from('products').select('*').eq('tenant_id', tenantId).order('sort_order', { ascending: true }),
-      supabase.from('orders').select('*').eq('tenant_id', tenantId).gte('created_at', yesterday.toISOString()),
-      supabase.from('order_items').select('*').eq('tenant_id', tenantId).gte('created_at', yesterday.toISOString()),
-      supabase.from('service_calls').select('*').eq('tenant_id', tenantId).eq('status', 'PENDING'),
-      supabase.from('staff').select('*').eq('tenant_id', tenantId),
-      supabase.from('tenants').select('theme_config, business_info, plan, status').eq('id', tenantId).single()
-    ]);
+    try {
+        const [tables, products, orders, items, calls, staff, tenants] = await Promise.all([
+          supabase.from('restaurant_tables').select('*').eq('tenant_id', tenantId).order('number', { ascending: true }),
+          supabase.from('products').select('*').eq('tenant_id', tenantId).order('sort_order', { ascending: true }),
+          supabase.from('orders').select('*').eq('tenant_id', tenantId).gte('created_at', yesterday.toISOString()),
+          supabase.from('order_items').select('*').eq('tenant_id', tenantId).gte('created_at', yesterday.toISOString()),
+          supabase.from('service_calls').select('*').eq('tenant_id', tenantId).eq('status', 'PENDING'),
+          supabase.from('staff').select('*').eq('tenant_id', tenantId),
+          supabase.from('tenants').select('theme_config, business_info, plan, status').eq('id', tenantId).single()
+        ]);
 
-    const mappedOrders: Order[] = (orders.data || []).map(o => ({
-      id: o.id,
-      tableId: o.table_id,
-      timestamp: new Date(o.created_at),
-      isPaid: o.is_paid,
-      items: (items.data || [])
-        .filter(item => item.order_id === o.id)
-        .map(item => ({
-          id: item.id,
-          productId: item.product_id,
-          quantity: item.quantity,
-          notes: item.notes,
-          status: item.status as OrderStatus,
-          productName: item.product_name,
-          productType: item.product_type as ProductType,
-          productPrice: item.product_price,
-          productCostPrice: item.product_cost_price || 0
-        }))
-    }));
+        const mappedOrders: Order[] = (orders.data || []).map(o => ({
+          id: o.id,
+          tableId: o.table_id,
+          timestamp: new Date(o.created_at),
+          isPaid: o.is_paid,
+          items: (items.data || [])
+            .filter(item => item.order_id === o.id)
+            .map(item => ({
+              id: item.id,
+              productId: item.product_id,
+              quantity: item.quantity,
+              notes: item.notes,
+              status: item.status as OrderStatus,
+              productName: item.product_name,
+              productType: item.product_type as ProductType,
+              productPrice: item.product_price,
+              productCostPrice: item.product_cost_price || 0
+            }))
+        }));
 
-    baseDispatch({
-      type: 'SET_INITIAL_DATA',
-      payload: {
-        tenantId,
-        theme: tenants.data?.theme_config || DEFAULT_THEME,
-        businessInfo: tenants.data?.business_info || {},
-        tables: (tables.data || []).map(t => ({ id: t.id, number: t.number, status: t.status, customerName: t.customer_name, accessCode: t.access_code })),
-        products: (products.data || []).map(p => ({
-          id: p.id, name: p.name, description: p.description, price: p.price, costPrice: p.cost_price, 
-          category: p.category, type: p.type, image: p.image, isVisible: p.is_visible, sortOrder: p.sort_order,
-          isExtra: p.is_extra || false, linkedExtraIds: p.linked_extra_ids || [], linkedInventoryItemId: p.linked_inventory_item_id
-        })),
-        orders: mappedOrders,
-        serviceCalls: (calls.data || []).map(c => ({ id: c.id, tableId: c.table_id, status: c.status, timestamp: new Date(c.created_at) })),
-        users: (staff.data || []).map(s => ({ id: s.id, name: s.name, email: s.email, role: s.role as Role, pin: s.pin, allowedRoutes: s.allowed_routes }))
-      }
-    });
+        baseDispatch({
+          type: 'SET_INITIAL_DATA',
+          payload: {
+            tenantId,
+            isValidTenant: true,
+            theme: tenants.data?.theme_config || DEFAULT_THEME,
+            businessInfo: tenants.data?.business_info || {},
+            tables: (tables.data || []).map(t => ({ id: t.id, number: t.number, status: t.status, customerName: t.customer_name, accessCode: t.access_code })),
+            products: (products.data || []).map(p => ({
+              id: p.id, name: p.name, description: p.description, price: p.price, costPrice: p.cost_price, 
+              category: p.category, type: p.type, image: p.image, isVisible: p.is_visible, sortOrder: p.sort_order,
+              isExtra: p.is_extra || false, linkedExtraIds: p.linked_extra_ids || [], linkedInventoryItemId: p.linked_inventory_item_id
+            })),
+            orders: mappedOrders,
+            serviceCalls: (calls.data || []).map(c => ({ id: c.id, tableId: c.table_id, status: c.status, timestamp: new Date(c.created_at) })),
+            users: (staff.data || []).map(s => ({ id: s.id, name: s.name, email: s.email, role: s.role as Role, pin: s.pin, allowedRoutes: s.allowed_routes }))
+          }
+        });
+    } catch (e) {
+        console.error("Erro ao carregar dados do restaurante", e);
+    }
   }, []);
 
   useEffect(() => {
     const init = async () => {
       const slug = getTenantSlug();
-      if (!slug) { baseDispatch({ type: 'SET_LOADING', payload: false }); return; }
-      const { data: tenant } = await supabase.from('tenants').select('id, status').eq('slug', slug).maybeSingle();
-      if (!tenant) { baseDispatch({ type: 'SET_INITIAL_DATA', payload: { isValidTenant: false } }); return; }
-      if (tenant.status === 'INACTIVE') { baseDispatch({ type: 'SET_INITIAL_DATA', payload: { isValidTenant: true, isInactiveTenant: true, tenantId: tenant.id, tenantSlug: slug } }); return; }
+      if (!slug) { 
+        baseDispatch({ type: 'SET_LOADING', payload: false }); 
+        return; 
+      }
+      
+      const { data: tenant, error } = await supabase.from('tenants').select('id, status').eq('slug', slug).maybeSingle();
+      
+      if (error || !tenant) { 
+        console.warn(`Slug "${slug}" não encontrado.`);
+        // Se o slug salvo no navegador não existe mais no banco, limpa pra não travar o usuário
+        sessionStorage.removeItem('gastroflow_tenant_slug');
+        baseDispatch({ type: 'SET_INITIAL_DATA', payload: { isValidTenant: false } }); 
+        return; 
+      }
+
+      if (tenant.status === 'INACTIVE') { 
+        baseDispatch({ type: 'SET_INITIAL_DATA', payload: { isValidTenant: true, isInactiveTenant: true, tenantId: tenant.id, tenantSlug: slug } }); 
+        return; 
+      }
+
       fetchAllData(tenant.id);
       const channel = supabase.channel(`ops:${tenant.id}`).on('postgres_changes', { event: '*', schema: 'public', filter: `tenant_id=eq.${tenant.id}` }, () => fetchAllData(tenant.id)).subscribe();
       return () => { supabase.removeChannel(channel); };

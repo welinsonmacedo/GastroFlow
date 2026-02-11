@@ -1,10 +1,10 @@
 
 import React, { PropsWithChildren } from 'react';
 import { BrowserRouter, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './context/AuthProvider'; // NEW
+import { AuthProvider, useAuth } from './context/AuthProvider';
 import { RestaurantProvider, useRestaurant } from './context/RestaurantContext';
-import { InventoryProvider } from './context/InventoryContext'; // NEW
-import { FinanceProvider } from './context/FinanceContext'; // NEW
+import { InventoryProvider } from './context/InventoryContext';
+import { FinanceProvider } from './context/FinanceContext';
 import { SaaSProvider, useSaaS } from './context/SaaSContext';
 import { UIProvider, useUI } from './context/UIContext';
 import { ClientApp } from './pages/ClientApp';
@@ -22,7 +22,7 @@ import { PrivacyPolicy } from './pages/PrivacyPolicy';
 import { TermsOfService } from './pages/TermsOfService';
 import { ManualPage } from './pages/ManualPage';
 import { InstallPWA } from './components/InstallPWA';
-import { ChefHat, Coffee, Monitor, DollarSign, Settings, LogOut, User as UserIcon, Lock } from 'lucide-react';
+import { ChefHat, Coffee, Monitor, DollarSign, Settings, LogOut, User as UserIcon, Lock, AlertCircle, ArrowLeft } from 'lucide-react';
 import { Role } from './types';
 import { getTenantSlug } from './utils/tenant';
 
@@ -33,7 +33,6 @@ interface ProtectedRouteProps {
     requiredFeature?: 'allowKds' | 'allowCashier' | 'allowReports';
 }
 
-// Updated to use PropsWithChildren to explicitly allow children nodes in the TS component definition
 const ProtectedRestaurantRoute = ({ children, allowedRoles, requiredRoute, requiredFeature }: PropsWithChildren<ProtectedRouteProps>) => {
     const { state: authState, checkPermission } = useAuth();
     const { state: restState } = useRestaurant();
@@ -44,14 +43,12 @@ const ProtectedRestaurantRoute = ({ children, allowedRoles, requiredRoute, requi
         return <Navigate to={`/login${window.location.search}`} replace />;
     }
 
-    // 1. Verificação de Limites do Plano
     if (requiredFeature && restState.planLimits) {
         if (!restState.planLimits[requiredFeature]) {
             return <div className="p-10 text-center text-orange-500 font-bold">Funcionalidade Bloqueada pelo Plano</div>;
         }
     }
 
-    // 2. Verificação por Role
     if (allowedRoles && !checkPermission(allowedRoles)) {
          return <div className="p-10 text-center text-red-500">Acesso Negado.</div>;
     }
@@ -136,12 +133,25 @@ const TenantApp = () => {
             <div className="h-screen flex flex-col items-center justify-center bg-gray-50 p-6 text-center">
                 <div className="bg-red-100 p-6 rounded-full mb-6 text-red-600 shadow-xl border border-red-200"><Lock size={64} /></div>
                 <h1 className="text-3xl font-bold text-gray-800 mb-2">Acesso Temporariamente Suspenso</h1>
+                <a href="/" className="text-blue-600 font-bold hover:underline mt-4">Voltar para Início</a>
             </div>
         );
     }
 
     if (!state.isValidTenant) {
-        return <div className="h-screen flex items-center justify-center">Restaurante não encontrado.</div>;
+        return (
+            <div className="h-screen flex flex-col items-center justify-center bg-gray-50 p-6 text-center space-y-4">
+                <div className="bg-orange-100 p-4 rounded-full text-orange-600"><AlertCircle size={48}/></div>
+                <h1 className="text-2xl font-bold text-gray-800">Restaurante não encontrado</h1>
+                <p className="text-gray-500 max-w-xs">O link acessado é inválido ou o restaurante foi removido.</p>
+                <button 
+                    onClick={() => { sessionStorage.removeItem('gastroflow_tenant_slug'); window.location.href = '/'; }}
+                    className="flex items-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-xl font-bold shadow-lg hover:bg-blue-700 transition-all"
+                >
+                    <ArrowLeft size={20}/> Voltar para Home
+                </button>
+            </div>
+        );
     }
 
     return (
