@@ -1,4 +1,5 @@
 
+
 export enum Role {
   CLIENT = 'CLIENT',
   WAITER = 'WAITER',
@@ -155,6 +156,9 @@ export interface OrderItem {
   status: OrderStatus;
   productName: string;
   productType: ProductType;
+  // Added productPrice and productCostPrice to fix type errors in pages/ClientApp.tsx
+  productPrice: number;
+  productCostPrice: number;
 }
 
 export interface Order {

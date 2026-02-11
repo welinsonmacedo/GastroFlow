@@ -20,6 +20,7 @@ interface InventoryContextType {
   addSupplier: (supplier: Supplier) => Promise<void>;
   deleteSupplier: (id: string) => Promise<void>;
   processPurchase: (purchase: PurchaseEntry) => Promise<void>;
+  fetchData: () => Promise<void>;
 }
 
 const InventoryContext = createContext<InventoryContextType | undefined>(undefined);
@@ -39,10 +40,10 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         if (!tenantId) return;
 
         const [invRes, recipesRes, logsRes, suppRes] = await Promise.all([
-            supabase.from('inventory_items').select('*').eq('tenant_id', tenantId),
+            supabase.from('inventory_items').select('*').eq('tenant_id', tenantId).order('name'),
             supabase.from('inventory_recipes').select('*').eq('tenant_id', tenantId),
-            supabase.from('inventory_logs').select('*').eq('tenant_id', tenantId).order('created_at', { ascending: false }).limit(50),
-            supabase.from('suppliers').select('*').eq('tenant_id', tenantId)
+            supabase.from('inventory_logs').select('*').eq('tenant_id', tenantId).order('created_at', { ascending: false }).limit(100),
+            supabase.from('suppliers').select('*').eq('tenant_id', tenantId).order('name')
         ]);
 
         if (invRes.data) {
@@ -79,13 +80,6 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   useEffect(() => {
     if (!tenantId) return;
     fetchData();
-    const channel = supabase.channel(`inventory_ctx:${tenantId}`)
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory_items', filter: `tenant_id=eq.${tenantId}` }, fetchData)
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory_recipes', filter: `tenant_id=eq.${tenantId}` }, fetchData)
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory_logs', filter: `tenant_id=eq.${tenantId}` }, fetchData)
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'suppliers', filter: `tenant_id=eq.${tenantId}` }, fetchData)
-        .subscribe();
-    return () => { supabase.removeChannel(channel); };
   }, [tenantId, fetchData]);
 
   const addInventoryItem = async (item: InventoryItem) => {
@@ -148,28 +142,66 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
               }
           }
       }
+      fetchData();
   };
 
   const addSupplier = async (supplier: Supplier) => {
       if(!tenantId) return;
       const { id, ...data } = supplier;
       await supabase.from('suppliers').insert({ tenant_id: tenantId, ...data });
+      fetchData();
   };
 
   const deleteSupplier = async (id: string) => {
       await supabase.from('suppliers').delete().eq('id', id);
-  };
-
-  const processPurchase = async (purchase: PurchaseEntry) => {
-      for (const item of purchase.items) {
-          await updateStock(item.inventoryItemId, item.quantity, 'IN', `Compra Nota ${purchase.invoiceNumber}`);
-          await supabase.from('inventory_items').update({ cost_price: item.unitPrice }).eq('id', item.inventoryItemId);
-      }
       fetchData();
   };
 
+  const processPurchase = async (purchase: PurchaseEntry) => {
+      if(!tenantId) return;
+
+      try {
+          const itemsTotal = purchase.items.reduce((acc, i) => acc + i.totalPrice, 0);
+          
+          // 1. Atualizar Estoque e Preços de Custo
+          for (const item of purchase.items) {
+              let effectiveUnitCost = item.unitPrice;
+              
+              // Distribuir impostos/frete no custo se solicitado
+              if (purchase.distributeTax && purchase.taxAmount > 0 && itemsTotal > 0) {
+                  const taxShare = (item.totalPrice / itemsTotal) * purchase.taxAmount;
+                  effectiveUnitCost = (item.totalPrice + taxShare) / item.quantity;
+              }
+
+              await updateStock(item.inventoryItemId, item.quantity, 'IN', `Compra Nota ${purchase.invoiceNumber}`);
+              await supabase.from('inventory_items').update({ cost_price: effectiveUnitCost }).eq('id', item.inventoryItemId);
+          }
+
+          // 2. Gerar Financeiro (Contas a Pagar)
+          const supplierName = state.suppliers.find(s => s.id === purchase.supplierId)?.name || 'Fornecedor';
+          
+          const expensesToCreate = purchase.installments.map((inst, idx) => ({
+              tenant_id: tenantId,
+              description: `Nota ${purchase.invoiceNumber} - Parcela ${idx + 1}/${purchase.installments.length} (${supplierName})`,
+              amount: inst.amount,
+              category: 'Fornecedor',
+              due_date: inst.dueDate,
+              is_paid: false,
+              payment_method: 'BANK',
+              supplier_id: purchase.supplierId
+          }));
+
+          await supabase.from('expenses').insert(expensesToCreate);
+          
+          fetchData();
+      } catch (error) {
+          console.error("Erro ao processar compra:", error);
+          throw error;
+      }
+  };
+
   return (
-    <InventoryContext.Provider value={{ state, addInventoryItem, updateInventoryItem, updateStock, processInventoryAdjustment, addSupplier, deleteSupplier, processPurchase }}>
+    <InventoryContext.Provider value={{ state, addInventoryItem, updateInventoryItem, updateStock, processInventoryAdjustment, addSupplier, deleteSupplier, processPurchase, fetchData }}>
       {children}
     </InventoryContext.Provider>
   );
