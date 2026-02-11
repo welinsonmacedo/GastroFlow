@@ -71,7 +71,22 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
                 id: l.id, item_id: l.item_id, type: l.type, quantity: l.quantity, reason: l.reason, user_name: l.user_name, created_at: new Date(l.created_at)
             }));
 
-            const mappedSuppliers = (suppRes.data || []).map((s: any) => ({ ...s }));
+            // Mapeamento correto dos campos do banco (snake_case) para o frontend (camelCase)
+            const mappedSuppliers = (suppRes.data || []).map((s: any) => ({
+                id: s.id,
+                name: s.name,
+                contactName: s.contact_name, // Mapeando contact_name -> contactName
+                phone: s.phone,
+                email: s.email,
+                cnpj: s.cnpj,
+                ie: s.ie,
+                cep: s.cep,
+                address: s.address,
+                number: s.number,
+                complement: s.complement,
+                city: s.city,
+                state: s.state
+            }));
 
             setState({ inventory: mappedInventory, inventoryLogs: mappedLogs, suppliers: mappedSuppliers });
         }
@@ -148,8 +163,31 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const addSupplier = async (supplier: Supplier) => {
       if(!tenantId) return;
-      const { id, ...data } = supplier;
-      await supabase.from('suppliers').insert({ tenant_id: tenantId, ...data });
+      
+      // Mapeamento correto para o banco de dados (snake_case)
+      const payload = {
+          tenant_id: tenantId,
+          name: supplier.name,
+          contact_name: supplier.contactName, // Mapeando contactName -> contact_name
+          phone: supplier.phone,
+          email: supplier.email,
+          cnpj: supplier.cnpj,
+          ie: supplier.ie,
+          cep: supplier.cep,
+          address: supplier.address,
+          number: supplier.number,
+          complement: supplier.complement,
+          city: supplier.city,
+          state: supplier.state
+      };
+
+      const { error } = await supabase.from('suppliers').insert(payload);
+      
+      if (error) {
+          console.error("Erro ao adicionar fornecedor:", error);
+          throw error;
+      }
+      
       fetchData();
   };
 
