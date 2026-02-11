@@ -30,14 +30,11 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const { showAlert } = useUI();
 
   const [state, setState] = useState<InventoryState>({
-    inventory: [],
-    inventoryLogs: [],
-    suppliers: [],
+    inventory: [], inventoryLogs: [], suppliers: [],
   });
 
   const fetchData = useCallback(async () => {
         if (!tenantId) return;
-
         const [invRes, recipesRes, logsRes, suppRes] = await Promise.all([
             supabase.from('inventory_items').select('*').eq('tenant_id', tenantId),
             supabase.from('inventory_recipes').select('*').eq('tenant_id', tenantId),
@@ -58,49 +55,37 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
                         cost: ing?.cost_price
                     };
                 });
-
                 return {
                     id: i.id, name: i.name, unit: i.unit, quantity: i.quantity, minQuantity: i.min_quantity, 
                     costPrice: i.cost_price, type: i.type || 'INGREDIENT', image: i.image, recipe: recipeItems,
                     isExtra: i.is_extra || false
                 };
             });
-            
-            const mappedLogs = (logsRes.data || []).map((l: any) => ({
-                id: l.id, item_id: l.item_id, type: l.type, quantity: l.quantity, reason: l.reason, user_name: l.user_name, created_at: new Date(l.created_at)
-            }));
-
-            const mappedSuppliers = (suppRes.data || []).map((s: any) => ({ ...s }));
-
-            setState({ inventory: mappedInventory, inventoryLogs: mappedLogs, suppliers: mappedSuppliers });
+            setState({ 
+                inventory: mappedInventory, 
+                inventoryLogs: (logsRes.data || []).map((l: any) => ({ id: l.id, item_id: l.item_id, type: l.type, quantity: l.quantity, reason: l.reason, user_name: l.user_name, created_at: new Date(l.created_at) })),
+                suppliers: (suppRes.data || []).map((s: any) => ({ ...s })) 
+            });
         }
     }, [tenantId]);
 
   useEffect(() => {
     if (!tenantId) return;
     fetchData();
-    const channel = supabase.channel(`inventory_ctx:${tenantId}`)
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory_items', filter: `tenant_id=eq.${tenantId}` }, fetchData)
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory_recipes', filter: `tenant_id=eq.${tenantId}` }, fetchData)
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory_logs', filter: `tenant_id=eq.${tenantId}` }, fetchData)
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'suppliers', filter: `tenant_id=eq.${tenantId}` }, fetchData)
-        .subscribe();
+    const channel = supabase.channel(`inv:${tenantId}`).on('postgres_changes', { event: '*', schema: 'public', filter: `tenant_id=eq.${tenantId}` }, fetchData).subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [tenantId, fetchData]);
 
   const addInventoryItem = async (item: InventoryItem) => {
       if(!tenantId) return;
-      const { data: newItem, error } = await supabase.from('inventory_items').insert({
+      const { data: newItem } = await supabase.from('inventory_items').insert({
           tenant_id: tenantId, name: item.name, unit: item.unit, quantity: item.quantity,
           min_quantity: item.minQuantity, cost_price: item.costPrice, type: item.type, image: item.image,
           is_extra: item.isExtra 
       }).select().single();
-
-      if (!error && newItem && item.type === 'COMPOSITE' && item.recipe) {
-          const recipes = item.recipe.map(r => ({
-              tenant_id: tenantId, parent_item_id: newItem.id, ingredient_item_id: r.ingredientId, quantity: r.quantity
-          }));
-          await supabase.from('inventory_recipes').insert(recipes);
+      if (newItem && item.type === 'COMPOSITE' && item.recipe) {
+          const rs = item.recipe.map(r => ({ tenant_id: tenantId, parent_item_id: newItem.id, ingredient_item_id: r.ingredientId, quantity: r.quantity }));
+          await supabase.from('inventory_recipes').insert(rs);
       }
       fetchData();
   };
@@ -108,19 +93,12 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const updateInventoryItem = async (item: InventoryItem) => {
       if(!tenantId) return;
       await supabase.from('inventory_items').update({
-          name: item.name, unit: item.unit, min_quantity: item.minQuantity,
-          cost_price: item.costPrice, image: item.image, type: item.type,
-          is_extra: item.isExtra
+          name: item.name, unit: item.unit, min_quantity: item.minQuantity, cost_price: item.costPrice, image: item.image, type: item.type, is_extra: item.isExtra
       }).eq('id', item.id);
-
       if (item.type === 'COMPOSITE' && item.recipe) {
           await supabase.from('inventory_recipes').delete().eq('parent_item_id', item.id);
-          if (item.recipe.length > 0) {
-              const recipes = item.recipe.map(r => ({
-                  tenant_id: tenantId, parent_item_id: item.id, ingredient_item_id: r.ingredientId, quantity: r.quantity
-              }));
-              await supabase.from('inventory_recipes').insert(recipes);
-          }
+          const rs = item.recipe.map(r => ({ tenant_id: tenantId, parent_item_id: item.id, ingredient_item_id: r.ingredientId, quantity: r.quantity }));
+          await supabase.from('inventory_recipes').insert(rs);
       }
       fetchData();
   };
@@ -131,33 +109,29 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       if (!item) return;
       const newQty = operation === 'IN' ? item.quantity + quantity : item.quantity - quantity;
       await supabase.from('inventory_items').update({ quantity: newQty }).eq('id', itemId);
-      await supabase.from('inventory_logs').insert({
-          tenant_id: tenantId, item_id: itemId, type: operation, quantity, reason, user_name: userName
-      });
+      await supabase.from('inventory_logs').insert({ tenant_id: tenantId, item_id: itemId, type: operation, quantity, reason, user_name: userName });
+      fetchData();
   };
 
   const processInventoryAdjustment = async (adjustments: { itemId: string; realQty: number }[]) => {
-      if(!tenantId) return;
       for (const adj of adjustments) {
           const item = state.inventory.find(i => i.id === adj.itemId);
           if (item) {
               const diff = adj.realQty - item.quantity;
-              if (Math.abs(diff) > 0.0001) {
-                  const type = diff > 0 ? 'IN' : 'OUT';
-                  await updateStock(adj.itemId, Math.abs(diff), type, 'Ajuste de Balanço');
-              }
+              if (Math.abs(diff) > 0.001) await updateStock(adj.itemId, Math.abs(diff), diff > 0 ? 'IN' : 'OUT', 'Ajuste de Balanço');
           }
       }
   };
 
   const addSupplier = async (supplier: Supplier) => {
-      if(!tenantId) return;
       const { id, ...data } = supplier;
       await supabase.from('suppliers').insert({ tenant_id: tenantId, ...data });
+      fetchData();
   };
 
   const deleteSupplier = async (id: string) => {
       await supabase.from('suppliers').delete().eq('id', id);
+      fetchData();
   };
 
   const processPurchase = async (purchase: PurchaseEntry) => {
@@ -168,11 +142,7 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       fetchData();
   };
 
-  return (
-    <InventoryContext.Provider value={{ state, addInventoryItem, updateInventoryItem, updateStock, processInventoryAdjustment, addSupplier, deleteSupplier, processPurchase }}>
-      {children}
-    </InventoryContext.Provider>
-  );
+  return <InventoryContext.Provider value={{ state, addInventoryItem, updateInventoryItem, updateStock, processInventoryAdjustment, addSupplier, deleteSupplier, processPurchase }}>{children}</InventoryContext.Provider>;
 };
 
 export const useInventory = () => {

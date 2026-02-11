@@ -28,6 +28,7 @@ export enum OrderStatus {
   CANCELLED = 'CANCELLED'
 }
 
+// --- SaaS Types ---
 export type PlanType = 'FREE' | 'PRO' | 'ENTERPRISE';
 
 export interface PlanLimits {
@@ -117,7 +118,7 @@ export interface InventoryItem {
     type: InventoryType;
     image?: string;
     recipe?: InventoryRecipeItem[];
-    isExtra: boolean; 
+    isExtra: boolean; // Indica se é um adicional no estoque
 }
 
 export interface InventoryLog {
@@ -155,7 +156,7 @@ export interface OrderItem {
   productName: string;
   productType: ProductType;
   productPrice: number;
-  productCostPrice: number;
+  productCostPrice: number; // Custo histórico no momento da venda
 }
 
 export interface Order {

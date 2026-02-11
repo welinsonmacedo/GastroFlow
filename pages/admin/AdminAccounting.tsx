@@ -1,10 +1,11 @@
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRestaurant } from '../../context/RestaurantContext';
+import { useFinance } from '../../context/FinanceContext';
 import { useUI } from '../../context/UIContext';
-import { Button } from '../../components/Button';
 import { supabase } from '../../lib/supabase';
-import { Loader2, RefreshCcw, Printer, PieChart, TrendingUp, CheckCircle2, ArrowUpRight, AlertCircle, FileText, DollarSign, Store, Package } from 'lucide-react';
+import { Button } from '../../components/Button';
+import { PieChart, TrendingUp, AlertCircle, CheckCircle2, RefreshCcw, Printer, ArrowUpRight, DollarSign, Loader2 } from 'lucide-react';
 
 export const AdminAccounting: React.FC = () => {
   const { state } = useRestaurant();
@@ -14,207 +15,160 @@ export const AdminAccounting: React.FC = () => {
   const [dateEnd, setDateEnd] = useState(new Date().toISOString().split('T')[0]);
   const [loading, setLoading] = useState(false);
   
-  const [data, setData] = useState<any>({
-      grossRevenue: 0, saloonSales: 0, posSales: 0, taxes: 0, netRevenue: 0,
-      cmv: 0, grossProfit: 0, operatingExpenses: 0, expensesByCategory: {},
-      ebitda: 0, financialExpenses: 0, netIncome: 0, hasData: false
-  });
+  const [dre, setDre] = useState<any>({ grossRev: 0, taxes: 0, netRev: 0, cmv: 0, grossProfit: 0, opExpenses: 0, expByCat: {}, ebitda: 0, finExpenses: 0, netIncome: 0 });
 
   const fetchDRE = useCallback(async () => {
       if (!state.tenantId) return;
       setLoading(true);
-      
       try {
           const start = dateStart + ' 00:00:00';
           const end = dateEnd + ' 23:59:59';
 
-          // 1. Busca Transações (Receita) - SEM JOIN para evitar falhas
-          const { data: transRes, error: transErr } = await supabase
+          // 1. Receita e CMV Histórico
+          const { data: trans } = await supabase
             .from('transactions')
-            .select('*')
+            .select(`*, orders ( items:order_items ( quantity, product_price, product_cost_price ) )`)
             .eq('tenant_id', state.tenantId)
             .gte('created_at', start)
             .lte('created_at', end);
 
-          if (transErr) throw transErr;
-
-          // 2. Busca Itens Vendidos no período para calcular CMV Real
-          const { data: itemsRes, error: itemsErr } = await supabase
-            .from('order_items')
-            .select('quantity, product_price, product_cost_price, orders!inner(is_paid, created_at)')
-            .eq('tenant_id', state.tenantId)
-            .eq('orders.is_paid', true)
-            .gte('orders.created_at', start)
-            .lte('orders.created_at', end);
-
-          if (itemsErr) throw itemsErr;
-
-          // 3. Busca Despesas
-          const { data: expsRes, error: expsErr } = await supabase
+          // 2. Despesas
+          const { data: exps } = await supabase
             .from('expenses')
             .select('*')
             .eq('tenant_id', state.tenantId)
             .gte('due_date', dateStart)
             .lte('due_date', dateEnd);
 
-          if (expsErr) throw expsErr;
-
-          // --- Cálculos Matemáticos ---
-          let grossRev = 0, saloonSales = 0, posSales = 0;
-          transRes?.forEach((t: any) => {
-              const amt = Number(t.amount) || 0;
-              grossRev += amt;
-              if (t.items_summary?.includes('Mesa')) saloonSales += amt;
-              else posSales += amt;
+          let gross = 0, cmv = 0;
+          trans?.forEach((t: any) => {
+              gross += t.amount;
+              t.orders?.items?.forEach((i: any) => cmv += (Number(i.product_cost_price) || 0) * i.quantity);
           });
 
-          let cmvTotal = 0;
-          itemsRes?.forEach((item: any) => {
-              const qty = Number(item.quantity) || 0;
-              const cost = Number(item.product_cost_price) || 0;
-              cmvTotal += (qty * cost);
-          });
+          const taxes = gross * 0.06; // Simulação 6% Simples Nacional
+          const netRev = gross - taxes;
+          const grossProfit = netRev - cmv;
 
-          const taxes = grossRev * 0.06; 
-          const netRevenue = grossRev - taxes;
-          const grossProfit = netRevenue - cmvTotal;
-
-          let opExpenses = 0, finExpenses = 0;
-          const expByCat: any = {};
-          expsRes?.forEach((e: any) => {
-              const amt = Number(e.amount) || 0;
-              if (['Impostos', 'Taxas Bancárias'].includes(e.category)) finExpenses += amt;
-              else {
-                  opExpenses += amt;
-                  expByCat[e.category] = (expByCat[e.category] || 0) + amt;
+          let opExp = 0, finExp = 0;
+          const byCat: any = {};
+          exps?.forEach((e: any) => {
+              if (['Impostos', 'Taxas Bancárias'].includes(e.category)) {
+                  finExp += e.amount;
+              } else {
+                  opExp += e.amount;
+                  byCat[e.category] = (byCat[e.category] || 0) + e.amount;
               }
           });
 
-          const ebitda = grossProfit - opExpenses;
-          
-          setData({
-              grossRevenue: grossRev, saloonSales, posSales, taxes, netRevenue,
-              cmv: cmvTotal, grossProfit, operatingExpenses: opExpenses,
-              expensesByCategory: expByCat, ebitda, financialExpenses: finExpenses,
-              netIncome: ebitda - finExpenses,
-              hasData: grossRev > 0 || opExpenses > 0
-          });
+          const ebitda = grossProfit - opExp;
+          const netIncome = ebitda - finExp;
 
-      } catch (error: any) {
-          console.error("DRE Fetch Error:", error);
-          showAlert({ title: "Erro no Relatório", message: "Falha ao processar dados financeiros.", type: 'ERROR' });
-      } finally {
-          setLoading(false);
+          setDre({ 
+              grossRev: gross, 
+              taxes, 
+              netRev, 
+              cmv, 
+              grossProfit, 
+              opExpenses: opExp, 
+              expByCat: byCat, 
+              ebitda, 
+              finExpenses: finExp, 
+              netIncome 
+          });
+      } catch (error) {
+          console.error(error);
+          showAlert({ title: "Erro", message: "Falha ao gerar DRE.", type: 'ERROR' });
+      } finally { 
+          setLoading(false); 
       }
   }, [state.tenantId, dateStart, dateEnd, showAlert]);
 
-  useEffect(() => { if (state.tenantId) fetchDRE(); }, [state.tenantId, fetchDRE]);
+  useEffect(() => { fetchDRE(); }, [fetchDRE]);
 
-  const cmvPerc = data.netRevenue > 0 ? (data.cmv / data.netRevenue) * 100 : 0;
-  const marginPerc = data.netRevenue > 0 ? (data.grossProfit / data.netRevenue) * 100 : 0;
-  const profitPerc = data.grossRevenue > 0 ? (data.netIncome / data.grossRevenue) * 100 : 0;
-
-  const Row = ({ label, value, type = 'normal', indent = false, isNegative = false }: any) => (
-    <div className={`flex justify-between py-2.5 ${indent ? 'pl-8' : ''} ${type === 'total' ? 'border-t-2 border-slate-800 font-black text-slate-900 bg-slate-50 mt-2 px-2' : 'border-b border-slate-100 text-slate-600'}`}>
-        <span className={type === 'total' ? 'uppercase tracking-tight text-sm' : 'font-medium text-sm'}>{label}</span>
-        <span className={`font-mono font-bold ${isNegative ? 'text-red-500' : 'text-slate-800'}`}>
-            {isNegative && value > 0 ? '-' : ''} R$ {Math.abs(value).toFixed(2)}
-        </span>
-    </div>
+  const cmvPerc = dre.netRev > 0 ? (dre.cmv / dre.netRev) * 100 : 0;
+  
+  const Row = ({ label, val, total, indent, neg }: any) => (
+      <div className={`flex justify-between py-2.5 border-b border-slate-50 ${indent ? 'pl-8' : ''} ${total ? 'font-black bg-slate-50 text-slate-900 border-slate-900 border-t-2 mt-2 px-2' : 'text-slate-600'}`}>
+          <span className={total ? 'uppercase' : ''}>{label}</span>
+          <span className={`font-mono ${neg ? 'text-red-500' : ''}`}>
+              {neg ? '-' : ''} R$ {Math.abs(val).toFixed(2)}
+          </span>
+      </div>
   );
 
   return (
-    <div className="space-y-6 animate-fade-in pb-20">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-200 gap-4 print:hidden">
+    <div className="space-y-6 animate-fade-in pb-12">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-6 rounded-xl border gap-4">
             <div>
-                <h2 className="text-2xl font-black text-slate-800 flex items-center gap-2"><PieChart className="text-blue-600"/> DRE Gerencial</h2>
-                <p className="text-sm text-gray-500">Lucratividade e Custo de Mercadoria Vendida (CMV)</p>
+                <h2 className="text-2xl font-bold flex items-center gap-2"><PieChart className="text-blue-600"/> DRE Profissional</h2>
+                <p className="text-sm text-gray-500">Gestão de Lucratividade e CMV</p>
             </div>
             <div className="flex flex-col md:flex-row gap-2 items-end">
-                <div className="flex gap-2 bg-gray-100 p-1.5 rounded-xl border border-gray-200">
-                    <input type="date" className="bg-transparent p-1 text-xs font-bold outline-none" value={dateStart} onChange={e => setDateStart(e.target.value)} />
-                    <span className="text-gray-400 self-center font-bold">→</span>
-                    <input type="date" className="bg-transparent p-1 text-xs font-bold outline-none" value={dateEnd} onChange={e => setDateEnd(e.target.value)} />
+                <div className="flex gap-2 bg-gray-50 p-1 rounded-lg border">
+                    <input type="date" className="bg-transparent p-1.5 text-xs font-bold outline-none" value={dateStart} onChange={e => setDateStart(e.target.value)} />
+                    <span className="text-gray-300 self-center">até</span>
+                    <input type="date" className="bg-transparent p-1.5 text-xs font-bold outline-none" value={dateEnd} onChange={e => setDateEnd(e.target.value)} />
                 </div>
-                <div className="flex gap-2">
-                    <Button onClick={fetchDRE} disabled={loading} className="h-[42px] px-6">{loading ? <Loader2 className="animate-spin" size={18}/> : <RefreshCcw size={18}/>} <span className="ml-2">Filtrar</span></Button>
-                    <Button variant="secondary" onClick={() => window.print()} className="h-[42px] bg-white border-gray-200"><Printer size={18}/></Button>
-                </div>
+                <Button onClick={fetchDRE} disabled={loading} className="h-[38px]">
+                    {loading ? <Loader2 className="animate-spin" size={16}/> : <RefreshCcw size={16}/>} Gerar
+                </Button>
+                <Button variant="secondary" onClick={() => window.print()} className="h-[38px]"><Printer size={16}/> Imprimir</Button>
             </div>
         </div>
 
-        {!data.hasData && !loading && (
-            <div className="bg-amber-50 border-2 border-amber-200 p-8 rounded-3xl text-center">
-                <AlertCircle className="mx-auto text-amber-500 mb-4" size={48}/>
-                <h3 className="text-lg font-bold text-amber-800">Nenhum dado encontrado</h3>
-                <p className="text-amber-700 text-sm">Verifique se existem transações de venda ou despesas pagas no período selecionado.</p>
+        {/* --- INDICADORES --- */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className={`p-6 rounded-xl border-2 bg-white shadow-sm ${cmvPerc > 35 ? 'border-red-100' : 'border-green-100'}`}>
+                <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">CMV Real</span>
+                <div className="text-3xl font-black text-slate-800">{cmvPerc.toFixed(1)}%</div>
+                <p className="text-[10px] text-gray-400 mt-1 uppercase">Ideal: Até 35%</p>
             </div>
-        )}
+            <div className="p-6 rounded-xl border-2 bg-white border-blue-100 shadow-sm">
+                <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Lucratividade</span>
+                <div className="text-3xl font-black text-slate-800">{dre.grossRev > 0 ? ((dre.netIncome / dre.grossRev) * 100).toFixed(1) : 0}%</div>
+                <p className="text-[10px] text-gray-400 mt-1 uppercase">Ideal: 10% a 15%</p>
+            </div>
+            <div className="p-6 rounded-xl border-2 bg-white border-purple-100 shadow-sm">
+                <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Lucro Líquido</span>
+                <div className={`text-3xl font-black ${dre.netIncome >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>R$ {dre.netIncome.toFixed(0)}</div>
+                <p className="text-[10px] text-gray-400 mt-1 uppercase">Resultado do Período</p>
+            </div>
+        </div>
 
-        {data.hasData && (
-            <>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className={`p-6 rounded-2xl border-2 bg-white shadow-sm flex flex-col ${cmvPerc > 35 ? 'border-red-200 bg-red-50/30' : 'border-emerald-200 bg-emerald-50/30'}`}>
-                        <div className="flex justify-between items-start mb-2"><span className="text-gray-500 text-[10px] font-black uppercase tracking-widest">CMV Real</span>{cmvPerc > 35 ? <ArrowUpRight className="text-red-500" /> : <CheckCircle2 className="text-emerald-500" />}</div>
-                        <div className="text-4xl font-black text-slate-800">{cmvPerc.toFixed(1)}%</div>
-                        <p className="text-[10px] text-slate-400 mt-2 font-bold uppercase italic">Meta ideal: Até 35%</p>
-                    </div>
-                    <div className="p-6 rounded-2xl border-2 bg-white shadow-sm flex flex-col border-blue-200 bg-blue-50/30">
-                        <div className="flex justify-between items-start mb-2"><span className="text-gray-500 text-[10px] font-black uppercase tracking-widest">Margem Bruta</span><TrendingUp className="text-blue-500" /></div>
-                        <div className="text-4xl font-black text-slate-800">{marginPerc.toFixed(1)}%</div>
-                        <p className="text-[10px] text-blue-600 mt-2 font-bold uppercase italic">Mínimo 30%</p>
-                    </div>
-                    <div className={`p-6 rounded-2xl border-2 bg-white shadow-sm flex flex-col ${profitPerc < 10 ? 'border-orange-200 bg-orange-50/30' : 'border-emerald-200 bg-emerald-50/30'}`}>
-                        <div className="flex justify-between items-start mb-2"><span className="text-gray-500 text-[10px] font-black uppercase tracking-widest">Lucratividade</span>{profitPerc < 10 ? <AlertCircle className="text-orange-500" /> : <TrendingUp className="text-emerald-500" />}</div>
-                        <div className="text-4xl font-black text-slate-800">{profitPerc.toFixed(1)}%</div>
-                        <p className="text-[10px] text-slate-400 mt-2 font-bold uppercase italic">Saudável: 10% a 15%</p>
-                    </div>
+        <div className="bg-white rounded-2xl shadow-xl border overflow-hidden">
+            <div className="bg-slate-900 p-8 text-white flex justify-between items-end">
+                <h1 className="text-3xl font-black uppercase tracking-tighter">DRE Gerencial</h1>
+                <div className="text-right text-xs opacity-50 font-mono">
+                    {new Date(dateStart).toLocaleDateString()} - {new Date(dateEnd).toLocaleDateString()}
                 </div>
+            </div>
+            
+            <div className="p-8 max-w-4xl mx-auto space-y-1">
+                <h3 className="text-[10px] font-black text-slate-400 uppercase mb-4 border-b pb-1">1. Receita e Deduções</h3>
+                <Row label="(+) Receita Bruta de Vendas" val={dre.grossRev} />
+                <Row label="(-) Impostos s/ Faturamento (Simples)" val={dre.taxes} neg />
+                <Row label="(=) RECEITA LÍQUIDA" val={dre.netRev} total />
 
-                <div className="bg-white rounded-3xl shadow-xl border border-slate-200 overflow-hidden print:border-none print:shadow-none">
-                    <div className="bg-slate-900 p-10 text-white flex justify-between items-end">
-                        <div><h1 className="text-4xl font-black tracking-tighter uppercase mb-1">DRE Gerencial</h1><p className="text-blue-400 text-sm font-bold uppercase tracking-widest flex items-center gap-2"><Store size={16}/> {state.theme.restaurantName}</p></div>
-                        <div className="text-right"><p className="text-slate-500 text-[10px] font-black uppercase mb-1">Período Consolidado</p><p className="text-lg font-mono font-bold bg-white/10 px-3 py-1 rounded-lg">{new Date(dateStart).toLocaleDateString()} — {new Date(dateEnd).toLocaleDateString()}</p></div>
-                    </div>
+                <h3 className="text-[10px] font-black text-slate-400 uppercase mb-4 mt-10 border-b pb-1">2. Custos de Mercadoria (CMV)</h3>
+                <Row label="(-) Custo de Mercadoria Vendida (Estoque)" val={dre.cmv} neg />
+                <Row label="(=) LUCRO BRUTO" val={dre.grossProfit} total />
 
-                    <div className="p-10 max-w-4xl mx-auto">
-                        <div className="space-y-1">
-                            <h3 className="text-xs font-black text-blue-600 uppercase tracking-widest mb-4 flex items-center gap-2"><DollarSign size={14}/> 1. Receita e Faturamento</h3>
-                            <Row label="(+) Receita Bruta de Vendas" value={data.grossRevenue} />
-                            <Row label="    Vendas Mesas / Salão" value={data.saloonSales} indent />
-                            <Row label="    Vendas Balcão / PDV" value={data.posSales} indent />
-                            <Row label="(-) Impostos s/ Faturamento (Est.)" value={data.taxes} isNegative />
-                            <Row label="(=) RECEITA LÍQUIDA" value={data.netRevenue} type="total" />
+                <h3 className="text-[10px] font-black text-slate-400 uppercase mb-4 mt-10 border-b pb-1">3. Despesas Operacionais</h3>
+                {Object.entries(dre.expByCat).map(([cat, val]: any) => (
+                    <Row key={cat} label={`(-) ${cat}`} val={val} indent neg />
+                ))}
+                <Row label="(=) RESULTADO OPERACIONAL (EBITDA)" val={dre.ebitda} total />
 
-                            <h3 className="text-xs font-black text-orange-600 uppercase tracking-widest mb-4 mt-12 flex items-center gap-2"><Package size={14}/> 2. Custos Variáveis (CMV)</h3>
-                            <Row label="(-) Custo de Mercadoria Vendida (Estoque)" value={data.cmv} isNegative />
-                            <Row label="(=) LUCRO BRUTO" value={data.grossProfit} type="total" />
+                <h3 className="text-[10px] font-black text-slate-400 uppercase mb-4 mt-10 border-b pb-1">4. Resultado Final</h3>
+                <Row label="(-) Despesas Financeiras / Taxas" val={dre.finExpenses} neg />
+                <Row label="(=) LUCRO LÍQUIDO FINAL" val={dre.netIncome} total />
+            </div>
 
-                            <h3 className="text-xs font-black text-purple-600 uppercase tracking-widest mb-4 mt-12 flex items-center gap-2"><FileText size={14}/> 3. Despesas Operacionais</h3>
-                            {Object.entries(data.expensesByCategory).map(([cat, val]: any) => (
-                                <Row key={cat} label={`(-) ${cat}`} value={val} indent isNegative />
-                            ))}
-                            {Object.keys(data.expensesByCategory).length === 0 && <p className="text-[10px] text-slate-400 italic pl-8 py-2">Sem despesas no período.</p>}
-                            <Row label="(=) EBITDA / RESULTADO OPERACIONAL" value={data.ebitda} type="total" />
-
-                            <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 mt-12 flex items-center gap-2"><TrendingUp size={14}/> 4. Resultado Financeiro e Final</h3>
-                            <Row label="(-) Taxas e Despesas Financeiras" value={data.financialExpenses} isNegative />
-                            <Row label="(=) LUCRO LÍQUIDO FINAL" value={data.netIncome} type="total" />
-                        </div>
-
-                        <div className={`mt-16 p-8 rounded-[2.5rem] flex flex-col md:flex-row items-center justify-between border-4 ${data.netIncome >= 0 ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'}`}>
-                            <div className="text-center md:text-left mb-6 md:mb-0">
-                                <h4 className={`text-2xl font-black uppercase tracking-tighter ${data.netIncome >= 0 ? 'text-emerald-800' : 'text-red-800'}`}>{data.netIncome >= 0 ? 'Resultado Positivo' : 'Resultado Negativo'}</h4>
-                                <p className="text-slate-500 font-medium">Lucro real apurado no período.</p>
-                            </div>
-                            <div className="text-center md:text-right">
-                                <div className={`text-5xl font-black ${data.netIncome >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>R$ {data.netIncome.toFixed(2)}</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </>
-        )}
+            <div className="bg-slate-50 p-4 text-center text-[10px] text-gray-400 font-bold uppercase tracking-widest border-t">
+                Relatório Gerencial • {state.theme.restaurantName}
+            </div>
+        </div>
     </div>
   );
 };
