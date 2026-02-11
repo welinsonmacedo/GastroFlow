@@ -27,7 +27,7 @@ export const AdminInventory: React.FC = () => {
   // Modais de Operação
   const [stockModal, setStockModal] = useState<{ itemId: string, type: 'IN' | 'OUT', quantity: string, reason: string } | null>(null);
   const [inventoryModalOpen, setInventoryModalOpen] = useState(false);
-  const [inventoryCounts, setInventoryCounts] = useState<{ [key: string]: number }>({});
+  const [inventoryCounts, setInventoryCounts] = useState<{ [key: string]: string }>({}); // Changed to string to handle empty inputs better
   
   // Entrada de Nota
   const [purchaseModalOpen, setPurchaseModalOpen] = useState(false);
@@ -118,6 +118,28 @@ export const AdminInventory: React.FC = () => {
       showAlert({ title: "Sucesso", message: "Movimentação registrada!", type: 'SUCCESS' });
   };
 
+  // --- Handlers Balanço ---
+  const handleOpenBalance = () => {
+      const initialCounts: { [key: string]: string } = {};
+      invState.inventory.forEach(item => {
+          if (item.type !== 'COMPOSITE') {
+              initialCounts[item.id] = item.quantity.toString();
+          }
+      });
+      setInventoryCounts(initialCounts);
+      setInventoryModalOpen(true);
+  };
+
+  const handleProcessBalance = async () => {
+      const adjustments = Object.keys(inventoryCounts).map(id => ({
+          itemId: id, 
+          realQty: parseFloat(inventoryCounts[id] || '0')
+      }));
+      await processInventoryAdjustment(adjustments);
+      setInventoryModalOpen(false);
+      showAlert({ title: "Sucesso", message: "Balanço finalizado!", type: 'SUCCESS' });
+  };
+
   // --- Handlers Fornecedor ---
   const formatCNPJ = (value: string) => {
       return value.replace(/\D/g, '')
@@ -188,7 +210,7 @@ export const AdminInventory: React.FC = () => {
                 <Button onClick={() => setPurchaseHistoryOpen(true)} variant="secondary" className="bg-slate-50 text-slate-700 border-slate-200"><FileText size={16}/> Logs</Button>
                 <Button onClick={() => setSupplierModalOpen(true)} variant="secondary" className="bg-slate-50 text-slate-700 border-slate-200"><Truck size={16}/> Fornecedores</Button>
                 <Button onClick={() => setPurchaseModalOpen(true)} variant="secondary" className="bg-blue-50 text-blue-700 border-blue-100"><Plus size={16}/> Entrada Nota</Button>
-                <Button onClick={() => setInventoryModalOpen(true)} variant="secondary" className="bg-yellow-50 text-yellow-700 border-yellow-100"><ClipboardList size={16}/> Balanço</Button>
+                <Button onClick={handleOpenBalance} variant="secondary" className="bg-yellow-50 text-yellow-700 border-yellow-100"><ClipboardList size={16}/> Balanço</Button>
                 <Button onClick={() => { setEditingInventory({ name: '', unit: 'UN', type: 'INGREDIENT', quantity: 0, minQuantity: 5, costPrice: 0, isExtra: false }); setRecipeItems([]); }} className="shadow-lg shadow-blue-100"><Plus size={16}/> Novo Item</Button>
             </div>
         </div>
@@ -255,6 +277,106 @@ export const AdminInventory: React.FC = () => {
             </div>
         </div>
 
+        {/* MODAL: LOGS DE MOVIMENTAÇÃO */}
+        {purchaseHistoryOpen && (
+            <Modal isOpen={purchaseHistoryOpen} onClose={() => setPurchaseHistoryOpen(false)} title="Histórico de Movimentações de Estoque" variant="page">
+                <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                    <table className="w-full text-left text-xs">
+                        <thead className="bg-slate-50 text-slate-500 font-black uppercase tracking-widest border-b">
+                            <tr>
+                                <th className="p-3">Data/Hora</th>
+                                <th className="p-3">Item</th>
+                                <th className="p-3">Operação</th>
+                                <th className="p-3 text-right">Qtd</th>
+                                <th className="p-3">Motivo</th>
+                                <th className="p-3">Usuário</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y">
+                            {invState.inventoryLogs.map(log => (
+                                <tr key={log.id} className="hover:bg-slate-50 transition-colors">
+                                    <td className="p-3 whitespace-nowrap text-slate-400">
+                                        {log.created_at ? log.created_at.toLocaleString() : '-'}
+                                    </td>
+                                    <td className="p-3 font-bold text-slate-700">{invState.inventory.find(i=>i.id===log.item_id)?.name || 'Desconhecido'}</td>
+                                    <td className="p-3">
+                                        <span className={`px-2 py-0.5 rounded-full font-black text-[9px] uppercase
+                                            ${log.type === 'IN' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}
+                                        `}>
+                                            {log.type === 'IN' ? 'ENTRADA' : 'SAÍDA'}
+                                        </span>
+                                    </td>
+                                    <td className="p-3 text-right font-mono font-bold text-slate-600">{log.quantity}</td>
+                                    <td className="p-3 text-slate-500">{log.reason}</td>
+                                    <td className="p-3 text-slate-400 italic">{log.user_name}</td>
+                                </tr>
+                            ))}
+                            {invState.inventoryLogs.length === 0 && <tr><td colSpan={6} className="p-10 text-center text-slate-400">Nenhum log encontrado.</td></tr>}
+                        </tbody>
+                    </table>
+                </div>
+            </Modal>
+        )}
+
+        {/* MODAL: BALANÇO DE ESTOQUE */}
+        {inventoryModalOpen && (
+            <Modal isOpen={inventoryModalOpen} onClose={() => setInventoryModalOpen(false)} title="Inventário (Contagem Física)" variant="page">
+                <div className="space-y-6">
+                    <div className="bg-amber-50 p-4 rounded-xl border-2 border-dashed border-amber-200 text-amber-800 text-sm flex gap-3">
+                        <Info size={20} className="shrink-0"/>
+                        <p>Informe a quantidade real contada na prateleira. O sistema ajustará o estoque atual e gerará logs de perda ou sobra automaticamente.</p>
+                    </div>
+                    <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                        <table className="w-full text-left text-sm">
+                            <thead className="bg-slate-900 text-white">
+                                <tr>
+                                    <th className="p-3">Item</th>
+                                    <th className="p-3 text-right">Estoque Virtual</th>
+                                    <th className="p-3 text-right w-32">Contagem Real</th>
+                                    <th className="p-3 text-right">Diferença</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y">
+                                {invState.inventory.filter(i=>i.type!=='COMPOSITE').map(item => {
+                                    const currentQty = item.quantity;
+                                    // Pega o valor digitado ou usa o estoque atual como placeholder
+                                    const inputVal = inventoryCounts[item.id] ?? '';
+                                    const realQty = inputVal === '' ? currentQty : parseFloat(inputVal);
+                                    const diff = realQty - currentQty;
+                                    
+                                    return (
+                                        <tr key={item.id} className="hover:bg-slate-50">
+                                            <td className="p-3 font-bold">{item.name} ({item.unit})</td>
+                                            <td className="p-3 text-right font-mono text-slate-500">{currentQty}</td>
+                                            <td className="p-2">
+                                                <input 
+                                                    type="number" 
+                                                    step="0.001" 
+                                                    className="w-full border-2 p-1.5 rounded-lg text-right font-bold focus:border-yellow-500 outline-none" 
+                                                    value={inputVal}
+                                                    onChange={e => setInventoryCounts({...inventoryCounts, [item.id]: e.target.value})} 
+                                                    placeholder={currentQty.toString()} 
+                                                />
+                                            </td>
+                                            <td className={`p-3 text-right font-black ${diff < 0 ? 'text-red-600' : diff > 0 ? 'text-green-600' : 'text-slate-300'}`}>
+                                                {diff > 0 ? `+${diff.toFixed(3)}` : diff.toFixed(3)}
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div className="flex gap-4 pt-6 border-t">
+                        <Button variant="secondary" onClick={() => setInventoryModalOpen(false)} className="flex-1 py-4">Cancelar</Button>
+                        <Button onClick={handleProcessBalance} className="flex-1 py-4 shadow-xl">Finalizar Inventário</Button>
+                    </div>
+                </div>
+            </Modal>
+        )}
+
+        {/* ... (Remaining Modals: editingInventory, purchaseModalOpen, stockModal, supplierModalOpen - SAME AS BEFORE) ... */}
+        
         {/* MODAL: CADASTRO DE ITEM (COM FICHA TÉCNICA) */}
         {editingInventory && (
             <Modal isOpen={!!editingInventory} onClose={() => setEditingInventory(null)} title={editingInventory.id ? "Editar Item" : "Novo Item de Estoque"} variant="page">
