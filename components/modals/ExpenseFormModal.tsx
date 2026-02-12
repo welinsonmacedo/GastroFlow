@@ -20,7 +20,7 @@ export const ExpenseFormModal: React.FC<ExpenseFormModalProps> = ({ isOpen, onCl
   const [dateStr, setDateStr] = useState(new Date().toISOString().split('T')[0]);
   
   const [form, setForm] = useState<Partial<Expense>>({
-      description: '', amount: 0, category: 'Outros', isPaid: false, paymentMethod: 'BANK', isRecurring: false
+      description: '', amount: 0, category: 'Outros', isPaid: false, paymentMethod: 'BANK', isRecurring: false, supplierId: ''
   });
 
   useEffect(() => {
@@ -34,7 +34,7 @@ export const ExpenseFormModal: React.FC<ExpenseFormModalProps> = ({ isOpen, onCl
                   }
               }
           } else {
-              setForm({ description: '', amount: 0, category: 'Outros', isPaid: false, paymentMethod: 'BANK', isRecurring: false });
+              setForm({ description: '', amount: 0, category: 'Outros', isPaid: false, paymentMethod: 'BANK', isRecurring: false, supplierId: '' });
               setDateStr(new Date().toISOString().split('T')[0]);
           }
       }
@@ -48,6 +48,10 @@ export const ExpenseFormModal: React.FC<ExpenseFormModalProps> = ({ isOpen, onCl
           return showAlert({ title: "Valor Inválido", message: "Informe um valor maior que zero.", type: 'WARNING' });
       }
 
+      if (!dateStr) {
+          return showAlert({ title: "Data Inválida", message: "Informe a data de vencimento.", type: 'WARNING' });
+      }
+
       try {
           // Create date object at noon to ensure it stays on the correct day regardless of UTC shifts
           const fixedDate = new Date(dateStr + 'T12:00:00');
@@ -57,7 +61,8 @@ export const ExpenseFormModal: React.FC<ExpenseFormModalProps> = ({ isOpen, onCl
               amount: amount,
               dueDate: fixedDate,
               isPaid: form.isPaid || false,
-              paymentMethod: form.paymentMethod || 'BANK'
+              paymentMethod: form.paymentMethod || 'BANK',
+              supplierId: form.supplierId || undefined
           } as Expense;
 
           if (expenseToEdit && expenseToEdit.id) {
@@ -75,7 +80,8 @@ export const ExpenseFormModal: React.FC<ExpenseFormModalProps> = ({ isOpen, onCl
           onClose();
       } catch (error: any) {
           console.error(error);
-          showAlert({ title: "Erro", message: "Erro ao salvar despesa. Verifique os dados.", type: 'ERROR' });
+          const msg = error?.message || error?.error_description || JSON.stringify(error) || "Erro desconhecido";
+          showAlert({ title: "Erro ao Salvar", message: `Detalhe: ${msg}`, type: 'ERROR' });
       }
   };
 
@@ -100,7 +106,7 @@ export const ExpenseFormModal: React.FC<ExpenseFormModalProps> = ({ isOpen, onCl
                 </div>
                 <div>
                     <label className="block text-xs font-bold mb-1 text-gray-600">Vencimento</label>
-                    <input type="date" className="w-full border p-2.5 rounded-lg text-sm" value={dateStr} onChange={e => setDateStr(e.target.value)} />
+                    <input required type="date" className="w-full border p-2.5 rounded-lg text-sm" value={dateStr} onChange={e => setDateStr(e.target.value)} />
                 </div>
             </div>
 

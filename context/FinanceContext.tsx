@@ -118,8 +118,13 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         ? expense.dueDate.toISOString().split('T')[0] 
         : expense.dueDate;
 
-      // REMOVE ID if it's empty string to avoid UUID errors
-      const { id, ...expenseData } = expense;
+      // Auto-set paid_date if isPaid is true
+      let paidDateVal = null;
+      if (expense.isPaid) {
+          paidDateVal = expense.paidDate 
+            ? (expense.paidDate instanceof Date ? expense.paidDate.toISOString().split('T')[0] : expense.paidDate)
+            : new Date().toISOString().split('T')[0]; // Default to today if paid but no date
+      }
 
       const { error } = await supabase.from('expenses').insert({ 
           tenant_id: tenantId, 
@@ -127,6 +132,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
           amount: expense.amount, 
           category: expense.category, 
           due_date: dueDateStr, 
+          paid_date: paidDateVal,
           is_paid: expense.isPaid,
           is_recurring: expense.isRecurring,
           payment_method: expense.paymentMethod,
@@ -147,11 +153,19 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         ? expense.dueDate.toISOString().split('T')[0] 
         : expense.dueDate;
 
+      let paidDateVal = null;
+      if (expense.isPaid) {
+          paidDateVal = expense.paidDate 
+            ? (expense.paidDate instanceof Date ? expense.paidDate.toISOString().split('T')[0] : expense.paidDate)
+            : new Date().toISOString().split('T')[0];
+      }
+
       const { error } = await supabase.from('expenses').update({ 
           description: expense.description, 
           amount: expense.amount, 
           category: expense.category, 
           due_date: dueDateStr, 
+          paid_date: paidDateVal,
           is_paid: expense.isPaid,
           is_recurring: expense.isRecurring,
           payment_method: expense.paymentMethod,
@@ -166,7 +180,11 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const payExpense = async (expenseId: string) => {
-      const { error } = await supabase.from('expenses').update({ is_paid: true, paid_date: new Date() }).eq('id', expenseId);
+      const { error } = await supabase.from('expenses').update({ 
+          is_paid: true, 
+          paid_date: new Date().toISOString().split('T')[0] 
+      }).eq('id', expenseId);
+      
       if (error) throw error;
       await fetchData();
   };
