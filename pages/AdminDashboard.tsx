@@ -1,13 +1,17 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRestaurant } from '../context/RestaurantContext';
+import { useUI } from '../context/UIContext';
+import { Button } from '../components/Button';
+import { QRCodeGenerator } from '../components/QRCodeGenerator';
+import { ImageUploader } from '../components/ImageUploader';
+import { Product, ProductType, Role, User, InventoryItem, Expense, InventoryType, Supplier, PurchaseItemInput, PurchaseInstallment } from '../types';
+import { LayoutDashboard, Utensils, QrCode, Printer, ExternalLink, Palette, Eye, EyeOff, Save, Copy, Plus, Users, ShieldCheck, Trash2, Edit, AlertTriangle, FileBarChart, X, ArrowUp, ArrowDown, LayoutGrid, List as ListIcon, Image as ImageIcon, Calendar, TrendingUp, Search, Loader2, Menu, Activity, CheckSquare, GripVertical, Link as LinkIcon, Share2, Lock, BookOpen, Package, DollarSign, Archive, TrendingDown, RefreshCcw, Layers, ArrowLeft, Truck, FileText, ClipboardList, FileSpreadsheet, PieChart, CreditCard, Info, MapPin, Phone, User as UserIcon } from 'lucide-react';
+import { getTenantSlug } from '../utils/tenant';
+import { supabase } from '../lib/supabase';
 import { Link } from 'react-router-dom';
-import { 
-    LayoutDashboard, Utensils, QrCode, Settings, Users, 
-    FileSpreadsheet, Package, DollarSign, ArrowLeft, Menu, X, BookOpen 
-} from 'lucide-react';
 
-// Sub-Pages Import
+// Import Pages
 import { AdminOverview } from './admin/AdminOverview';
 import { AdminProducts } from './admin/AdminProducts';
 import { AdminInventory } from './admin/AdminInventory';
@@ -15,13 +19,17 @@ import { AdminTables } from './admin/AdminTables';
 import { AdminStaff } from './admin/AdminStaff';
 import { AdminFinance } from './admin/AdminFinance';
 import { AdminAccounting } from './admin/AdminAccounting';
+import { AccountingReport } from './admin/AccountingReport'; // NEW
 import { AdminSettings } from './admin/AdminSettings';
 
 export const AdminDashboard: React.FC = () => {
-  const { state } = useRestaurant();
-  const { planLimits, tenantSlug } = state;
-  const [activeTab, setActiveTab] = useState<'DASHBOARD' | 'PRODUCTS' | 'TABLES' | 'CUSTOMIZATION' | 'STAFF' | 'ACCOUNTING' | 'INVENTORY' | 'FINANCE'>('DASHBOARD');
+  const { state, dispatch } = useRestaurant();
+  const { showAlert, showConfirm } = useUI();
+  // Added 'OFFICIAL_REPORT' to the tabs
+  const [activeTab, setActiveTab] = useState<'DASHBOARD' | 'PRODUCTS' | 'TABLES' | 'CUSTOMIZATION' | 'STAFF' | 'REPORTS' | 'ACCOUNTING' | 'OFFICIAL_REPORT' | 'INVENTORY' | 'FINANCE'>('DASHBOARD');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  const { planLimits } = state;
 
   const renderContent = () => {
       switch(activeTab) {
@@ -31,22 +39,11 @@ export const AdminDashboard: React.FC = () => {
           case 'TABLES': return <AdminTables />;
           case 'STAFF': return <AdminStaff />;
           case 'FINANCE': return <AdminFinance />;
-          case 'ACCOUNTING': return <AdminAccounting />;
+          case 'ACCOUNTING': return <AdminAccounting />; // DRE Gerencial
+          case 'OFFICIAL_REPORT': return <AccountingReport />; // Relatório Contábil A4
           case 'CUSTOMIZATION': return <AdminSettings />;
           default: return <AdminOverview />;
       }
-  };
-
-  const NavButton = ({ tab, label, icon: Icon, requiredFeature }: any) => {
-      if (requiredFeature && !planLimits[requiredFeature]) return null;
-      return (
-        <button 
-            onClick={() => { setActiveTab(tab); setIsSidebarOpen(false); }} 
-            className={`w-full text-left p-3 rounded-lg flex items-center gap-3 transition-colors ${activeTab === tab ? 'bg-blue-600 text-white shadow-md' : 'text-slate-300 hover:bg-slate-800 hover:text-white'}`}
-        >
-            <Icon size={20}/> <span className="font-medium">{label}</span>
-        </button>
-      );
   };
 
   return (
@@ -59,23 +56,29 @@ export const AdminDashboard: React.FC = () => {
             </div>
             
             <nav className="space-y-1 flex-1 overflow-y-auto pr-1 custom-scrollbar">
-                <NavButton tab="DASHBOARD" label="Visão Geral" icon={LayoutDashboard} />
+                <button onClick={() => {setActiveTab('DASHBOARD'); setIsSidebarOpen(false);}} className={`w-full text-left p-3 rounded-lg flex items-center gap-3 transition-colors ${activeTab === 'DASHBOARD' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-300 hover:bg-slate-800 hover:text-white'}`}><LayoutDashboard size={20}/> <span className="font-medium">Visão Geral</span></button>
+                
                 <div className="pt-4 pb-2 text-xs font-bold text-slate-500 uppercase">Operação</div>
-                <NavButton tab="INVENTORY" label="Estoque & Compras" icon={Package} requiredFeature="allowInventory" />
-                <NavButton tab="PRODUCTS" label="Cardápio Digital" icon={Utensils} />
-                <NavButton tab="TABLES" label="Mesas & QR" icon={QrCode} requiredFeature="allowTableMgmt" />
+                {planLimits.allowInventory && <button onClick={() => {setActiveTab('INVENTORY'); setIsSidebarOpen(false);}} className={`w-full text-left p-3 rounded-lg flex items-center gap-3 transition-colors ${activeTab === 'INVENTORY' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-300 hover:bg-slate-800 hover:text-white'}`}><Package size={20}/> <span className="font-medium">Estoque & Compras</span></button>}
+                <button onClick={() => {setActiveTab('PRODUCTS'); setIsSidebarOpen(false);}} className={`w-full text-left p-3 rounded-lg flex items-center gap-3 transition-colors ${activeTab === 'PRODUCTS' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-300 hover:bg-slate-800 hover:text-white'}`}><Utensils size={20}/> <span className="font-medium">Cardápio Digital</span></button>
+                {planLimits.allowTableMgmt && <button onClick={() => {setActiveTab('TABLES'); setIsSidebarOpen(false);}} className={`w-full text-left p-3 rounded-lg flex items-center gap-3 transition-colors ${activeTab === 'TABLES' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-300 hover:bg-slate-800 hover:text-white'}`}><QrCode size={20}/> <span className="font-medium">Mesas & QR</span></button>}
                 
                 <div className="pt-4 pb-2 text-xs font-bold text-slate-500 uppercase">Administrativo</div>
-                <NavButton tab="FINANCE" label="Financeiro" icon={DollarSign} requiredFeature="allowExpenses" />
-                <NavButton tab="ACCOUNTING" label="Relatórios (DRE)" icon={FileSpreadsheet} requiredFeature="allowReports" />
-                <NavButton tab="STAFF" label="Equipe & Acesso" icon={Users} requiredFeature="allowStaff" />
+                {(planLimits.allowExpenses || planLimits.allowPurchases) && <button onClick={() => {setActiveTab('FINANCE'); setIsSidebarOpen(false);}} className={`w-full text-left p-3 rounded-lg flex items-center gap-3 transition-colors ${activeTab === 'FINANCE' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-300 hover:bg-slate-800 hover:text-white'}`}><DollarSign size={20}/> <span className="font-medium">Financeiro</span></button>}
+                {planLimits.allowReports && (
+                    <>
+                        <button onClick={() => {setActiveTab('ACCOUNTING'); setIsSidebarOpen(false);}} className={`w-full text-left p-3 rounded-lg flex items-center gap-3 transition-colors ${activeTab === 'ACCOUNTING' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-300 hover:bg-slate-800 hover:text-white'}`}><PieChart size={20}/> <span className="font-medium">DRE Gerencial</span></button>
+                        <button onClick={() => {setActiveTab('OFFICIAL_REPORT'); setIsSidebarOpen(false);}} className={`w-full text-left p-3 rounded-lg flex items-center gap-3 transition-colors ${activeTab === 'OFFICIAL_REPORT' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-300 hover:bg-slate-800 hover:text-white'}`}><FileText size={20}/> <span className="font-medium">Relatório Contábil</span></button>
+                    </>
+                )}
+                {planLimits.allowStaff && <button onClick={() => {setActiveTab('STAFF'); setIsSidebarOpen(false);}} className={`w-full text-left p-3 rounded-lg flex items-center gap-3 transition-colors ${activeTab === 'STAFF' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-300 hover:bg-slate-800 hover:text-white'}`}><Users size={20}/> <span className="font-medium">Equipe & Acesso</span></button>}
                 
                 <div className="pt-4 pb-2 text-xs font-bold text-slate-500 uppercase">Sistema</div>
-                <NavButton tab="CUSTOMIZATION" label="Configurações" icon={Settings} requiredFeature="allowCustomization" />
+                {planLimits.allowCustomization && <button onClick={() => {setActiveTab('CUSTOMIZATION'); setIsSidebarOpen(false);}} className={`w-full text-left p-3 rounded-lg flex items-center gap-3 transition-colors ${activeTab === 'CUSTOMIZATION' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-300 hover:bg-slate-800 hover:text-white'}`}><Palette size={20}/> <span className="font-medium">Configurações</span></button>}
             </nav>
 
             <div className="pt-6 border-t border-slate-800 mt-auto space-y-1">
-                <Link to={`/manual?restaurant=${tenantSlug}`} target="_blank" className="w-full text-left p-3 rounded-lg flex items-center gap-3 text-slate-400 hover:bg-slate-800 hover:text-white transition-colors">
+                <Link to={`/manual?restaurant=${state.tenantSlug}`} target="_blank" className="w-full text-left p-3 rounded-lg flex items-center gap-3 text-slate-400 hover:bg-slate-800 hover:text-white transition-colors">
                     <BookOpen size={20}/> <span className="font-medium">Manual do Sistema</span>
                 </Link>
                 <Link to="/" className="w-full text-left p-3 rounded-lg flex items-center gap-3 text-red-400 hover:bg-slate-800 hover:text-red-300 transition-colors">
@@ -87,14 +90,14 @@ export const AdminDashboard: React.FC = () => {
         {/* Content Area */}
         <div className="flex-1 flex flex-col h-screen overflow-hidden">
             {/* Mobile Header */}
-            <header className="bg-white shadow-sm border-b p-4 lg:hidden flex justify-between items-center shrink-0">
+            <header className="bg-white shadow-sm border-b p-4 lg:hidden flex justify-between items-center shrink-0 print:hidden">
                 <h1 className="font-bold text-lg text-gray-800">Admin</h1>
                 <button onClick={() => setIsSidebarOpen(true)} className="p-2 bg-gray-100 rounded text-gray-600"><Menu size={24}/></button>
             </header>
 
             {/* Main Content Scrollable */}
             <main className="flex-1 overflow-y-auto p-4 lg:p-8">
-                <div className="max-w-7xl mx-auto">
+                <div className="max-w-7xl mx-auto h-full">
                     {renderContent()}
                 </div>
             </main>

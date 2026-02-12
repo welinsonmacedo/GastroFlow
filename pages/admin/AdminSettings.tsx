@@ -1,4 +1,5 @@
 
+
 import React, { useState } from 'react';
 import { useRestaurant } from '../../context/RestaurantContext';
 import { useMenu } from '../../context/MenuContext';
@@ -188,6 +189,17 @@ export const AdminSettings: React.FC = () => {
                     <p className="text-sm text-gray-500 mb-8">Estes dados aparecem nas notas impressas e no rodapé do sistema.</p>
 
                     <div className="space-y-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label className="block text-xs font-bold mb-1">Razão Social</label>
+                                <input className="w-full border p-3 rounded-lg" value={businessForm.restaurantName || ''} onChange={e => setBusinessForm({...businessForm, restaurantName: e.target.value})} placeholder="Razão Social Ltda" />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold mb-1">Nome do Responsável</label>
+                                <input className="w-full border p-3 rounded-lg" value={businessForm.ownerName || ''} onChange={e => setBusinessForm({...businessForm, ownerName: e.target.value})} placeholder="Nome Completo" />
+                            </div>
+                        </div>
+
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
                                 <label className="block text-xs font-bold mb-1">CNPJ</label>

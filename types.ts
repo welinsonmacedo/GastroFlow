@@ -60,6 +60,8 @@ export interface Plan {
 }
 
 export interface RestaurantBusinessInfo {
+    restaurantName?: string;
+    ownerName?: string;
     cnpj?: string;
     phone?: string;
     email?: string;
