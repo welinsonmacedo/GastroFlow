@@ -21,7 +21,7 @@ interface FinanceContextType {
   updateExpense: (expense: Expense) => Promise<void>;
   payExpense: (expenseId: string) => Promise<void>;
   deleteExpense: (expenseId: string) => Promise<void>;
-  voidTransaction: (transactionId: string, adminPin: string) => Promise<void>; // Nova função
+  voidTransaction: (transactionId: string, adminPin: string) => Promise<void>; 
   refreshTransactions: () => Promise<void>;
 }
 
@@ -206,7 +206,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       if (!tenantId) return;
       
       // 1. Verificar se o PIN está correto
-      // Compara com o PIN salvo no businessInfo do contexto do restaurante
       const correctPin = restaurantState.businessInfo?.adminPin;
       
       if (!correctPin) {
@@ -217,15 +216,35 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
           throw new Error("Senha incorreta.");
       }
 
-      // 2. Atualizar transação para CANCELLED
-      const { error } = await supabase
+      // 2. Buscar dados da transação para achar o Pedido
+      const { data: transaction } = await supabase
+          .from('transactions')
+          .select('order_id')
+          .eq('id', transactionId)
+          .single();
+
+      // 3. Atualizar transação para CANCELLED (Financeiro)
+      const { error: transError } = await supabase
           .from('transactions')
           .update({ status: 'CANCELLED' })
           .eq('id', transactionId);
 
-      if (error) throw error;
+      if (transError) throw transError;
 
-      // Opcional: Reverter estoque se necessário, mas por enquanto apenas marca financeiro.
+      // 4. Atualizar o PEDIDO para CANCELLED
+      // Isso é crucial: O Trigger 'trg_restore_stock_on_cancel' (no SQL) só é ativado quando a tabela 'orders' muda.
+      if (transaction && transaction.order_id) {
+          await supabase
+              .from('orders')
+              .update({ status: 'CANCELLED' })
+              .eq('id', transaction.order_id);
+          
+          // Opcional: Marcar itens como cancelados visualmente, embora o status do pedido já resolva a maioria dos relatórios
+          await supabase
+              .from('order_items')
+              .update({ status: 'CANCELLED' })
+              .eq('order_id', transaction.order_id);
+      }
       
       await fetchData();
   };
