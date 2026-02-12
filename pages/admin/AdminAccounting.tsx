@@ -4,7 +4,7 @@ import { useRestaurant } from '../../context/RestaurantContext';
 import { useUI } from '../../context/UIContext';
 import { Button } from '../../components/Button';
 import { supabase } from '../../lib/supabase';
-import { Loader2, RefreshCcw, Printer, PieChart, TrendingUp, CheckCircle2, ArrowUpRight, AlertCircle, FileText, DollarSign, Store, Package } from 'lucide-react';
+import { Loader2, RefreshCcw, Printer, PieChart, TrendingUp, CheckCircle2, ArrowUpRight, AlertCircle, FileText, DollarSign, Store, Package, HelpCircle } from 'lucide-react';
 
 export const AdminAccounting: React.FC = () => {
   const { state } = useRestaurant();
@@ -114,17 +114,30 @@ export const AdminAccounting: React.FC = () => {
   const marginPerc = data.netRevenue > 0 ? (data.grossProfit / data.netRevenue) * 100 : 0;
   const profitPerc = data.grossRevenue > 0 ? (data.netIncome / data.grossRevenue) * 100 : 0;
 
-  const Row = ({ label, value, type = 'normal', indent = false, isNegative = false }: any) => (
-    <div className={`flex justify-between py-2.5 ${indent ? 'pl-8' : ''} ${type === 'total' ? 'border-t-2 border-slate-800 font-black text-slate-900 bg-slate-50 mt-2 px-2' : 'border-b border-slate-100 text-slate-600'}`}>
-        <span className={type === 'total' ? 'uppercase tracking-tight text-sm' : 'font-medium text-sm'}>{label}</span>
-        <span className={`font-mono font-bold ${isNegative ? 'text-red-500' : 'text-slate-800'}`}>
+  // Componente de Linha com Tooltip
+  const Row = ({ label, value, type = 'normal', indent = false, isNegative = false, description = '' }: any) => (
+    <div className={`flex justify-between py-2.5 print:py-1 ${indent ? 'pl-8' : ''} ${type === 'total' ? 'border-t-2 border-slate-800 font-black text-slate-900 bg-slate-50 mt-2 px-2 print:bg-transparent print:border-black' : 'border-b border-slate-100 text-slate-600 print:border-slate-300'}`}>
+        <div className="flex items-center gap-2 group relative">
+            <span className={type === 'total' ? 'uppercase tracking-tight text-sm print:text-black' : 'font-medium text-sm print:text-black'}>{label}</span>
+            {description && (
+                <>
+                    <HelpCircle size={14} className="text-slate-300 cursor-help hover:text-blue-500 print:hidden transition-colors" />
+                    <div className="absolute left-0 bottom-full mb-2 w-64 p-3 bg-slate-800 text-white text-xs rounded-lg shadow-xl opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50 print:hidden leading-relaxed">
+                        {description}
+                        <div className="absolute bottom-[-4px] left-3 w-2 h-2 bg-slate-800 transform rotate-45"></div>
+                    </div>
+                </>
+            )}
+        </div>
+        <span className={`font-mono font-bold ${isNegative ? 'text-red-500 print:text-black' : 'text-slate-800 print:text-black'}`}>
             {isNegative && value > 0 ? '-' : ''} R$ {Math.abs(value).toFixed(2)}
         </span>
     </div>
   );
 
   return (
-    <div className="space-y-6 animate-fade-in pb-20">
+    <div className="space-y-6 animate-fade-in pb-20 print:pb-0 print:space-y-4">
+        {/* Header - Controles (Escondido na impressão) */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-200 gap-4 print:hidden">
             <div>
                 <h2 className="text-2xl font-black text-slate-800 flex items-center gap-2"><PieChart className="text-blue-600"/> DRE Gerencial</h2>
@@ -145,7 +158,8 @@ export const AdminAccounting: React.FC = () => {
 
         {data.hasData && (
             <>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* Cards de Métricas (Escondido na impressão para focar na tabela formal) */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 print:hidden">
                     <div className={`p-6 rounded-2xl border-2 bg-white shadow-sm flex flex-col ${cmvPerc > 35 ? 'border-red-200 bg-red-50/30' : 'border-emerald-200 bg-emerald-50/30'}`}>
                         <div className="flex justify-between items-start mb-2"><span className="text-gray-500 text-[10px] font-black uppercase tracking-widest">CMV Real (Meta: 35%)</span>{cmvPerc > 35 ? <ArrowUpRight className="text-red-500" /> : <CheckCircle2 className="text-emerald-500" />}</div>
                         <div className="text-4xl font-black text-slate-800">{cmvPerc.toFixed(1)}%</div>
@@ -165,44 +179,128 @@ export const AdminAccounting: React.FC = () => {
                     </div>
                 </div>
 
-                <div className="bg-white rounded-3xl shadow-xl border border-slate-200 overflow-hidden print:border-none print:shadow-none">
-                    <div className="bg-slate-900 p-10 text-white flex justify-between items-end">
-                        <div><h1 className="text-4xl font-black tracking-tighter uppercase mb-1">Resultado Mensal</h1><p className="text-blue-400 text-sm font-bold uppercase tracking-widest flex items-center gap-2"><Store size={16}/> {state.theme.restaurantName}</p></div>
-                        <div className="text-right"><p className="text-slate-500 text-[10px] font-black uppercase mb-1">Período</p><p className="text-lg font-mono font-bold bg-white/10 px-3 py-1 rounded-lg">{new Date(dateStart).toLocaleDateString()} — {new Date(dateEnd).toLocaleDateString()}</p></div>
+                {/* DRE Report Sheet */}
+                <div className="bg-white rounded-3xl shadow-xl border border-slate-200 overflow-hidden print:shadow-none print:border-none print:rounded-none">
+                    <div className="bg-slate-900 p-10 text-white flex justify-between items-end print:bg-white print:text-black print:p-0 print:border-b-2 print:border-black print:mb-4">
+                        <div>
+                            <h1 className="text-4xl font-black tracking-tighter uppercase mb-1 print:text-2xl">DRE Gerencial</h1>
+                            <p className="text-blue-400 text-sm font-bold uppercase tracking-widest flex items-center gap-2 print:text-black">
+                                <Store size={16} className="print:hidden"/> {state.theme.restaurantName}
+                            </p>
+                        </div>
+                        <div className="text-right">
+                            <p className="text-slate-500 text-[10px] font-black uppercase mb-1 print:text-black">Período</p>
+                            <p className="text-lg font-mono font-bold bg-white/10 px-3 py-1 rounded-lg print:bg-transparent print:p-0 print:text-sm">
+                                {new Date(dateStart).toLocaleDateString()} — {new Date(dateEnd).toLocaleDateString()}
+                            </p>
+                        </div>
                     </div>
 
-                    <div className="p-10 max-w-4xl mx-auto">
+                    <div className="p-10 max-w-4xl mx-auto print:p-0 print:max-w-none">
                         <div className="space-y-1">
-                            <h3 className="text-xs font-black text-blue-600 uppercase tracking-widest mb-4 flex items-center gap-2"><DollarSign size={14}/> 1. Receita e Deduções</h3>
-                            <Row label="(+) Receita Bruta de Vendas" value={data.grossRevenue} />
-                            <Row label="    Vendas Mesas / Salão" value={data.saloonSales} indent />
-                            <Row label="    Vendas Balcão / PDV" value={data.posSales} indent />
-                            <Row label="(-) Impostos (Estimativa Simples)" value={data.taxes} isNegative />
-                            <Row label="(=) RECEITA LÍQUIDA" value={data.netRevenue} type="total" />
+                            {/* SEÇÃO 1: RECEITA */}
+                            <h3 className="text-xs font-black text-blue-600 uppercase tracking-widest mb-4 flex items-center gap-2 print:text-black print:border-b print:mt-4">
+                                <DollarSign size={14} className="print:hidden"/> 1. Receita e Deduções
+                            </h3>
+                            <Row 
+                                label="(+) Receita Bruta de Vendas" 
+                                value={data.grossRevenue} 
+                                description="Soma total de todas as vendas realizadas (cartão, dinheiro, pix) antes de qualquer desconto."
+                            />
+                            <Row 
+                                label="    Vendas Mesas / Salão" 
+                                value={data.saloonSales} 
+                                indent 
+                                description="Total vendido através de pedidos em mesas."
+                            />
+                            <Row 
+                                label="    Vendas Balcão / PDV" 
+                                value={data.posSales} 
+                                indent 
+                                description="Total vendido diretamente no caixa (balcão/delivery rápido)."
+                            />
+                            <Row 
+                                label="(-) Impostos (Simples Nacional)" 
+                                value={data.taxes} 
+                                isNegative 
+                                description="Estimativa de impostos sobre a venda (ex: 6% do Simples Nacional)."
+                            />
+                            <Row 
+                                label="(=) RECEITA LÍQUIDA" 
+                                value={data.netRevenue} 
+                                type="total" 
+                                description="O dinheiro que efetivamente entra no negócio após deduzir os impostos diretos."
+                            />
 
-                            <h3 className="text-xs font-black text-orange-600 uppercase tracking-widest mb-4 mt-12 flex items-center gap-2"><Package size={14}/> 2. Custos Variáveis (CMV)</h3>
-                            <Row label="(-) Custo de Mercadoria Vendida" value={data.cmv} isNegative />
-                            <Row label="(=) LUCRO BRUTO" value={data.grossProfit} type="total" />
+                            {/* SEÇÃO 2: CMV */}
+                            <h3 className="text-xs font-black text-orange-600 uppercase tracking-widest mb-4 mt-12 flex items-center gap-2 print:text-black print:border-b print:mt-6">
+                                <Package size={14} className="print:hidden"/> 2. Custos Variáveis (CMV)
+                            </h3>
+                            <Row 
+                                label="(-) Custo de Mercadoria Vendida" 
+                                value={data.cmv} 
+                                isNegative 
+                                description="Custo dos ingredientes/insumos utilizados para produzir os pratos vendidos."
+                            />
+                            <Row 
+                                label="(=) LUCRO BRUTO" 
+                                value={data.grossProfit} 
+                                type="total" 
+                                description="O que sobra da venda para pagar as contas fixas (aluguel, luz, pessoal)."
+                            />
 
-                            <h3 className="text-xs font-black text-purple-600 uppercase tracking-widest mb-4 mt-12 flex items-center gap-2"><FileText size={14}/> 3. Despesas Operacionais</h3>
+                            {/* SEÇÃO 3: OPERACIONAIS */}
+                            <h3 className="text-xs font-black text-purple-600 uppercase tracking-widest mb-4 mt-12 flex items-center gap-2 print:text-black print:border-b print:mt-6">
+                                <FileText size={14} className="print:hidden"/> 3. Despesas Operacionais
+                            </h3>
                             {Object.entries(data.expensesByCategory).map(([cat, val]: any) => (
-                                <Row key={cat} label={`(-) ${cat}`} value={val} indent isNegative />
+                                <Row 
+                                    key={cat} 
+                                    label={`(-) ${cat}`} 
+                                    value={val} 
+                                    indent 
+                                    isNegative 
+                                    description={`Total gasto na categoria ${cat}.`}
+                                />
                             ))}
-                            <Row label="(=) EBITDA (Operacional)" value={data.ebitda} type="total" />
+                            <Row 
+                                label="(=) EBITDA (Operacional)" 
+                                value={data.ebitda} 
+                                type="total" 
+                                description="Lucro da operação antes de juros, impostos e depreciação. Mede a eficiência do negócio."
+                            />
 
-                            <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 mt-12 flex items-center gap-2"><TrendingUp size={14}/> 4. Resultado Final</h3>
-                            <Row label="(-) Despesas Financeiras / Taxas" value={data.financialExpenses} isNegative />
-                            <Row label="(=) LUCRO LÍQUIDO FINAL" value={data.netIncome} type="total" />
+                            {/* SEÇÃO 4: RESULTADO */}
+                            <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 mt-12 flex items-center gap-2 print:text-black print:border-b print:mt-6">
+                                <TrendingUp size={14} className="print:hidden"/> 4. Resultado Final
+                            </h3>
+                            <Row 
+                                label="(-) Despesas Financeiras / Taxas" 
+                                value={data.financialExpenses} 
+                                isNegative 
+                                description="Taxas de cartão de crédito, tarifas bancárias e juros pagos."
+                            />
+                            <Row 
+                                label="(=) LUCRO LÍQUIDO FINAL" 
+                                value={data.netIncome} 
+                                type="total" 
+                                description="O valor real que sobrou no bolso do proprietário após pagar absolutamente tudo."
+                            />
                         </div>
 
-                        <div className={`mt-16 p-8 rounded-[2.5rem] flex flex-col md:flex-row items-center justify-between border-4 ${data.netIncome >= 0 ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'}`}>
-                            <div className="text-center md:text-left mb-6 md:mb-0">
-                                <h4 className={`text-2xl font-black uppercase tracking-tighter ${data.netIncome >= 0 ? 'text-emerald-800' : 'text-red-800'}`}>{data.netIncome >= 0 ? 'Resultado Positivo' : 'Prejuízo Apurado'}</h4>
-                                <p className="text-slate-500 font-medium">Lucro real após todas as baixas e despesas.</p>
+                        {/* Banner de Resultado Final */}
+                        <div className={`mt-16 p-8 rounded-[2.5rem] flex flex-col md:flex-row items-center justify-between border-4 print:mt-8 print:border-2 print:p-4 print:rounded-xl ${data.netIncome >= 0 ? 'bg-emerald-50 border-emerald-200 print:bg-white print:border-black' : 'bg-red-50 border-red-200 print:bg-white print:border-black'}`}>
+                            <div className="text-center md:text-left mb-6 md:mb-0 print:text-left">
+                                <h4 className={`text-2xl font-black uppercase tracking-tighter print:text-black ${data.netIncome >= 0 ? 'text-emerald-800' : 'text-red-800'}`}>{data.netIncome >= 0 ? 'Resultado Positivo' : 'Prejuízo Apurado'}</h4>
+                                <p className="text-slate-500 font-medium print:text-black">Lucro real após todas as baixas e despesas.</p>
                             </div>
                             <div className="text-center md:text-right">
-                                <div className={`text-5xl font-black ${data.netIncome >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>R$ {data.netIncome.toFixed(2)}</div>
+                                <div className={`text-5xl font-black print:text-3xl print:text-black ${data.netIncome >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>R$ {data.netIncome.toFixed(2)}</div>
                             </div>
+                        </div>
+                        
+                        <div className="mt-8 text-center text-[10px] text-gray-400 uppercase font-bold print:block hidden">
+                            Documento gerado eletronicamente por GastroFlow em {new Date().toLocaleString()}
                         </div>
                     </div>
                 </div>
