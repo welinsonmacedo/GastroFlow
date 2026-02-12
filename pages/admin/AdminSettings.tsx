@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRestaurant } from '../../context/RestaurantContext';
 import { useMenu } from '../../context/MenuContext';
 import { useUI } from '../../context/UIContext';
@@ -18,12 +18,29 @@ export const AdminSettings: React.FC = () => {
   const [localTheme, setLocalTheme] = useState(state.theme);
   
   // Business Info State
-  const [businessForm, setBusinessForm] = useState<RestaurantBusinessInfo>(state.businessInfo || {
+  // Inicializa com defaults seguros
+  const [businessForm, setBusinessForm] = useState<RestaurantBusinessInfo>({
       address: { cep: '', street: '', number: '', neighborhood: '', city: '', state: '' },
       orderGracePeriodMinutes: 2,
-      adminPin: ''
+      adminPin: '',
+      ...state.businessInfo
   });
   const [loadingCep, setLoadingCep] = useState(false);
+
+  // Sincroniza o formulário quando os dados do restaurante forem carregados do banco
+  useEffect(() => {
+      if (state.businessInfo) {
+          setBusinessForm(prev => ({
+              ...prev,
+              ...state.businessInfo,
+              // Garante que campos opcionais tenham valor padrão se vierem nulos do banco
+              address: state.businessInfo.address || prev.address,
+              orderGracePeriodMinutes: state.businessInfo.orderGracePeriodMinutes ?? prev.orderGracePeriodMinutes,
+              adminPin: state.businessInfo.adminPin ?? prev.adminPin
+          }));
+      }
+      setLocalTheme(state.theme);
+  }, [state.businessInfo, state.theme]);
 
   // --- ACTIONS ---
 
