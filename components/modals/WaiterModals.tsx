@@ -1,15 +1,14 @@
-
 import React, { useState, useEffect } from 'react';
 import { Modal } from '../Modal';
 import { Button } from '../Button';
-import { useRestaurant } from '../../context/RestaurantContext';
-import { useUI } from '../../context/UIContext';
+import { useOrder } from '../../context/OrderContext';
+import { useMenu } from '../../context/MenuContext';
 import { Product } from '../../types';
 import { Utensils, Trash2, X, Minus, Plus, CheckSquare, Square } from 'lucide-react';
 
 // --- Open Table Modal ---
 export const OpenTableModal: React.FC<{ isOpen: boolean, onClose: () => void, tableId: string | null }> = ({ isOpen, onClose, tableId }) => {
-    const { dispatch } = useRestaurant();
+    const { dispatch } = useOrder();
     const [customerName, setCustomerName] = useState('');
 
     const handleOpen = () => {
@@ -37,7 +36,7 @@ export const OpenTableModal: React.FC<{ isOpen: boolean, onClose: () => void, ta
 
 // --- Table Actions Modal ---
 export const TableActionsModal: React.FC<{ isOpen: boolean, onClose: () => void, tableId: string | null, onOrder: () => void }> = ({ isOpen, onClose, tableId, onOrder }) => {
-    const { state, dispatch } = useRestaurant();
+    const { state, dispatch } = useOrder();
     const table = state.tables.find(t => t.id === tableId);
 
     return (
@@ -63,7 +62,7 @@ interface WaiterProductModalProps {
 }
 
 export const WaiterProductModal: React.FC<WaiterProductModalProps> = ({ isOpen, onClose, product, onConfirm }) => {
-    const { state } = useRestaurant();
+    const { state } = useMenu();
     const [qty, setQty] = useState(1);
     const [note, setNote] = useState('');
     const [drinkTiming, setDrinkTiming] = useState<'IMMEDIATE' | 'WITH_FOOD'>('IMMEDIATE');

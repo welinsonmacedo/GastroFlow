@@ -5,7 +5,7 @@ import { useMenu } from '../../context/MenuContext';
 import { useUI } from '../../context/UIContext';
 import { Button } from '../../components/Button';
 import { ImageUploader } from '../../components/ImageUploader';
-import { Palette, LayoutTemplate, Type, Image as ImageIcon, Smartphone, ChefHat, Plus, Search, ShoppingCart, Building2, MapPin, Phone, FileText, Save, Loader2, Store } from 'lucide-react';
+import { Palette, LayoutTemplate, Type, Image as ImageIcon, Smartphone, ChefHat, Plus, Search, ShoppingCart, Building2, MapPin, Phone, FileText, Save, Loader2, Store, Share2 } from 'lucide-react';
 import { RestaurantBusinessInfo } from '../../types';
 
 export const AdminSettings: React.FC = () => {
@@ -73,7 +73,7 @@ export const AdminSettings: React.FC = () => {
       const realProducts = menuState.products.filter(p => p.isVisible).slice(0, 5);
       const hasProducts = realProducts.length > 0;
       const displayProducts = hasProducts ? realProducts : [1, 2, 3].map((_, i) => ({
-          id: `mock-${i}`, name: 'Produto Exemplo', description: 'Descrição do item aparecerá aqui...', price: 25.00, image: `https://source.unsplash.com/random/200x200?food&sig=${i}`
+          id: `mock-${i}`, name: 'Produto Exemplo', description: 'Descrição do item aparecerá aqui...', price: 25.00, image: `https://images.unsplash.com/photo-1546069901-ba9599a7e63c?ixlib=rb-1.2.1&auto=format&fit=crop&w=200&q=80`
       }));
       const categories = hasProducts ? Array.from(new Set(menuState.products.map(p => p.category))).slice(0, 3) : ['Lanches', 'Bebidas', 'Sobremesas'];
 
@@ -148,7 +148,7 @@ export const AdminSettings: React.FC = () => {
                                     <div className="flex gap-3 items-center"><div className="relative w-12 h-12 rounded-full shadow-sm overflow-hidden border-2 border-white ring-1 ring-gray-200"><input type="color" className="absolute -top-2 -left-2 w-16 h-16 cursor-pointer p-0 border-0" value={localTheme.backgroundColor} onChange={e => setLocalTheme({...localTheme, backgroundColor: e.target.value})} /></div><input className="flex-1 border p-2 rounded-lg text-sm uppercase font-mono text-gray-600" value={localTheme.backgroundColor} onChange={e => setLocalTheme({...localTheme, backgroundColor: e.target.value})} /></div>
                                 </div>
                                 <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 md:col-span-2">
-                                    <label className="block text-xs font-bold mb-2 text-gray-500 flex items-center gap-2"><Type size={14}/> COR DO TEXTO</label>
+                                    <label className="block text-xs font-bold mb-2 text-gray-500 flex items-center gap-2"><Type size={14}/> COR DE TEXTO</label>
                                     <div className="flex gap-3 items-center"><div className="relative w-12 h-12 rounded-full shadow-sm overflow-hidden border-2 border-white ring-1 ring-gray-200"><input type="color" className="absolute -top-2 -left-2 w-16 h-16 cursor-pointer p-0 border-0" value={localTheme.fontColor || '#1f2937'} onChange={e => setLocalTheme({...localTheme, fontColor: e.target.value})} /></div><input className="flex-1 border p-2 rounded-lg text-sm uppercase font-mono text-gray-600" value={localTheme.fontColor || '#1f2937'} onChange={e => setLocalTheme({...localTheme, fontColor: e.target.value})} /></div>
                                 </div>
                             </div>
@@ -188,4 +188,79 @@ export const AdminSettings: React.FC = () => {
                     <p className="text-sm text-gray-500 mb-8">Estes dados aparecem nas notas impressas e no rodapé do sistema.</p>
 
                     <div className="space-y-6">
-                        <div className="grid grid-cols-1 md:
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label className="block text-xs font-bold mb-1">CNPJ</label>
+                                <input className="w-full border p-3 rounded-lg" value={businessForm.cnpj} onChange={e => setBusinessForm({...businessForm, cnpj: formatCNPJ(e.target.value)})} placeholder="00.000.000/0000-00" maxLength={18} />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold mb-1">Telefone / WhatsApp</label>
+                                <div className="relative">
+                                    <Phone size={16} className="absolute left-3 top-3.5 text-gray-400"/>
+                                    <input className="w-full pl-10 border p-3 rounded-lg" value={businessForm.phone} onChange={e => setBusinessForm({...businessForm, phone: formatPhone(e.target.value)})} placeholder="(00) 00000-0000" />
+                                </div>
+                            </div>
+                            <div className="md:col-span-2">
+                                <label className="block text-xs font-bold mb-1">E-mail Contato</label>
+                                <input type="email" className="w-full border p-3 rounded-lg" value={businessForm.email} onChange={e => setBusinessForm({...businessForm, email: e.target.value})} placeholder="contato@restaurante.com" />
+                            </div>
+                        </div>
+
+                        <div className="border-t pt-6">
+                            <h3 className="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2"><MapPin size={16}/> Endereço</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                <div className="md:col-span-1">
+                                    <label className="block text-xs font-bold mb-1">CEP</label>
+                                    <div className="relative">
+                                        <input className={`w-full border p-3 rounded-lg ${loadingCep ? 'bg-gray-50' : ''}`} value={businessForm.address?.cep} onChange={e => setBusinessForm({...businessForm, address: {...businessForm.address!, cep: formatCEP(e.target.value)}})} onBlur={handleCepBlur} placeholder="00000-000" maxLength={9} />
+                                        {loadingCep && <Loader2 size={16} className="absolute right-3 top-3.5 animate-spin text-blue-500"/>}
+                                    </div>
+                                </div>
+                                <div className="md:col-span-2">
+                                    <label className="block text-xs font-bold mb-1">Rua</label>
+                                    <input className="w-full border p-3 rounded-lg bg-gray-50" value={businessForm.address?.street} onChange={e => setBusinessForm({...businessForm, address: {...businessForm.address!, street: e.target.value}})} />
+                                </div>
+                                <div className="md:col-span-1">
+                                    <label className="block text-xs font-bold mb-1">Número</label>
+                                    <input className="w-full border p-3 rounded-lg" value={businessForm.address?.number} onChange={e => setBusinessForm({...businessForm, address: {...businessForm.address!, number: e.target.value}})} />
+                                </div>
+                                <div className="md:col-span-1">
+                                    <label className="block text-xs font-bold mb-1">Complemento</label>
+                                    <input className="w-full border p-3 rounded-lg" value={businessForm.address?.complement} onChange={e => setBusinessForm({...businessForm, address: {...businessForm.address!, complement: e.target.value}})} />
+                                </div>
+                                <div className="md:col-span-1">
+                                    <label className="block text-xs font-bold mb-1">Bairro</label>
+                                    <input className="w-full border p-3 rounded-lg bg-gray-50" value={businessForm.address?.neighborhood} onChange={e => setBusinessForm({...businessForm, address: {...businessForm.address!, neighborhood: e.target.value}})} />
+                                </div>
+                                <div className="md:col-span-1">
+                                    <label className="block text-xs font-bold mb-1">Cidade</label>
+                                    <input className="w-full border p-3 rounded-lg bg-gray-50" value={businessForm.address?.city} onChange={e => setBusinessForm({...businessForm, address: {...businessForm.address!, city: e.target.value}})} />
+                                </div>
+                                <div className="md:col-span-1">
+                                    <label className="block text-xs font-bold mb-1">UF</label>
+                                    <input className="w-full border p-3 rounded-lg bg-gray-50" maxLength={2} value={businessForm.address?.state} onChange={e => setBusinessForm({...businessForm, address: {...businessForm.address!, state: e.target.value.toUpperCase()}})} />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="border-t pt-6">
+                            <h3 className="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2"><Share2 size={16}/> Redes Sociais</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-bold mb-1">Instagram</label>
+                                    <input className="w-full border p-3 rounded-lg" value={businessForm.instagram} onChange={e => setBusinessForm({...businessForm, instagram: e.target.value})} placeholder="@seu.restaurante" />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold mb-1">Website</label>
+                                    <input className="w-full border p-3 rounded-lg" value={businessForm.website} onChange={e => setBusinessForm({...businessForm, website: e.target.value})} placeholder="www.seusite.com.br" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <Button onClick={handleSaveBusiness} className="w-full py-4 mt-8 text-lg shadow-lg">Salvar Dados</Button>
+                </div>
+            </div>
+        )}
+    </div>
+  );
+};
