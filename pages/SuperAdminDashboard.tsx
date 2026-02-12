@@ -1,9 +1,11 @@
+
 import React, { useState } from 'react';
 import { useSaaS } from '../context/SaaSContext';
 import { useUI } from '../context/UIContext';
 import { Plan, PlanType, RestaurantTenant, PlanLimits } from '../types';
 import { Button } from '../components/Button';
-import { Building2, Users, DollarSign, Activity, Settings, Search, MoreHorizontal, ExternalLink, LogOut, Plus, X, List, Edit, Key, Lock, BarChart2, Unlock, AlertTriangle, Link as LinkIcon, Copy, Check } from 'lucide-react';
+import { SaaSTenantCreateModal, SaaSEditTenantModal, SaaSTenantLinksModal } from '../components/modals/SaaSModals';
+import { Building2, DollarSign, Activity, Settings, Search, ExternalLink, LogOut, Plus, X, List, Edit, Lock, BarChart2, Unlock, Link as LinkIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 type ViewMode = 'RESTAURANTS' | 'FINANCIAL' | 'PLANS' | 'SETTINGS';
@@ -15,32 +17,14 @@ export const SuperAdminDashboard: React.FC = () => {
   const [activeView, setActiveView] = useState<ViewMode>('RESTAURANTS');
   const [filter, setFilter] = useState('');
   
-  // Modal State (Create)
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [newTenantForm, setNewTenantForm] = useState({
-      name: '',
-      slug: '',
-      ownerName: '',
-      email: '',
-      plan: 'FREE' as PlanType
-  });
-
-  // Modal State (Edit & Admin Create)
+  // Modal States
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [editingTenant, setEditingTenant] = useState<RestaurantTenant | null>(null);
-  const [editTab, setEditTab] = useState<'DETAILS' | 'ADMIN'>('DETAILS');
-  const [newAdminForm, setNewAdminForm] = useState({ name: 'Admin', email: '', pin: '1234', password: '' });
-
-  // Modal State (Links)
-  const [selectedTenantForLinks, setSelectedTenantForLinks] = useState<RestaurantTenant | null>(null);
-  const [copiedLink, setCopiedLink] = useState<string | null>(null);
+  const [isLinksModalOpen, setIsLinksModalOpen] = useState(false);
+  const [selectedTenant, setSelectedTenant] = useState<RestaurantTenant | null>(null);
 
   // Settings State
-  const [settingsForm, setSettingsForm] = useState({
-      name: state.adminName || '',
-      email: state.adminEmail || '',
-      password: ''
-  });
+  const [settingsForm, setSettingsForm] = useState({ name: state.adminName || '', email: state.adminEmail || '', password: '' });
   
   // Plans Edit State
   const [editingPlan, setEditingPlan] = useState<Plan | null>(null);
@@ -53,90 +37,26 @@ export const SuperAdminDashboard: React.FC = () => {
   });
 
   // Derived Metrics
-  const filteredTenants = state.tenants.filter(t => 
-    t.name.toLowerCase().includes(filter.toLowerCase()) || 
-    t.ownerName.toLowerCase().includes(filter.toLowerCase())
-  );
-
+  const filteredTenants = state.tenants.filter(t => t.name.toLowerCase().includes(filter.toLowerCase()) || t.ownerName.toLowerCase().includes(filter.toLowerCase()));
   const activeTenants = state.tenants.filter(t => t.status === 'ACTIVE').length;
-  
   const mrr = state.tenants.reduce((acc, t) => {
     if (t.status === 'INACTIVE') return acc;
-    if (t.plan === 'PRO') return acc + 99; // Estimativa
+    if (t.plan === 'PRO') return acc + 99; 
     if (t.plan === 'ENTERPRISE') return acc + 249;
     return acc;
   }, 0);
 
-  const getDemoUrl = (slug: string) => {
-      const baseUrl = window.location.origin + window.location.pathname;
-      return `${baseUrl}?restaurant=${slug}`;
-  };
+  const getDemoUrl = (slug: string) => `${window.location.origin}/?restaurant=${slug}`;
 
   const handleLogout = () => {
       showConfirm({
-          title: "Sair do Painel?",
-          message: "Você precisará fazer login novamente.",
-          type: 'WARNING',
-          confirmText: "Sair",
-          onConfirm: () => {
-              dispatch({ type: 'LOGOUT_ADMIN' });
-              navigate('/');
-          }
+          title: "Sair do Painel?", message: "Você precisará fazer login novamente.", type: 'WARNING', confirmText: "Sair",
+          onConfirm: () => { dispatch({ type: 'LOGOUT_ADMIN' }); navigate('/'); }
       });
   };
 
-  const handleCreateTenant = (e: React.FormEvent) => {
-      e.preventDefault();
-      if(!newTenantForm.name || !newTenantForm.slug || !newTenantForm.ownerName) {
-          showAlert({ title: "Erro", message: "Preencha todos os campos obrigatórios.", type: 'ERROR' });
-          return;
-      }
-      dispatch({ type: 'CREATE_TENANT', payload: newTenantForm });
-      setIsModalOpen(false);
-      setNewTenantForm({ name: '', slug: '', ownerName: '', email: '', plan: 'FREE' });
-  };
-
-  // --- Handlers para Edição ---
-
-  const openEditModal = (tenant: RestaurantTenant) => {
-      setEditingTenant(tenant);
-      setEditTab('DETAILS');
-      setNewAdminForm({ name: 'Admin', email: tenant.email, pin: '1234', password: '' });
-      setIsEditModalOpen(true);
-  };
-
-  const handleUpdateTenant = (e: React.FormEvent) => {
-      e.preventDefault();
-      if (!editingTenant) return;
-      dispatch({ 
-          type: 'UPDATE_TENANT', 
-          payload: {
-              id: editingTenant.id,
-              name: editingTenant.name,
-              slug: editingTenant.slug,
-              ownerName: editingTenant.ownerName,
-              email: editingTenant.email
-          } 
-      });
-      setIsEditModalOpen(false);
-      showAlert({ title: "Sucesso", message: "Restaurante atualizado!", type: 'SUCCESS' });
-  };
-
-  const handleCreateAdmin = (e: React.FormEvent) => {
-      e.preventDefault();
-      if (!editingTenant) return;
-      dispatch({ 
-          type: 'CREATE_TENANT_ADMIN', 
-          payload: {
-              tenantId: editingTenant.id,
-              name: newAdminForm.name,
-              email: newAdminForm.email,
-              pin: newAdminForm.pin,
-              password: newAdminForm.password
-          } 
-      });
-      setNewAdminForm({ name: 'Admin', email: '', pin: '1234', password: '' });
-  };
+  const openEditModal = (tenant: RestaurantTenant) => { setSelectedTenant(tenant); setIsEditModalOpen(true); };
+  const openLinksModal = (tenant: RestaurantTenant) => { setSelectedTenant(tenant); setIsLinksModalOpen(true); };
 
   const handleUpdateProfile = (e: React.FormEvent) => {
       e.preventDefault();
@@ -147,54 +67,17 @@ export const SuperAdminDashboard: React.FC = () => {
   const handleEditPlan = (plan: Plan) => {
       setEditingPlan(plan);
       setEditingFeatures(plan.features.join('\n'));
-      // Carrega limites ou usa defaults se não existir
-      setEditingLimits(plan.limits || {
-          maxTables: -1, maxProducts: -1, maxStaff: -1, 
-          allowKds: true, allowCashier: true, allowReports: true,
-          allowInventory: true, allowPurchases: true, allowExpenses: true,
-          allowStaff: true, allowTableMgmt: true, allowCustomization: true
-      });
+      setEditingLimits(plan.limits || { maxTables: -1, maxProducts: -1, maxStaff: -1, allowKds: true, allowCashier: true, allowReports: true, allowInventory: true, allowPurchases: true, allowExpenses: true, allowStaff: true, allowTableMgmt: true, allowCustomization: true });
   }
   
   const handleSavePlan = (e: React.FormEvent) => {
       e.preventDefault();
       if(editingPlan) {
-          const featuresArray = editingFeatures.split('\n').filter(line => line.trim() !== '');
-          const updatedPlan: Plan = { 
-              ...editingPlan, 
-              features: featuresArray,
-              limits: editingLimits // Salva os novos limites
-          };
-          
+          const updatedPlan: Plan = { ...editingPlan, features: editingFeatures.split('\n').filter(l => l.trim() !== ''), limits: editingLimits };
           dispatch({ type: 'UPDATE_PLAN_DETAILS', plan: updatedPlan });
           setEditingPlan(null);
-          showAlert({ title: "Sucesso", message: "Plano atualizado com sucesso!", type: 'SUCCESS' });
+          showAlert({ title: "Sucesso", message: "Plano atualizado!", type: 'SUCCESS' });
       }
-  };
-
-  const autoGenerateSlug = (name: string) => {
-      const slug = name.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-').replace(/--+/g, '-');
-      setNewTenantForm(prev => ({ ...prev, name, slug }));
-  };
-
-  // --- Links Handler ---
-  const handleCopyLink = (url: string) => {
-      navigator.clipboard.writeText(url);
-      setCopiedLink(url);
-      setTimeout(() => setCopiedLink(null), 2000);
-  };
-
-  const getTenantLinks = (slug: string) => {
-      const origin = window.location.origin;
-      const param = `?restaurant=${slug}`;
-      return [
-          { name: 'Página de Login (Staff)', url: `${origin}/login${param}` },
-          { name: 'App do Garçom', url: `${origin}/waiter${param}` },
-          { name: 'KDS (Cozinha)', url: `${origin}/kitchen${param}` },
-          { name: 'Frente de Caixa', url: `${origin}/cashier${param}` },
-          { name: 'Painel Admin', url: `${origin}/admin${param}` },
-          { name: 'App Cliente (Mesa 1 Exemplo)', url: `${origin}/client/table/1${param}` },
-      ];
   };
 
   return (
@@ -206,23 +89,13 @@ export const SuperAdminDashboard: React.FC = () => {
                 <Activity className="text-blue-500" /> SaaS Admin
             </div>
             <nav className="space-y-2">
-                <button onClick={() => setActiveView('RESTAURANTS')} className={`flex items-center gap-3 w-full p-3 rounded transition-colors ${activeView === 'RESTAURANTS' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}>
-                    <Building2 size={20} /> Restaurantes
-                </button>
-                <button onClick={() => setActiveView('FINANCIAL')} className={`flex items-center gap-3 w-full p-3 rounded transition-colors ${activeView === 'FINANCIAL' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}>
-                    <DollarSign size={20} /> Financeiro
-                </button>
-                <button onClick={() => setActiveView('PLANS')} className={`flex items-center gap-3 w-full p-3 rounded transition-colors ${activeView === 'PLANS' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}>
-                    <List size={20} /> Planos & Preços
-                </button>
-                <button onClick={() => setActiveView('SETTINGS')} className={`flex items-center gap-3 w-full p-3 rounded transition-colors ${activeView === 'SETTINGS' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}>
-                    <Settings size={20} /> Configurações
-                </button>
+                <button onClick={() => setActiveView('RESTAURANTS')} className={`flex items-center gap-3 w-full p-3 rounded transition-colors ${activeView === 'RESTAURANTS' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}><Building2 size={20} /> Restaurantes</button>
+                <button onClick={() => setActiveView('FINANCIAL')} className={`flex items-center gap-3 w-full p-3 rounded transition-colors ${activeView === 'FINANCIAL' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}><DollarSign size={20} /> Financeiro</button>
+                <button onClick={() => setActiveView('PLANS')} className={`flex items-center gap-3 w-full p-3 rounded transition-colors ${activeView === 'PLANS' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}><List size={20} /> Planos & Preços</button>
+                <button onClick={() => setActiveView('SETTINGS')} className={`flex items-center gap-3 w-full p-3 rounded transition-colors ${activeView === 'SETTINGS' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}><Settings size={20} /> Configurações</button>
             </nav>
           </div>
-          <button onClick={handleLogout} className="flex items-center gap-3 w-full p-3 rounded text-red-400 hover:bg-slate-800 mt-auto">
-              <LogOut size={20} /> Sair
-          </button>
+          <button onClick={handleLogout} className="flex items-center gap-3 w-full p-3 rounded text-red-400 hover:bg-slate-800 mt-auto"><LogOut size={20} /> Sair</button>
        </div>
 
        {/* Main Content */}
@@ -257,7 +130,7 @@ export const SuperAdminDashboard: React.FC = () => {
                         <Search className="absolute left-3 top-3 text-gray-400" size={18} />
                         <input type="text" placeholder="Buscar..." className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" value={filter} onChange={(e) => setFilter(e.target.value)} />
                     </div>
-                    <Button onClick={() => setIsModalOpen(true)}> <Plus size={18} /> Novo Restaurante </Button>
+                    <Button onClick={() => setIsCreateModalOpen(true)}> <Plus size={18} /> Novo Restaurante </Button>
                 </div>
                 <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
                     <table className="w-full text-left">
@@ -286,40 +159,17 @@ export const SuperAdminDashboard: React.FC = () => {
                                         </select>
                                     </td>
                                     <td className="p-4">
-                                        <div className="flex items-center gap-2">
-                                            <BarChart2 size={16} className="text-gray-400" />
-                                            <span className="font-mono font-bold text-gray-700">{tenant.requestCount || 0}</span>
-                                        </div>
+                                        <div className="flex items-center gap-2"><BarChart2 size={16} className="text-gray-400" /><span className="font-mono font-bold text-gray-700">{tenant.requestCount || 0}</span></div>
                                     </td>
                                     <td className="p-4">
-                                        <button 
-                                            onClick={() => dispatch({ type: 'TOGGLE_STATUS', tenantId: tenant.id })} 
-                                            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all border shadow-sm w-fit
-                                            ${tenant.status === 'ACTIVE' 
-                                                ? 'bg-green-100 text-green-700 border-green-200 hover:bg-green-200' 
-                                                : 'bg-red-100 text-red-700 border-red-200 hover:bg-red-200'}`}
-                                            title={tenant.status === 'ACTIVE' ? 'Clique para Bloquear Acesso' : 'Clique para Liberar Acesso'}
-                                        >
-                                            {tenant.status === 'ACTIVE' ? <Unlock size={14}/> : <Lock size={14}/>}
-                                            {tenant.status === 'ACTIVE' ? 'LIBERADO' : 'BLOQUEADO'}
+                                        <button onClick={() => dispatch({ type: 'TOGGLE_STATUS', tenantId: tenant.id })} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all border shadow-sm w-fit ${tenant.status === 'ACTIVE' ? 'bg-green-100 text-green-700 border-green-200 hover:bg-green-200' : 'bg-red-100 text-red-700 border-red-200 hover:bg-red-200'}`}>
+                                            {tenant.status === 'ACTIVE' ? <Unlock size={14}/> : <Lock size={14}/>} {tenant.status === 'ACTIVE' ? 'LIBERADO' : 'BLOQUEADO'}
                                         </button>
                                     </td>
                                     <td className="p-4 text-right">
                                         <div className="flex items-center justify-end gap-2">
-                                            <button 
-                                                onClick={() => setSelectedTenantForLinks(tenant)}
-                                                className="text-gray-400 hover:text-blue-600 p-2 hover:bg-blue-50 rounded-full transition-colors"
-                                                title="Ver Links de Acesso"
-                                            >
-                                                <LinkIcon size={20} />
-                                            </button>
-                                            <button 
-                                                onClick={() => openEditModal(tenant)}
-                                                className="text-gray-400 hover:text-blue-600 p-2 hover:bg-blue-50 rounded-full transition-colors"
-                                                title="Editar Restaurante"
-                                            >
-                                                <Edit size={20} />
-                                            </button>
+                                            <button onClick={() => openLinksModal(tenant)} className="text-gray-400 hover:text-blue-600 p-2 hover:bg-blue-50 rounded-full transition-colors"><LinkIcon size={20} /></button>
+                                            <button onClick={() => openEditModal(tenant)} className="text-gray-400 hover:text-blue-600 p-2 hover:bg-blue-50 rounded-full transition-colors"><Edit size={20} /></button>
                                         </div>
                                     </td>
                                 </tr>
@@ -338,146 +188,32 @@ export const SuperAdminDashboard: React.FC = () => {
                            {editingPlan?.id === plan.id ? (
                                <form onSubmit={handleSavePlan} className="space-y-4 flex-1 flex flex-col">
                                    <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="text-xs font-bold text-gray-500 uppercase">Nome</label>
-                                            <input className="w-full border p-2 rounded text-sm" value={editingPlan.name} onChange={e => setEditingPlan({...editingPlan, name: e.target.value})} />
-                                        </div>
-                                        <div>
-                                            <label className="text-xs font-bold text-gray-500 uppercase">Preço</label>
-                                            <input className="w-full border p-2 rounded text-sm" value={editingPlan.price} onChange={e => setEditingPlan({...editingPlan, price: e.target.value})} />
-                                        </div>
+                                        <div><label className="text-xs font-bold text-gray-500 uppercase">Nome</label><input className="w-full border p-2 rounded text-sm" value={editingPlan.name} onChange={e => setEditingPlan({...editingPlan, name: e.target.value})} /></div>
+                                        <div><label className="text-xs font-bold text-gray-500 uppercase">Preço</label><input className="w-full border p-2 rounded text-sm" value={editingPlan.price} onChange={e => setEditingPlan({...editingPlan, price: e.target.value})} /></div>
                                    </div>
-                                   
-                                   {/* LIMITS CONFIGURATION */}
                                    <div className="bg-gray-50 p-3 rounded-lg border border-gray-200 space-y-3">
                                         <h4 className="text-xs font-bold text-gray-700 flex items-center gap-1"><Settings size={12}/> Limites do Plano</h4>
                                         <div className="grid grid-cols-3 gap-2">
-                                            <div>
-                                                <label className="text-[10px] font-bold text-gray-500">Max Mesas</label>
-                                                <input 
-                                                    type="number" 
-                                                    className="w-full border p-1 rounded text-sm" 
-                                                    value={editingLimits.maxTables} 
-                                                    onChange={e => setEditingLimits({...editingLimits, maxTables: parseInt(e.target.value)})} 
-                                                    placeholder="-1 para ilimitado"
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="text-[10px] font-bold text-gray-500">Max Produtos</label>
-                                                <input 
-                                                    type="number" 
-                                                    className="w-full border p-1 rounded text-sm" 
-                                                    value={editingLimits.maxProducts} 
-                                                    onChange={e => setEditingLimits({...editingLimits, maxProducts: parseInt(e.target.value)})} 
-                                                    placeholder="-1 para ilimitado"
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="text-[10px] font-bold text-gray-500">Max Staff</label>
-                                                <input 
-                                                    type="number" 
-                                                    className="w-full border p-1 rounded text-sm" 
-                                                    value={editingLimits.maxStaff} 
-                                                    onChange={e => setEditingLimits({...editingLimits, maxStaff: parseInt(e.target.value)})} 
-                                                    placeholder="-1 para ilimitado"
-                                                />
-                                            </div>
+                                            <div><label className="text-[10px] font-bold text-gray-500">Max Mesas</label><input type="number" className="w-full border p-1 rounded text-sm" value={editingLimits.maxTables} onChange={e => setEditingLimits({...editingLimits, maxTables: parseInt(e.target.value)})} /></div>
+                                            <div><label className="text-[10px] font-bold text-gray-500">Max Produtos</label><input type="number" className="w-full border p-1 rounded text-sm" value={editingLimits.maxProducts} onChange={e => setEditingLimits({...editingLimits, maxProducts: parseInt(e.target.value)})} /></div>
+                                            <div><label className="text-[10px] font-bold text-gray-500">Max Staff</label><input type="number" className="w-full border p-1 rounded text-sm" value={editingLimits.maxStaff} onChange={e => setEditingLimits({...editingLimits, maxStaff: parseInt(e.target.value)})} /></div>
                                         </div>
                                         <p className="text-[10px] text-gray-400 text-center">-1 significa Ilimitado</p>
-                                        
                                         <div className="flex flex-col gap-2 pt-2 border-t border-gray-200">
-                                            <label className="flex items-center gap-2 cursor-pointer">
-                                                <input type="checkbox" checked={editingLimits.allowKds} onChange={e => setEditingLimits({...editingLimits, allowKds: e.target.checked})} />
-                                                <span className="text-xs font-medium">Permitir KDS (Cozinha)</span>
-                                            </label>
-                                            <label className="flex items-center gap-2 cursor-pointer">
-                                                <input type="checkbox" checked={editingLimits.allowCashier} onChange={e => setEditingLimits({...editingLimits, allowCashier: e.target.checked})} />
-                                                <span className="text-xs font-medium">Permitir Módulo Caixa/PDV</span>
-                                            </label>
-                                            <label className="flex items-center gap-2 cursor-pointer">
-                                                <input type="checkbox" checked={editingLimits.allowReports} onChange={e => setEditingLimits({...editingLimits, allowReports: e.target.checked})} />
-                                                <span className="text-xs font-medium">Permitir Relatórios</span>
-                                            </label>
-                                            
-                                            {/* NEW MODULAR FLAGS */}
-                                            <label className="flex items-center gap-2 cursor-pointer">
-                                                <input type="checkbox" checked={editingLimits.allowInventory} onChange={e => setEditingLimits({...editingLimits, allowInventory: e.target.checked})} />
-                                                <span className="text-xs font-medium">Permitir Estoque</span>
-                                            </label>
-                                            <label className="flex items-center gap-2 cursor-pointer">
-                                                <input type="checkbox" checked={editingLimits.allowPurchases} onChange={e => setEditingLimits({...editingLimits, allowPurchases: e.target.checked})} />
-                                                <span className="text-xs font-medium">Permitir Compras/Entrada Notas</span>
-                                            </label>
-                                            <label className="flex items-center gap-2 cursor-pointer">
-                                                <input type="checkbox" checked={editingLimits.allowExpenses} onChange={e => setEditingLimits({...editingLimits, allowExpenses: e.target.checked})} />
-                                                <span className="text-xs font-medium">Permitir Financeiro/Despesas</span>
-                                            </label>
-                                            <label className="flex items-center gap-2 cursor-pointer">
-                                                <input type="checkbox" checked={editingLimits.allowStaff} onChange={e => setEditingLimits({...editingLimits, allowStaff: e.target.checked})} />
-                                                <span className="text-xs font-medium">Permitir Gestão de Equipe</span>
-                                            </label>
-                                            <label className="flex items-center gap-2 cursor-pointer">
-                                                <input type="checkbox" checked={editingLimits.allowTableMgmt} onChange={e => setEditingLimits({...editingLimits, allowTableMgmt: e.target.checked})} />
-                                                <span className="text-xs font-medium">Permitir Gestão de Mesas</span>
-                                            </label>
-                                            <label className="flex items-center gap-2 cursor-pointer">
-                                                <input type="checkbox" checked={editingLimits.allowCustomization} onChange={e => setEditingLimits({...editingLimits, allowCustomization: e.target.checked})} />
-                                                <span className="text-xs font-medium">Permitir Personalização</span>
-                                            </label>
+                                            <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={editingLimits.allowKds} onChange={e => setEditingLimits({...editingLimits, allowKds: e.target.checked})} /><span className="text-xs font-medium">Permitir KDS</span></label>
+                                            <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={editingLimits.allowCashier} onChange={e => setEditingLimits({...editingLimits, allowCashier: e.target.checked})} /><span className="text-xs font-medium">Permitir PDV</span></label>
+                                            <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={editingLimits.allowInventory} onChange={e => setEditingLimits({...editingLimits, allowInventory: e.target.checked})} /><span className="text-xs font-medium">Permitir Estoque</span></label>
+                                            <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={editingLimits.allowReports} onChange={e => setEditingLimits({...editingLimits, allowReports: e.target.checked})} /><span className="text-xs font-medium">Permitir Relatórios</span></label>
                                         </div>
                                    </div>
-
-                                   <div className="flex-1">
-                                       <label className="text-xs font-bold text-gray-500 uppercase">Lista de Features (Marketing)</label>
-                                       <textarea 
-                                          className="w-full border p-2 rounded h-24 text-sm resize-none" 
-                                          value={editingFeatures}
-                                          onChange={e => setEditingFeatures(e.target.value)}
-                                          placeholder="Uma por linha..."
-                                       />
-                                   </div>
-                                   <div className="flex gap-2 pt-2">
-                                       <Button type="button" variant="secondary" onClick={() => setEditingPlan(null)} className="flex-1 text-xs">Cancelar</Button>
-                                       <Button type="submit" className="flex-1 text-xs">Salvar Config</Button>
-                                   </div>
+                                   <div className="flex-1"><label className="text-xs font-bold text-gray-500 uppercase">Features</label><textarea className="w-full border p-2 rounded h-24 text-sm resize-none" value={editingFeatures} onChange={e => setEditingFeatures(e.target.value)} /></div>
+                                   <div className="flex gap-2 pt-2"><Button type="button" variant="secondary" onClick={() => setEditingPlan(null)} className="flex-1 text-xs">Cancelar</Button><Button type="submit" className="flex-1 text-xs">Salvar</Button></div>
                                </form>
                            ) : (
                                <>
-                                   <div className="flex justify-between items-start mb-4">
-                                       <h3 className="text-xl font-bold text-gray-800">{plan.name}</h3>
-                                       <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded font-mono border">{plan.key}</span>
-                                   </div>
+                                   <div className="flex justify-between items-start mb-4"><h3 className="text-xl font-bold text-gray-800">{plan.name}</h3><span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded font-mono border">{plan.key}</span></div>
                                    <div className="text-3xl font-bold text-blue-600 mb-6">{plan.price} <span className="text-sm text-gray-400 font-normal">{plan.period}</span></div>
-                                   
-                                   {/* LIMITS DISPLAY */}
-                                   <div className="mb-4 bg-slate-50 p-3 rounded-lg border border-slate-100 text-xs text-gray-600 space-y-1">
-                                       <div className="flex justify-between"><span>Mesas:</span> <span className="font-bold">{plan.limits?.maxTables === -1 ? '∞' : plan.limits?.maxTables}</span></div>
-                                       <div className="flex justify-between"><span>Produtos:</span> <span className="font-bold">{plan.limits?.maxProducts === -1 ? '∞' : plan.limits?.maxProducts}</span></div>
-                                       <div className="flex justify-between"><span>Staff:</span> <span className="font-bold">{plan.limits?.maxStaff === -1 ? '∞' : plan.limits?.maxStaff}</span></div>
-                                       <div className="pt-1 mt-1 border-t border-slate-200 flex gap-2 flex-wrap">
-                                           {plan.limits?.allowKds ? <span className="text-green-600 font-bold">KDS</span> : <span className="text-red-400 line-through">KDS</span>}
-                                           {plan.limits?.allowCashier ? <span className="text-green-600 font-bold">PDV</span> : <span className="text-red-400 line-through">PDV</span>}
-                                           {plan.limits?.allowInventory ? <span className="text-green-600 font-bold">EST</span> : <span className="text-red-400 line-through">EST</span>}
-                                           {plan.limits?.allowPurchases ? <span className="text-green-600 font-bold">CMP</span> : <span className="text-red-400 line-through">CMP</span>}
-                                           {plan.limits?.allowExpenses ? <span className="text-green-600 font-bold">FIN</span> : <span className="text-red-400 line-through">FIN</span>}
-                                           {plan.limits?.allowStaff ? <span className="text-green-600 font-bold">EQP</span> : <span className="text-red-400 line-through">EQP</span>}
-                                           {plan.limits?.allowTableMgmt ? <span className="text-green-600 font-bold">MES</span> : <span className="text-red-400 line-through">MES</span>}
-                                           {plan.limits?.allowCustomization ? <span className="text-green-600 font-bold">PER</span> : <span className="text-red-400 line-through">PER</span>}
-                                       </div>
-                                   </div>
-
-                                   <div className="flex-1 overflow-y-auto max-h-40 mb-6">
-                                       <ul className="space-y-2">
-                                           {plan.features.map((feat, i) => (
-                                               <li key={i} className="text-sm text-gray-600 flex items-start gap-2">
-                                                   <span className="text-green-500 font-bold">✓</span> {feat}
-                                               </li>
-                                           ))}
-                                       </ul>
-                                   </div>
-                                   <Button variant="outline" onClick={() => handleEditPlan(plan)} className="w-full mt-auto">
-                                       <Edit size={16} /> Editar Limites & Detalhes
-                                   </Button>
+                                   <Button variant="outline" onClick={() => handleEditPlan(plan)} className="w-full mt-auto"><Edit size={16} /> Editar Limites & Detalhes</Button>
                                </>
                            )}
                        </div>
@@ -503,14 +239,8 @@ export const SuperAdminDashboard: React.FC = () => {
                    <div className="bg-white p-8 rounded-xl shadow-sm border">
                        <h2 className="text-xl font-bold text-gray-800 mb-6">Perfil do Administrador</h2>
                        <form onSubmit={handleUpdateProfile} className="space-y-6">
-                           <div>
-                               <label className="block text-sm font-medium text-gray-700 mb-1">Nome</label>
-                               <input type="text" className="w-full border p-3 rounded-lg" value={settingsForm.name} onChange={e => setSettingsForm({...settingsForm, name: e.target.value})} />
-                           </div>
-                           <div>
-                               <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                               <input type="email" className="w-full border p-3 rounded-lg" value={settingsForm.email} onChange={e => setSettingsForm({...settingsForm, email: e.target.value})} />
-                           </div>
+                           <div><label className="block text-sm font-medium text-gray-700 mb-1">Nome</label><input type="text" className="w-full border p-3 rounded-lg" value={settingsForm.name} onChange={e => setSettingsForm({...settingsForm, name: e.target.value})} /></div>
+                           <div><label className="block text-sm font-medium text-gray-700 mb-1">Email</label><input type="email" className="w-full border p-3 rounded-lg" value={settingsForm.email} onChange={e => setSettingsForm({...settingsForm, email: e.target.value})} /></div>
                            <Button type="submit">Salvar Alterações</Button>
                        </form>
                    </div>
@@ -518,110 +248,9 @@ export const SuperAdminDashboard: React.FC = () => {
            )}
        </div>
 
-       {/* --- MODAL: CREATE TENANT --- */}
-       {isModalOpen && (
-           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-               <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6">
-                   <div className="flex justify-between items-center mb-4"><h3 className="text-lg font-bold">Novo Restaurante</h3><button onClick={() => setIsModalOpen(false)}><X size={20} /></button></div>
-                   <form onSubmit={handleCreateTenant} className="space-y-4">
-                       <input type="text" required className="w-full border p-2.5 rounded-lg" placeholder="Nome" value={newTenantForm.name} onChange={(e) => autoGenerateSlug(e.target.value)} />
-                       <input type="text" required className="w-full border p-2.5 rounded-lg" placeholder="Slug" value={newTenantForm.slug} onChange={(e) => setNewTenantForm({...newTenantForm, slug: e.target.value})} />
-                       <input type="text" required className="w-full border p-2.5 rounded-lg" placeholder="Dono" value={newTenantForm.ownerName} onChange={(e) => setNewTenantForm({...newTenantForm, ownerName: e.target.value})} />
-                       <Button type="submit" className="w-full">Criar</Button>
-                   </form>
-               </div>
-           </div>
-       )}
-
-       {/* --- MODAL: LINKS DO RESTAURANTE --- */}
-       {selectedTenantForLinks && (
-           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-               <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl p-6 flex flex-col max-h-[90vh]">
-                   <div className="flex justify-between items-center mb-6 border-b pb-4">
-                       <div>
-                           <h3 className="text-xl font-bold text-gray-800">Links de Acesso</h3>
-                           <p className="text-sm text-gray-500">{selectedTenantForLinks.name} ({selectedTenantForLinks.slug})</p>
-                       </div>
-                       <button onClick={() => setSelectedTenantForLinks(null)} className="p-2 hover:bg-gray-100 rounded-full"><X size={20} /></button>
-                   </div>
-                   
-                   <div className="space-y-4 overflow-y-auto pr-1">
-                       {getTenantLinks(selectedTenantForLinks.slug).map((link, idx) => (
-                           <div key={idx} className="bg-gray-50 border border-gray-200 rounded-lg p-4 flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
-                               <div className="flex-1 min-w-0">
-                                   <div className="font-bold text-gray-700 text-sm mb-1">{link.name}</div>
-                                   <div className="text-xs text-blue-600 truncate bg-white p-2 rounded border font-mono select-all">
-                                       {link.url}
-                                   </div>
-                               </div>
-                               <button 
-                                   onClick={() => handleCopyLink(link.url)}
-                                   className={`p-3 rounded-lg border flex items-center gap-2 transition-all font-bold text-sm shrink-0
-                                       ${copiedLink === link.url ? 'bg-green-100 text-green-700 border-green-200' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
-                                   title="Copiar Link"
-                               >
-                                   {copiedLink === link.url ? <Check size={16} /> : <Copy size={16} />}
-                                   {copiedLink === link.url ? 'Copiado' : 'Copiar'}
-                               </button>
-                           </div>
-                       ))}
-                   </div>
-               </div>
-           </div>
-       )}
-
-       {/* --- MODAL: EDIT TENANT & CREATE ADMIN --- */}
-       {isEditModalOpen && editingTenant && (
-           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-               <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6">
-                   <div className="flex justify-between items-center mb-6">
-                       <h3 className="text-lg font-bold">Gerenciar {editingTenant.name}</h3>
-                       <button onClick={() => setIsEditModalOpen(false)}><X size={20} /></button>
-                   </div>
-
-                   <div className="flex border-b mb-4">
-                       <button onClick={() => setEditTab('DETAILS')} className={`px-4 py-2 text-sm font-bold border-b-2 transition-colors ${editTab === 'DETAILS' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}>Detalhes</button>
-                       <button onClick={() => setEditTab('ADMIN')} className={`px-4 py-2 text-sm font-bold border-b-2 transition-colors ${editTab === 'ADMIN' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}>Criar Admin</button>
-                   </div>
-
-                   {editTab === 'DETAILS' && (
-                       <form onSubmit={handleUpdateTenant} className="space-y-4">
-                           <div>
-                               <label className="text-xs font-bold text-gray-500 uppercase">Nome do Restaurante</label>
-                               <input type="text" className="w-full border p-2 rounded" value={editingTenant.name} onChange={e => setEditingTenant({...editingTenant, name: e.target.value})} />
-                           </div>
-                           <div>
-                               <label className="text-xs font-bold text-gray-500 uppercase">Slug (URL)</label>
-                               <input type="text" className="w-full border p-2 rounded" value={editingTenant.slug} onChange={e => setEditingTenant({...editingTenant, slug: e.target.value})} />
-                           </div>
-                           <div>
-                               <label className="text-xs font-bold text-gray-500 uppercase">Dono</label>
-                               <input type="text" className="w-full border p-2 rounded" value={editingTenant.ownerName} onChange={e => setEditingTenant({...editingTenant, ownerName: e.target.value})} />
-                           </div>
-                           <div>
-                               <label className="text-xs font-bold text-gray-500 uppercase">Email de Contato</label>
-                               <input type="text" className="w-full border p-2 rounded" value={editingTenant.email} onChange={e => setEditingTenant({...editingTenant, email: e.target.value})} />
-                           </div>
-                           <Button type="submit" className="w-full mt-2">Salvar Alterações</Button>
-                       </form>
-                   )}
-
-                   {editTab === 'ADMIN' && (
-                       <form onSubmit={handleCreateAdmin} className="space-y-4">
-                           <div className="bg-yellow-50 border border-yellow-200 p-3 rounded text-xs text-yellow-800 mb-2">
-                               <p className="font-bold">Atenção:</p>
-                               <p>Isso criará um novo usuário com papel ADMIN para este restaurante. Se definir uma senha, ele poderá logar no painel administrativo.</p>
-                           </div>
-                           <input type="text" placeholder="Nome" className="w-full border p-2 rounded" value={newAdminForm.name} onChange={e => setNewAdminForm({...newAdminForm, name: e.target.value})} required />
-                           <input type="email" placeholder="Email (Login)" className="w-full border p-2 rounded" value={newAdminForm.email} onChange={e => setNewAdminForm({...newAdminForm, email: e.target.value})} required />
-                           <input type="text" placeholder="PIN (4 dígitos)" maxLength={4} className="w-full border p-2 rounded" value={newAdminForm.pin} onChange={e => setNewAdminForm({...newAdminForm, pin: e.target.value})} required />
-                           <input type="password" placeholder="Senha (Opcional - Para Login Remoto)" className="w-full border p-2 rounded" value={newAdminForm.password} onChange={e => setNewAdminForm({...newAdminForm, password: e.target.value})} />
-                           <Button type="submit" className="w-full mt-2">Criar Administrador</Button>
-                       </form>
-                   )}
-               </div>
-           </div>
-       )}
+       <SaaSTenantCreateModal isOpen={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} />
+       <SaaSEditTenantModal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} tenant={selectedTenant} />
+       <SaaSTenantLinksModal isOpen={isLinksModalOpen} onClose={() => setIsLinksModalOpen(false)} tenant={selectedTenant} />
     </div>
   );
 };

@@ -3,46 +3,18 @@ import React, { useState } from 'react';
 import { useRestaurant } from '../../context/RestaurantContext';
 import { useUI } from '../../context/UIContext';
 import { Button } from '../../components/Button';
-import { Modal } from '../../components/Modal';
-import { Role, User } from '../../types';
+import { StaffFormModal } from '../../components/modals/StaffFormModal';
+import { User } from '../../types';
 import { getTenantSlug } from '../../utils/tenant';
-import { Plus, Edit, Trash2, UserPlus, Check, Link as LinkIcon, CheckSquare, Info, User as UserIcon } from 'lucide-react';
+import { Edit, Trash2, UserPlus, Check, Link as LinkIcon, CheckSquare } from 'lucide-react';
 
 export const AdminStaff: React.FC = () => {
   const { state, dispatch } = useRestaurant();
-  const { showAlert, showConfirm } = useUI();
+  const { showConfirm, showAlert } = useUI();
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
-  const [userForm, setUserForm] = useState<Partial<User>>({ name: '', role: Role.WAITER, pin: '', email: '', allowedRoutes: [] });
   const [copiedInviteId, setCopiedInviteId] = useState<string | null>(null);
-
-  const getRoutesForRole = (role: Role): string[] => {
-      switch (role) {
-          case Role.WAITER: return ['/waiter'];
-          case Role.KITCHEN: return ['/kitchen'];
-          case Role.CASHIER: return ['/cashier'];
-          case Role.ADMIN: return ['/admin', '/waiter', '/kitchen', '/cashier'];
-          default: return [];
-      }
-  };
-
-  const handleSaveUser = (e: React.FormEvent) => {
-      e.preventDefault();
-      const routes = getRoutesForRole(userForm.role || Role.WAITER);
-      const userToSave = { ...userForm, allowedRoutes: routes };
-
-      if(editingUser) {
-          dispatch({ type: 'UPDATE_USER', user: { ...editingUser, ...userToSave } as User });
-      } else {
-          dispatch({ type: 'ADD_USER', user: { ...userToSave, id: Math.random().toString() } as User });
-      }
-      
-      setEditingUser(null);
-      setUserForm({ name: '', role: Role.WAITER, pin: '', email: '', allowedRoutes: [] });
-      setIsModalOpen(false);
-      showAlert({ title: "Sucesso", message: "Usuário salvo! Se for novo, envie o link de convite.", type: 'SUCCESS' });
-  };
 
   const copyInviteLink = (userEmail?: string, userId?: string) => {
       if (!userEmail) return showAlert({ title: "Atenção", message: "Este usuário não tem email cadastrado.", type: 'WARNING' });
@@ -67,7 +39,6 @@ export const AdminStaff: React.FC = () => {
             </div>
             <Button onClick={() => { 
                 setEditingUser(null); 
-                setUserForm({ name: '', role: Role.WAITER, pin: '', email: '', allowedRoutes: [] }); 
                 setIsModalOpen(true);
             }}>
                 <UserPlus size={16}/> Novo Usuário
@@ -121,7 +92,6 @@ export const AdminStaff: React.FC = () => {
                                     <div className="flex items-center justify-end gap-2">
                                         <button onClick={() => { 
                                             setEditingUser(user); 
-                                            setUserForm(user); 
                                             setIsModalOpen(true);
                                         }} className="text-blue-600 hover:bg-blue-50 p-2 rounded transition-colors" title="Editar"><Edit size={16}/></button>
                                         <button onClick={() => showConfirm({ title: 'Excluir Usuário', message: 'Confirma a exclusão? O acesso será revogado.', onConfirm: () => dispatch({ type: 'DELETE_USER', userId: user.id }) })} className="text-red-600 hover:bg-red-50 p-2 rounded transition-colors" title="Excluir"><Trash2 size={16}/></button>
@@ -134,54 +104,11 @@ export const AdminStaff: React.FC = () => {
             </table>
         </div>
 
-        <Modal 
+        <StaffFormModal 
             isOpen={isModalOpen} 
-            onClose={() => setIsModalOpen(false)}
-            title={editingUser ? 'Editar Usuário' : 'Novo Membro da Equipe'}
-            variant="dialog"
-            maxWidth="md"
-        >
-            <form onSubmit={handleSaveUser} className="space-y-4">
-                <div>
-                    <label className="block text-xs font-bold mb-1 text-gray-600">Nome Completo</label>
-                    <input required placeholder="Ex: Maria Silva" className="w-full border p-2.5 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none" value={userForm.name} onChange={e => setUserForm({...userForm, name: e.target.value})} autoFocus />
-                </div>
-                
-                <div>
-                    <label className="block text-xs font-bold mb-1 text-gray-600">Função / Cargo</label>
-                    <select className="w-full border p-2.5 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none" value={userForm.role} onChange={e => setUserForm({...userForm, role: e.target.value as Role})}>
-                        <option value="WAITER">Garçom (Pedidos e Mesas)</option>
-                        <option value="KITCHEN">Cozinha (KDS)</option>
-                        <option value="CASHIER">Caixa (Pagamentos)</option>
-                        <option value="ADMIN">Gerente (Acesso Total)</option>
-                    </select>
-                    <p className="text-[10px] text-gray-400 mt-1">As permissões de acesso serão configuradas automaticamente com base no cargo.</p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                    <div>
-                        <label className="block text-xs font-bold mb-1 text-gray-600">PIN de Acesso</label>
-                        <input required placeholder="4 dígitos" maxLength={4} className="w-full border p-2.5 rounded-lg text-sm font-mono text-center tracking-widest focus:ring-2 focus:ring-blue-500 outline-none" value={userForm.pin} onChange={e => setUserForm({...userForm, pin: e.target.value})} />
-                    </div>
-                    <div>
-                        <label className="block text-xs font-bold mb-1 text-gray-600">E-mail (Login)</label>
-                        <input required type="email" placeholder="usuario@email.com" className="w-full border p-2.5 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none" value={userForm.email} onChange={e => setUserForm({...userForm, email: e.target.value})} />
-                    </div>
-                </div>
-
-                {!editingUser && (
-                    <div className="bg-blue-50 p-3 rounded-lg border border-blue-100 text-xs text-blue-800 flex gap-2">
-                        <Info size={16} className="shrink-0 mt-0.5"/>
-                        <p>Ao salvar, você poderá copiar um <strong>link de convite</strong> para enviar ao funcionário, permitindo que ele crie sua própria senha de acesso.</p>
-                    </div>
-                )}
-
-                <div className="flex gap-2 pt-2">
-                    <Button type="button" variant="secondary" onClick={() => setIsModalOpen(false)} className="flex-1">Cancelar</Button>
-                    <Button type="submit" className="flex-1">Salvar Usuário</Button>
-                </div>
-            </form>
-        </Modal>
+            onClose={() => setIsModalOpen(false)} 
+            userToEdit={editingUser} 
+        />
     </div>
   );
 };

@@ -172,8 +172,9 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         case 'DELETE_TABLE': await supabase.from('restaurant_tables').delete().eq('id', action.tableId); break;
         case 'OPEN_TABLE': await supabase.from('restaurant_tables').update({ status: 'OCCUPIED', customer_name: action.customerName, access_code: action.accessCode }).eq('id', action.tableId); break;
         case 'CLOSE_TABLE': await supabase.from('restaurant_tables').update({ status: 'AVAILABLE', customer_name: null, access_code: null }).eq('id', action.tableId); break;
+        
         case 'ADD_PRODUCT_TO_MENU': 
-            await supabase.from('products').insert({
+            const { error: insertError } = await supabase.from('products').insert({
                 tenant_id: tenantId, 
                 name: action.product.name, 
                 price: action.product.price, 
@@ -187,9 +188,11 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 is_extra: action.product.isExtra,
                 linked_extra_ids: action.product.linkedExtraIds
             }); 
+            if (insertError) throw insertError;
             break;
+
         case 'UPDATE_PRODUCT':
-            await supabase.from('products').update({
+            const { error: updateError } = await supabase.from('products').update({
                 name: action.product.name, 
                 price: action.product.price, 
                 category: action.product.category, 
@@ -200,7 +203,9 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 is_extra: action.product.isExtra,
                 linked_extra_ids: action.product.linkedExtraIds
             }).eq('id', action.product.id);
+            if (updateError) throw updateError;
             break;
+
         case 'DELETE_PRODUCT': await supabase.from('products').delete().eq('id', action.productId); break;
         case 'UPDATE_THEME': await supabase.from('tenants').update({ theme_config: action.theme }).eq('id', tenantId); dispatchLocal(action); break;
         case 'UPDATE_BUSINESS_INFO': await supabase.from('tenants').update({ business_info: action.info }).eq('id', tenantId); dispatchLocal(action); break;

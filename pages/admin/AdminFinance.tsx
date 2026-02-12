@@ -4,26 +4,24 @@ import { useRestaurant } from '../../context/RestaurantContext';
 import { useFinance } from '../../context/FinanceContext';
 import { useUI } from '../../context/UIContext';
 import { Button } from '../../components/Button';
-import { Modal } from '../../components/Modal';
+import { ExpenseFormModal } from '../../components/modals/ExpenseFormModal';
+import { CashBleedModal } from '../../components/modals/CashBleedModal';
 import { Expense } from '../../types';
-import { Plus, CheckSquare, Trash2, Wallet, CreditCard, Banknote, ArrowDown, ArrowUp, Calendar, Repeat } from 'lucide-react';
+import { Plus, CheckSquare, Trash2, Wallet, CreditCard, Banknote, ArrowDown, Repeat } from 'lucide-react';
 
 export const AdminFinance: React.FC = () => {
-  const { state: restState } = useRestaurant();
-  const { state: finState, addExpense, payExpense, deleteExpense, bleedRegister } = useFinance();
+  const { state: finState, payExpense, deleteExpense } = useFinance();
   const { showConfirm, showAlert } = useUI();
   
   // State for Modals
   const [editingExpense, setEditingExpense] = useState<Partial<Expense> | null>(null);
-  const [manualOutModal, setManualOutModal] = useState(false);
-  const [manualOutForm, setManualOutForm] = useState({ amount: '', reason: '' });
+  const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
+  const [isBleedModalOpen, setIsBleedModalOpen] = useState(false);
 
   // --- Calculations ---
-  // 1. Receitas (Baseado nas transações carregadas)
-  const totalSales = finState.transactions.reduce((acc, t) => acc + t.amount, 0);
-  const cashSales = finState.transactions.filter(t => t.method === 'CASH').reduce((acc, t) => acc + t.amount, 0);
+  // 1. Receitas
   const pixSales = finState.transactions.filter(t => t.method === 'PIX').reduce((acc, t) => acc + t.amount, 0);
-  const cardSales = finState.transactions.filter(t => t.method === 'CREDIT' || t.method === 'DEBIT' || t.method === 'CARD').reduce((acc, t) => acc + t.amount, 0);
+  const cardSales = finState.transactions.filter(t => ['CREDIT', 'DEBIT', 'CARD'].includes(t.method)).reduce((acc, t) => acc + t.amount, 0);
 
   // 2. Gaveta (Sessão Atual)
   const activeSessionInitial = finState.activeCashSession?.initialAmount || 0;
@@ -37,7 +35,7 @@ export const AdminFinance: React.FC = () => {
       .filter(m => m.type === 'SUPPLY')
       .reduce((acc, m) => acc + m.amount, 0);
   
-  // Despesas pagas em DINHEIRO (afetam o caixa se não houver um cofre separado, assumindo que sai da gaveta se for hoje)
+  // Despesas pagas em DINHEIRO
   const cashExpensesToday = finState.expenses
       .filter(e => e.isPaid && e.paymentMethod === 'CASH' && new Date(e.paidDate!).toDateString() === new Date().toDateString())
       .reduce((acc, e) => acc + e.amount, 0);
@@ -50,46 +48,6 @@ export const AdminFinance: React.FC = () => {
       .reduce((acc, e) => acc + e.amount, 0);
 
   // --- Handlers ---
-
-  const handleSaveExpense = async (e: React.FormEvent) => {
-      e.preventDefault();
-      if(editingExpense) {
-          await addExpense({ 
-              ...editingExpense, 
-              id: Math.random().toString(), 
-              isPaid: editingExpense.isPaid || false,
-              paymentMethod: editingExpense.paymentMethod || 'BANK' 
-          } as Expense);
-          setEditingExpense(null);
-          showAlert({ title: "Sucesso", message: "Despesa registrada!", type: 'SUCCESS' });
-      }
-  };
-
-  const handleManualOut = async (e: React.FormEvent) => {
-      e.preventDefault();
-      const amount = parseFloat(manualOutForm.amount);
-      if (!amount || amount <= 0) return;
-
-      if (!finState.activeCashSession) {
-          // Se não tem caixa aberto, registra como despesa paga em dinheiro
-          await addExpense({
-              description: `Saída Manual: ${manualOutForm.reason}`,
-              amount: amount,
-              category: 'Outros',
-              dueDate: new Date(),
-              isPaid: true,
-              paymentMethod: 'CASH',
-              id: Math.random().toString()
-          } as Expense);
-      } else {
-          // Se tem caixa aberto, faz sangria
-          await bleedRegister(amount, manualOutForm.reason, 'Admin');
-      }
-      
-      setManualOutModal(false);
-      setManualOutForm({ amount: '', reason: '' });
-      showAlert({ title: "Sucesso", message: "Saída registrada.", type: 'SUCCESS' });
-  };
 
   const handlePayExpense = (id: string) => {
       showConfirm({
@@ -130,8 +88,8 @@ export const AdminFinance: React.FC = () => {
                     <p className="text-sm text-gray-500">Fluxo de caixa e controle de contas.</p>
                 </div>
                 <div className="flex gap-2">
-                    <Button onClick={() => setManualOutModal(true)} variant="secondary" className="bg-red-50 text-red-600 border-red-100 hover:bg-red-100"><ArrowDown size={16}/> Saída Manual (Dinheiro)</Button>
-                    <Button onClick={() => setEditingExpense({ description: '', amount: 0, category: 'Fornecedor', dueDate: new Date().toISOString().split('T')[0] as any, isPaid: false, paymentMethod: 'BANK' })}><Plus size={16}/> Nova Despesa</Button>
+                    <Button onClick={() => setIsBleedModalOpen(true)} variant="secondary" className="bg-red-50 text-red-600 border-red-100 hover:bg-red-100"><ArrowDown size={16}/> Saída Manual (Dinheiro)</Button>
+                    <Button onClick={() => { setEditingExpense(null); setIsExpenseModalOpen(true); }}><Plus size={16}/> Nova Despesa</Button>
                 </div>
             </div>
 
@@ -222,97 +180,17 @@ export const AdminFinance: React.FC = () => {
             </div>
         </div>
 
-        {/* --- Expense Modal --- */}
-        <Modal 
-            isOpen={!!editingExpense} 
-            onClose={() => setEditingExpense(null)}
-            title="Registrar Despesa"
-            variant="dialog"
-            maxWidth="md"
-        >
-            <form onSubmit={handleSaveExpense} className="space-y-4">
-                <div>
-                    <label className="block text-xs font-bold mb-1 text-gray-600">Descrição</label>
-                    <input required placeholder="Ex: Conta de Luz" className="w-full border p-2.5 rounded-lg text-sm" value={editingExpense?.description || ''} onChange={e => setEditingExpense(prev => ({...prev!, description: e.target.value}))} autoFocus />
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                    <div>
-                        <label className="block text-xs font-bold mb-1 text-gray-600">Valor (R$)</label>
-                        <input required type="number" step="0.01" className="w-full border p-2.5 rounded-lg text-sm font-bold text-red-600" value={editingExpense?.amount || ''} onChange={e => setEditingExpense(prev => ({...prev!, amount: parseFloat(e.target.value)}))} />
-                    </div>
-                    <div>
-                        <label className="block text-xs font-bold mb-1 text-gray-600">Vencimento</label>
-                        <input type="date" className="w-full border p-2.5 rounded-lg text-sm" value={editingExpense?.dueDate ? new Date(editingExpense.dueDate).toISOString().split('T')[0] : ''} onChange={e => setEditingExpense(prev => ({...prev!, dueDate: e.target.value as any}))} />
-                    </div>
-                </div>
+        <ExpenseFormModal 
+            isOpen={isExpenseModalOpen} 
+            onClose={() => setIsExpenseModalOpen(false)} 
+            expenseToEdit={editingExpense} 
+        />
 
-                <div className="grid grid-cols-2 gap-4">
-                    <div>
-                        <label className="block text-xs font-bold mb-1 text-gray-600">Categoria</label>
-                        <select className="w-full border p-2.5 rounded-lg text-sm bg-white" value={editingExpense?.category || 'Outros'} onChange={e => setEditingExpense(prev => ({...prev!, category: e.target.value}))}>
-                            <option>Fornecedor</option>
-                            <option>Utilidades (Luz/Água)</option>
-                            <option>Aluguel</option>
-                            <option>Manutenção</option>
-                            <option>Pessoal</option>
-                            <option>Impostos</option>
-                            <option>Outros</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label className="block text-xs font-bold mb-1 text-gray-600">Origem do Pagamento</label>
-                        <select className="w-full border p-2.5 rounded-lg text-sm bg-white" value={editingExpense?.paymentMethod || 'BANK'} onChange={e => setEditingExpense(prev => ({...prev!, paymentMethod: e.target.value as any}))}>
-                            <option value="BANK">Conta Bancária</option>
-                            <option value="CASH">Dinheiro (Caixa)</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div className="flex flex-col gap-2 mt-2 bg-gray-50 p-3 rounded-lg border">
-                    <div className="flex items-center gap-2">
-                        <input type="checkbox" checked={editingExpense?.isPaid || false} onChange={e => setEditingExpense(prev => ({...prev!, isPaid: e.target.checked}))} id="paid-check" className="rounded text-blue-600 w-4 h-4"/>
-                        <label htmlFor="paid-check" className="text-sm cursor-pointer select-none font-medium">Já foi pago?</label>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <input type="checkbox" checked={editingExpense?.isRecurring || false} onChange={e => setEditingExpense(prev => ({...prev!, isRecurring: e.target.checked}))} id="recur-check" className="rounded text-blue-600 w-4 h-4"/>
-                        <label htmlFor="recur-check" className="text-sm cursor-pointer select-none text-gray-600">Despesa Recorrente (Mensal)</label>
-                    </div>
-                </div>
-
-                <div className="flex gap-2 pt-2">
-                    <Button type="button" variant="secondary" onClick={() => setEditingExpense(null)} className="flex-1">Cancelar</Button>
-                    <Button type="submit" className="flex-1">Salvar</Button>
-                </div>
-            </form>
-        </Modal>
-
-        {/* --- Manual Out Modal --- */}
-        <Modal 
-            isOpen={manualOutModal} 
-            onClose={() => setManualOutModal(false)}
-            title="Saída Manual de Dinheiro"
-            variant="dialog"
-            maxWidth="sm"
-        >
-            <form onSubmit={handleManualOut} className="space-y-4">
-                <div className="bg-red-50 border border-red-100 p-3 rounded-lg text-xs text-red-800">
-                    Isso registrará uma retirada de dinheiro do caixa atual (Sangria) ou uma despesa paga em dinheiro se o caixa estiver fechado.
-                </div>
-                <div>
-                    <label className="block text-xs font-bold mb-1 text-gray-600">Valor a Retirar (R$)</label>
-                    <input required type="number" step="0.01" className="w-full border p-3 rounded-lg text-lg font-bold text-red-600" value={manualOutForm.amount} onChange={e => setManualOutForm({...manualOutForm, amount: e.target.value})} autoFocus />
-                </div>
-                <div>
-                    <label className="block text-xs font-bold mb-1 text-gray-600">Motivo</label>
-                    <input required placeholder="Ex: Compra de Gelo, Vale Transporte" className="w-full border p-3 rounded-lg text-sm" value={manualOutForm.reason} onChange={e => setManualOutForm({...manualOutForm, reason: e.target.value})} />
-                </div>
-                <div className="flex gap-2 pt-2">
-                    <Button type="button" variant="secondary" onClick={() => setManualOutModal(false)} className="flex-1">Cancelar</Button>
-                    <Button type="submit" className="flex-1 bg-red-600 hover:bg-red-700">Confirmar Retirada</Button>
-                </div>
-            </form>
-        </Modal>
+        <CashBleedModal 
+            isOpen={isBleedModalOpen} 
+            onClose={() => setIsBleedModalOpen(false)}
+            userRole="Admin" 
+        />
     </div>
   );
 };

@@ -5,12 +5,13 @@ import { useFinance } from '../context/FinanceContext';
 import { useUI } from '../context/UIContext';
 import { TableStatus, Product } from '../types';
 import { Button } from '../components/Button';
-import { DollarSign, History, ShoppingCart, Search, Wallet, Receipt, Trash2, User, Loader2, ArrowRight, AlertTriangle, Lock } from 'lucide-react';
-import { Modal } from '../components/Modal';
+import { DollarSign, History, ShoppingCart, Search, Wallet, Receipt, Trash2, User, Lock, ArrowRight } from 'lucide-react';
+import { CloseRegisterModal } from '../components/modals/CloseRegisterModal';
+import { CashBleedModal } from '../components/modals/CashBleedModal';
 
 export const CashierDashboard: React.FC = () => {
   const { state: restState, dispatch: restDispatch } = useRestaurant();
-  const { state: finState, openRegister, closeRegister, bleedRegister, refreshTransactions } = useFinance();
+  const { state: finState, openRegister, refreshTransactions } = useFinance();
   const { showAlert, showConfirm } = useUI();
   
   const [activeTab, setActiveTab] = useState<'ACTIVE' | 'HISTORY' | 'PDV' | 'MANAGE'>('ACTIVE');
@@ -18,9 +19,6 @@ export const CashierDashboard: React.FC = () => {
   
   // Management States
   const [openRegisterAmount, setOpenRegisterAmount] = useState('');
-  const [bleedAmount, setBleedAmount] = useState('');
-  const [bleedReason, setBleedReason] = useState('');
-  const [closeCountedAmount, setCloseCountedAmount] = useState('');
   const [bleedModalOpen, setBleedModalOpen] = useState(false);
   const [closeModalOpen, setCloseModalOpen] = useState(false);
 
@@ -30,7 +28,6 @@ export const CashierDashboard: React.FC = () => {
   const [customerName, setCustomerName] = useState('');
   const [processingSale, setProcessingSale] = useState(false);
 
-  // Derived Data
   const occupiedTables = restState.tables.filter(t => t.status !== TableStatus.AVAILABLE);
   const selectedTable = restState.tables.find(t => t.id === selectedTableId);
   const tableOrders = restState.orders.filter(o => o.tableId === selectedTableId && !o.isPaid);
@@ -60,12 +57,11 @@ export const CashierDashboard: React.FC = () => {
 
       setProcessingSale(true);
       
-      // Sanitização de dados para evitar erros de NULL no Supabase
       const total = posCart.reduce((acc, item) => acc + (item.product.price * item.quantity), 0);
       const cleanItems = posCart.map(i => ({ 
           productId: i.product.id, 
           quantity: Number(i.quantity), 
-          notes: i.notes || '' // Garante string vazia se for null/undefined
+          notes: i.notes || '' 
       }));
 
       try {
@@ -97,19 +93,6 @@ export const CashierDashboard: React.FC = () => {
       e.preventDefault();
       await openRegister(parseFloat(openRegisterAmount), 'Staff');
       setOpenRegisterAmount('');
-  };
-
-  const handleBleed = async (e: React.FormEvent) => {
-      e.preventDefault();
-      await bleedRegister(parseFloat(bleedAmount), bleedReason, 'Staff');
-      setBleedModalOpen(false); setBleedAmount('');
-      showAlert({ title: "Sucesso", message: "Sangria realizada.", type: 'SUCCESS' });
-  };
-
-  const handleCloseRegister = async () => {
-      await closeRegister(parseFloat(closeCountedAmount));
-      setCloseModalOpen(false); setCloseCountedAmount('');
-      setActiveTab('ACTIVE');
   };
 
   const handlePayment = (method: 'CASH' | 'CREDIT' | 'DEBIT' | 'PIX') => {
@@ -160,15 +143,8 @@ export const CashierDashboard: React.FC = () => {
   }
 
   const posTotal = posCart.reduce((acc, item) => acc + (item.product.price * item.quantity), 0);
-  
-  // FIX: Remover o filtro `&& p.isVisible` para mostrar todos os produtos no PDV
-  // restState.products já contém apenas itens cadastrados no menu (exclui matérias-primas puras)
-  const filteredProducts = restState.products.filter(p => 
-      p.name.toLowerCase().includes(posSearch.toLowerCase())
-      // IMPORTANTE: NÃO filtrar por isVisible aqui
-  );
+  const filteredProducts = restState.products.filter(p => p.name.toLowerCase().includes(posSearch.toLowerCase()));
 
-  // Botão da Sidebar
   const NavButton = ({ tab, icon: Icon, label }: any) => (
       <button 
           onClick={() => setActiveTab(tab)} 
@@ -183,7 +159,6 @@ export const CashierDashboard: React.FC = () => {
 
   return (
       <div className="min-h-screen bg-gray-100 flex flex-col md:flex-row">
-          {/* Sidebar */}
           <div className="w-full md:w-24 bg-slate-900 flex md:flex-col items-center justify-between md:justify-start py-4 px-2 md:px-0 gap-2 md:gap-6 fixed md:relative bottom-0 md:h-screen z-20 shrink-0">
               <div className="hidden md:block mb-4">
                   <div className="bg-blue-600 p-2 rounded-lg"><DollarSign className="text-white"/></div>
@@ -196,7 +171,6 @@ export const CashierDashboard: React.FC = () => {
               </div>
           </div>
 
-          {/* Content */}
           <div className="flex-1 p-4 md:p-6 overflow-y-auto mb-20 md:mb-0 h-screen">
               {activeTab === 'ACTIVE' && (
                   <div className="flex flex-col lg:flex-row gap-6 h-full">
@@ -280,7 +254,6 @@ export const CashierDashboard: React.FC = () => {
 
               {activeTab === 'PDV' && (
                   <div className="flex flex-col lg:flex-row gap-6 h-full">
-                      {/* Left: Products Grid */}
                       <div className="lg:w-2/3 flex flex-col gap-4 h-full">
                           <div className="relative">
                               <Search className="absolute left-3 top-3 text-gray-400" size={20}/>
@@ -309,7 +282,6 @@ export const CashierDashboard: React.FC = () => {
                           </div>
                       </div>
 
-                      {/* Right: Cart */}
                       <div className="lg:w-1/3 bg-white rounded-xl shadow-xl border flex flex-col h-full overflow-hidden">
                           <div className="p-4 bg-slate-50 border-b">
                               <h3 className="font-bold text-gray-800 flex items-center gap-2"><ShoppingCart size={18}/> Cesta de Compras</h3>
@@ -418,39 +390,13 @@ export const CashierDashboard: React.FC = () => {
               )}
           </div>
 
-          {/* Modal Sangria */}
-          {bleedModalOpen && (
-              <Modal isOpen={bleedModalOpen} onClose={() => setBleedModalOpen(false)} title="Realizar Sangria" variant="dialog" maxWidth="sm">
-                  <form onSubmit={handleBleed} className="space-y-4">
-                      <div>
-                          <label className="block text-sm font-bold mb-1">Valor a Retirar (R$)</label>
-                          <input type="number" step="0.01" className="w-full border p-2 rounded text-lg font-bold text-red-600" value={bleedAmount} onChange={e => setBleedAmount(e.target.value)} autoFocus />
-                      </div>
-                      <div>
-                          <label className="block text-sm font-bold mb-1">Motivo</label>
-                          <input type="text" className="w-full border p-2 rounded" placeholder="Ex: Pagamento Fornecedor" value={bleedReason} onChange={e => setBleedReason(e.target.value)} />
-                      </div>
-                      <Button type="submit" className="w-full bg-red-600 hover:bg-red-700">Confirmar Retirada</Button>
-                  </form>
-              </Modal>
-          )}
-
-          {/* Modal Fechamento */}
-          {closeModalOpen && (
-              <Modal isOpen={closeModalOpen} onClose={() => setCloseModalOpen(false)} title="Fechar Caixa" variant="dialog" maxWidth="sm">
-                  <div className="space-y-4">
-                      <div className="bg-yellow-50 p-3 rounded text-sm text-yellow-800 border border-yellow-200">
-                          <p className="font-bold">Atenção:</p>
-                          <p>Conte o dinheiro físico na gaveta e informe abaixo. O sistema calculará a diferença (quebra de caixa).</p>
-                      </div>
-                      <div>
-                          <label className="block text-sm font-bold mb-1">Valor Contado em Dinheiro (R$)</label>
-                          <input type="number" step="0.01" className="w-full border p-3 rounded text-2xl font-bold text-center" value={closeCountedAmount} onChange={e => setCloseCountedAmount(e.target.value)} autoFocus />
-                      </div>
-                      <Button onClick={handleCloseRegister} className="w-full py-3 text-lg">Finalizar Turno</Button>
-                  </div>
-              </Modal>
-          )}
+          <CashBleedModal isOpen={bleedModalOpen} onClose={() => setBleedModalOpen(false)} />
+          
+          <CloseRegisterModal 
+            isOpen={closeModalOpen} 
+            onClose={() => setCloseModalOpen(false)} 
+            onSuccess={() => setActiveTab('ACTIVE')} 
+          />
       </div>
   );
 };

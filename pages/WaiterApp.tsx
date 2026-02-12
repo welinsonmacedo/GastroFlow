@@ -2,17 +2,16 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useRestaurant } from '../context/RestaurantContext';
 import { useUI } from '../context/UIContext';
-import { TableStatus, OrderStatus, ProductType, Product, OrderItem } from '../types';
+import { TableStatus, Product } from '../types';
 import { Button } from '../components/Button';
-// Added Modal import
-import { Modal } from '../components/Modal';
-import { CheckCircle, Coffee, User, Key, X, Bell, Plus, Minus, Search, ShoppingCart, ChevronRight, Utensils, Trash2, ArrowLeft, Volume2, Edit3, MessageSquare, ChevronUp, ChevronDown, AlertTriangle, Zap, Clock, UtensilsCrossed, CheckSquare, Square } from 'lucide-react';
+import { WaiterProductModal, OpenTableModal, TableActionsModal } from '../components/modals/WaiterModals';
+import { Bell, Plus, Search, ShoppingCart, ArrowLeft, Utensils, Trash2 } from 'lucide-react';
 
 const FALLBACK_SOUND_URL = "https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3";
 
 export const WaiterApp: React.FC = () => {
   const { state, dispatch } = useRestaurant();
-  const { showAlert, showConfirm } = useUI();
+  const { showAlert } = useUI();
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const [orderingTableId, setOrderingTableId] = useState<string | null>(null);
@@ -22,13 +21,7 @@ export const WaiterApp: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('Todos');
   
-  const [quickAddModal, setQuickAddModal] = useState<{ 
-      product: Product; 
-      qty: number; 
-      note: string;
-      drinkTiming: 'IMMEDIATE' | 'WITH_FOOD';
-      selectedExtraIds: string[];
-  } | null>(null);
+  const [productModal, setProductModal] = useState<Product | null>(null);
 
   const pendingCalls = state.serviceCalls.filter(c => c.status === 'PENDING');
 
@@ -45,61 +38,20 @@ export const WaiterApp: React.FC = () => {
       }
   };
 
-  const openProductModal = (product: Product) => {
-      setQuickAddModal({ 
-          product, 
-          qty: 1, 
-          note: '',
-          drinkTiming: 'IMMEDIATE',
-          selectedExtraIds: []
-      });
-  };
+  const handleAddToCart = (item: { product: Product, qty: number, note: string, selectedExtraIds: string[] }) => {
+      const chosenExtras = item.selectedExtraIds
+          .map(id => state.products.find(p => p.id === id))
+          .filter(Boolean) as Product[];
 
-  const toggleExtra = (id: string) => {
-      if (!quickAddModal) return;
-      setQuickAddModal(prev => {
-          if (!prev) return null;
-          const exists = prev.selectedExtraIds.includes(id);
-          return {
-              ...prev,
-              selectedExtraIds: exists ? prev.selectedExtraIds.filter(i => i !== id) : [...prev.selectedExtraIds, id]
-          };
-      });
-  };
-
-  const calculateModalTotal = () => {
-      if (!quickAddModal) return 0;
-      const extrasTotal = (quickAddModal.product.linkedExtraIds || []).reduce((acc, id) => {
-          if (!quickAddModal.selectedExtraIds.includes(id)) return acc;
-          const extraProd = state.products.find(p => p.id === id);
-          return acc + (extraProd?.price || 0);
-      }, 0);
-      return (quickAddModal.product.price + extrasTotal) * quickAddModal.qty;
-  };
-
-  const confirmQuickAdd = () => {
-      if (quickAddModal) { 
-          let finalNote = quickAddModal.note;
-          if (quickAddModal.product.category === 'Bebidas') {
-              const timing = quickAddModal.drinkTiming === 'IMMEDIATE' ? '[IMEDIATA] ' : '[COM COMIDA] ';
-              finalNote = timing + finalNote;
+      setCart(prev => [
+          ...prev, 
+          { 
+              product: item.product, 
+              quantity: item.qty, 
+              notes: item.note,
+              extras: chosenExtras
           }
-
-          const chosenExtras = quickAddModal.selectedExtraIds
-              .map(id => state.products.find(p => p.id === id))
-              .filter(Boolean) as Product[];
-
-          setCart(prev => [
-              ...prev, 
-              { 
-                  product: quickAddModal.product, 
-                  quantity: quickAddModal.qty, 
-                  notes: finalNote.trim(),
-                  extras: chosenExtras
-              }
-          ]); 
-          setQuickAddModal(null); 
-      }
+      ]); 
   };
 
   const submitOrder = async () => {
@@ -154,54 +106,13 @@ export const WaiterApp: React.FC = () => {
 
       return (
           <div className="flex flex-col h-full bg-gray-50 overflow-hidden">
-              {quickAddModal && (
-                  <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-                      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col max-h-[90vh]">
-                          <div className="bg-slate-900 text-white p-4 flex justify-between items-center">
-                              <h3 className="font-bold truncate pr-4">{quickAddModal.product.name}</h3>
-                              <button onClick={() => setQuickAddModal(null)}><X size={24}/></button>
-                          </div>
-                          <div className="p-6 space-y-6 overflow-y-auto custom-scrollbar">
-                              <div>
-                                  <label className="block text-sm font-bold text-gray-700 mb-2 text-center uppercase tracking-widest">Quantidade</label>
-                                  <div className="flex items-center gap-6 justify-center">
-                                      <button onClick={() => setQuickAddModal({...quickAddModal, qty: Math.max(1, quickAddModal.qty - 1)})} className="p-4 bg-gray-100 rounded-xl hover:bg-red-50 hover:text-red-600 transition-colors"><Minus size={24}/></button>
-                                      <span className="text-4xl font-bold w-16 text-center text-blue-600">{quickAddModal.qty}</span>
-                                      <button onClick={() => setQuickAddModal({...quickAddModal, qty: quickAddModal.qty + 1})} className="p-4 bg-gray-100 rounded-xl hover:bg-green-50 hover:text-green-600 transition-colors"><Plus size={24}/></button>
-                                  </div>
-                              </div>
-                              {quickAddModal.product.linkedExtraIds && quickAddModal.product.linkedExtraIds.length > 0 && (
-                                  <div className="border-t border-b py-4 space-y-3">
-                                      <label className="block text-xs font-black text-gray-500 uppercase tracking-wider"><Plus size={14} className="inline text-green-600 mr-1"/> Adicionais</label>
-                                      <div className="space-y-2">
-                                          {quickAddModal.product.linkedExtraIds.map(id => {
-                                              const extra = state.products.find(p => p.id === id);
-                                              if (!extra) return null;
-                                              const isSelected = quickAddModal.selectedExtraIds.includes(id);
-                                              return (
-                                                  <div key={id} onClick={() => toggleExtra(id)} className={`flex items-center justify-between p-3 rounded-xl border-2 transition-all cursor-pointer ${isSelected ? 'bg-orange-50 border-orange-400' : 'bg-white border-transparent shadow-sm hover:border-slate-200'}`}>
-                                                      <div className="flex items-center gap-3">
-                                                          {isSelected ? <CheckSquare size={20} className="text-orange-600"/> : <Square size={20} className="text-gray-300"/>}
-                                                          <span className="text-sm font-bold text-slate-700">{extra.name}</span>
-                                                      </div>
-                                                      <span className="text-xs font-bold text-slate-400">R$ {extra.price.toFixed(2)}</span>
-                                                  </div>
-                                              );
-                                          })}
-                                      </div>
-                                  </div>
-                              )}
-                              <div className="space-y-1">
-                                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Observações</label>
-                                  <textarea className="w-full border-2 rounded-xl p-3 text-sm focus:border-blue-500 outline-none transition-all" rows={2} placeholder="Sem cebola, etc..." value={quickAddModal.note} onChange={e => setQuickAddModal({...quickAddModal, note: e.target.value})} />
-                              </div>
-                          </div>
-                          <div className="p-4 border-t bg-gray-50">
-                              <Button onClick={confirmQuickAdd} className="w-full py-4 text-lg font-black shadow-lg">Confirmar R$ {calculateModalTotal().toFixed(2)}</Button>
-                          </div>
-                      </div>
-                  </div>
-              )}
+              <WaiterProductModal 
+                  isOpen={!!productModal} 
+                  onClose={() => setProductModal(null)} 
+                  product={productModal}
+                  onConfirm={handleAddToCart}
+              />
+
               <header className="bg-white border-b p-4 flex items-center justify-between shadow-sm">
                   <div className="flex items-center gap-2">
                       <button onClick={() => setOrderingTableId(null)} className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-500"><ArrowLeft size={24}/></button>
@@ -232,7 +143,7 @@ export const WaiterApp: React.FC = () => {
                       </div>
                       <div className="flex-1 overflow-y-auto p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 content-start pb-24 custom-scrollbar">
                           {filteredProducts.map(product => (
-                              <div key={product.id} onClick={() => openProductModal(product)} className="bg-white p-3 rounded-2xl border-2 border-transparent shadow-sm flex justify-between items-center cursor-pointer hover:border-blue-200 active:scale-95 transition-all">
+                              <div key={product.id} onClick={() => setProductModal(product)} className="bg-white p-3 rounded-2xl border-2 border-transparent shadow-sm flex justify-between items-center cursor-pointer hover:border-blue-200 active:scale-95 transition-all">
                                   <div className="flex-1 min-w-0 pr-2">
                                       <div className="font-bold text-slate-800 truncate leading-tight">{product.name}</div>
                                       <div className="text-[10px] text-gray-400 font-bold uppercase">{product.category}</div>
@@ -313,29 +224,18 @@ export const WaiterApp: React.FC = () => {
             })}
         </div>
         
-        {/* Modais de controle simplificados */}
-        {selectedTableForOpen && (
-            <Modal isOpen={!!selectedTableForOpen} onClose={() => setSelectedTableForOpen(null)} title="Abrir Mesa" variant="dialog" maxWidth="sm">
-                <div className="space-y-4">
-                    <input className="w-full border-2 p-3 rounded-xl focus:border-blue-500 outline-none text-center font-bold" placeholder="Nome do Cliente" id="customerNameInput" autoFocus />
-                    <Button onClick={() => {
-                        const name = (document.getElementById('customerNameInput') as HTMLInputElement).value || 'Cliente';
-                        const code = Math.floor(1000 + Math.random() * 9000).toString();
-                        dispatch({ type: 'OPEN_TABLE', tableId: selectedTableForOpen, customerName: name, accessCode: code });
-                        setSelectedTableForOpen(null);
-                    }} className="w-full py-4 font-bold">INICIAR ATENDIMENTO</Button>
-                </div>
-            </Modal>
-        )}
+        <OpenTableModal 
+            isOpen={!!selectedTableForOpen} 
+            onClose={() => setSelectedTableForOpen(null)} 
+            tableId={selectedTableForOpen}
+        />
 
-        {selectedTableForAction && (
-            <Modal isOpen={!!selectedTableForAction} onClose={() => setSelectedTableForAction(null)} title={`Mesa ${state.tables.find(t => t.id === selectedTableForAction)?.number}`} variant="dialog" maxWidth="sm">
-                <div className="p-1 space-y-3">
-                    <button onClick={() => { setOrderingTableId(selectedTableForAction); setSelectedTableForAction(null); setCart([]); }} className="w-full py-5 bg-blue-600 text-white font-black rounded-2xl flex items-center justify-center gap-3 shadow-xl shadow-blue-200 hover:scale-[1.02] active:scale-95 transition-all"><Utensils size={24} /> LANÇAR PEDIDO</button>
-                    <button onClick={() => { dispatch({ type: 'CLOSE_TABLE', tableId: selectedTableForAction }); setSelectedTableForAction(null); }} className="w-full py-5 bg-red-50 text-red-600 font-black rounded-2xl flex items-center justify-center gap-3 border-2 border-red-100 hover:bg-red-100 transition-all"><Trash2 size={24} /> CANCELAR MESA</button>
-                </div>
-            </Modal>
-        )}
+        <TableActionsModal
+            isOpen={!!selectedTableForAction}
+            onClose={() => setSelectedTableForAction(null)}
+            tableId={selectedTableForAction}
+            onOrder={() => { setOrderingTableId(selectedTableForAction); setSelectedTableForAction(null); setCart([]); }}
+        />
     </div>
   );
 };
