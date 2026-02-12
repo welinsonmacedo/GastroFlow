@@ -1,10 +1,13 @@
 
 import React, { PropsWithChildren } from 'react';
 import { BrowserRouter, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './context/AuthProvider'; // NEW
+import { AuthProvider, useAuth } from './context/AuthProvider'; 
 import { RestaurantProvider, useRestaurant } from './context/RestaurantContext';
-import { InventoryProvider } from './context/InventoryContext'; // NEW
-import { FinanceProvider } from './context/FinanceContext'; // NEW
+import { InventoryProvider } from './context/InventoryContext'; 
+import { FinanceProvider } from './context/FinanceContext'; 
+import { MenuProvider } from './context/MenuContext'; // NEW
+import { OrderProvider } from './context/OrderContext'; // NEW
+import { StaffProvider } from './context/StaffContext'; // NEW
 import { SaaSProvider, useSaaS } from './context/SaaSContext';
 import { UIProvider, useUI } from './context/UIContext';
 import { ClientApp } from './pages/ClientApp';
@@ -26,14 +29,12 @@ import { ChefHat, Coffee, Monitor, DollarSign, Settings, LogOut, User as UserIco
 import { Role } from './types';
 import { getTenantSlug } from './utils/tenant';
 
-// --- Protected Route Helper ---
 interface ProtectedRouteProps {
     allowedRoles?: Role[];
     requiredRoute?: string;
     requiredFeature?: 'allowKds' | 'allowCashier' | 'allowReports';
 }
 
-// Updated to use PropsWithChildren to explicitly allow children nodes in the TS component definition
 const ProtectedRestaurantRoute = ({ children, allowedRoles, requiredRoute, requiredFeature }: PropsWithChildren<ProtectedRouteProps>) => {
     const { state: authState, checkPermission } = useAuth();
     const { state: restState } = useRestaurant();
@@ -44,14 +45,12 @@ const ProtectedRestaurantRoute = ({ children, allowedRoles, requiredRoute, requi
         return <Navigate to={`/login${window.location.search}`} replace />;
     }
 
-    // 1. Verificação de Limites do Plano
     if (requiredFeature && restState.planLimits) {
         if (!restState.planLimits[requiredFeature]) {
             return <div className="p-10 text-center text-orange-500 font-bold">Funcionalidade Bloqueada pelo Plano</div>;
         }
     }
 
-    // 2. Verificação por Role
     if (allowedRoles && !checkPermission(allowedRoles)) {
          return <div className="p-10 text-center text-red-500">Acesso Negado.</div>;
     }
@@ -175,11 +174,17 @@ const App: React.FC = () => {
             {tenantSlug ? (
                 <AuthProvider>
                     <RestaurantProvider>
-                        <InventoryProvider>
-                            <FinanceProvider>
-                                <TenantApp />
-                            </FinanceProvider>
-                        </InventoryProvider>
+                        <MenuProvider>
+                            <OrderProvider>
+                                <StaffProvider>
+                                    <InventoryProvider>
+                                        <FinanceProvider>
+                                            <TenantApp />
+                                        </FinanceProvider>
+                                    </InventoryProvider>
+                                </StaffProvider>
+                            </OrderProvider>
+                        </MenuProvider>
                     </RestaurantProvider>
                 </AuthProvider>
             ) : (

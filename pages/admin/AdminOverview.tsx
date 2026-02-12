@@ -3,6 +3,7 @@ import React from 'react';
 import { useRestaurant } from '../../context/RestaurantContext';
 import { useInventory } from '../../context/InventoryContext';
 import { useFinance } from '../../context/FinanceContext';
+import { useOrder } from '../../context/OrderContext';
 import { StatCard } from '../../components/StatCard';
 import { DollarSign, AlertTriangle, ShoppingBag, TrendingUp } from 'lucide-react';
 
@@ -10,11 +11,12 @@ export const AdminOverview: React.FC = () => {
   const { state: restState } = useRestaurant();
   const { state: invState } = useInventory();
   const { state: finState } = useFinance();
+  const { state: orderState } = useOrder();
   const { planLimits } = restState;
 
   const salesToday = finState.transactions.reduce((acc, t) => acc + t.amount, 0);
   const lowStockCount = invState.inventory.filter(i => i.quantity <= i.minQuantity).length;
-  const openOrders = restState.orders.filter(o => !o.isPaid).length;
+  const openOrders = orderState.orders.filter(o => !o.isPaid).length;
 
   return (
     <div className="animate-fade-in">

@@ -2,6 +2,8 @@
 import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useRestaurant } from '../context/RestaurantContext';
+import { useMenu } from '../context/MenuContext';
+import { useOrder } from '../context/OrderContext';
 import { Button } from '../components/Button';
 import { TableStatus, Product } from '../types';
 // Added missing icons: Trash2, ArrowRight, Activity
@@ -9,7 +11,9 @@ import { ShoppingCart, ChefHat, Info, Plus, Minus, X, Lock, Receipt, Loader2, Be
 
 export const ClientApp: React.FC = () => {
   const { tableId } = useParams<{ tableId: string }>();
-  const { state, dispatch } = useRestaurant();
+  const { state } = useRestaurant();
+  const { state: menuState } = useMenu();
+  const { state: orderState, dispatch: orderDispatch } = useOrder();
   
   // Cart Items: Agora o carrinho guarda os itens e seus sub-itens vinculados
   const [cart, setCart] = useState<{ product: Product; quantity: number; notes: string; extras?: Product[] }[]>([]);
@@ -28,7 +32,7 @@ export const ClientApp: React.FC = () => {
   const [selectedExtraIds, setSelectedExtraIds] = useState<string[]>([]);
 
   // Handle Loading
-  if (state.isLoading) {
+  if (state.isLoading || menuState.isLoading) {
       return (
           <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 text-gray-500">
               <Loader2 className="animate-spin mb-2 text-blue-600" size={32} />
@@ -37,10 +41,10 @@ export const ClientApp: React.FC = () => {
       );
   }
 
-  const table = state.tables.find(t => t.id === tableId);
+  const table = orderState.tables.find(t => t.id === tableId);
   const theme = state.theme;
   const isTableActive = table?.status === TableStatus.OCCUPIED;
-  const tableOrders = state.orders.filter(o => o.tableId === tableId && !o.isPaid);
+  const tableOrders = orderState.orders.filter(o => o.tableId === tableId && !o.isPaid);
 
   const openProductModal = (product: Product) => {
       setSelectedProduct(product);
@@ -59,7 +63,7 @@ export const ClientApp: React.FC = () => {
   const calculateModalTotal = () => {
       if (!selectedProduct) return 0;
       const extrasTotal = selectedExtraIds.reduce((acc, id) => {
-          const extraProd = state.products.find(p => p.id === id);
+          const extraProd = menuState.products.find(p => p.id === id);
           return acc + (extraProd?.price || 0);
       }, 0);
       return (selectedProduct.price + extrasTotal) * modalQuantity;
@@ -77,7 +81,7 @@ export const ClientApp: React.FC = () => {
 
     // Buscamos os objetos completos dos produtos extras para o carrinho
     const chosenExtras = selectedExtraIds
-        .map(id => state.products.find(p => p.id === id))
+        .map(id => menuState.products.find(p => p.id === id))
         .filter(Boolean) as Product[];
 
     setCart(prev => [
@@ -118,7 +122,7 @@ export const ClientApp: React.FC = () => {
         });
     });
 
-    await dispatch({
+    await orderDispatch({
       type: 'PLACE_ORDER',
       tableId,
       items: flattenedItems
@@ -142,7 +146,7 @@ export const ClientApp: React.FC = () => {
           <h1 className="text-2xl font-bold mb-2 text-gray-800">{theme.restaurantName}</h1>
           <h2 className="text-xl font-bold text-gray-700 mb-6 underline decoration-blue-500 underline-offset-4">Mesa #{table.number}</h2>
           <div className="bg-red-50 text-red-600 p-4 rounded-xl font-bold mb-8 animate-pulse border border-red-100">Mesa Fechada</div>
-          <Button onClick={() => { dispatch({ type: 'CALL_WAITER', tableId: table.id }); setWaiterCalled(true); }} className="w-full py-4 text-lg font-bold shadow-lg">
+          <Button onClick={() => { orderDispatch({ type: 'CALL_WAITER', tableId: table.id }); setWaiterCalled(true); }} className="w-full py-4 text-lg font-bold shadow-lg">
              {waiterCalled ? 'Solicitação Enviada!' : 'Chamar Garçom'}
           </Button>
         </div>
@@ -174,7 +178,7 @@ export const ClientApp: React.FC = () => {
     );
   }
 
-  const visibleProducts = state.products.filter(p => p.isVisible && !p.isExtra).sort((a, b) => (a.sortOrder || 99) - (b.sortOrder || 99));
+  const visibleProducts = menuState.products.filter(p => p.isVisible && !p.isExtra).sort((a, b) => (a.sortOrder || 99) - (b.sortOrder || 99));
 
   return (
     <div className="min-h-screen pb-24" style={{ backgroundColor: theme.backgroundColor, color: theme.fontColor }}>
@@ -211,7 +215,7 @@ export const ClientApp: React.FC = () => {
                                   <label className="block text-sm font-black text-gray-700 flex items-center gap-2 uppercase tracking-wider"><Plus size={18} className="text-green-600"/> Personalize seu prato</label>
                                   <div className="space-y-3">
                                       {selectedProduct.linkedExtraIds.map(id => {
-                                          const extra = state.products.find(p => p.id === id);
+                                          const extra = menuState.products.find(p => p.id === id);
                                           if (!extra) return null;
                                           const isSelected = selectedExtraIds.includes(id);
                                           return (
@@ -473,7 +477,7 @@ export const ClientApp: React.FC = () => {
                    <Button 
                     variant="outline" 
                     className="w-full py-5 rounded-2xl bg-white border-blue-100 text-blue-600 hover:bg-blue-50 font-black shadow-lg text-lg"
-                    onClick={() => { dispatch({ type: 'CALL_WAITER', tableId: table.id }); setWaiterCalled(true); }}
+                    onClick={() => { orderDispatch({ type: 'CALL_WAITER', tableId: table.id }); setWaiterCalled(true); }}
                    >
                      <Bell size={24} className={waiterCalled ? "animate-ping" : ""} /> {waiterCalled ? 'GARÇOM CHAMADO' : 'CHAMAR GARÇOM AGORA'}
                    </Button>
@@ -529,7 +533,7 @@ export const ClientApp: React.FC = () => {
                         <Button 
                             variant="outline" 
                             className="w-full bg-white border-blue-200 text-blue-600 hover:bg-blue-50 font-black py-4 rounded-2xl shadow-md"
-                            onClick={() => { dispatch({ type: 'CALL_WAITER', tableId: table.id }); setWaiterCalled(true); }}
+                            onClick={() => { orderDispatch({ type: 'CALL_WAITER', tableId: table.id }); setWaiterCalled(true); }}
                         >
                             {waiterCalled ? 'JÁ CHAMAMOS O GARÇOM' : 'CHAMAR GARÇOM'}
                         </Button>

@@ -1,6 +1,8 @@
 
 import React, { useState } from 'react';
 import { useRestaurant } from '../context/RestaurantContext';
+import { useMenu } from '../context/MenuContext';
+import { useOrder } from '../context/OrderContext';
 import { useFinance } from '../context/FinanceContext';
 import { useUI } from '../context/UIContext';
 import { TableStatus, Product } from '../types';
@@ -10,7 +12,9 @@ import { CloseRegisterModal } from '../components/modals/CloseRegisterModal';
 import { CashBleedModal } from '../components/modals/CashBleedModal';
 
 export const CashierDashboard: React.FC = () => {
-  const { state: restState, dispatch: restDispatch } = useRestaurant();
+  const { state: restState } = useRestaurant();
+  const { state: menuState } = useMenu();
+  const { state: orderState, dispatch: orderDispatch } = useOrder();
   const { state: finState, openRegister, refreshTransactions } = useFinance();
   const { showAlert, showConfirm } = useUI();
   
@@ -28,11 +32,11 @@ export const CashierDashboard: React.FC = () => {
   const [customerName, setCustomerName] = useState('');
   const [processingSale, setProcessingSale] = useState(false);
 
-  const occupiedTables = restState.tables.filter(t => t.status !== TableStatus.AVAILABLE);
-  const selectedTable = restState.tables.find(t => t.id === selectedTableId);
-  const tableOrders = restState.orders.filter(o => o.tableId === selectedTableId && !o.isPaid);
+  const occupiedTables = orderState.tables.filter(t => t.status !== TableStatus.AVAILABLE);
+  const selectedTable = orderState.tables.find(t => t.id === selectedTableId);
+  const tableOrders = orderState.orders.filter(o => o.tableId === selectedTableId && !o.isPaid);
   const totalAmount = tableOrders.reduce((sum, order) => sum + order.items.reduce((s, i) => {
-        const p = restState.products.find(prod => prod.id === i.productId);
+        const p = menuState.products.find(prod => prod.id === i.productId);
         return s + ((p?.price || 0) * i.quantity);
   }, 0), 0);
 
@@ -65,7 +69,7 @@ export const CashierDashboard: React.FC = () => {
       }));
 
       try {
-          await restDispatch({
+          await orderDispatch({
               type: 'PROCESS_POS_SALE',
               sale: {
                   customerName: customerName.trim() || 'Consumidor Final',
@@ -101,7 +105,7 @@ export const CashierDashboard: React.FC = () => {
       showConfirm({
           title: "Confirmar Pagamento", message: `Receber R$ ${totalAmount.toFixed(2)}?`,
           onConfirm: () => {
-              restDispatch({ type: 'PROCESS_PAYMENT', tableId: selectedTableId, amount: totalAmount, method });
+              orderDispatch({ type: 'PROCESS_PAYMENT', tableId: selectedTableId, amount: totalAmount, method });
               setSelectedTableId(null);
               showAlert({ title: "Sucesso", message: "Pago!", type: 'SUCCESS' });
               setTimeout(() => refreshTransactions(), 500); 
@@ -143,7 +147,7 @@ export const CashierDashboard: React.FC = () => {
   }
 
   const posTotal = posCart.reduce((acc, item) => acc + (item.product.price * item.quantity), 0);
-  const filteredProducts = restState.products.filter(p => p.name.toLowerCase().includes(posSearch.toLowerCase()));
+  const filteredProducts = menuState.products.filter(p => p.name.toLowerCase().includes(posSearch.toLowerCase()));
 
   const NavButton = ({ tab, icon: Icon, label }: any) => (
       <button 
@@ -222,7 +226,7 @@ export const CashierDashboard: React.FC = () => {
                                           </thead>
                                           <tbody className="divide-y">
                                               {tableOrders.flatMap(o => o.items).map((item, idx) => {
-                                                  const product = restState.products.find(p => p.id === item.productId);
+                                                  const product = menuState.products.find(p => p.id === item.productId);
                                                   return (
                                                       <tr key={`${item.id}-${idx}`}>
                                                           <td className="p-3 font-bold">{item.quantity}</td>

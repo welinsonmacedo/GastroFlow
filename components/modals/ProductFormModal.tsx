@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Modal } from '../Modal';
 import { Button } from '../Button';
 import { ImageUploader } from '../ImageUploader';
+import { useMenu } from '../../context/MenuContext'; // NEW
 import { useRestaurant } from '../../context/RestaurantContext';
 import { useInventory } from '../../context/InventoryContext';
 import { useUI } from '../../context/UIContext';
@@ -16,7 +17,8 @@ interface ProductFormModalProps {
 }
 
 export const ProductFormModal: React.FC<ProductFormModalProps> = ({ isOpen, onClose, productToEdit }) => {
-  const { state: restState, dispatch } = useRestaurant();
+  const { state: menuState, addProduct, updateProduct } = useMenu();
+  const { state: restState } = useRestaurant(); // Only needed for general restaurant info if any, actually menuState.products covers products now
   const { state: invState } = useInventory();
   const { showAlert } = useUI();
 
@@ -58,10 +60,10 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({ isOpen, onCl
 
   const availableForMenu = invState.inventory.filter(i => 
       (i.type === 'RESALE' || i.type === 'COMPOSITE') && 
-      !restState.products.some(p => p.linkedInventoryItemId === i.id && (!productToEdit || p.id !== productToEdit.id))
+      !menuState.products.some(p => p.linkedInventoryItemId === i.id && (!productToEdit || p.id !== productToEdit.id))
   );
 
-  const allAvailableExtras = restState.products.filter(p => p.isExtra && (!productToEdit || p.id !== productToEdit.id));
+  const allAvailableExtras = menuState.products.filter(p => p.isExtra && (!productToEdit || p.id !== productToEdit.id));
 
   const toggleExtraSelection = (id: string) => {
       setSelectedExtraIds(prev => prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]);
@@ -83,34 +85,26 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({ isOpen, onCl
               category: isExtra ? 'Adicionais' : category,
               description,
               image: image || stockItem.image || '',
-              linkedInventoryItemId: stockItem.id, // Garante atualização do vínculo
+              linkedInventoryItemId: stockItem.id, 
               isExtra: isExtra,
               linkedExtraIds: isExtra ? [] : selectedExtraIds,
-              // Propriedades mantidas ou derivadas
               costPrice: stockItem.costPrice || 0,
               type: stockItem.type === 'RESALE' ? ProductType.BAR : ProductType.KITCHEN,
               isVisible: true
           };
 
           if (productToEdit) {
-              await dispatch({ 
-                  type: 'UPDATE_PRODUCT', 
-                  product: { 
-                      ...productToEdit, 
-                      ...productData,
-                      // Força atualização explícita desses campos
-                      linkedInventoryItemId: productData.linkedInventoryItemId,
-                      isExtra: productData.isExtra,
-                      linkedExtraIds: productData.linkedExtraIds
-                  } as Product 
-              });
+              await updateProduct({ 
+                  ...productToEdit, 
+                  ...productData,
+                  linkedInventoryItemId: productData.linkedInventoryItemId,
+                  isExtra: productData.isExtra,
+                  linkedExtraIds: productData.linkedExtraIds
+              } as Product);
           } else {
-              await dispatch({
-                  type: 'ADD_PRODUCT_TO_MENU',
-                  product: {
-                      ...productData,
-                      sortOrder: restState.products.length + 1,
-                  } as Product
+              await addProduct({
+                  ...productData,
+                  sortOrder: menuState.products.length + 1,
               });
           }
           
@@ -121,7 +115,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({ isOpen, onCl
           const msg = error.message || JSON.stringify(error);
           showAlert({ 
               title: "Erro ao Salvar", 
-              message: `O banco de dados rejeitou a operação. Detalhe: ${msg}. Verifique se o script de atualização do banco (09_fix_products_schema) foi executado.`, 
+              message: `O banco de dados rejeitou a operação. Possível falta de colunas (erro 400). Detalhe: ${msg}.`, 
               type: 'ERROR' 
           });
       }
@@ -174,8 +168,10 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({ isOpen, onCl
                             <button 
                                 type="button"
                                 onClick={() => {
-                                    setIsExtra(!isExtra);
-                                    if(!isExtra) setCategory('Adicionais');
+                                    const newVal = !isExtra;
+                                    setIsExtra(newVal);
+                                    if(newVal) setCategory('Adicionais');
+                                    else setCategory('Lanches'); // Reset padrão
                                 }}
                                 className={`p-1.5 rounded-lg transition-all ${isExtra ? 'bg-orange-600 text-white shadow-lg shadow-orange-200' : 'bg-slate-100 text-slate-400 border'}`}
                             >

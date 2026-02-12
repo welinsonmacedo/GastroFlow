@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
-import { useRestaurant } from '../../context/RestaurantContext';
+import { useMenu } from '../../context/MenuContext'; // Changed from RestaurantContext
+import { useRestaurant } from '../../context/RestaurantContext'; // Still needed for dispatch generic updates? No, MenuContext handles product updates
 import { useInventory } from '../../context/InventoryContext';
 import { useUI } from '../../context/UIContext';
 import { Button } from '../../components/Button';
@@ -9,7 +10,7 @@ import { Product } from '../../types';
 import { Plus, GripVertical, Edit, Eye, EyeOff, Trash2, Layers, Tag, Search, Utensils } from 'lucide-react';
 
 export const AdminProducts: React.FC = () => {
-  const { state: restState, dispatch } = useRestaurant();
+  const { state: menuState, updateProduct, deleteProduct } = useMenu();
   const { showConfirm } = useUI();
   
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -18,8 +19,10 @@ export const AdminProducts: React.FC = () => {
   const [filterCategory, setFilterCategory] = useState('Todas');
   const [searchTerm, setSearchTerm] = useState('');
   
-  const sortedProducts = [...restState.products].sort((a,b) => (a.sortOrder || 0) - (b.sortOrder || 0));
-  const categories = ['Todas', 'Adicionais', ...Array.from(new Set(restState.products.filter(p => !p.isExtra).map(p => p.category)))];
+  const sortedProducts = [...menuState.products].sort((a,b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+  
+  // Categorias dinâmicas + Adicionais
+  const categories = ['Todas', 'Adicionais', ...Array.from(new Set(menuState.products.filter(p => !p.isExtra).map(p => p.category)))];
 
   const handleOpenAdd = () => {
       setEditingProduct(null);
@@ -41,7 +44,7 @@ export const AdminProducts: React.FC = () => {
       updatedList.splice(targetIndex, 0, movedItem);
       updatedList.forEach((product, index) => {
           if (product.sortOrder !== (index + 1) * 10) {
-               dispatch({ type: 'UPDATE_PRODUCT', product: { ...product, sortOrder: (index + 1) * 10 } });
+               updateProduct({ ...product, sortOrder: (index + 1) * 10 });
           }
       });
       setDraggedItemIndex(null);
@@ -49,8 +52,16 @@ export const AdminProducts: React.FC = () => {
 
   const displayedProducts = sortedProducts.filter(p => {
       const matchSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchCategory = filterCategory === 'Todas' || 
-                           (filterCategory === 'Adicionais' ? p.isExtra : (p.category === filterCategory && !p.isExtra));
+      
+      let matchCategory = false;
+      if (filterCategory === 'Todas') {
+          matchCategory = true;
+      } else if (filterCategory === 'Adicionais') {
+          matchCategory = p.isExtra === true;
+      } else {
+          matchCategory = p.category === filterCategory && !p.isExtra;
+      }
+
       return matchSearch && matchCategory;
   });
 
@@ -136,10 +147,10 @@ export const AdminProducts: React.FC = () => {
                                 <button onClick={() => handleOpenEdit(product)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Editar">
                                     <Edit size={18}/>
                                 </button>
-                                <button onClick={() => dispatch({type: 'UPDATE_PRODUCT', product: {...product, isVisible: !product.isVisible}})} className={`p-2 rounded-lg transition-colors ${product.isVisible ? 'text-green-600 hover:bg-green-50' : 'text-gray-400 hover:bg-gray-100'}`} title={product.isVisible ? "Ocultar do Cliente" : "Mostrar no Menu"}>
+                                <button onClick={() => updateProduct({...product, isVisible: !product.isVisible})} className={`p-2 rounded-lg transition-colors ${product.isVisible ? 'text-green-600 hover:bg-green-50' : 'text-gray-400 hover:bg-gray-100'}`} title={product.isVisible ? "Ocultar do Cliente" : "Mostrar no Menu"}>
                                     {product.isVisible ? <Eye size={18}/> : <EyeOff size={18}/>}
                                 </button>
-                                <button onClick={() => showConfirm({ title: 'Remover do Cardápio', message: 'O item continuará no estoque, mas não poderá mais ser vendido.', onConfirm: () => dispatch({type: 'DELETE_PRODUCT', productId: product.id}) })} className="p-2 text-red-400 hover:bg-red-50 rounded-lg transition-colors" title="Excluir">
+                                <button onClick={() => showConfirm({ title: 'Remover do Cardápio', message: 'O item continuará no estoque, mas não poderá mais ser vendido.', onConfirm: () => deleteProduct(product.id) })} className="p-2 text-red-400 hover:bg-red-50 rounded-lg transition-colors" title="Excluir">
                                     <Trash2 size={18}/>
                                 </button>
                             </div>
@@ -150,6 +161,9 @@ export const AdminProducts: React.FC = () => {
                     <div className="p-20 text-center text-gray-400 flex flex-col items-center gap-2">
                         <Tag size={48} className="opacity-10"/>
                         <p>Nenhum produto encontrado nesta visualização.</p>
+                        {filterCategory === 'Adicionais' && (
+                            <p className="text-xs text-orange-500">Certifique-se de marcar a opção "Produto Adicional" ao criar o item.</p>
+                        )}
                     </div>
                 )}
             </div>

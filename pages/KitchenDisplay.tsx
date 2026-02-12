@@ -1,13 +1,17 @@
 
 import React, { useEffect, useRef } from 'react';
 import { useRestaurant } from '../context/RestaurantContext';
+import { useMenu } from '../context/MenuContext';
+import { useOrder } from '../context/OrderContext';
 import { OrderStatus, ProductType, OrderItem } from '../types';
 import { Clock, Check, ChefHat, CheckCircle, AlertTriangle, Volume2, Zap } from 'lucide-react';
 
 const BELL_SOUND_BASE64 = "data:audio/mp3;base64,//uQRAAAAWMSLwUIYAAsYkXgoQwAEaYLWfkWgAI0wWs/ItAAAG84AA0WAgAAAAAAABZsAAAAtAAAAAAAABaAAAAAABZAAABcAAABjAAAA//uQRAAAAWMSLwUIYAAsYkXgoQwAEaYLWfkWgAI0wWs/ItAAAG84AA0WAgAAAAAAABZsAAAAtAAAAAAAABaAAAAAABZAAABcAAABjAAAA"; 
 
 export const KitchenDisplay: React.FC = () => {
-  const { state, dispatch } = useRestaurant();
+  const { state: restState } = useRestaurant();
+  const { state: menuState } = useMenu();
+  const { state: orderState, dispatch: orderDispatch } = useOrder();
   
   // Refs
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -18,14 +22,14 @@ export const KitchenDisplay: React.FC = () => {
   // Função auxiliar para garantir que bebidas nunca apareçam na cozinha
   const isKitchenItem = (item: OrderItem) => {
       // Busca o produto original para verificar a categoria
-      const product = state.products.find(p => p.id === item.productId);
+      const product = menuState.products.find(p => p.id === item.productId);
       const isDrink = product ? product.category === 'Bebidas' : false;
       
       // Só mostra se for Tipo KITCHEN E NÃO for Bebida
       return item.productType === ProductType.KITCHEN && !isDrink;
   };
 
-  const activeOrders = state.orders.filter(order => 
+  const activeOrders = orderState.orders.filter(order => 
     order.items.some(item => 
       isKitchenItem(item) && 
       (item.status === OrderStatus.PENDING || item.status === OrderStatus.PREPARING)
@@ -46,7 +50,7 @@ export const KitchenDisplay: React.FC = () => {
 
   useEffect(() => {
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && state.audioUnlocked) {
+      if (document.visibilityState === 'visible' && orderState.audioUnlocked) {
         requestWakeLock();
       }
     };
@@ -55,7 +59,7 @@ export const KitchenDisplay: React.FC = () => {
         document.removeEventListener('visibilitychange', handleVisibilityChange);
         if (wakeLockRef.current) wakeLockRef.current.release();
     };
-  }, [state.audioUnlocked]);
+  }, [orderState.audioUnlocked]);
 
   // --- AUDIO LOGIC ---
   useEffect(() => {
@@ -65,19 +69,19 @@ export const KitchenDisplay: React.FC = () => {
 
   useEffect(() => {
       if (activeOrders.length > prevOrdersCount.current) {
-          if (state.audioUnlocked) {
+          if (orderState.audioUnlocked) {
               audioRef.current?.play().catch(err => console.warn("Autoplay bloqueado:", err));
               if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
           }
       }
       prevOrdersCount.current = activeOrders.length;
-  }, [activeOrders.length, state.audioUnlocked]);
+  }, [activeOrders.length, orderState.audioUnlocked]);
 
   const enableAudio = () => {
       if (audioRef.current) {
           audioRef.current.play()
             .then(() => {
-                dispatch({ type: 'UNLOCK_AUDIO' });
+                orderDispatch({ type: 'UNLOCK_AUDIO' });
                 requestWakeLock();
             })
             .catch(err => {
@@ -85,17 +89,17 @@ export const KitchenDisplay: React.FC = () => {
                 alert("Verifique permissões de áudio.");
             });
       } else {
-          dispatch({ type: 'UNLOCK_AUDIO' });
+          orderDispatch({ type: 'UNLOCK_AUDIO' });
           requestWakeLock();
       }
   };
 
   const updateItemStatus = (orderId: string, itemId: string, nextStatus: OrderStatus) => {
-    dispatch({ type: 'UPDATE_ITEM_STATUS', orderId, itemId, status: nextStatus });
+    orderDispatch({ type: 'UPDATE_ITEM_STATUS', orderId, itemId, status: nextStatus });
   };
 
   const completeAllOrderItems = (orderId: string) => {
-      const order = state.orders.find(o => o.id === orderId);
+      const order = orderState.orders.find(o => o.id === orderId);
       if(!order) return;
 
       order.items.forEach(item => {
@@ -105,7 +109,7 @@ export const KitchenDisplay: React.FC = () => {
       });
   };
 
-  if (!state.audioUnlocked) {
+  if (!orderState.audioUnlocked) {
       return (
           <div className="h-full bg-slate-900 flex items-center justify-center p-4">
               <div className="text-center text-white space-y-6 max-w-md bg-slate-800 p-8 rounded-2xl shadow-2xl border border-slate-700">
@@ -151,7 +155,7 @@ export const KitchenDisplay: React.FC = () => {
         )}
         
         {activeOrders.map(order => {
-          const table = state.tables.find(t => t.id === order.tableId);
+          const table = orderState.tables.find(t => t.id === order.tableId);
           const elapsedMinutes = Math.floor((new Date().getTime() - new Date(order.timestamp).getTime()) / 60000);
           const isLate = elapsedMinutes > 20;
           

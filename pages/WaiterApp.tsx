@@ -1,6 +1,8 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useRestaurant } from '../context/RestaurantContext';
+import { useMenu } from '../context/MenuContext';
+import { useOrder } from '../context/OrderContext';
 import { useUI } from '../context/UIContext';
 import { TableStatus, Product } from '../types';
 import { Button } from '../components/Button';
@@ -10,7 +12,10 @@ import { Bell, Plus, Search, ShoppingCart, ArrowLeft, Utensils, Trash2 } from 'l
 const FALLBACK_SOUND_URL = "https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3";
 
 export const WaiterApp: React.FC = () => {
-  const { state, dispatch } = useRestaurant();
+  const { state: restState } = useRestaurant();
+  const { state: menuState } = useMenu();
+  const { state: orderState, dispatch: orderDispatch } = useOrder();
+  
   const { showAlert } = useUI();
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -23,7 +28,7 @@ export const WaiterApp: React.FC = () => {
   
   const [productModal, setProductModal] = useState<Product | null>(null);
 
-  const pendingCalls = state.serviceCalls.filter(c => c.status === 'PENDING');
+  const pendingCalls = orderState.serviceCalls.filter(c => c.status === 'PENDING');
 
   useEffect(() => {
       audioRef.current = new Audio(FALLBACK_SOUND_URL);
@@ -32,15 +37,15 @@ export const WaiterApp: React.FC = () => {
 
   const enableAudio = () => {
       if (audioRef.current) {
-          audioRef.current.play().then(() => { dispatch({ type: 'UNLOCK_AUDIO' }); }).catch(err => console.error(err));
+          audioRef.current.play().then(() => { orderDispatch({ type: 'UNLOCK_AUDIO' }); }).catch(err => console.error(err));
       } else {
-          dispatch({ type: 'UNLOCK_AUDIO' });
+          orderDispatch({ type: 'UNLOCK_AUDIO' });
       }
   };
 
   const handleAddToCart = (item: { product: Product, qty: number, note: string, selectedExtraIds: string[] }) => {
       const chosenExtras = item.selectedExtraIds
-          .map(id => state.products.find(p => p.id === id))
+          .map(id => menuState.products.find(p => p.id === id))
           .filter(Boolean) as Product[];
 
       setCart(prev => [
@@ -75,7 +80,7 @@ export const WaiterApp: React.FC = () => {
         });
     });
 
-    await dispatch({ 
+    await orderDispatch({ 
         type: 'PLACE_ORDER', 
         tableId: orderingTableId, 
         items: flattenedItems
@@ -86,7 +91,7 @@ export const WaiterApp: React.FC = () => {
     showAlert({ title: "Sucesso", message: "Pedido enviado para produção!", type: 'SUCCESS' });
   };
 
-  if (!state.audioUnlocked) {
+  if (!orderState.audioUnlocked) {
     return (
         <div className="h-full bg-slate-900 flex items-center justify-center p-4 text-center">
             <div className="bg-white p-8 rounded-2xl shadow-xl max-w-sm w-full space-y-6">
@@ -100,9 +105,9 @@ export const WaiterApp: React.FC = () => {
   }
 
   if (orderingTableId) {
-      const table = state.tables.find(t => t.id === orderingTableId);
-      const filteredProducts = state.products.filter(p => !p.isExtra && (selectedCategory === 'Todos' || p.category === selectedCategory) && p.name.toLowerCase().includes(searchQuery.toLowerCase()));
-      const categories = ['Todos', ...Array.from(new Set(state.products.filter(p => !p.isExtra).map(p => p.category)))];
+      const table = orderState.tables.find(t => t.id === orderingTableId);
+      const filteredProducts = menuState.products.filter(p => !p.isExtra && (selectedCategory === 'Todos' || p.category === selectedCategory) && p.name.toLowerCase().includes(searchQuery.toLowerCase()));
+      const categories = ['Todos', ...Array.from(new Set(menuState.products.filter(p => !p.isExtra).map(p => p.category)))];
 
       return (
           <div className="flex flex-col h-full bg-gray-50 overflow-hidden">
@@ -198,12 +203,12 @@ export const WaiterApp: React.FC = () => {
         </header>
         
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-            {state.tables.map(table => {
+            {orderState.tables.map(table => {
                 const hasCall = pendingCalls.find(c => c.tableId === table.id);
                 return (
                     <div 
                         key={table.id} 
-                        onClick={() => hasCall ? dispatch({ type: 'RESOLVE_WAITER_CALL', callId: hasCall.id }) : (table.status === TableStatus.AVAILABLE ? setSelectedTableForOpen(table.id) : setSelectedTableForAction(table.id))} 
+                        onClick={() => hasCall ? orderDispatch({ type: 'RESOLVE_WAITER_CALL', callId: hasCall.id }) : (table.status === TableStatus.AVAILABLE ? setSelectedTableForOpen(table.id) : setSelectedTableForAction(table.id))} 
                         className={`p-6 rounded-3xl shadow-sm border-4 flex flex-col items-center justify-center min-h-[140px] transition-all cursor-pointer relative group active:scale-95
                             ${hasCall ? 'bg-red-500 border-red-200 text-white animate-pulse' : 
                               (table.status === TableStatus.OCCUPIED ? 'bg-white border-blue-500 text-slate-800 hover:shadow-lg' : 'bg-gray-100 border-transparent text-slate-400 grayscale')}

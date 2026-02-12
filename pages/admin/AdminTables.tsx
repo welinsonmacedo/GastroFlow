@@ -1,13 +1,15 @@
 
 import React, { useState } from 'react';
 import { useRestaurant } from '../../context/RestaurantContext';
+import { useOrder } from '../../context/OrderContext';
 import { useUI } from '../../context/UIContext';
 import { Button } from '../../components/Button';
 import { QRCodeGenerator } from '../../components/QRCodeGenerator';
 import { Plus, Printer, Trash2, Copy, Check, ExternalLink } from 'lucide-react';
 
 export const AdminTables: React.FC = () => {
-  const { state, dispatch } = useRestaurant();
+  const { state } = useRestaurant();
+  const { state: orderState, dispatch: orderDispatch } = useOrder();
   const { showConfirm, showAlert } = useUI();
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
@@ -32,7 +34,7 @@ export const AdminTables: React.FC = () => {
   }
   
   const handlePrint = (tableId: string) => {
-    const table = state.tables.find(t => t.id === tableId);
+    const table = orderState.tables.find(t => t.id === tableId);
     const tableNumber = table ? table.number : tableId.replace('t', '');
     const restaurantName = state.theme.restaurantName || 'Restaurante';
 
@@ -151,11 +153,11 @@ export const AdminTables: React.FC = () => {
                 <h2 className="text-2xl font-bold text-gray-800">Mesas & QR Codes</h2>
                 <p className="text-sm text-gray-500">Gerencie as mesas do seu estabelecimento.</p>
             </div>
-            <Button onClick={() => dispatch({ type: 'ADD_TABLE' })}><Plus size={16}/> Adicionar Mesa</Button>
+            <Button onClick={() => orderDispatch({ type: 'ADD_TABLE' })}><Plus size={16}/> Adicionar Mesa</Button>
         </div>
         
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-            {state.tables.map(table => (
+            {orderState.tables.map(table => (
                 <div key={table.id} className="bg-white p-4 rounded-xl shadow-sm border flex flex-col items-center relative group hover:shadow-md transition-shadow">
                     <div className="w-full flex justify-between items-center mb-2">
                         <h3 className="font-bold text-lg text-gray-700">Mesa {table.number}</h3>
@@ -184,7 +186,7 @@ export const AdminTables: React.FC = () => {
                         </Button>
                         <div className="flex gap-2 w-full">
                             <Button variant="secondary" size="sm" onClick={() => handlePrint(table.id)} className="flex-1" title="Imprimir QR"><Printer size={16}/></Button>
-                            <Button variant="danger" size="sm" onClick={() => showConfirm({ title: 'Excluir Mesa', message: 'Tem certeza? O QR Code antigo deixará de funcionar.', onConfirm: () => dispatch({ type: 'DELETE_TABLE', tableId: table.id }) })} className="flex-1" title="Excluir"><Trash2 size={16}/></Button>
+                            <Button variant="danger" size="sm" onClick={() => showConfirm({ title: 'Excluir Mesa', message: 'Tem certeza? O QR Code antigo deixará de funcionar.', onConfirm: () => orderDispatch({ type: 'DELETE_TABLE', tableId: table.id }) })} className="flex-1" title="Excluir"><Trash2 size={16}/></Button>
                         </div>
                     </div>
                 </div>

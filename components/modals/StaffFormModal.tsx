@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Modal } from '../Modal';
 import { Button } from '../Button';
-import { useRestaurant } from '../../context/RestaurantContext';
+import { useStaff } from '../../context/StaffContext'; // NEW
 import { useUI } from '../../context/UIContext';
 import { User, Role } from '../../types';
 import { Info } from 'lucide-react';
@@ -14,7 +14,7 @@ interface StaffFormModalProps {
 }
 
 export const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose, userToEdit }) => {
-  const { dispatch } = useRestaurant();
+  const { addUser, updateUser } = useStaff();
   const { showAlert } = useUI();
 
   const [form, setForm] = useState<Partial<User>>({ name: '', role: Role.WAITER, pin: '', email: '', allowedRoutes: [] });
@@ -39,19 +39,22 @@ export const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose,
       }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
       const routes = getRoutesForRole(form.role || Role.WAITER);
       const userToSave = { ...form, allowedRoutes: routes };
 
-      if(userToEdit) {
-          dispatch({ type: 'UPDATE_USER', user: { ...userToEdit, ...userToSave } as User });
-      } else {
-          dispatch({ type: 'ADD_USER', user: { ...userToSave, id: Math.random().toString() } as User });
+      try {
+          if(userToEdit) {
+              await updateUser({ ...userToEdit, ...userToSave } as User);
+          } else {
+              await addUser({ ...userToSave, id: Math.random().toString() } as User);
+          }
+          showAlert({ title: "Sucesso", message: "Usuário salvo!", type: 'SUCCESS' });
+          onClose();
+      } catch (error) {
+          showAlert({ title: "Erro", message: "Erro ao salvar usuário.", type: 'ERROR' });
       }
-      
-      showAlert({ title: "Sucesso", message: "Usuário salvo!", type: 'SUCCESS' });
-      onClose();
   };
 
   return (

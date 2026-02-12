@@ -1,5 +1,6 @@
 
 import React, { useState } from 'react';
+import { useStaff } from '../../context/StaffContext'; // NEW
 import { useRestaurant } from '../../context/RestaurantContext';
 import { useUI } from '../../context/UIContext';
 import { Button } from '../../components/Button';
@@ -9,7 +10,8 @@ import { getTenantSlug } from '../../utils/tenant';
 import { Edit, Trash2, UserPlus, Check, Link as LinkIcon, CheckSquare } from 'lucide-react';
 
 export const AdminStaff: React.FC = () => {
-  const { state, dispatch } = useRestaurant();
+  const { state: staffState, deleteUser } = useStaff();
+  const { state: restState } = useRestaurant(); // Still needed for tenantSlug
   const { showConfirm, showAlert } = useUI();
   
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -18,7 +20,7 @@ export const AdminStaff: React.FC = () => {
 
   const copyInviteLink = (userEmail?: string, userId?: string) => {
       if (!userEmail) return showAlert({ title: "Atenção", message: "Este usuário não tem email cadastrado.", type: 'WARNING' });
-      const slug = state.tenantSlug || getTenantSlug();
+      const slug = restState.tenantSlug || getTenantSlug();
       const link = `${window.location.origin}/login?restaurant=${slug}&email=${encodeURIComponent(userEmail)}&register=true`;
       
       navigator.clipboard.writeText(link).then(() => {
@@ -58,7 +60,7 @@ export const AdminStaff: React.FC = () => {
                     </tr>
                 </thead>
                 <tbody className="divide-y">
-                    {state.users.map(user => {
+                    {staffState.users.map(user => {
                         const isPending = !user.auth_user_id;
                         return (
                             <tr key={user.id} className="hover:bg-gray-50 transition-colors">
@@ -94,7 +96,7 @@ export const AdminStaff: React.FC = () => {
                                             setEditingUser(user); 
                                             setIsModalOpen(true);
                                         }} className="text-blue-600 hover:bg-blue-50 p-2 rounded transition-colors" title="Editar"><Edit size={16}/></button>
-                                        <button onClick={() => showConfirm({ title: 'Excluir Usuário', message: 'Confirma a exclusão? O acesso será revogado.', onConfirm: () => dispatch({ type: 'DELETE_USER', userId: user.id }) })} className="text-red-600 hover:bg-red-50 p-2 rounded transition-colors" title="Excluir"><Trash2 size={16}/></button>
+                                        <button onClick={() => showConfirm({ title: 'Excluir Usuário', message: 'Confirma a exclusão? O acesso será revogado.', onConfirm: () => deleteUser(user.id) })} className="text-red-600 hover:bg-red-50 p-2 rounded transition-colors" title="Excluir"><Trash2 size={16}/></button>
                                     </div>
                                 </td>
                             </tr>

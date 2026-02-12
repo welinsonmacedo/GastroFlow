@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { useRestaurant } from '../../context/RestaurantContext';
+import { useMenu } from '../../context/MenuContext';
 import { useUI } from '../../context/UIContext';
 import { Button } from '../../components/Button';
 import { ImageUploader } from '../../components/ImageUploader';
@@ -9,6 +10,7 @@ import { RestaurantBusinessInfo } from '../../types';
 
 export const AdminSettings: React.FC = () => {
   const { state, dispatch } = useRestaurant();
+  const { state: menuState } = useMenu();
   const { showAlert } = useUI();
   const [activeTab, setActiveTab] = useState<'VISUAL' | 'BUSINESS'>('VISUAL');
   
@@ -68,12 +70,12 @@ export const AdminSettings: React.FC = () => {
 
   // --- COMPONENTE DE PREVIEW (CELULAR) ---
   const MobilePreview = () => {
-      const realProducts = state.products.filter(p => p.isVisible).slice(0, 5);
+      const realProducts = menuState.products.filter(p => p.isVisible).slice(0, 5);
       const hasProducts = realProducts.length > 0;
       const displayProducts = hasProducts ? realProducts : [1, 2, 3].map((_, i) => ({
           id: `mock-${i}`, name: 'Produto Exemplo', description: 'Descrição do item aparecerá aqui...', price: 25.00, image: `https://source.unsplash.com/random/200x200?food&sig=${i}`
       }));
-      const categories = hasProducts ? Array.from(new Set(state.products.map(p => p.category))).slice(0, 3) : ['Lanches', 'Bebidas', 'Sobremesas'];
+      const categories = hasProducts ? Array.from(new Set(menuState.products.map(p => p.category))).slice(0, 3) : ['Lanches', 'Bebidas', 'Sobremesas'];
 
       return (
           <div className="relative mx-auto border-gray-800 bg-gray-800 border-[14px] rounded-[2.5rem] h-[600px] w-[300px] shadow-xl overflow-hidden flex flex-col">
@@ -186,111 +188,4 @@ export const AdminSettings: React.FC = () => {
                     <p className="text-sm text-gray-500 mb-8">Estes dados aparecem nas notas impressas e no rodapé do sistema.</p>
 
                     <div className="space-y-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div>
-                                <label className="block text-xs font-bold mb-1 text-gray-600 uppercase">CNPJ</label>
-                                <div className="relative">
-                                    <FileText size={16} className="absolute left-3 top-3 text-gray-400" />
-                                    <input 
-                                        className="w-full border p-2.5 pl-9 rounded-lg text-sm" 
-                                        value={businessForm.cnpj || ''} 
-                                        onChange={e => setBusinessForm({...businessForm, cnpj: formatCNPJ(e.target.value)})}
-                                        placeholder="00.000.000/0000-00"
-                                        maxLength={18}
-                                    />
-                                </div>
-                            </div>
-                            <div>
-                                <label className="block text-xs font-bold mb-1 text-gray-600 uppercase">Telefone / WhatsApp</label>
-                                <div className="relative">
-                                    <Phone size={16} className="absolute left-3 top-3 text-gray-400" />
-                                    <input 
-                                        className="w-full border p-2.5 pl-9 rounded-lg text-sm" 
-                                        value={businessForm.phone || ''} 
-                                        onChange={e => setBusinessForm({...businessForm, phone: formatPhone(e.target.value)})}
-                                        placeholder="(00) 00000-0000"
-                                        maxLength={15}
-                                    />
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="border-t pt-6">
-                            <h3 className="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2"><MapPin size={16}/> Endereço</h3>
-                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                <div className="md:col-span-1">
-                                    <label className="block text-xs font-bold mb-1 text-gray-600">CEP</label>
-                                    <div className="relative">
-                                        <input 
-                                            className="w-full border p-2.5 rounded-lg text-sm"
-                                            value={businessForm.address?.cep || ''}
-                                            onChange={e => setBusinessForm(prev => ({...prev, address: {...prev.address!, cep: formatCEP(e.target.value)}}))}
-                                            onBlur={handleCepBlur}
-                                            placeholder="00000-000"
-                                            maxLength={9}
-                                        />
-                                        {loadingCep && <Loader2 size={16} className="absolute right-3 top-2.5 animate-spin text-blue-500" />}
-                                    </div>
-                                </div>
-                                <div className="md:col-span-3">
-                                    <label className="block text-xs font-bold mb-1 text-gray-600">Logradouro (Rua, Av)</label>
-                                    <input 
-                                        className="w-full border p-2.5 rounded-lg text-sm bg-gray-50"
-                                        value={businessForm.address?.street || ''}
-                                        onChange={e => setBusinessForm(prev => ({...prev, address: {...prev.address!, street: e.target.value}}))}
-                                    />
-                                </div>
-                                <div className="md:col-span-1">
-                                    <label className="block text-xs font-bold mb-1 text-gray-600">Número</label>
-                                    <input 
-                                        className="w-full border p-2.5 rounded-lg text-sm"
-                                        value={businessForm.address?.number || ''}
-                                        onChange={e => setBusinessForm(prev => ({...prev, address: {...prev.address!, number: e.target.value}}))}
-                                    />
-                                </div>
-                                <div className="md:col-span-1">
-                                    <label className="block text-xs font-bold mb-1 text-gray-600">Complemento</label>
-                                    <input 
-                                        className="w-full border p-2.5 rounded-lg text-sm"
-                                        value={businessForm.address?.complement || ''}
-                                        onChange={e => setBusinessForm(prev => ({...prev, address: {...prev.address!, complement: e.target.value}}))}
-                                    />
-                                </div>
-                                <div className="md:col-span-2">
-                                    <label className="block text-xs font-bold mb-1 text-gray-600">Bairro</label>
-                                    <input 
-                                        className="w-full border p-2.5 rounded-lg text-sm bg-gray-50"
-                                        value={businessForm.address?.neighborhood || ''}
-                                        onChange={e => setBusinessForm(prev => ({...prev, address: {...prev.address!, neighborhood: e.target.value}}))}
-                                    />
-                                </div>
-                                <div className="md:col-span-3">
-                                    <label className="block text-xs font-bold mb-1 text-gray-600">Cidade</label>
-                                    <input 
-                                        className="w-full border p-2.5 rounded-lg text-sm bg-gray-50"
-                                        value={businessForm.address?.city || ''}
-                                        onChange={e => setBusinessForm(prev => ({...prev, address: {...prev.address!, city: e.target.value}}))}
-                                    />
-                                </div>
-                                <div className="md:col-span-1">
-                                    <label className="block text-xs font-bold mb-1 text-gray-600">Estado (UF)</label>
-                                    <input 
-                                        className="w-full border p-2.5 rounded-lg text-sm bg-gray-50"
-                                        value={businessForm.address?.state || ''}
-                                        maxLength={2}
-                                        onChange={e => setBusinessForm(prev => ({...prev, address: {...prev.address!, state: e.target.value.toUpperCase()}}))}
-                                    />
-                                </div>
-                            </div>
-                        </div>
-
-                        <Button onClick={handleSaveBusiness} className="w-full py-4 text-lg shadow-lg flex items-center justify-center gap-2">
-                            <Save size={20} /> Salvar Dados
-                        </Button>
-                    </div>
-                </div>
-            </div>
-        )}
-    </div>
-  );
-};
+                        <div className="grid grid-cols-1 md:
