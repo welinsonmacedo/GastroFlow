@@ -16,33 +16,54 @@ export const ExpenseFormModal: React.FC<ExpenseFormModalProps> = ({ isOpen, onCl
   const { addExpense } = useFinance();
   const { showAlert } = useUI();
 
+  // Use string for date input handling to avoid timezone issues during selection
+  const [dateStr, setDateStr] = useState(new Date().toISOString().split('T')[0]);
+  
   const [form, setForm] = useState<Partial<Expense>>({
-      description: '', amount: 0, category: 'Outros', dueDate: new Date() as any, isPaid: false, paymentMethod: 'BANK', isRecurring: false
+      description: '', amount: 0, category: 'Outros', isPaid: false, paymentMethod: 'BANK', isRecurring: false
   });
 
   useEffect(() => {
       if(isOpen) {
           if (expenseToEdit) {
               setForm(expenseToEdit);
+              if (expenseToEdit.dueDate) {
+                  setDateStr(new Date(expenseToEdit.dueDate).toISOString().split('T')[0]);
+              }
           } else {
-              setForm({ description: '', amount: 0, category: 'Outros', dueDate: new Date() as any, isPaid: false, paymentMethod: 'BANK', isRecurring: false });
+              setForm({ description: '', amount: 0, category: 'Outros', isPaid: false, paymentMethod: 'BANK', isRecurring: false });
+              setDateStr(new Date().toISOString().split('T')[0]);
           }
       }
   }, [isOpen, expenseToEdit]);
 
   const handleSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
+      
+      const amount = parseFloat(form.amount?.toString() || '0');
+      if (amount <= 0) {
+          return showAlert({ title: "Valor Inválido", message: "Informe um valor maior que zero.", type: 'WARNING' });
+      }
+
       try {
+          // Create date object at noon to ensure it stays on the correct day regardless of UTC shifts
+          const fixedDate = new Date(dateStr + 'T12:00:00');
+
           await addExpense({ 
-              ...form, 
-              id: Math.random().toString(), 
+              ...form,
+              amount: amount,
+              dueDate: fixedDate, 
+              // Don't send ID for new items, allow DB to generate UUID
+              id: '', 
               isPaid: form.isPaid || false,
               paymentMethod: form.paymentMethod || 'BANK' 
           } as Expense);
+          
           showAlert({ title: "Sucesso", message: "Despesa registrada!", type: 'SUCCESS' });
           onClose();
-      } catch (error) {
-          showAlert({ title: "Erro", message: "Erro ao registrar despesa.", type: 'ERROR' });
+      } catch (error: any) {
+          console.error(error);
+          showAlert({ title: "Erro", message: "Erro ao registrar despesa. Verifique os dados.", type: 'ERROR' });
       }
   };
 
@@ -67,7 +88,7 @@ export const ExpenseFormModal: React.FC<ExpenseFormModalProps> = ({ isOpen, onCl
                 </div>
                 <div>
                     <label className="block text-xs font-bold mb-1 text-gray-600">Vencimento</label>
-                    <input type="date" className="w-full border p-2.5 rounded-lg text-sm" value={form.dueDate ? new Date(form.dueDate).toISOString().split('T')[0] : ''} onChange={e => setForm({...form, dueDate: e.target.value as any})} />
+                    <input type="date" className="w-full border p-2.5 rounded-lg text-sm" value={dateStr} onChange={e => setDateStr(e.target.value)} />
                 </div>
             </div>
 

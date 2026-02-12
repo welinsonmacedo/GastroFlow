@@ -92,22 +92,28 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const openRegister = async (initialAmount: number, operatorName: string) => {
       if(!tenantId) return;
       await supabase.from('cash_sessions').insert({ tenant_id: tenantId, initial_amount: initialAmount, status: 'OPEN', operator_name: operatorName });
+      await fetchData();
   };
 
   const closeRegister = async (finalAmount: number) => {
       if(!tenantId || !state.activeCashSession) return;
       const { error } = await supabase.rpc('close_cash_session', { p_session_id: state.activeCashSession.id, p_final_amount: finalAmount });
-      if(error) showAlert({ title: "Erro", message: "Falha ao fechar caixa", type: 'ERROR' });
+      if(error) {
+          console.error(error);
+          throw error;
+      }
+      await fetchData();
   };
 
   const bleedRegister = async (amount: number, reason: string, userName: string) => {
       if(!tenantId || !state.activeCashSession) return;
       await supabase.from('cash_movements').insert({ tenant_id: tenantId, session_id: state.activeCashSession.id, type: 'BLEED', amount, reason, user_name: userName });
+      await fetchData();
   };
 
   const addExpense = async (expense: Expense) => {
       if(!tenantId) return;
-      await supabase.from('expenses').insert({ 
+      const { error } = await supabase.from('expenses').insert({ 
           tenant_id: tenantId, 
           description: expense.description, 
           amount: expense.amount, 
@@ -117,14 +123,25 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
           is_recurring: expense.isRecurring,
           payment_method: expense.paymentMethod
       });
+      
+      if (error) {
+          console.error("Error adding expense:", error);
+          throw error;
+      }
+      
+      await fetchData();
   };
 
   const payExpense = async (expenseId: string) => {
-      await supabase.from('expenses').update({ is_paid: true, paid_date: new Date() }).eq('id', expenseId);
+      const { error } = await supabase.from('expenses').update({ is_paid: true, paid_date: new Date() }).eq('id', expenseId);
+      if (error) throw error;
+      await fetchData();
   };
 
   const deleteExpense = async (expenseId: string) => {
-      await supabase.from('expenses').delete().eq('id', expenseId);
+      const { error } = await supabase.from('expenses').delete().eq('id', expenseId);
+      if (error) throw error;
+      await fetchData();
   };
 
   return (

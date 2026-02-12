@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { useInventory } from '../../context/InventoryContext';
 import { Button } from '../../components/Button';
 import { InventoryItem } from '../../types';
-import { Archive, AlertTriangle, Plus, ArrowDown, Edit, FileText, Truck, ClipboardList } from 'lucide-react';
+import { Archive, AlertTriangle, Plus, ArrowDown, Edit, FileText, Truck, ClipboardList, Search } from 'lucide-react';
 
 // Modais Separados
 import { InventoryItemModal } from '../../components/modals/InventoryItemModal';
@@ -20,6 +20,9 @@ export const AdminInventory: React.FC = () => {
   const [activeModal, setActiveModal] = useState<'NONE' | 'ITEM' | 'SUPPLIER' | 'PURCHASE' | 'STOCK' | 'COUNT' | 'LOGS'>('NONE');
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
   const [stockAdjParams, setStockAdjParams] = useState<{ itemId: string, type: 'IN' | 'OUT' } | null>(null);
+  
+  // Estado de Busca
+  const [searchTerm, setSearchTerm] = useState('');
 
   const handleEditItem = (item: InventoryItem) => {
     setSelectedItem(item);
@@ -36,20 +39,44 @@ export const AdminInventory: React.FC = () => {
     setActiveModal('STOCK');
   };
 
+  // Filtro de Itens
+  const filteredInventory = invState.inventory.filter(item => {
+      const term = searchTerm.toLowerCase();
+      const typeLabel = item.type === 'INGREDIENT' ? 'matéria prima' :
+                        item.type === 'RESALE' ? 'revenda' : 'produzido';
+      
+      return item.name.toLowerCase().includes(term) || typeLabel.includes(term);
+  });
+
   return (
     <div className="space-y-6 animate-fade-in pb-20">
         {/* Header Principal */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-200 gap-4">
-            <div>
+        <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-200 gap-6">
+            <div className="shrink-0">
                 <h2 className="text-2xl font-black text-slate-800 flex items-center gap-2"><Archive className="text-orange-500"/> Gestão de Estoque</h2>
                 <p className="text-sm text-gray-500">Controle de insumos, revenda e fichas técnicas.</p>
             </div>
-            <div className="flex flex-wrap gap-2">
-                <Button onClick={() => setActiveModal('LOGS')} variant="secondary" className="bg-slate-50 text-slate-700 border-slate-200"><FileText size={16}/> Logs</Button>
-                <Button onClick={() => setActiveModal('SUPPLIER')} variant="secondary" className="bg-slate-50 text-slate-700 border-slate-200"><Truck size={16}/> Fornecedores</Button>
-                <Button onClick={() => setActiveModal('PURCHASE')} variant="secondary" className="bg-blue-50 text-blue-700 border-blue-100"><Plus size={16}/> Entrada Nota</Button>
-                <Button onClick={() => setActiveModal('COUNT')} variant="secondary" className="bg-yellow-50 text-yellow-700 border-yellow-100"><ClipboardList size={16}/> Balanço</Button>
-                <Button onClick={handleNewItem} className="shadow-lg shadow-blue-100"><Plus size={16}/> Novo Item</Button>
+            
+            <div className="flex flex-col md:flex-row gap-4 w-full xl:w-auto items-center">
+                {/* Barra de Busca */}
+                <div className="relative w-full md:w-64">
+                    <Search className="absolute left-3 top-2.5 text-gray-400" size={18} />
+                    <input 
+                        type="text" 
+                        placeholder="Buscar por nome ou tipo..." 
+                        className="w-full pl-10 pr-4 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                        value={searchTerm}
+                        onChange={e => setSearchTerm(e.target.value)}
+                    />
+                </div>
+
+                <div className="flex flex-wrap gap-2 justify-end w-full md:w-auto">
+                    <Button onClick={() => setActiveModal('LOGS')} variant="secondary" className="bg-slate-50 text-slate-700 border-slate-200"><FileText size={16}/> Logs</Button>
+                    <Button onClick={() => setActiveModal('SUPPLIER')} variant="secondary" className="bg-slate-50 text-slate-700 border-slate-200"><Truck size={16}/> Fornecedores</Button>
+                    <Button onClick={() => setActiveModal('PURCHASE')} variant="secondary" className="bg-blue-50 text-blue-700 border-blue-100"><Plus size={16}/> Entrada Nota</Button>
+                    <Button onClick={() => setActiveModal('COUNT')} variant="secondary" className="bg-yellow-50 text-yellow-700 border-yellow-100"><ClipboardList size={16}/> Balanço</Button>
+                    <Button onClick={handleNewItem} className="shadow-lg shadow-blue-100"><Plus size={16}/> Novo Item</Button>
+                </div>
             </div>
         </div>
 
@@ -68,7 +95,7 @@ export const AdminInventory: React.FC = () => {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                        {invState.inventory.map(item => (
+                        {filteredInventory.map(item => (
                             <tr key={item.id} className="hover:bg-slate-50/50 transition-colors group">
                                 <td className="p-4">
                                     <div className="flex items-center gap-3">
@@ -110,6 +137,16 @@ export const AdminInventory: React.FC = () => {
                                 </td>
                             </tr>
                         ))}
+                        {filteredInventory.length === 0 && (
+                            <tr>
+                                <td colSpan={6} className="p-10 text-center text-slate-400">
+                                    <div className="flex flex-col items-center gap-2">
+                                        <Search size={32} className="opacity-20"/>
+                                        <p>Nenhum item encontrado para "{searchTerm}"</p>
+                                    </div>
+                                </td>
+                            </tr>
+                        )}
                     </tbody>
                 </table>
             </div>

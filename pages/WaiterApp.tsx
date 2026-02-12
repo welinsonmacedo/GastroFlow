@@ -220,8 +220,15 @@ export const WaiterApp: React.FC = () => {
                             {hasCall ? 'CHAMANDO!' : (table.status === TableStatus.AVAILABLE ? 'LIVRE' : 'OCUPADA')}
                         </div>
                         {table.status === TableStatus.OCCUPIED && (
-                            <div className="mt-2 text-[9px] font-bold bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full border border-blue-100 group-hover:bg-blue-600 group-hover:text-white transition-colors">
-                                {table.customerName || 'Cliente'}
+                            <div className="mt-2 flex flex-col items-center gap-1 w-full px-1">
+                                <div className="text-[9px] font-bold bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full border border-blue-100 group-hover:bg-blue-600 group-hover:text-white transition-colors truncate max-w-full">
+                                    {table.customerName || 'Cliente'}
+                                </div>
+                                {table.accessCode && (
+                                    <div className="text-[10px] font-mono font-black text-slate-500 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100 group-hover:bg-white/90 group-hover:text-slate-800">
+                                        Cód: {table.accessCode}
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
