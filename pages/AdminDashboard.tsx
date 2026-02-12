@@ -75,7 +75,6 @@ export const AdminDashboard: React.FC = () => {
             </nav>
 
             <div className="pt-6 border-t border-slate-800 mt-auto space-y-1">
-                {/* Correção aqui: Adicionando ?restaurant=slug */}
                 <Link to={`/manual?restaurant=${tenantSlug}`} target="_blank" className="w-full text-left p-3 rounded-lg flex items-center gap-3 text-slate-400 hover:bg-slate-800 hover:text-white transition-colors">
                     <BookOpen size={20}/> <span className="font-medium">Manual do Sistema</span>
                 </Link>
