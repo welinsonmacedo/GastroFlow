@@ -40,7 +40,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({ isOpen, onCl
             setCategory(productToEdit.category);
             setDescription(productToEdit.description);
             setImage(productToEdit.image);
-            setSelectedStockId(productToEdit.linkedInventoryItemId);
+            setSelectedStockId(productToEdit.linkedInventoryItemId || '');
             setIsExtra(productToEdit.isExtra || false);
             setSelectedExtraIds(productToEdit.linkedExtraIds || []);
         } else {
@@ -69,48 +69,61 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({ isOpen, onCl
 
   const handleSave = async (e: React.FormEvent) => {
       e.preventDefault();
+      
+      // Validação de Estoque
+      const stockItem = invState.inventory.find(i => i.id === selectedStockId);
+      if (!selectedStockId || !stockItem) {
+          return showAlert({ title: "Erro", message: "É obrigatório vincular um item do estoque.", type: 'ERROR' });
+      }
+
       try {
+          const productData = {
+              name: name || stockItem.name,
+              price: parseFloat(price),
+              category: isExtra ? 'Adicionais' : category,
+              description,
+              image: image || stockItem.image || '',
+              linkedInventoryItemId: stockItem.id, // Garante atualização do vínculo
+              isExtra: isExtra,
+              linkedExtraIds: isExtra ? [] : selectedExtraIds,
+              // Propriedades mantidas ou derivadas
+              costPrice: stockItem.costPrice || 0,
+              type: stockItem.type === 'RESALE' ? ProductType.BAR : ProductType.KITCHEN,
+              isVisible: true
+          };
+
           if (productToEdit) {
               await dispatch({ 
                   type: 'UPDATE_PRODUCT', 
                   product: { 
                       ...productToEdit, 
-                      name, 
-                      price: parseFloat(price), 
-                      category, 
-                      description, 
-                      image,
-                      isExtra,
-                      linkedExtraIds: isExtra ? [] : selectedExtraIds
+                      ...productData,
+                      // Força atualização explícita desses campos
+                      linkedInventoryItemId: productData.linkedInventoryItemId,
+                      isExtra: productData.isExtra,
+                      linkedExtraIds: productData.linkedExtraIds
                   } as Product 
               });
           } else {
-              const stockItem = invState.inventory.find(i => i.id === selectedStockId);
-              if (!stockItem) return showAlert({ title: "Erro", message: "Selecione um item do estoque.", type: 'ERROR' });
-
               await dispatch({
                   type: 'ADD_PRODUCT_TO_MENU',
                   product: {
-                      linkedInventoryItemId: stockItem.id,
-                      name: name || stockItem.name,
-                      price: parseFloat(price),
-                      costPrice: stockItem.costPrice || 0,
-                      category: isExtra ? 'Adicionais' : category,
-                      type: stockItem.type === 'RESALE' ? ProductType.BAR : ProductType.KITCHEN,
-                      description,
-                      image: image || stockItem.image || '',
-                      isVisible: true,
+                      ...productData,
                       sortOrder: restState.products.length + 1,
-                      isExtra,
-                      linkedExtraIds: isExtra ? [] : selectedExtraIds
                   } as Product
               });
           }
-          showAlert({ title: "Sucesso", message: "Produto salvo no cardápio!", type: 'SUCCESS' });
+          
+          showAlert({ title: "Sucesso", message: isExtra ? "Adicional salvo com sucesso!" : "Produto salvo no cardápio!", type: 'SUCCESS' });
           onClose();
       } catch (error: any) {
           console.error("Erro ao salvar produto:", error);
-          showAlert({ title: "Erro", message: "Falha ao salvar produto.", type: 'ERROR' });
+          const msg = error.message || JSON.stringify(error);
+          showAlert({ 
+              title: "Erro ao Salvar", 
+              message: `O banco de dados rejeitou a operação. Detalhe: ${msg}. Verifique se o script de atualização do banco (09_fix_products_schema) foi executado.`, 
+              type: 'ERROR' 
+          });
       }
   };
 
@@ -130,31 +143,27 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({ isOpen, onCl
                         <h4 className="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
                             <Archive size={16} className="text-blue-600"/> 1. Origem no Estoque
                         </h4>
-                        {!productToEdit ? (
-                            <div className="space-y-4">
-                                <label className="block text-xs font-bold text-slate-500 uppercase">Vincular Item de Inventário</label>
-                                <select 
-                                    className="w-full border-2 p-3 rounded-xl text-sm bg-white focus:border-blue-500 outline-none shadow-sm transition-all" 
-                                    value={selectedStockId} 
-                                    onChange={e => setSelectedStockId(e.target.value)}
-                                    required
-                                >
-                                    <option value="">Selecione do estoque...</option>
-                                    {availableForMenu.map(i => (
-                                        <option key={i.id} value={i.id}>{i.name} ({i.type === 'COMPOSITE' ? 'Prato' : 'Revenda'})</option>
-                                    ))}
-                                </select>
-                                <p className="text-[10px] text-slate-400 leading-tight">Ao selecionar um item do estoque, o sistema gerencia automaticamente o custo médio e a baixa de estoque na venda.</p>
-                            </div>
-                        ) : (
-                            <div className="p-4 bg-white rounded-xl border border-blue-100 flex items-center gap-3">
-                                <div className="bg-blue-100 p-2 rounded-lg text-blue-600"><Archive size={20}/></div>
-                                <div className="min-w-0">
-                                    <div className="text-[10px] font-bold text-slate-400 uppercase">Item Vinculado</div>
-                                    <div className="font-bold text-slate-700 truncate">{invState.inventory.find(i => i.id === productToEdit.linkedInventoryItemId)?.name || 'Desconhecido'}</div>
-                                </div>
-                            </div>
-                        )}
+                        
+                        <div className="space-y-4">
+                            <label className="block text-xs font-bold text-slate-500 uppercase">Vincular Item de Inventário</label>
+                            <select 
+                                className="w-full border-2 p-3 rounded-xl text-sm bg-white focus:border-blue-500 outline-none shadow-sm transition-all" 
+                                value={selectedStockId} 
+                                onChange={e => setSelectedStockId(e.target.value)}
+                                required
+                            >
+                                <option value="">Selecione do estoque...</option>
+                                {availableForMenu.map(i => (
+                                    <option key={i.id} value={i.id}>{i.name} ({i.type === 'COMPOSITE' ? 'Prato' : 'Revenda'})</option>
+                                ))}
+                                {productToEdit && !availableForMenu.find(i => i.id === productToEdit.linkedInventoryItemId) && (
+                                    <option value={productToEdit.linkedInventoryItemId}>
+                                        {invState.inventory.find(i => i.id === productToEdit.linkedInventoryItemId)?.name || 'Item Atual'}
+                                    </option>
+                                )}
+                            </select>
+                            <p className="text-[10px] text-slate-400 leading-tight">Ao selecionar um item do estoque, o sistema gerencia automaticamente o custo médio e a baixa de estoque na venda.</p>
+                        </div>
                     </div>
 
                     <div className={`p-6 rounded-2xl border transition-all ${isExtra ? 'bg-orange-50 border-orange-200' : 'bg-white border-slate-200'}`}>
@@ -164,7 +173,10 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({ isOpen, onCl
                             </h4>
                             <button 
                                 type="button"
-                                onClick={() => setIsExtra(!isExtra)}
+                                onClick={() => {
+                                    setIsExtra(!isExtra);
+                                    if(!isExtra) setCategory('Adicionais');
+                                }}
                                 className={`p-1.5 rounded-lg transition-all ${isExtra ? 'bg-orange-600 text-white shadow-lg shadow-orange-200' : 'bg-slate-100 text-slate-400 border'}`}
                             >
                                 {isExtra ? <CheckSquare size={20}/> : <Square size={20}/>}
@@ -258,8 +270,9 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({ isOpen, onCl
                     {!isExtra && (
                         <div className="bg-blue-50 p-6 rounded-2xl border border-blue-100 flex flex-col h-[300px]">
                             <h4 className="text-sm font-bold text-blue-800 mb-4 flex items-center gap-2 shrink-0">
-                                <Layers size={16}/> 4. Adicionais Disponíveis
+                                <Layers size={16}/> 4. Adicionais Vinculados
                             </h4>
+                            <p className="text-[10px] text-blue-600 mb-2">Selecione quais itens extras podem ser adicionados a este prato.</p>
                             <div className="flex-1 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
                                 {allAvailableExtras.map(extra => (
                                     <div 
@@ -277,7 +290,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({ isOpen, onCl
                                 {allAvailableExtras.length === 0 && (
                                     <div className="text-center py-10">
                                         <p className="text-[10px] text-blue-400 italic">Nenhum "Produto Adicional" cadastrado ainda.</p>
-                                        <p className="text-[9px] text-blue-300">Marque outros itens como adicional primeiro.</p>
+                                        <p className="text-[9px] text-blue-300">Cadastre itens como "Adicional" (Passo 2) para que apareçam aqui.</p>
                                     </div>
                                 )}
                             </div>
