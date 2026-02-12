@@ -1,5 +1,4 @@
 
-
 export enum Role {
   CLIENT = 'CLIENT',
   WAITER = 'WAITER',
@@ -76,6 +75,7 @@ export interface RestaurantBusinessInfo {
     };
     instagram?: string;
     website?: string;
+    orderGracePeriodMinutes?: number; // Tempo em minutos que o cliente pode cancelar
 }
 
 export interface RestaurantTenant {
@@ -158,7 +158,6 @@ export interface OrderItem {
   status: OrderStatus;
   productName: string;
   productType: ProductType;
-  // Added productPrice and productCostPrice to fix type errors in pages/ClientApp.tsx
   productPrice: number;
   productCostPrice: number;
 }

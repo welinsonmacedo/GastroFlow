@@ -1,12 +1,11 @@
 
-
 import React, { useState } from 'react';
 import { useRestaurant } from '../../context/RestaurantContext';
 import { useMenu } from '../../context/MenuContext';
 import { useUI } from '../../context/UIContext';
 import { Button } from '../../components/Button';
 import { ImageUploader } from '../../components/ImageUploader';
-import { Palette, LayoutTemplate, Type, Image as ImageIcon, Smartphone, ChefHat, Plus, Search, ShoppingCart, Building2, MapPin, Phone, FileText, Save, Loader2, Store, Share2 } from 'lucide-react';
+import { Palette, LayoutTemplate, Type, Image as ImageIcon, Smartphone, ChefHat, Plus, Search, ShoppingCart, Building2, MapPin, Phone, Save, Loader2, Store, Share2, Clock, ShieldAlert } from 'lucide-react';
 import { RestaurantBusinessInfo } from '../../types';
 
 export const AdminSettings: React.FC = () => {
@@ -20,7 +19,8 @@ export const AdminSettings: React.FC = () => {
   
   // Business Info State
   const [businessForm, setBusinessForm] = useState<RestaurantBusinessInfo>(state.businessInfo || {
-      address: { cep: '', street: '', number: '', neighborhood: '', city: '', state: '' }
+      address: { cep: '', street: '', number: '', neighborhood: '', city: '', state: '' },
+      orderGracePeriodMinutes: 2
   });
   const [loadingCep, setLoadingCep] = useState(false);
 
@@ -183,7 +183,46 @@ export const AdminSettings: React.FC = () => {
 
         {/* --- TAB 2: BUSINESS DATA --- */}
         {activeTab === 'BUSINESS' && (
-            <div className="max-w-3xl mx-auto">
+            <div className="max-w-3xl mx-auto space-y-8">
+                {/* Grace Period Configuration */}
+                <div className="bg-white p-8 rounded-2xl shadow-sm border-2 border-blue-100 overflow-hidden relative">
+                    <div className="absolute top-0 right-0 bg-blue-600 text-white px-4 py-1 rounded-bl-xl text-[10px] font-black uppercase tracking-widest">Novo Recurso</div>
+                    <div className="flex items-start gap-4 mb-6">
+                        <div className="bg-blue-50 p-3 rounded-2xl text-blue-600">
+                            <Clock size={32} />
+                        </div>
+                        <div>
+                            <h2 className="text-xl font-bold text-gray-800">Tempo de Arrependimento</h2>
+                            <p className="text-sm text-gray-500 leading-relaxed">Janela de tempo após o pedido em que o cliente pode cancelar de forma autônoma. Durante este tempo, o pedido **NÃO** aparece na cozinha.</p>
+                        </div>
+                    </div>
+
+                    <div className="bg-gray-50 p-6 rounded-2xl border border-gray-200">
+                        <div className="flex justify-between items-end mb-4">
+                            <label className="text-xs font-black text-gray-400 uppercase tracking-widest">Tempo de Carência (Minutos)</label>
+                            <span className="text-3xl font-black text-blue-600">{businessForm.orderGracePeriodMinutes || 0} min</span>
+                        </div>
+                        <input 
+                            type="range" 
+                            min="0" 
+                            max="10" 
+                            step="1" 
+                            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                            value={businessForm.orderGracePeriodMinutes || 0}
+                            onChange={e => setBusinessForm({...businessForm, orderGracePeriodMinutes: parseInt(e.target.value)})}
+                        />
+                        <div className="flex justify-between mt-2 text-[10px] font-bold text-gray-400">
+                            <span>0 min (Envio Instantâneo)</span>
+                            <span>10 min (Segurança Máxima)</span>
+                        </div>
+                    </div>
+
+                    <div className="mt-4 p-4 bg-orange-50 rounded-xl border border-orange-100 flex gap-3">
+                        <ShieldAlert className="text-orange-500 shrink-0" size={20} />
+                        <p className="text-[11px] text-orange-800 font-medium italic">Recomendamos de 2 a 3 minutos para dar tempo ao cliente de corrigir erros sem impactar a velocidade da cozinha.</p>
+                    </div>
+                </div>
+
                 <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-200">
                     <h2 className="text-xl font-bold mb-1 text-gray-800 flex items-center gap-2"><Building2 className="text-orange-600"/> Dados da Empresa</h2>
                     <p className="text-sm text-gray-500 mb-8">Estes dados aparecem nas notas impressas e no rodapé do sistema.</p>

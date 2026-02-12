@@ -30,12 +30,12 @@ const orderReducer = (state: OrderState, action: OrderAction): OrderState => {
 
 interface OrderContextType {
   state: OrderState;
-  dispatch: (action: any) => void; // Mantemos dispatch genérico para compatibilidade com o padrão antigo por enquanto
-  // Helper methods
+  dispatch: (action: any) => void;
   placeOrder: (tableId: string, items: { productId: string; quantity: number; notes: string }[]) => Promise<void>;
   processPosSale: (data: any) => Promise<void>;
   processPayment: (tableId: string, amount: number, method: string) => Promise<void>;
   updateItemStatus: (orderId: string, itemId: string, status: OrderStatus) => Promise<void>;
+  cancelOrder: (orderId: string) => Promise<void>; // Nova função
   addTable: () => Promise<void>;
   deleteTable: (tableId: string) => Promise<void>;
   openTable: (tableId: string, customerName: string, accessCode: string) => Promise<void>;
@@ -50,7 +50,7 @@ const OrderContext = createContext<OrderContextType | undefined>(undefined);
 export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { state: restState } = useRestaurant();
   const { tenantId } = restState;
-  const { state: menuState } = useMenu(); // Acesso aos produtos para enriquecer pedidos
+  const { state: menuState } = useMenu();
 
   const [state, localDispatch] = useReducer(orderReducer, {
       tables: [], orders: [], serviceCalls: [], audioUnlocked: false
@@ -73,6 +73,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               id: o.id, tableId: o.table_id, timestamp: new Date(o.created_at), isPaid: o.is_paid,
               items: (o.items || []).map((i: any) => ({ id: i.id, productId: i.product_id, quantity: i.quantity, notes: i.notes, status: i.status, productName: i.product_name, productType: i.product_type, productPrice: i.product_price, productCostPrice: Number(i.product_cost_price) || 0 }))
           }));
+          // Filtramos ordens canceladas no mapeamento se necessário, ou deixamos para as views
           localDispatch({ type: 'SET_ORDERS', orders: mappedOrders });
       }
 
@@ -85,8 +86,6 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           fetchData();
           const channel = supabase.channel(`orders:${tenantId}`)
               .on('postgres_changes', { event: '*', schema: 'public', filter: `tenant_id=eq.${tenantId}` }, (payload) => {
-                  // Otimização: Recarregar tudo é mais seguro para consistência, 
-                  // mas idealmente processariamos o payload. Para MVP, reload.
                   if (['orders', 'order_items', 'restaurant_tables', 'service_calls'].includes(payload.table)) {
                       fetchData();
                   }
@@ -100,7 +99,6 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const placeOrder = async (tableId: string, items: { productId: string; quantity: number; notes: string }[]) => {
       if(!tenantId) return;
-      // Cria pedido
       const { data: order } = await supabase.from('orders').insert({ tenant_id: tenantId, table_id: tableId, status: 'PENDING', is_paid: false }).select().single();
       if (order) {
           const dbItems = items.map(i => {
@@ -114,6 +112,14 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           await supabase.from('order_items').insert(dbItems);
           fetchData();
       }
+  };
+
+  const cancelOrder = async (orderId: string) => {
+      if (!tenantId) return;
+      // Em vez de deletar, marcamos como cancelado para auditoria
+      await supabase.from('orders').update({ status: 'CANCELLED' }).eq('id', orderId);
+      await supabase.from('order_items').update({ status: 'CANCELLED' }).eq('order_id', orderId);
+      fetchData();
   };
 
   const processPosSale = async (data: any) => {
@@ -131,7 +137,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const processPayment = async (tableId: string, amount: number, method: string) => {
       if(!tenantId) return;
-      await supabase.from('orders').update({ is_paid: true, status: 'DELIVERED' }).eq('table_id', tableId).eq('is_paid', false);
+      await supabase.from('orders').update({ is_paid: true, status: 'DELIVERED' }).eq('table_id', tableId).eq('is_paid', false).neq('status', 'CANCELLED');
       await supabase.from('restaurant_tables').update({ status: 'AVAILABLE', customer_name: null, access_code: null }).eq('id', tableId);
       await supabase.from('transactions').insert({ tenant_id: tenantId, table_id: tableId, amount, method, items_summary: `Mesa`, cashier_name: 'Caixa' });
       fetchData();
@@ -142,10 +148,10 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       fetchData();
   };
 
-  // --- ACTIONS DISPATCHER (Compatibility Layer) ---
   const dispatch = async (action: any) => {
       switch (action.type) {
           case 'PLACE_ORDER': await placeOrder(action.tableId, action.items); break;
+          case 'CANCEL_ORDER': await cancelOrder(action.orderId); break;
           case 'PROCESS_POS_SALE': await processPosSale(action.sale); break;
           case 'PROCESS_PAYMENT': await processPayment(action.tableId, action.amount, action.method); break;
           case 'UPDATE_ITEM_STATUS': await updateItemStatus(action.orderId, action.itemId, action.status); break;
@@ -162,7 +168,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   return (
     <OrderContext.Provider value={{ 
         state, dispatch,
-        placeOrder, processPosSale, processPayment, updateItemStatus,
+        placeOrder, cancelOrder, processPosSale, processPayment, updateItemStatus,
         addTable: async () => dispatch({type: 'ADD_TABLE'}),
         deleteTable: async (id) => dispatch({type: 'DELETE_TABLE', tableId: id}),
         openTable: async (id, name, code) => dispatch({type: 'OPEN_TABLE', tableId: id, customerName: name, accessCode: code}),

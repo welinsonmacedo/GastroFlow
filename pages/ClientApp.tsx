@@ -1,19 +1,72 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { useRestaurant } from '../context/RestaurantContext';
 import { useMenu } from '../context/MenuContext';
 import { useOrder } from '../context/OrderContext';
+import { useUI } from '../context/UIContext';
 import { Button } from '../components/Button';
-import { TableStatus, Product } from '../types';
-import { ShoppingCart, ChefHat, Info, Plus, Minus, X, Lock, Receipt, Loader2, Bell, AlertTriangle, ArrowLeft, Search, Edit3, Zap, UtensilsCrossed, Clock, CheckSquare, Square, Trash2, ArrowRight, Activity } from 'lucide-react';
+import { TableStatus, Product, Order } from '../types';
+import { ShoppingCart, ChefHat, Info, Plus, Minus, X, Lock, Receipt, Loader2, Bell, AlertTriangle, ArrowLeft, Search, Edit3, Zap, UtensilsCrossed, Clock, CheckSquare, Square, Trash2, ArrowRight, Activity, RotateCcw, AlertCircle } from 'lucide-react';
+
+// Subcomponente para o Timer de Arrependimento
+const OrderGraceTimer: React.FC<{ order: Order; graceMinutes: number; onCancel: (id: string) => void }> = ({ order, graceMinutes, onCancel }) => {
+    const [timeLeft, setTimeLeft] = useState(0);
+
+    useEffect(() => {
+        const calculateTimeLeft = () => {
+            const now = new Date().getTime();
+            const orderTime = new Date(order.timestamp).getTime();
+            const diffSeconds = Math.floor((now - orderTime) / 1000);
+            const totalGraceSeconds = graceMinutes * 60;
+            return Math.max(0, totalGraceSeconds - diffSeconds);
+        };
+
+        setTimeLeft(calculateTimeLeft());
+        const interval = setInterval(() => {
+            const remaining = calculateTimeLeft();
+            setTimeLeft(remaining);
+            if (remaining <= 0) clearInterval(interval);
+        }, 1000);
+
+        return () => clearInterval(interval);
+    }, [order, graceMinutes]);
+
+    if (timeLeft <= 0) return null;
+
+    const mins = Math.floor(timeLeft / 60);
+    const secs = timeLeft % 60;
+
+    return (
+        <div className="bg-blue-600 p-4 rounded-2xl text-white mb-4 shadow-lg animate-fade-in">
+            <div className="flex justify-between items-center">
+                <div className="flex items-center gap-3">
+                    <div className="bg-white/20 p-2 rounded-full animate-pulse">
+                        <Clock size={20} />
+                    </div>
+                    <div>
+                        <p className="text-[10px] font-black uppercase tracking-widest opacity-80 leading-none">Confirmando em</p>
+                        <p className="text-xl font-black font-mono leading-none mt-1">{mins}:{secs.toString().padStart(2, '0')}</p>
+                    </div>
+                </div>
+                <button 
+                    onClick={() => onCancel(order.id)}
+                    className="bg-white text-blue-600 px-4 py-2 rounded-xl text-xs font-black uppercase hover:bg-red-50 hover:text-red-600 transition-all flex items-center gap-2 active:scale-95"
+                >
+                    <X size={14} strokeWidth={3} /> Cancelar
+                </button>
+            </div>
+            <p className="text-[9px] mt-2 opacity-70 font-medium italic">* Você pode cancelar ou alterar este pedido enquanto o timer estiver ativo.</p>
+        </div>
+    );
+};
 
 export const ClientApp: React.FC = () => {
-  // ... (código existente mantido até o return)
   const { tableId } = useParams<{ tableId: string }>();
   const { state } = useRestaurant();
   const { state: menuState } = useMenu();
-  const { state: orderState, dispatch: orderDispatch } = useOrder();
+  const { state: orderState, dispatch: orderDispatch, cancelOrder } = useOrder();
+  const { showConfirm } = useUI();
   
   const [cart, setCart] = useState<{ product: Product; quantity: number; notes: string; extras?: Product[] }[]>([]);
   const [view, setView] = useState<'MENU' | 'CART' | 'STATUS' | 'BILL'>('MENU');
@@ -40,8 +93,11 @@ export const ClientApp: React.FC = () => {
 
   const table = orderState.tables.find(t => t.id === tableId);
   const theme = state.theme;
+  const graceMinutes = state.businessInfo?.orderGracePeriodMinutes || 0;
+
   const isTableActive = table?.status === TableStatus.OCCUPIED;
-  const tableOrders = orderState.orders.filter(o => o.tableId === tableId && !o.isPaid);
+  // Filtramos apenas ordens não pagas e não canceladas
+  const tableOrders = orderState.orders.filter(o => o.tableId === tableId && !o.isPaid && o.status !== 'CANCELLED');
 
   const openProductModal = (product: Product) => {
       setSelectedProduct(product);
@@ -68,60 +124,43 @@ export const ClientApp: React.FC = () => {
 
   const addToCartFromModal = () => {
     if (!selectedProduct) return;
-
     let finalNote = modalNotes;
-
     if (selectedProduct.category === 'Bebidas') {
         const timingPrefix = drinkTiming === 'IMMEDIATE' ? '[IMEDIATA] ' : '[COM COMIDA] ';
         finalNote = timingPrefix + finalNote;
     }
-
     const chosenExtras = selectedExtraIds
         .map(id => menuState.products.find(p => p.id === id))
         .filter(Boolean) as Product[];
 
     setCart(prev => [
         ...prev, 
-        { 
-            product: selectedProduct, 
-            quantity: modalQuantity, 
-            notes: finalNote.trim(),
-            extras: chosenExtras
-        }
+        { product: selectedProduct, quantity: modalQuantity, notes: finalNote.trim(), extras: chosenExtras }
     ]);
-
     setSelectedProduct(null);
   };
 
   const submitOrder = async () => {
     if (!tableId || !table || cart.length === 0) return;
-
     const flattenedItems: { productId: string; quantity: number; notes: string }[] = [];
-
     cart.forEach(item => {
-        flattenedItems.push({
-            productId: item.product.id,
-            quantity: item.quantity,
-            notes: item.notes
-        });
-
+        flattenedItems.push({ productId: item.product.id, quantity: item.quantity, notes: item.notes });
         item.extras?.forEach(extra => {
-            flattenedItems.push({
-                productId: extra.id,
-                quantity: item.quantity, 
-                notes: `[ADICIONAL DE: ${item.product.name}]`
-            });
+            flattenedItems.push({ productId: extra.id, quantity: item.quantity, notes: `[ADICIONAL DE: ${item.product.name}]` });
         });
     });
-
-    await orderDispatch({
-      type: 'PLACE_ORDER',
-      tableId,
-      items: flattenedItems
-    });
-    
+    await orderDispatch({ type: 'PLACE_ORDER', tableId, items: flattenedItems });
     setCart([]);
     setView('STATUS');
+  };
+
+  const handleCancelOrder = (id: string) => {
+      showConfirm({
+          title: "Cancelar este pedido?",
+          message: "Esta ação não pode ser desfeita e o pedido será removido da produção.",
+          type: 'WARNING',
+          onConfirm: () => cancelOrder(id)
+      });
   };
 
   const billTotal = tableOrders.reduce((acc, order) => {
@@ -181,10 +220,9 @@ export const ClientApp: React.FC = () => {
               <div className="bg-white w-full sm:max-w-lg rounded-t-[2.5rem] sm:rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[95vh] border border-gray-100">
                   <div className="relative h-64 sm:h-72 bg-white flex items-center justify-center p-4 border-b">
                       <img src={selectedProduct.image} alt={selectedProduct.name} className="w-full h-full object-contain drop-shadow-xl" />
-                      <button onClick={() => setSelectedProduct(null)} className="absolute top-6 right-6 bg-gray-100/80 p-3 rounded-full text-gray-800 shadow-sm backdrop-blur-sm hover:bg-red-500 hover:text-white transition-all"><X size={24} /></button>
+                      <button onClick={() => setSelectedProduct(null)} className="absolute top-6 right-6 bg-gray-100/80 p-3 rounded-full text-gray-800 shadow-sm backdrop-blur-sm hover:bg-red-50 hover:text-white transition-all"><X size={24} /></button>
                   </div>
                   <div className="p-8 flex-1 overflow-y-auto custom-scrollbar">
-                      {/* ... conteudo do modal mantido igual ... */}
                       <div className="flex justify-between items-start mb-2">
                           <h2 className="text-3xl font-extrabold text-gray-800 leading-tight">{selectedProduct.name}</h2>
                           <span className="text-2xl font-black text-green-600 whitespace-nowrap">R$ {selectedProduct.price.toFixed(2)}</span>
@@ -265,7 +303,6 @@ export const ClientApp: React.FC = () => {
       {/* HEADER */}
       <header className="bg-white shadow-sm sticky top-0 z-20">
           <div className="flex justify-between items-center p-4 max-w-2xl mx-auto">
-            {/* ... header content ... */}
             <div>
                {view !== 'MENU' ? (
                    <button onClick={() => setView('MENU')} className="flex items-center gap-2 text-gray-700 font-black hover:text-blue-600 transition-colors uppercase tracking-widest text-xs">
@@ -298,7 +335,6 @@ export const ClientApp: React.FC = () => {
       </header>
 
       <main className="p-4 max-w-2xl mx-auto min-h-[calc(100vh-160px)]">
-        {/* ... main content (views: MENU, CART, BILL, STATUS) ... */}
         {view === 'MENU' && (
           <div className="space-y-12 mt-4 animate-fade-in">
             <div className="relative group">
@@ -314,7 +350,6 @@ export const ClientApp: React.FC = () => {
             {['Lanches', 'Pizzas', 'Pratos Principais', 'Acompanhamentos', 'Bebidas', 'Sobremesas'].map(category => {
               const items = visibleProducts.filter(p => p.category === category && p.name.toLowerCase().includes(searchQuery.toLowerCase()));
               if (items.length === 0) return null;
-              
               const isGrid = theme.viewMode === 'GRID';
 
               return (
@@ -378,7 +413,6 @@ export const ClientApp: React.FC = () => {
                                     <span className="text-sm text-green-600 font-black">R$ {(item.product.price * item.quantity).toFixed(2)}</span>
                                     <span className="text-[10px] text-gray-400 font-bold uppercase">Base</span>
                                 </div>
-                                
                                 {item.extras && item.extras.length > 0 && (
                                     <div className="space-y-1.5 mb-3">
                                         {item.extras.map(ex => (
@@ -388,7 +422,6 @@ export const ClientApp: React.FC = () => {
                                         ))}
                                     </div>
                                 )}
-                                
                                 {item.notes && (
                                     <div className="text-[11px] font-medium text-blue-600 bg-blue-50 border border-blue-100 p-3 rounded-2xl flex items-start gap-2 italic">
                                         <Edit3 size={14} className="shrink-0 mt-0.5 opacity-50"/> "{item.notes}"
@@ -405,7 +438,6 @@ export const ClientApp: React.FC = () => {
                     </div>
                 )}
             </div>
-            
             {cart.length > 0 && (
                 <div className="bg-gray-50 p-8 border-t space-y-6">
                     <div className="flex justify-between items-center">
@@ -422,7 +454,9 @@ export const ClientApp: React.FC = () => {
                         Confirmar Pedido <ArrowRight size={28} strokeWidth={3}/>
                     </button>
                     <p className="text-[10px] text-gray-400 text-center font-bold px-4 leading-relaxed italic">
-                        Ao clicar em confirmar, seu pedido é enviado instantaneamente para a nossa equipe de produção.
+                        {graceMinutes > 0 
+                            ? `Seu pedido terá um tempo de carência de ${graceMinutes} minutos para cancelamento antes de ser enviado à cozinha.`
+                            : `Ao clicar em confirmar, seu pedido é enviado instantaneamente para a nossa equipe de produção.`}
                     </p>
                 </div>
             )}
@@ -435,7 +469,6 @@ export const ClientApp: React.FC = () => {
                 <h2 className="text-3xl font-black uppercase tracking-tighter flex items-center gap-3"><Receipt size={32} className="text-blue-400"/> Sua Conta</h2>
                 <p className="text-blue-300/60 text-xs font-bold mt-1">Mesa #{table.number} • {table.customerName}</p>
               </div>
-              
               <div className="p-8">
                   <div className="space-y-4 mb-8">
                       {tableOrders.flatMap(o => o.items).map((item, idx) => (
@@ -454,19 +487,16 @@ export const ClientApp: React.FC = () => {
                         </div>
                       )}
                   </div>
-
                   {tableOrders.length > 0 && (
                     <div className="flex justify-between items-center text-3xl font-black border-t-4 border-gray-800 pt-6 mb-10">
                         <span className="text-gray-400 text-sm uppercase tracking-widest">Total Geral</span>
                         <span style={{ color: theme.primaryColor }}>R$ {billTotal.toFixed(2)}</span>
                     </div>
                   )}
-                  
                   <div className="bg-yellow-50 border-2 border-yellow-100 p-6 rounded-3xl text-sm text-yellow-800 mb-8 space-y-2">
                      <p className="font-black text-lg flex items-center gap-2"><Info size={20}/> Deseja fechar a conta?</p>
                      <p className="font-medium opacity-80">Por favor, chame nosso garçom através do botão abaixo para processar o pagamento e liberar a mesa.</p>
                   </div>
-
                    <Button 
                     variant="outline" 
                     className="w-full py-5 rounded-2xl bg-white border-blue-100 text-blue-600 hover:bg-blue-50 font-black shadow-lg text-lg"
@@ -493,31 +523,36 @@ export const ClientApp: React.FC = () => {
                         </div>
                     )}
                     {[...tableOrders].reverse().map(order => (
-                        <div key={order.id} className="bg-gray-50 rounded-3xl p-6 border border-gray-100 shadow-sm animate-fade-in">
-                            <div className="flex justify-between text-[10px] font-black text-gray-400 mb-4 border-b border-gray-200 pb-3 uppercase tracking-widest">
-                                <span>PEDIDO #{order.id.substr(0,6)}</span>
-                                <span>{order.timestamp.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
-                            </div>
-                            <div className="space-y-4">
-                                {order.items.map(item => (
-                                    <div key={item.id} className="flex justify-between items-center">
-                                        <div className="flex flex-col min-w-0 pr-4">
-                                            <span className="text-gray-800 font-black truncate">{item.quantity}x {item.productName}</span>
-                                            {item.notes && <span className="text-[10px] text-gray-400 italic font-bold leading-tight">"{item.notes}"</span>}
+                        <div key={order.id} className="relative">
+                            {/* Grace Timer for buffered orders */}
+                            <OrderGraceTimer order={order} graceMinutes={graceMinutes} onCancel={handleCancelOrder} />
+                            
+                            <div className="bg-gray-50 rounded-3xl p-6 border border-gray-100 shadow-sm animate-fade-in">
+                                <div className="flex justify-between text-[10px] font-black text-gray-400 mb-4 border-b border-gray-200 pb-3 uppercase tracking-widest">
+                                    <span>PEDIDO #{order.id.substr(0,6)}</span>
+                                    <span>{order.timestamp.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                                </div>
+                                <div className="space-y-4">
+                                    {order.items.map(item => (
+                                        <div key={item.id} className="flex justify-between items-center">
+                                            <div className="flex flex-col min-w-0 pr-4">
+                                                <span className="text-gray-800 font-black truncate">{item.quantity}x {item.productName}</span>
+                                                {item.notes && <span className="text-[10px] text-gray-400 italic font-bold leading-tight">"{item.notes}"</span>}
+                                            </div>
+                                            <span className={`text-[9px] px-3 py-1.5 rounded-full font-black uppercase tracking-tighter shrink-0 ml-2 shadow-sm border
+                                                ${item.status === 'PENDING' ? 'bg-white text-gray-500 border-gray-200' : ''}
+                                                ${item.status === 'PREPARING' ? 'bg-yellow-100 text-yellow-700 border-yellow-200 animate-pulse' : ''}
+                                                ${item.status === 'READY' ? 'bg-green-600 text-white border-green-700' : ''}
+                                                ${item.status === 'DELIVERED' ? 'bg-blue-100 text-blue-700 border-blue-200' : ''}
+                                            `}>
+                                                {item.status === 'PENDING' && 'Fila'}
+                                                {item.status === 'PREPARING' && 'Produzindo'}
+                                                {item.status === 'READY' && 'Pronto!'}
+                                                {item.status === 'DELIVERED' && 'Entregue'}
+                                            </span>
                                         </div>
-                                        <span className={`text-[9px] px-3 py-1.5 rounded-full font-black uppercase tracking-tighter shrink-0 ml-2 shadow-sm border
-                                            ${item.status === 'PENDING' ? 'bg-white text-gray-500 border-gray-200' : ''}
-                                            ${item.status === 'PREPARING' ? 'bg-yellow-100 text-yellow-700 border-yellow-200 animate-pulse' : ''}
-                                            ${item.status === 'READY' ? 'bg-green-600 text-white border-green-700' : ''}
-                                            ${item.status === 'DELIVERED' ? 'bg-blue-100 text-blue-700 border-blue-200' : ''}
-                                        `}>
-                                            {item.status === 'PENDING' && 'Fila'}
-                                            {item.status === 'PREPARING' && 'Produzindo'}
-                                            {item.status === 'READY' && 'Pronto!'}
-                                            {item.status === 'DELIVERED' && 'Entregue'}
-                                        </span>
-                                    </div>
-                                ))}
+                                    ))}
+                                </div>
                             </div>
                         </div>
                     ))}

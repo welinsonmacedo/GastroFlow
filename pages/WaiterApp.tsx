@@ -7,15 +7,15 @@ import { useUI } from '../context/UIContext';
 import { TableStatus, Product } from '../types';
 import { Button } from '../components/Button';
 import { WaiterProductModal, OpenTableModal, TableActionsModal } from '../components/modals/WaiterModals';
-import { Bell, Plus, Search, ShoppingCart, ArrowLeft, Utensils, Trash2 } from 'lucide-react';
+import { Bell, Plus, Search, ShoppingCart, ArrowLeft, Utensils, Trash2, Clock } from 'lucide-react';
 
 const FALLBACK_SOUND_URL = "https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3";
 
 export const WaiterApp: React.FC = () => {
-  // ... (código existente mantido)
   const { state: restState } = useRestaurant();
   const { state: menuState } = useMenu();
   const { state: orderState, dispatch: orderDispatch } = useOrder();
+  const [, setTick] = useState(0);
   
   const { showAlert } = useUI();
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -30,10 +30,13 @@ export const WaiterApp: React.FC = () => {
   const [productModal, setProductModal] = useState<Product | null>(null);
 
   const pendingCalls = orderState.serviceCalls.filter(c => c.status === 'PENDING');
+  const graceMinutes = restState.businessInfo?.orderGracePeriodMinutes || 0;
 
   useEffect(() => {
       audioRef.current = new Audio(FALLBACK_SOUND_URL);
       audioRef.current.preload = 'auto';
+      const interval = setInterval(() => setTick(t => t + 1), 10000);
+      return () => clearInterval(interval);
   }, []);
 
   const enableAudio = () => {
@@ -51,42 +54,21 @@ export const WaiterApp: React.FC = () => {
 
       setCart(prev => [
           ...prev, 
-          { 
-              product: item.product, 
-              quantity: item.qty, 
-              notes: item.note,
-              extras: chosenExtras
-          }
+          { product: item.product, quantity: item.qty, notes: item.note, extras: chosenExtras }
       ]); 
   };
 
   const submitOrder = async () => {
     if (!orderingTableId || cart.length === 0) return;
-
     const flattenedItems: { productId: string; quantity: number; notes: string }[] = [];
-
     cart.forEach(item => {
-        flattenedItems.push({
-            productId: item.product.id,
-            quantity: item.quantity,
-            notes: item.notes
-        });
-
+        flattenedItems.push({ productId: item.product.id, quantity: item.quantity, notes: item.notes });
         item.extras?.forEach(extra => {
-            flattenedItems.push({
-                productId: extra.id,
-                quantity: item.quantity,
-                notes: `[ADICIONAL DE: ${item.product.name}]`
-            });
+            flattenedItems.push({ productId: extra.id, quantity: item.quantity, notes: `[ADICIONAL DE: ${item.product.name}]` });
         });
     });
-
-    await orderDispatch({ 
-        type: 'PLACE_ORDER', 
-        tableId: orderingTableId, 
-        items: flattenedItems
-    });
-
+    // Pedidos feitos pelo garçom pulam a carência (já estão confirmados)
+    await orderDispatch({ type: 'PLACE_ORDER', tableId: orderingTableId, items: flattenedItems });
     setCart([]); 
     setOrderingTableId(null);
     showAlert({ title: "Sucesso", message: "Pedido enviado para produção!", type: 'SUCCESS' });
@@ -118,7 +100,6 @@ export const WaiterApp: React.FC = () => {
                   product={productModal}
                   onConfirm={handleAddToCart}
               />
-
               <header className="bg-white border-b p-4 flex items-center justify-between shadow-sm">
                   <div className="flex items-center gap-2">
                       <button onClick={() => setOrderingTableId(null)} className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-500"><ArrowLeft size={24}/></button>
@@ -193,7 +174,6 @@ export const WaiterApp: React.FC = () => {
       );
   }
 
-  // MODIFICAÇÃO: "h-full overflow-y-auto" aqui permite que esta página role independentemente
   return (
     <div className="h-full overflow-y-auto bg-gray-100 p-4 lg:p-6 space-y-6">
         <header className="flex justify-between items-center">
@@ -207,6 +187,15 @@ export const WaiterApp: React.FC = () => {
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
             {orderState.tables.map(table => {
                 const hasCall = pendingCalls.find(c => c.tableId === table.id);
+                
+                // Lógica de "Buffered Orders" para o garçom:
+                // Se o cliente pediu agora, mas está no grace period, a mesa pode mostrar um indicador visual
+                const tableOrders = orderState.orders.filter(o => o.tableId === table.id && !o.isPaid && o.status !== 'CANCELLED');
+                const hasBufferedOrder = tableOrders.some(o => {
+                    const diffMin = (new Date().getTime() - new Date(o.timestamp).getTime()) / 60000;
+                    return diffMin < graceMinutes;
+                });
+
                 return (
                     <div 
                         key={table.id} 
@@ -218,6 +207,14 @@ export const WaiterApp: React.FC = () => {
                     >
                         <div className={`text-4xl font-black mb-1 ${hasCall ? 'text-white' : 'text-slate-800'}`}>{table.number}</div>
                         {hasCall && <Bell size={24} className="absolute top-3 right-3 animate-bounce fill-white" />}
+                        
+                        {/* Indicador de Pedido Sendo Confirmado */}
+                        {hasBufferedOrder && !hasCall && (
+                            <div className="absolute top-3 right-3 text-blue-500 animate-spin">
+                                <Clock size={20} />
+                            </div>
+                        )}
+
                         <div className="text-[10px] font-black uppercase tracking-widest opacity-60">
                             {hasCall ? 'CHAMANDO!' : (table.status === TableStatus.AVAILABLE ? 'LIVRE' : 'OCUPADA')}
                         </div>

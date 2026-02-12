@@ -1,5 +1,5 @@
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useRestaurant } from '../context/RestaurantContext';
 import { useMenu } from '../context/MenuContext';
 import { useOrder } from '../context/OrderContext';
@@ -13,28 +13,48 @@ export const KitchenDisplay: React.FC = () => {
   const { state: menuState } = useMenu();
   const { state: orderState, dispatch: orderDispatch } = useOrder();
   
+  // State for triggering re-render to "release" buffered orders
+  const [, setTick] = useState(0);
+
   // Refs
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const prevOrdersCount = useRef(0);
   const wakeLockRef = useRef<any>(null);
 
   // --- FILTER LOGIC ---
-  // Função auxiliar para garantir que bebidas nunca apareçam na cozinha
   const isKitchenItem = (item: OrderItem) => {
-      // Busca o produto original para verificar a categoria
       const product = menuState.products.find(p => p.id === item.productId);
       const isDrink = product ? product.category === 'Bebidas' : false;
-      
-      // Só mostra se for Tipo KITCHEN E NÃO for Bebida
       return item.productType === ProductType.KITCHEN && !isDrink;
   };
 
-  const activeOrders = orderState.orders.filter(order => 
-    order.items.some(item => 
-      isKitchenItem(item) && 
-      (item.status === OrderStatus.PENDING || item.status === OrderStatus.PREPARING)
-    )
-  );
+  // Grace period setting
+  const graceMinutes = restState.businessInfo?.orderGracePeriodMinutes || 0;
+
+  // Filter orders by grace period
+  const activeOrders = orderState.orders.filter(order => {
+      // Pedidos cancelados nunca aparecem
+      if (order.status === 'CANCELLED') return false;
+
+      // Cálculo do arrependimento
+      const now = new Date().getTime();
+      const orderTime = new Date(order.timestamp).getTime();
+      const diffMinutes = (now - orderTime) / 60000;
+
+      // Se ainda estiver no tempo de arrependimento, some da cozinha
+      if (diffMinutes < graceMinutes) return false;
+
+      return order.items.some(item => 
+          isKitchenItem(item) && 
+          (item.status === OrderStatus.PENDING || item.status === OrderStatus.PREPARING)
+      );
+  });
+
+  // Effect to re-check timers every 10 seconds
+  useEffect(() => {
+      const interval = setInterval(() => setTick(t => t + 1), 10000);
+      return () => clearInterval(interval);
+  }, []);
 
   // --- WAKE LOCK ---
   const requestWakeLock = async () => {
@@ -101,7 +121,6 @@ export const KitchenDisplay: React.FC = () => {
   const completeAllOrderItems = (orderId: string) => {
       const order = orderState.orders.find(o => o.id === orderId);
       if(!order) return;
-
       order.items.forEach(item => {
           if(isKitchenItem(item) && (item.status === OrderStatus.PENDING || item.status === OrderStatus.PREPARING)) {
               updateItemStatus(orderId, item.id, OrderStatus.READY);
@@ -169,7 +188,7 @@ export const KitchenDisplay: React.FC = () => {
                   <button onClick={() => completeAllOrderItems(order.id)} className="text-xs bg-green-700 hover:bg-green-600 text-white px-3 py-2 rounded flex items-center gap-2 font-bold w-full justify-center transition-colors"><CheckCircle size={14}/> CONCLUIR TODOS</button>
               </div>
               <div className="p-2 flex-1 space-y-2 overflow-y-auto">
-                {order.items.filter(item => isKitchenItem(item) && item.status !== OrderStatus.DELIVERED).map(item => (
+                {order.items.filter(item => isKitchenItem(item) && item.status !== OrderStatus.DELIVERED && item.status !== OrderStatus.CANCELLED).map(item => (
                     <div key={item.id} className={`p-3 rounded-lg border-l-4 transition-all relative ${item.status === OrderStatus.PENDING ? 'bg-slate-700 border-yellow-500 animate-[pulse_2s_infinite]' : ''} ${item.status === OrderStatus.PREPARING ? 'bg-blue-900/40 border-blue-500' : ''} ${item.status === OrderStatus.READY ? 'bg-green-900/40 border-green-500 opacity-60 grayscale' : ''}`}>
                         <div className="flex justify-between items-start mb-1"><span className="font-bold text-xl text-white">{item.quantity}x {item.productName}</span></div>
                         {item.notes && <div className="bg-yellow-100 text-red-700 font-bold text-sm p-2 rounded border-2 border-red-500 flex items-start gap-2 mb-2 shadow-sm animate-pulse"><AlertTriangle size={16} className="shrink-0 mt-0.5" fill="orange" /> <span className="uppercase">{item.notes}</span></div>}
