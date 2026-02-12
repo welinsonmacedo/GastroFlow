@@ -7,15 +7,16 @@ import { useFinance } from '../context/FinanceContext';
 import { useUI } from '../context/UIContext';
 import { TableStatus, Product } from '../types';
 import { Button } from '../components/Button';
-import { DollarSign, History, ShoppingCart, Search, Wallet, Receipt, Trash2, User, Lock, ArrowRight } from 'lucide-react';
+import { DollarSign, History, ShoppingCart, Search, Wallet, Receipt, Trash2, User, Lock, ArrowRight, XCircle } from 'lucide-react';
 import { CloseRegisterModal } from '../components/modals/CloseRegisterModal';
 import { CashBleedModal } from '../components/modals/CashBleedModal';
+import { Modal } from '../components/Modal';
 
 export const CashierDashboard: React.FC = () => {
   const { state: restState } = useRestaurant();
   const { state: menuState } = useMenu();
   const { state: orderState, dispatch: orderDispatch } = useOrder();
-  const { state: finState, openRegister, refreshTransactions } = useFinance();
+  const { state: finState, openRegister, refreshTransactions, voidTransaction } = useFinance();
   const { showAlert, showConfirm } = useUI();
   
   const [activeTab, setActiveTab] = useState<'ACTIVE' | 'HISTORY' | 'PDV' | 'MANAGE'>('ACTIVE');
@@ -25,6 +26,11 @@ export const CashierDashboard: React.FC = () => {
   const [openRegisterAmount, setOpenRegisterAmount] = useState('');
   const [bleedModalOpen, setBleedModalOpen] = useState(false);
   const [closeModalOpen, setCloseModalOpen] = useState(false);
+
+  // Void/Cancel Transaction States
+  const [voidModalOpen, setVoidModalOpen] = useState(false);
+  const [transactionToVoid, setTransactionToVoid] = useState<string | null>(null);
+  const [voidPin, setVoidPin] = useState('');
 
   // POS States
   const [posCart, setPosCart] = useState<{ product: Product; quantity: number; notes: string }[]>([]);
@@ -111,6 +117,28 @@ export const CashierDashboard: React.FC = () => {
               setTimeout(() => refreshTransactions(), 500); 
           }
       });
+  };
+
+  // --- VOID LOGIC ---
+  const initiateVoid = (transactionId: string) => {
+      setTransactionToVoid(transactionId);
+      setVoidPin('');
+      setVoidModalOpen(true);
+  };
+
+  const confirmVoid = async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!transactionToVoid || !voidPin) return;
+
+      try {
+          await voidTransaction(transactionToVoid, voidPin);
+          setVoidModalOpen(false);
+          setTransactionToVoid(null);
+          setVoidPin('');
+          showAlert({ title: "Cancelado", message: "A venda foi cancelada com sucesso.", type: 'SUCCESS' });
+      } catch (error: any) {
+          showAlert({ title: "Erro", message: error.message || "Senha incorreta ou erro ao cancelar.", type: 'ERROR' });
+      }
   };
 
   // --- TELA DE CAIXA FECHADO (ABRIR CAIXA) ---
@@ -345,16 +373,34 @@ export const CashierDashboard: React.FC = () => {
                                       <th className="p-3">Origem</th>
                                       <th className="p-3">Método</th>
                                       <th className="p-3 text-right">Valor</th>
+                                      <th className="p-3 text-center">Ações</th>
                                   </tr>
                               </thead>
                               <tbody className="divide-y">
                                   {finState.transactions.map(t => (
-                                      <tr key={t.id} className="hover:bg-gray-50">
+                                      <tr key={t.id} className={`hover:bg-gray-50 ${t.status === 'CANCELLED' ? 'opacity-50 bg-red-50' : ''}`}>
                                           <td className="p-3">{t.timestamp.toLocaleString()}</td>
-                                          <td className="p-3"><span className="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-bold">Venda</span></td>
-                                          <td className="p-3 text-gray-600">{t.itemsSummary}</td>
+                                          <td className="p-3">
+                                              {t.status === 'CANCELLED' ? (
+                                                  <span className="bg-red-100 text-red-700 px-2 py-1 rounded text-xs font-bold">CANCELADO</span>
+                                              ) : (
+                                                  <span className="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-bold">Venda</span>
+                                              )}
+                                          </td>
+                                          <td className="p-3 text-gray-600 line-through-if-cancelled">{t.itemsSummary}</td>
                                           <td className="p-3 text-xs font-mono">{t.method}</td>
-                                          <td className="p-3 text-right font-bold">R$ {t.amount.toFixed(2)}</td>
+                                          <td className="p-3 text-right font-bold line-through-if-cancelled">R$ {t.amount.toFixed(2)}</td>
+                                          <td className="p-3 text-center">
+                                              {t.status !== 'CANCELLED' && (
+                                                  <button 
+                                                      onClick={() => initiateVoid(t.id)} 
+                                                      className="text-red-500 hover:text-red-700 hover:bg-red-50 p-2 rounded-full transition-colors"
+                                                      title="Cancelar Venda"
+                                                  >
+                                                      <XCircle size={18} />
+                                                  </button>
+                                              )}
+                                          </td>
                                       </tr>
                                   ))}
                               </tbody>
@@ -401,6 +447,34 @@ export const CashierDashboard: React.FC = () => {
             onClose={() => setCloseModalOpen(false)} 
             onSuccess={() => setActiveTab('ACTIVE')} 
           />
+
+          {/* Modal de Cancelamento com Senha */}
+          <Modal
+              isOpen={voidModalOpen}
+              onClose={() => setVoidModalOpen(false)}
+              title="Cancelar Venda"
+              variant="dialog"
+              maxWidth="sm"
+          >
+              <form onSubmit={confirmVoid} className="space-y-4">
+                  <div className="bg-red-50 text-red-800 p-3 rounded-lg text-xs border border-red-100 flex gap-2">
+                      <Lock size={16} className="shrink-0" />
+                      <p>Esta ação requer autorização administrativa. Digite a <strong>Senha Mestra</strong> configurada no painel.</p>
+                  </div>
+                  <div>
+                      <label className="block text-xs font-bold mb-1 text-gray-600 uppercase">Senha Administrativa</label>
+                      <input 
+                          type="password" 
+                          autoFocus
+                          className="w-full border-2 p-3 rounded-xl focus:border-red-500 outline-none text-center font-bold tracking-widest text-lg" 
+                          placeholder="****"
+                          value={voidPin}
+                          onChange={e => setVoidPin(e.target.value)}
+                      />
+                  </div>
+                  <Button type="submit" className="w-full py-3 bg-red-600 hover:bg-red-700 font-bold">CONFIRMAR CANCELAMENTO</Button>
+              </form>
+          </Modal>
       </div>
   );
 };

@@ -75,7 +75,8 @@ export interface RestaurantBusinessInfo {
     };
     instagram?: string;
     website?: string;
-    orderGracePeriodMinutes?: number; // Tempo em minutos que o cliente pode cancelar
+    orderGracePeriodMinutes?: number;
+    adminPin?: string; // Senha Mestra para cancelamentos
 }
 
 export interface RestaurantTenant {
@@ -121,7 +122,7 @@ export interface InventoryItem {
     type: InventoryType;
     image?: string;
     recipe?: InventoryRecipeItem[];
-    isExtra: boolean; // Indica se é um adicional
+    isExtra: boolean; 
 }
 
 export interface InventoryLog {
@@ -265,6 +266,7 @@ export interface Transaction {
   timestamp: Date;
   itemsSummary: string;
   cashierName: string;
+  status: 'COMPLETED' | 'CANCELLED'; // Novo campo
 }
 
 export interface CashSession {

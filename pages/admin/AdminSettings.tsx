@@ -5,7 +5,7 @@ import { useMenu } from '../../context/MenuContext';
 import { useUI } from '../../context/UIContext';
 import { Button } from '../../components/Button';
 import { ImageUploader } from '../../components/ImageUploader';
-import { Palette, LayoutTemplate, Type, Image as ImageIcon, Smartphone, ChefHat, Plus, Search, ShoppingCart, Building2, MapPin, Phone, Save, Loader2, Store, Share2, Clock, ShieldAlert } from 'lucide-react';
+import { Palette, LayoutTemplate, Type, Image as ImageIcon, Smartphone, ChefHat, Plus, Search, ShoppingCart, Building2, MapPin, Phone, Save, Loader2, Store, Share2, Clock, ShieldAlert, Lock } from 'lucide-react';
 import { RestaurantBusinessInfo } from '../../types';
 
 export const AdminSettings: React.FC = () => {
@@ -20,7 +20,8 @@ export const AdminSettings: React.FC = () => {
   // Business Info State
   const [businessForm, setBusinessForm] = useState<RestaurantBusinessInfo>(state.businessInfo || {
       address: { cep: '', street: '', number: '', neighborhood: '', city: '', state: '' },
-      orderGracePeriodMinutes: 2
+      orderGracePeriodMinutes: 2,
+      adminPin: ''
   });
   const [loadingCep, setLoadingCep] = useState(false);
 
@@ -184,6 +185,30 @@ export const AdminSettings: React.FC = () => {
         {/* --- TAB 2: BUSINESS DATA --- */}
         {activeTab === 'BUSINESS' && (
             <div className="max-w-3xl mx-auto space-y-8">
+                {/* Security Settings */}
+                <div className="bg-white p-8 rounded-2xl shadow-sm border-2 border-red-100">
+                    <div className="flex items-start gap-4 mb-6">
+                        <div className="bg-red-50 p-3 rounded-2xl text-red-600">
+                            <Lock size={32} />
+                        </div>
+                        <div>
+                            <h2 className="text-xl font-bold text-gray-800">Segurança</h2>
+                            <p className="text-sm text-gray-500 leading-relaxed">Configurações sensíveis e de proteção do sistema.</p>
+                        </div>
+                    </div>
+                    <div className="bg-gray-50 p-6 rounded-2xl border border-gray-200">
+                        <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-2">Senha Mestra de Cancelamento</label>
+                        <input 
+                            type="text" 
+                            className="w-full border-2 p-3 rounded-xl focus:border-red-500 outline-none font-mono text-lg tracking-widest"
+                            placeholder="Ex: 1234"
+                            value={businessForm.adminPin || ''}
+                            onChange={e => setBusinessForm({...businessForm, adminPin: e.target.value})}
+                        />
+                        <p className="text-[10px] text-gray-400 mt-2">Esta senha será exigida para cancelar vendas no caixa. Mantenha em segredo.</p>
+                    </div>
+                </div>
+
                 {/* Grace Period Configuration */}
                 <div className="bg-white p-8 rounded-2xl shadow-sm border-2 border-blue-100 overflow-hidden relative">
                     <div className="absolute top-0 right-0 bg-blue-600 text-white px-4 py-1 rounded-bl-xl text-[10px] font-black uppercase tracking-widest">Novo Recurso</div>

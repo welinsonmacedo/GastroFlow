@@ -21,6 +21,7 @@ interface FinanceContextType {
   updateExpense: (expense: Expense) => Promise<void>;
   payExpense: (expenseId: string) => Promise<void>;
   deleteExpense: (expenseId: string) => Promise<void>;
+  voidTransaction: (transactionId: string, adminPin: string) => Promise<void>; // Nova função
   refreshTransactions: () => Promise<void>;
 }
 
@@ -48,8 +49,15 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       ]);
 
       const mappedTransactions = (transRes.data || []).map((t: any) => ({
-          id: t.id, tableId: t.table_id || '', tableNumber: t.table_number || 0, amount: t.amount,
-          method: t.method, timestamp: new Date(t.created_at), itemsSummary: t.items_summary || '', cashierName: t.cashier_name || ''
+          id: t.id, 
+          tableId: t.table_id || '', 
+          tableNumber: t.table_number || 0, 
+          amount: t.amount,
+          method: t.method, 
+          timestamp: new Date(t.created_at), 
+          itemsSummary: t.items_summary || '', 
+          cashierName: t.cashier_name || '',
+          status: t.status || 'COMPLETED'
       }));
 
       const mappedExpenses = (expRes.data || []).map((e: any) => ({
@@ -118,12 +126,11 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         ? expense.dueDate.toISOString().split('T')[0] 
         : expense.dueDate;
 
-      // Auto-set paid_date if isPaid is true
       let paidDateVal = null;
       if (expense.isPaid) {
           paidDateVal = expense.paidDate 
             ? (expense.paidDate instanceof Date ? expense.paidDate.toISOString().split('T')[0] : expense.paidDate)
-            : new Date().toISOString().split('T')[0]; // Default to today if paid but no date
+            : new Date().toISOString().split('T')[0];
       }
 
       const { error } = await supabase.from('expenses').insert({ 
@@ -195,8 +202,36 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       await fetchData();
   };
 
+  const voidTransaction = async (transactionId: string, adminPin: string) => {
+      if (!tenantId) return;
+      
+      // 1. Verificar se o PIN está correto
+      // Compara com o PIN salvo no businessInfo do contexto do restaurante
+      const correctPin = restaurantState.businessInfo?.adminPin;
+      
+      if (!correctPin) {
+          throw new Error("Senha mestra não configurada nas Configurações do Restaurante.");
+      }
+
+      if (adminPin !== correctPin) {
+          throw new Error("Senha incorreta.");
+      }
+
+      // 2. Atualizar transação para CANCELLED
+      const { error } = await supabase
+          .from('transactions')
+          .update({ status: 'CANCELLED' })
+          .eq('id', transactionId);
+
+      if (error) throw error;
+
+      // Opcional: Reverter estoque se necessário, mas por enquanto apenas marca financeiro.
+      
+      await fetchData();
+  };
+
   return (
-    <FinanceContext.Provider value={{ state, openRegister, closeRegister, bleedRegister, addExpense, updateExpense, payExpense, deleteExpense, refreshTransactions: fetchData }}>
+    <FinanceContext.Provider value={{ state, openRegister, closeRegister, bleedRegister, addExpense, updateExpense, payExpense, deleteExpense, voidTransaction, refreshTransactions: fetchData }}>
       {children}
     </FinanceContext.Provider>
   );
