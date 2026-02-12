@@ -3,16 +3,18 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useRestaurant } from '../../context/RestaurantContext';
 import { supabase } from '../../lib/supabase';
 import { Button } from '../../components/Button';
-import { Printer, Download, Calendar, Building2, FileText, Mail, Phone } from 'lucide-react';
+import { Printer, Download, Calendar, Building2, FileText, Mail, Phone, RefreshCcw, ArrowRight, Filter } from 'lucide-react';
 
 export const AccountingReport: React.FC = () => {
   const { state } = useRestaurant();
   const { businessInfo, theme } = state;
   const printRef = useRef<HTMLDivElement>(null);
 
-  // Default para o mês atual
-  const [month, setMonth] = useState(new Date().toISOString().slice(0, 7)); // Format YYYY-MM
+  // Filtro de Data: Padrão do dia 1 do mês atual até hoje
+  const [dateStart, setDateStart] = useState(new Date(new Date().setDate(1)).toISOString().split('T')[0]);
+  const [dateEnd, setDateEnd] = useState(new Date().toISOString().split('T')[0]);
   const [loading, setLoading] = useState(false);
+  const [preset, setPreset] = useState('THIS_MONTH');
   
   const [report, setReport] = useState<{
       incomes: { method: string; amount: number; count: number }[];
@@ -23,17 +25,54 @@ export const AccountingReport: React.FC = () => {
       periodEnd: string;
   }>({ incomes: [], expenses: [], totalIncome: 0, totalExpense: 0, periodStart: '', periodEnd: '' });
 
+  // Aplica filtros rápidos
+  const applyPreset = (type: string) => {
+      const now = new Date();
+      let start = new Date();
+      let end = new Date();
+
+      switch (type) {
+          case 'TODAY':
+              // Start/End já são hoje
+              break;
+          case 'YESTERDAY':
+              start.setDate(now.getDate() - 1);
+              end.setDate(now.getDate() - 1);
+              break;
+          case 'THIS_MONTH':
+              start = new Date(now.getFullYear(), now.getMonth(), 1);
+              // End é hoje
+              break;
+          case 'LAST_MONTH':
+              start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+              end = new Date(now.getFullYear(), now.getMonth(), 0); // Último dia do mês anterior
+              break;
+          case 'LAST_30':
+              start.setDate(now.getDate() - 30);
+              break;
+          default:
+              return; // Custom
+      }
+      
+      setPreset(type);
+      setDateStart(start.toISOString().split('T')[0]);
+      setDateEnd(end.toISOString().split('T')[0]);
+      // O useEffect do dateStart/dateEnd não dispara fetch automático para evitar loops, então chamamos manualmente ou deixamos o usuário clicar
+  };
+
+  // Helper para formatar data sem problemas de fuso horário (adiciona meio-dia)
+  const formatDateSafe = (dateStr: string) => {
+      if(!dateStr) return '-';
+      const d = new Date(dateStr + 'T12:00:00'); 
+      return d.toLocaleDateString();
+  };
+
   const fetchReportData = async () => {
       if (!state.tenantId) return;
       setLoading(true);
 
-      // Calcular inicio e fim do mês selecionado
-      const [year, mth] = month.split('-');
-      const startDate = new Date(parseInt(year), parseInt(mth) - 1, 1);
-      const endDate = new Date(parseInt(year), parseInt(mth), 0); // Ultimo dia do mês
-      
-      const startIso = startDate.toISOString().split('T')[0] + ' 00:00:00';
-      const endIso = endDate.toISOString().split('T')[0] + ' 23:59:59';
+      const startIso = dateStart + ' 00:00:00';
+      const endIso = dateEnd + ' 23:59:59';
 
       try {
           // 1. Receitas (Agrupadas por Método de Pagamento - Crucial para Contabilidade)
@@ -58,12 +97,13 @@ export const AccountingReport: React.FC = () => {
           const incomes = Object.entries(incomeMap).map(([k, v]) => ({ method: k, ...v })).sort((a,b) => b.amount - a.amount);
 
           // 2. Despesas (Agrupadas por Categoria)
+          // Utiliza 'paid_date' (Regime de Caixa) pois é o padrão para relatórios de fluxo financeiro real
           const { data: expenses } = await supabase
               .from('expenses')
               .select('amount, category')
               .eq('tenant_id', state.tenantId)
-              .gte('paid_date', startDate.toISOString().split('T')[0]) // Regime de Caixa para contabilidade geralmente
-              .lte('paid_date', endDate.toISOString().split('T')[0])
+              .gte('paid_date', dateStart) 
+              .lte('paid_date', dateEnd)
               .eq('is_paid', true);
 
           const expenseMap: Record<string, { amount: number, count: number }> = {};
@@ -83,8 +123,8 @@ export const AccountingReport: React.FC = () => {
               expenses: expenseList,
               totalIncome: totalInc,
               totalExpense: totalExp,
-              periodStart: startDate.toLocaleDateString(),
-              periodEnd: endDate.toLocaleDateString()
+              periodStart: formatDateSafe(dateStart),
+              periodEnd: formatDateSafe(dateEnd)
           });
 
       } catch (error) {
@@ -94,9 +134,10 @@ export const AccountingReport: React.FC = () => {
       }
   };
 
+  // Carrega dados iniciais ao montar
   useEffect(() => {
       fetchReportData();
-  }, [month, state.tenantId]);
+  }, [state.tenantId]);
 
   const translateMethod = (method: string) => {
       const map: Record<string, string> = {
@@ -138,7 +179,7 @@ export const AccountingReport: React.FC = () => {
       const encodedUri = encodeURI(csvContent);
       const link = document.createElement("a");
       link.setAttribute("href", encodedUri);
-      link.setAttribute("download", `relatorio_contabil_${month}.csv`);
+      link.setAttribute("download", `relatorio_contabil_${dateStart}_${dateEnd}.csv`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -147,23 +188,60 @@ export const AccountingReport: React.FC = () => {
   return (
     <div className="flex flex-col h-full bg-gray-100">
         {/* Toolbar (Hidden on Print) */}
-        <div className="bg-white border-b p-4 flex flex-col md:flex-row justify-between items-center gap-4 print:hidden sticky top-0 z-10 shadow-sm">
-            <div className="flex items-center gap-4">
-                <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2"><FileText className="text-blue-600"/> Relatório para Contabilidade</h2>
-                <input 
-                    type="month" 
-                    className="border p-2 rounded-lg font-bold text-gray-700 bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none" 
-                    value={month} 
-                    onChange={e => setMonth(e.target.value)} 
-                />
+        <div className="bg-white border-b p-4 flex flex-col xl:flex-row justify-between items-center gap-4 print:hidden sticky top-0 z-10 shadow-sm">
+            <div className="flex items-center gap-4 w-full xl:w-auto">
+                <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2 whitespace-nowrap"><FileText className="text-blue-600"/> Relatório Contábil</h2>
             </div>
-            <div className="flex gap-2">
-                <Button variant="secondary" onClick={handleExportCSV} disabled={loading}>
-                    <Download size={18}/> <span className="hidden sm:inline">Baixar CSV</span>
-                </Button>
-                <Button onClick={handlePrint} disabled={loading}>
-                    <Printer size={18}/> <span className="hidden sm:inline">Imprimir Relatório</span>
-                </Button>
+            
+            <div className="flex flex-col md:flex-row items-center gap-3 w-full xl:w-auto overflow-x-auto">
+                {/* Filtro de Data Flexível com Presets */}
+                <div className="flex items-center gap-2 bg-gray-50 p-1.5 rounded-lg border border-gray-200 shadow-sm">
+                    <div className="flex items-center gap-2 px-2 border-r border-gray-200 mr-1">
+                        <Filter size={16} className="text-gray-400"/>
+                        <select 
+                            className="bg-transparent text-xs font-bold text-gray-600 outline-none cursor-pointer uppercase"
+                            value={preset}
+                            onChange={(e) => applyPreset(e.target.value)}
+                        >
+                            <option value="CUSTOM">Personalizado</option>
+                            <option value="TODAY">Hoje</option>
+                            <option value="YESTERDAY">Ontem</option>
+                            <option value="THIS_MONTH">Este Mês</option>
+                            <option value="LAST_MONTH">Mês Passado</option>
+                            <option value="LAST_30">Últimos 30 dias</option>
+                        </select>
+                    </div>
+                    <input 
+                        type="date" 
+                        className="bg-white border rounded px-2 py-1.5 text-sm font-medium focus:ring-2 focus:ring-blue-500 outline-none" 
+                        value={dateStart} 
+                        onChange={e => { setDateStart(e.target.value); setPreset('CUSTOM'); }} 
+                    />
+                    <ArrowRight size={14} className="text-gray-400"/>
+                    <input 
+                        type="date" 
+                        className="bg-white border rounded px-2 py-1.5 text-sm font-medium focus:ring-2 focus:ring-blue-500 outline-none" 
+                        value={dateEnd} 
+                        onChange={e => { setDateEnd(e.target.value); setPreset('CUSTOM'); }} 
+                    />
+                    <button 
+                        onClick={fetchReportData}
+                        disabled={loading}
+                        className="ml-1 bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-md transition-colors disabled:opacity-50 shadow-sm"
+                        title="Atualizar Relatório"
+                    >
+                        <RefreshCcw size={16} className={loading ? "animate-spin" : ""}/>
+                    </button>
+                </div>
+
+                <div className="flex gap-2">
+                    <Button variant="secondary" onClick={handleExportCSV} disabled={loading} size="sm" className="whitespace-nowrap">
+                        <Download size={16}/> <span className="hidden sm:inline">CSV</span>
+                    </Button>
+                    <Button onClick={handlePrint} disabled={loading} size="sm" className="whitespace-nowrap">
+                        <Printer size={16}/> <span className="hidden sm:inline">Imprimir</span>
+                    </Button>
+                </div>
             </div>
         </div>
 

@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X, ArrowLeft } from 'lucide-react';
@@ -41,7 +42,7 @@ export const Modal: React.FC<ModalProps> = ({
   const content = variant === 'page' ? (
     // --- VARIANT: PAGE (Sidebar Aware) ---
     // z-[60] para garantir que fique acima da sidebar (z-50) e navbar (z-50)
-    <div className="fixed inset-0 z-[60] bg-gray-100 flex flex-col animate-fade-in md:left-72">
+    <div className="fixed inset-0 z-[60] bg-gray-50 flex flex-col animate-fade-in md:left-72">
         {/* Header */}
         <div className="bg-white border-b px-4 md:px-6 py-4 flex justify-between items-center shrink-0 shadow-sm safe-area-top relative z-10">
           <div className="flex items-center gap-3">
@@ -64,9 +65,9 @@ export const Modal: React.FC<ModalProps> = ({
           </button>
         </div>
 
-        {/* Content Scrollable Area */}
-        <div className="flex-1 overflow-y-auto p-4 md:p-8 safe-area-bottom">
-          <div className="max-w-5xl mx-auto bg-white rounded-xl shadow-sm border p-6">
+        {/* Content Scrollable Area - Full Height without padding constraints */}
+        <div className="flex-1 overflow-y-auto safe-area-bottom">
+          <div className="max-w-6xl mx-auto p-4 md:p-8 min-h-full">
             {children}
           </div>
         </div>
@@ -75,7 +76,7 @@ export const Modal: React.FC<ModalProps> = ({
     // --- VARIANT: DIALOG (Centered Popup) ---
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4 animate-fade-in">
       <div 
-        className={`bg-white rounded-2xl shadow-2xl w-full flex flex-col max-h-[90vh] relative overflow-hidden flex-shrink-0
+        className={`bg-white rounded-2xl shadow-2xl w-full flex flex-col max-h-[95vh] relative overflow-hidden flex-shrink-0
           ${maxWidth === 'sm' ? 'max-w-sm' : ''}
           ${maxWidth === 'md' ? 'max-w-md' : ''}
           ${maxWidth === 'lg' ? 'max-w-lg' : ''}
