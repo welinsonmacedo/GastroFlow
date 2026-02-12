@@ -13,7 +13,7 @@ interface ExpenseFormModalProps {
 }
 
 export const ExpenseFormModal: React.FC<ExpenseFormModalProps> = ({ isOpen, onClose, expenseToEdit }) => {
-  const { addExpense } = useFinance();
+  const { addExpense, updateExpense } = useFinance();
   const { showAlert } = useUI();
 
   // Use string for date input handling to avoid timezone issues during selection
@@ -28,7 +28,10 @@ export const ExpenseFormModal: React.FC<ExpenseFormModalProps> = ({ isOpen, onCl
           if (expenseToEdit) {
               setForm(expenseToEdit);
               if (expenseToEdit.dueDate) {
-                  setDateStr(new Date(expenseToEdit.dueDate).toISOString().split('T')[0]);
+                  const d = new Date(expenseToEdit.dueDate);
+                  if(!isNaN(d.getTime())) {
+                      setDateStr(d.toISOString().split('T')[0]);
+                  }
               }
           } else {
               setForm({ description: '', amount: 0, category: 'Outros', isPaid: false, paymentMethod: 'BANK', isRecurring: false });
@@ -49,21 +52,30 @@ export const ExpenseFormModal: React.FC<ExpenseFormModalProps> = ({ isOpen, onCl
           // Create date object at noon to ensure it stays on the correct day regardless of UTC shifts
           const fixedDate = new Date(dateStr + 'T12:00:00');
 
-          await addExpense({ 
+          const expenseData = {
               ...form,
               amount: amount,
-              dueDate: fixedDate, 
-              // Don't send ID for new items, allow DB to generate UUID
-              id: '', 
+              dueDate: fixedDate,
               isPaid: form.isPaid || false,
-              paymentMethod: form.paymentMethod || 'BANK' 
-          } as Expense);
+              paymentMethod: form.paymentMethod || 'BANK'
+          } as Expense;
+
+          if (expenseToEdit && expenseToEdit.id) {
+              // Edit Mode
+              await updateExpense(expenseData);
+              showAlert({ title: "Sucesso", message: "Despesa atualizada!", type: 'SUCCESS' });
+          } else {
+              // Create Mode
+              // Don't send empty string ID for new items
+              if (!expenseData.id) delete (expenseData as any).id;
+              await addExpense(expenseData);
+              showAlert({ title: "Sucesso", message: "Despesa registrada!", type: 'SUCCESS' });
+          }
           
-          showAlert({ title: "Sucesso", message: "Despesa registrada!", type: 'SUCCESS' });
           onClose();
       } catch (error: any) {
           console.error(error);
-          showAlert({ title: "Erro", message: "Erro ao registrar despesa. Verifique os dados.", type: 'ERROR' });
+          showAlert({ title: "Erro", message: "Erro ao salvar despesa. Verifique os dados.", type: 'ERROR' });
       }
   };
 
@@ -71,7 +83,7 @@ export const ExpenseFormModal: React.FC<ExpenseFormModalProps> = ({ isOpen, onCl
     <Modal 
         isOpen={isOpen} 
         onClose={onClose}
-        title="Registrar Despesa"
+        title={expenseToEdit ? "Editar Despesa" : "Registrar Despesa"}
         variant="dialog"
         maxWidth="md"
     >

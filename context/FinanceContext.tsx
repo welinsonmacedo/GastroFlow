@@ -18,6 +18,7 @@ interface FinanceContextType {
   closeRegister: (finalAmount: number) => Promise<void>;
   bleedRegister: (amount: number, reason: string, userName: string) => Promise<void>;
   addExpense: (expense: Expense) => Promise<void>;
+  updateExpense: (expense: Expense) => Promise<void>;
   payExpense: (expenseId: string) => Promise<void>;
   deleteExpense: (expenseId: string) => Promise<void>;
   refreshTransactions: () => Promise<void>;
@@ -113,10 +114,12 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const addExpense = async (expense: Expense) => {
       if(!tenantId) return;
       
-      // Ensure date is formatted as YYYY-MM-DD for PostgreSQL date column
       const dueDateStr = expense.dueDate instanceof Date 
         ? expense.dueDate.toISOString().split('T')[0] 
         : expense.dueDate;
+
+      // REMOVE ID if it's empty string to avoid UUID errors
+      const { id, ...expenseData } = expense;
 
       const { error } = await supabase.from('expenses').insert({ 
           tenant_id: tenantId, 
@@ -126,14 +129,39 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
           due_date: dueDateStr, 
           is_paid: expense.isPaid,
           is_recurring: expense.isRecurring,
-          payment_method: expense.paymentMethod
+          payment_method: expense.paymentMethod,
+          supplier_id: expense.supplierId || null
       });
       
       if (error) {
           console.error("Error adding expense:", error);
           throw error;
       }
+      await fetchData();
+  };
+
+  const updateExpense = async (expense: Expense) => {
+      if(!tenantId || !expense.id) return;
+
+      const dueDateStr = expense.dueDate instanceof Date 
+        ? expense.dueDate.toISOString().split('T')[0] 
+        : expense.dueDate;
+
+      const { error } = await supabase.from('expenses').update({ 
+          description: expense.description, 
+          amount: expense.amount, 
+          category: expense.category, 
+          due_date: dueDateStr, 
+          is_paid: expense.isPaid,
+          is_recurring: expense.isRecurring,
+          payment_method: expense.paymentMethod,
+          supplier_id: expense.supplierId || null
+      }).eq('id', expense.id);
       
+      if (error) {
+          console.error("Error updating expense:", error);
+          throw error;
+      }
       await fetchData();
   };
 
@@ -150,7 +178,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   return (
-    <FinanceContext.Provider value={{ state, openRegister, closeRegister, bleedRegister, addExpense, payExpense, deleteExpense, refreshTransactions: fetchData }}>
+    <FinanceContext.Provider value={{ state, openRegister, closeRegister, bleedRegister, addExpense, updateExpense, payExpense, deleteExpense, refreshTransactions: fetchData }}>
       {children}
     </FinanceContext.Provider>
   );
