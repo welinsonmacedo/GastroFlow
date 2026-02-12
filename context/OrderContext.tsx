@@ -70,7 +70,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       
       if (ordersRes.data) {
           const mappedOrders = ordersRes.data.map(o => ({
-              id: o.id, tableId: o.table_id, timestamp: new Date(o.created_at), isPaid: o.is_paid,
+              id: o.id, tableId: o.table_id, timestamp: new Date(o.created_at), isPaid: o.is_paid, status: o.status,
               items: (o.items || []).map((i: any) => ({ id: i.id, productId: i.product_id, quantity: i.quantity, notes: i.notes, status: i.status, productName: i.product_name, productType: i.product_type, productPrice: i.product_price, productCostPrice: Number(i.product_cost_price) || 0 }))
           }));
           // Filtramos ordens canceladas no mapeamento se necessário, ou deixamos para as views

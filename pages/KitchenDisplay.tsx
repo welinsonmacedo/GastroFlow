@@ -4,7 +4,7 @@ import { useRestaurant } from '../context/RestaurantContext';
 import { useMenu } from '../context/MenuContext';
 import { useOrder } from '../context/OrderContext';
 import { OrderStatus, ProductType, OrderItem } from '../types';
-import { Clock, Check, ChefHat, CheckCircle, AlertTriangle, Volume2, Zap } from 'lucide-react';
+import { Clock, Check, ChefHat, CheckCircle, AlertTriangle, Volume2, Zap, Plus } from 'lucide-react';
 
 const BELL_SOUND_BASE64 = "data:audio/mp3;base64,//uQRAAAAWMSLwUIYAAsYkXgoQwAEaYLWfkWgAI0wWs/ItAAAG84AA0WAgAAAAAAABZsAAAAtAAAAAAAABaAAAAAABZAAABcAAABjAAAA//uQRAAAAWMSLwUIYAAsYkXgoQwAEaYLWfkWgAI0wWs/ItAAAG84AA0WAgAAAAAAABZsAAAAtAAAAAAAABaAAAAAABZAAABcAAABjAAAA"; 
 
@@ -24,6 +24,7 @@ export const KitchenDisplay: React.FC = () => {
   // --- FILTER LOGIC ---
   const isKitchenItem = (item: OrderItem) => {
       const product = menuState.products.find(p => p.id === item.productId);
+      // Se não achar o produto (deletado?), assume KITCHEN por segurança se o tipo gravado for KITCHEN
       const isDrink = product ? product.category === 'Bebidas' : false;
       return item.productType === ProductType.KITCHEN && !isDrink;
   };
@@ -118,6 +119,17 @@ export const KitchenDisplay: React.FC = () => {
     orderDispatch({ type: 'UPDATE_ITEM_STATUS', orderId, itemId, status: nextStatus });
   };
 
+  // Atualiza status do grupo (Item Principal + Extras)
+  const updateGroupStatus = (orderId: string, mainItem: OrderItem, extras: OrderItem[], nextStatus: OrderStatus) => {
+      updateItemStatus(orderId, mainItem.id, nextStatus);
+      extras.forEach(extra => {
+          // Só atualiza o extra se ele não estiver já num status mais avançado (opcional, mas seguro)
+          if (extra.status !== nextStatus && extra.status !== OrderStatus.DELIVERED) {
+              updateItemStatus(orderId, extra.id, nextStatus);
+          }
+      });
+  };
+
   const completeAllOrderItems = (orderId: string) => {
       const order = orderState.orders.find(o => o.id === orderId);
       if(!order) return;
@@ -126,6 +138,35 @@ export const KitchenDisplay: React.FC = () => {
               updateItemStatus(orderId, item.id, OrderStatus.READY);
           }
       });
+  };
+
+  // --- GROUPING LOGIC (Main Product + Extras) ---
+  const groupOrderItems = (items: OrderItem[]) => {
+      const grouped: { main: OrderItem, extras: OrderItem[] }[] = [];
+      
+      // Filtra apenas itens de cozinha e não entregues/cancelados
+      const kitchenItems = items.filter(item => 
+          isKitchenItem(item) && 
+          item.status !== OrderStatus.DELIVERED && 
+          item.status !== OrderStatus.CANCELLED
+      );
+
+      kitchenItems.forEach(item => {
+          const product = menuState.products.find(p => p.id === item.productId);
+          // Verifica se é extra via flag do produto OU via anotação de sistema (fallback)
+          const isExtra = product?.isExtra || item.notes?.includes('[ADICIONAL');
+
+          if (isExtra && grouped.length > 0) {
+              // Se for extra, anexa ao último item principal adicionado
+              // Isso assume que o array vem ordenado por inserção (o que é padrão do Supabase/SQL)
+              grouped[grouped.length - 1].extras.push(item);
+          } else {
+              // Se for item principal (ou extra órfão), cria novo grupo
+              grouped.push({ main: item, extras: [] });
+          }
+      });
+
+      return grouped;
   };
 
   if (!orderState.audioUnlocked) {
@@ -177,6 +218,7 @@ export const KitchenDisplay: React.FC = () => {
           const table = orderState.tables.find(t => t.id === order.tableId);
           const elapsedMinutes = Math.floor((new Date().getTime() - new Date(order.timestamp).getTime()) / 60000);
           const isLate = elapsedMinutes > 20;
+          const groupedItems = groupOrderItems(order.items);
           
           return (
             <div key={order.id} className="min-w-[320px] max-w-[320px] bg-slate-800 rounded-xl overflow-hidden border border-slate-700 flex flex-col shadow-xl animate-fade-in h-full max-h-full">
@@ -188,17 +230,54 @@ export const KitchenDisplay: React.FC = () => {
                   <button onClick={() => completeAllOrderItems(order.id)} className="text-xs bg-green-700 hover:bg-green-600 text-white px-3 py-2 rounded flex items-center gap-2 font-bold w-full justify-center transition-colors"><CheckCircle size={14}/> CONCLUIR TODOS</button>
               </div>
               <div className="p-2 flex-1 space-y-2 overflow-y-auto">
-                {order.items.filter(item => isKitchenItem(item) && item.status !== OrderStatus.DELIVERED && item.status !== OrderStatus.CANCELLED).map(item => (
-                    <div key={item.id} className={`p-3 rounded-lg border-l-4 transition-all relative ${item.status === OrderStatus.PENDING ? 'bg-slate-700 border-yellow-500 animate-[pulse_2s_infinite]' : ''} ${item.status === OrderStatus.PREPARING ? 'bg-blue-900/40 border-blue-500' : ''} ${item.status === OrderStatus.READY ? 'bg-green-900/40 border-green-500 opacity-60 grayscale' : ''}`}>
-                        <div className="flex justify-between items-start mb-1"><span className="font-bold text-xl text-white">{item.quantity}x {item.productName}</span></div>
-                        {item.notes && <div className="bg-yellow-100 text-red-700 font-bold text-sm p-2 rounded border-2 border-red-500 flex items-start gap-2 mb-2 shadow-sm animate-pulse"><AlertTriangle size={16} className="shrink-0 mt-0.5" fill="orange" /> <span className="uppercase">{item.notes}</span></div>}
-                        <div className="flex justify-end gap-2 mt-2">
-                             {item.status === OrderStatus.PENDING && <button onClick={() => updateItemStatus(order.id, item.id, OrderStatus.PREPARING)} className="text-xs bg-yellow-600 px-3 py-2 rounded text-white hover:bg-yellow-500 font-bold">INICIAR</button>}
-                             {item.status === OrderStatus.PREPARING && <button onClick={() => updateItemStatus(order.id, item.id, OrderStatus.READY)} className="text-xs bg-green-600 px-3 py-2 rounded text-white hover:bg-green-500 flex items-center gap-1 font-bold"><Check size={14}/> PRONTO</button>}
-                             {item.status === OrderStatus.READY && <span className="text-xs text-green-400 font-bold border border-green-500 px-2 py-1 rounded">PRONTO</span>}
+                {groupedItems.map(({ main, extras }) => {
+                    const isGroupReady = main.status === OrderStatus.READY;
+                    return (
+                        <div key={main.id} className={`p-3 rounded-lg border-l-4 transition-all relative ${main.status === OrderStatus.PENDING ? 'bg-slate-700 border-yellow-500 animate-[pulse_2s_infinite]' : ''} ${main.status === OrderStatus.PREPARING ? 'bg-blue-900/40 border-blue-500' : ''} ${main.status === OrderStatus.READY ? 'bg-green-900/40 border-green-500 opacity-60 grayscale' : ''}`}>
+                            {/* Main Item */}
+                            <div className="flex justify-between items-start mb-1">
+                                <span className="font-bold text-xl text-white">{main.quantity}x {main.productName}</span>
+                            </div>
+                            
+                            {/* Observações do Item Principal */}
+                            {main.notes && <div className="bg-yellow-100 text-red-700 font-bold text-sm p-2 rounded border-2 border-red-500 flex items-start gap-2 mb-2 shadow-sm animate-pulse"><AlertTriangle size={16} className="shrink-0 mt-0.5" fill="orange" /> <span className="uppercase">{main.notes}</span></div>}
+
+                            {/* EXTRAS (Adicionais) aninhados */}
+                            {extras.length > 0 && (
+                                <div className="mt-2 mb-2 pl-3 border-l-2 border-slate-600 space-y-1">
+                                    {extras.map(extra => (
+                                        <div key={extra.id} className="flex items-center gap-2 text-slate-300 text-sm bg-slate-800/50 p-1.5 rounded">
+                                            <Plus size={12} className="text-green-400" />
+                                            <span className="font-bold">{extra.quantity}x {extra.productName}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            <div className="flex justify-end gap-2 mt-2">
+                                {main.status === OrderStatus.PENDING && (
+                                    <button 
+                                        onClick={() => updateGroupStatus(order.id, main, extras, OrderStatus.PREPARING)} 
+                                        className="text-xs bg-yellow-600 px-3 py-2 rounded text-white hover:bg-yellow-500 font-bold w-full"
+                                    >
+                                        INICIAR PREPARO
+                                    </button>
+                                )}
+                                {main.status === OrderStatus.PREPARING && (
+                                    <button 
+                                        onClick={() => updateGroupStatus(order.id, main, extras, OrderStatus.READY)} 
+                                        className="text-xs bg-green-600 px-3 py-2 rounded text-white hover:bg-green-500 flex items-center justify-center gap-1 font-bold w-full"
+                                    >
+                                        <Check size={14}/> PRONTO
+                                    </button>
+                                )}
+                                {main.status === OrderStatus.READY && (
+                                    <span className="text-xs text-green-400 font-bold border border-green-500 px-2 py-1 rounded w-full text-center">PRONTO</span>
+                                )}
+                            </div>
                         </div>
-                    </div>
-                ))}
+                    );
+                })}
               </div>
             </div>
           );

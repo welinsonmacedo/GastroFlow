@@ -168,6 +168,7 @@ export interface Order {
   items: OrderItem[];
   timestamp: Date;
   isPaid: boolean;
+  status: string;
 }
 
 export interface Table {
