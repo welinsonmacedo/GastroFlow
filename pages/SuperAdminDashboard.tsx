@@ -5,10 +5,10 @@ import { useUI } from '../context/UIContext';
 import { Plan, PlanType, RestaurantTenant, PlanLimits } from '../types';
 import { Button } from '../components/Button';
 import { SaaSTenantCreateModal, SaaSEditTenantModal, SaaSTenantLinksModal } from '../components/modals/SaaSModals';
-import { Building2, DollarSign, Activity, Settings, Search, ExternalLink, LogOut, Plus, X, List, Edit, Lock, BarChart2, Unlock, Link as LinkIcon } from 'lucide-react';
+import { Building2, DollarSign, Activity, Settings, Search, ExternalLink, LogOut, Plus, X, List, Edit, Lock, BarChart2, Unlock, Link as LinkIcon, FileText, Printer, ChevronDown } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
-type ViewMode = 'RESTAURANTS' | 'FINANCIAL' | 'PLANS' | 'SETTINGS';
+type ViewMode = 'RESTAURANTS' | 'FINANCIAL' | 'PLANS' | 'SETTINGS' | 'CONTRACTS';
 
 export const SuperAdminDashboard: React.FC = () => {
   const { state, dispatch } = useSaaS();
@@ -22,6 +22,9 @@ export const SuperAdminDashboard: React.FC = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isLinksModalOpen, setIsLinksModalOpen] = useState(false);
   const [selectedTenant, setSelectedTenant] = useState<RestaurantTenant | null>(null);
+
+  // Contract Generator State
+  const [selectedContractTenantId, setSelectedContractTenantId] = useState('');
 
   // Settings State
   const [settingsForm, setSettingsForm] = useState({ name: state.adminName || '', email: state.adminEmail || '', password: '' });
@@ -41,9 +44,9 @@ export const SuperAdminDashboard: React.FC = () => {
   const activeTenants = state.tenants.filter(t => t.status === 'ACTIVE').length;
   const mrr = state.tenants.reduce((acc, t) => {
     if (t.status === 'INACTIVE') return acc;
-    if (t.plan === 'PRO') return acc + 99; 
-    if (t.plan === 'ENTERPRISE') return acc + 249;
-    return acc;
+    const plan = state.plans.find(p => p.key === t.plan);
+    const price = plan ? parseFloat(plan.price.replace('R$', '').replace(',','.').trim()) : 0;
+    return acc + (isNaN(price) ? 0 : price);
   }, 0);
 
   const getDemoUrl = (slug: string) => `${window.location.origin}/?restaurant=${slug}`;
@@ -80,16 +83,20 @@ export const SuperAdminDashboard: React.FC = () => {
       }
   };
 
+  const selectedContractTenant = state.tenants.find(t => t.id === selectedContractTenantId);
+  const selectedContractPlan = selectedContractTenant ? state.plans.find(p => p.key === selectedContractTenant.plan) : null;
+
   return (
     <div className="min-h-screen bg-slate-50 flex">
        {/* Sidebar */}
-       <div className="w-64 bg-slate-900 text-white p-6 sticky top-0 h-screen flex flex-col justify-between shrink-0 z-20">
+       <div className="w-64 bg-slate-900 text-white p-6 sticky top-0 h-screen flex flex-col justify-between shrink-0 z-20 print:hidden">
           <div>
             <div className="text-2xl font-bold mb-10 flex items-center gap-2">
                 <Activity className="text-blue-500" /> SaaS Admin
             </div>
             <nav className="space-y-2">
                 <button onClick={() => setActiveView('RESTAURANTS')} className={`flex items-center gap-3 w-full p-3 rounded transition-colors ${activeView === 'RESTAURANTS' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}><Building2 size={20} /> Restaurantes</button>
+                <button onClick={() => setActiveView('CONTRACTS')} className={`flex items-center gap-3 w-full p-3 rounded transition-colors ${activeView === 'CONTRACTS' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}><FileText size={20} /> Contratos</button>
                 <button onClick={() => setActiveView('FINANCIAL')} className={`flex items-center gap-3 w-full p-3 rounded transition-colors ${activeView === 'FINANCIAL' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}><DollarSign size={20} /> Financeiro</button>
                 <button onClick={() => setActiveView('PLANS')} className={`flex items-center gap-3 w-full p-3 rounded transition-colors ${activeView === 'PLANS' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}><List size={20} /> Planos & Preços</button>
                 <button onClick={() => setActiveView('SETTINGS')} className={`flex items-center gap-3 w-full p-3 rounded transition-colors ${activeView === 'SETTINGS' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}><Settings size={20} /> Configurações</button>
@@ -99,11 +106,12 @@ export const SuperAdminDashboard: React.FC = () => {
        </div>
 
        {/* Main Content */}
-       <div className="flex-1 p-8 overflow-y-auto h-screen">
-           <header className="flex justify-between items-center mb-8">
+       <div className="flex-1 p-8 overflow-y-auto h-screen print:p-0 print:h-auto print:overflow-visible">
+           <header className="flex justify-between items-center mb-8 print:hidden">
                <div>
                    <h1 className="text-3xl font-bold text-gray-800">
                        {activeView === 'RESTAURANTS' && 'Gerenciar Restaurantes'}
+                       {activeView === 'CONTRACTS' && 'Gerador de Contratos'}
                        {activeView === 'FINANCIAL' && 'Painel Financeiro'}
                        {activeView === 'PLANS' && 'Gestão de Planos'}
                        {activeView === 'SETTINGS' && 'Configurações do Sistema'}
@@ -111,16 +119,131 @@ export const SuperAdminDashboard: React.FC = () => {
                    <p className="text-gray-500">Bem-vindo, {state.adminName}</p>
                </div>
                
-               <div className="flex items-center gap-4">
-                  <div className="bg-white p-4 rounded-xl shadow-sm border flex items-center gap-4">
-                      <div className="bg-green-100 p-2 rounded-full text-green-600"><Building2 size={20} /></div>
-                      <div>
-                          <p className="text-xs text-gray-500 uppercase font-bold">Ativos</p>
-                          <p className="text-xl font-bold">{activeTenants}</p>
+               {activeView === 'RESTAURANTS' && (
+                   <div className="flex items-center gap-4">
+                      <div className="bg-white p-4 rounded-xl shadow-sm border flex items-center gap-4">
+                          <div className="bg-green-100 p-2 rounded-full text-green-600"><Building2 size={20} /></div>
+                          <div>
+                              <p className="text-xs text-gray-500 uppercase font-bold">Ativos</p>
+                              <p className="text-xl font-bold">{activeTenants}</p>
+                          </div>
                       </div>
-                  </div>
-               </div>
+                   </div>
+               )}
            </header>
+
+           {/* --- VIEW: CONTRACTS --- */}
+           {activeView === 'CONTRACTS' && (
+               <div className="flex flex-col h-full print:block">
+                   <div className="bg-white p-6 rounded-xl shadow-sm border mb-6 print:hidden">
+                       <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2"><Settings size={18} /> Configuração do Documento</h2>
+                       <div className="flex gap-4 items-end">
+                           <div className="flex-1">
+                               <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Selecione o Cliente</label>
+                               <div className="relative">
+                                   <select 
+                                       className="w-full border p-3 rounded-lg appearance-none bg-gray-50 font-medium outline-none focus:ring-2 focus:ring-blue-500"
+                                       value={selectedContractTenantId}
+                                       onChange={(e) => setSelectedContractTenantId(e.target.value)}
+                                   >
+                                       <option value="">-- Selecione um restaurante --</option>
+                                       {state.tenants.map(t => (
+                                           <option key={t.id} value={t.id}>{t.name} ({t.ownerName})</option>
+                                       ))}
+                                   </select>
+                                   <ChevronDown className="absolute right-3 top-3.5 text-gray-400 pointer-events-none" size={16}/>
+                               </div>
+                           </div>
+                           <Button onClick={() => window.print()} disabled={!selectedContractTenantId} className="h-[46px] px-6">
+                               <Printer size={18} className="mr-2"/> Imprimir Contrato
+                           </Button>
+                       </div>
+                   </div>
+
+                   {selectedContractTenant ? (
+                       <div className="bg-white shadow-2xl p-[2cm] max-w-[21cm] min-h-[29.7cm] mx-auto text-justify text-sm leading-relaxed print:shadow-none print:w-full print:max-w-none print:mx-0 print:p-0">
+                           <div className="text-center mb-8">
+                               <h1 className="text-xl font-bold uppercase mb-2">Contrato de Licenciamento de Software (SaaS)</h1>
+                               <p className="text-xs text-gray-500 font-bold">Nº {selectedContractTenant.id.slice(0,8).toUpperCase()}/{new Date().getFullYear()}</p>
+                           </div>
+
+                           <div className="space-y-6">
+                               <section>
+                                   <h3 className="font-bold uppercase mb-2 text-xs text-gray-900 border-b border-gray-300 pb-1">1. Identificação das Partes</h3>
+                                   <p className="mb-2">
+                                       <strong>CONTRATADA:</strong> <strong>GASTROFLOW TECNOLOGIA LTDA</strong>, inscrita no CNPJ sob o nº 00.000.000/0001-00, com sede em [Cidade/UF], doravante denominada simplesmente "CONTRATADA".
+                                   </p>
+                                   <p>
+                                       <strong>CONTRATANTE:</strong> <strong>{selectedContractTenant.businessInfo?.restaurantName || selectedContractTenant.name.toUpperCase()}</strong>, 
+                                       {selectedContractTenant.businessInfo?.cnpj ? ` inscrita no CNPJ nº ${selectedContractTenant.businessInfo.cnpj},` : ''} 
+                                       representada neste ato por <strong>{selectedContractTenant.ownerName.toUpperCase()}</strong>,
+                                       {selectedContractTenant.businessInfo?.address ? ` localizada em ${selectedContractTenant.businessInfo.address.street}, ${selectedContractTenant.businessInfo.address.number} - ${selectedContractTenant.businessInfo.address.city}/${selectedContractTenant.businessInfo.address.state},` : ''}
+                                       com e-mail de contato <strong>{selectedContractTenant.email}</strong>.
+                                   </p>
+                               </section>
+
+                               <section>
+                                   <h3 className="font-bold uppercase mb-2 text-xs text-gray-900 border-b border-gray-300 pb-1">2. Objeto</h3>
+                                   <p>
+                                       O presente contrato tem como objeto o licenciamento de uso do software <strong>GastroFlow</strong>, na modalidade SaaS (Software as a Service), para gestão de restaurante, incluindo módulos de cardápio digital, KDS e controle financeiro, conforme as especificações do plano contratado.
+                                   </p>
+                               </section>
+
+                               <section>
+                                   <h3 className="font-bold uppercase mb-2 text-xs text-gray-900 border-b border-gray-300 pb-1">3. Plano e Valores</h3>
+                                   <p>
+                                       A CONTRATANTE opta pelo plano <strong>{selectedContractPlan?.name.toUpperCase() || selectedContractTenant.plan}</strong>, 
+                                       que inclui {selectedContractPlan?.features?.[0] || 'acesso ao sistema'} e demais funcionalidades descritas na proposta comercial.
+                                   </p>
+                                   <p className="mt-2">
+                                       Pela licença de uso, a CONTRATANTE pagará à CONTRATADA o valor mensal de <strong>{selectedContractPlan?.price || 'A DEFINIR'}</strong>.
+                                       Os pagamentos deverão ser efetuados via [Boleto/Pix/Cartão] até o dia [Dia] de cada mês.
+                                   </p>
+                               </section>
+
+                               <section>
+                                   <h3 className="font-bold uppercase mb-2 text-xs text-gray-900 border-b border-gray-300 pb-1">4. Vigência e Cancelamento</h3>
+                                   <p>
+                                       Este contrato entra em vigor na data de sua assinatura e vigorará por prazo indeterminado. Qualquer uma das partes poderá rescindir este contrato mediante aviso prévio de 30 (trinta) dias, sem incidência de multa, desde que não haja pendências financeiras.
+                                   </p>
+                               </section>
+
+                               <section>
+                                   <h3 className="font-bold uppercase mb-2 text-xs text-gray-900 border-b border-gray-300 pb-1">5. Disposições Gerais</h3>
+                                   <p>
+                                       A CONTRATADA garante a disponibilidade do serviço de 99,5% (SLA) e suporte técnico conforme o plano escolhido. A CONTRATANTE é responsável pela veracidade dos dados inseridos no sistema e pelo sigilo de suas senhas de acesso.
+                                   </p>
+                               </section>
+
+                               <section className="mt-12 pt-12">
+                                   <p className="mb-12">
+                                       E, por estarem assim justas e contratadas, as partes assinam o presente instrumento.
+                                   </p>
+                                   <p className="text-right mb-16">
+                                       [Cidade/UF], {new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })}.
+                                   </p>
+
+                                   <div className="flex justify-between gap-8 pt-8">
+                                       <div className="flex-1 border-t border-black text-center pt-2">
+                                           <p className="font-bold text-xs uppercase">GastroFlow Tecnologia</p>
+                                           <p className="text-[10px] text-gray-500">Contratada</p>
+                                       </div>
+                                       <div className="flex-1 border-t border-black text-center pt-2">
+                                           <p className="font-bold text-xs uppercase">{selectedContractTenant.ownerName}</p>
+                                           <p className="text-[10px] text-gray-500">Contratante</p>
+                                       </div>
+                                   </div>
+                               </section>
+                           </div>
+                       </div>
+                   ) : (
+                       <div className="flex-1 flex flex-col items-center justify-center text-gray-400 border-2 border-dashed border-gray-200 rounded-xl bg-gray-50 print:hidden">
+                           <FileText size={48} className="mb-4 opacity-20"/>
+                           <p>Selecione um cliente acima para gerar o contrato.</p>
+                       </div>
+                   )}
+               </div>
+           )}
 
            {/* --- VIEW: RESTAURANTS --- */}
            {activeView === 'RESTAURANTS' && (

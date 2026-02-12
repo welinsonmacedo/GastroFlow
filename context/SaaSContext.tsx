@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
 import { RestaurantTenant, PlanType, Plan } from '../types';
 import { supabase } from '../lib/supabase';
@@ -175,6 +176,7 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const fetchTenants = async (retryCount = 0) => {
             try {
                 // Passo 1: Busca SIMPLES (Garante que a lista apareça rápido)
+                // INCLUI business_info para o gerador de contratos
                 const { data, error } = await supabase
                     .from('tenants')
                     .select('*')
@@ -194,7 +196,8 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
                         status: t.status as 'ACTIVE' | 'INACTIVE',
                         plan: t.plan as PlanType,
                         joinedAt: new Date(t.created_at),
-                        requestCount: 0 // Placeholder inicial
+                        requestCount: 0, // Placeholder inicial
+                        businessInfo: t.business_info || {} // Mapeia info de negócio
                     }));
                     dispatch({ type: 'SET_TENANTS', payload: mapped });
 
