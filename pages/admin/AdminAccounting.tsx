@@ -4,16 +4,33 @@ import { useRestaurant } from '../../context/RestaurantContext';
 import { useUI } from '../../context/UIContext';
 import { Button } from '../../components/Button';
 import { supabase } from '../../lib/supabase';
-import { Loader2, RefreshCcw, Printer, PieChart, TrendingUp, CheckCircle2, ArrowUpRight, AlertCircle, FileText, DollarSign, Store, Package, HelpCircle } from 'lucide-react';
+import { Loader2, RefreshCcw, Printer, PieChart, TrendingUp, CheckCircle2, ArrowUpRight, AlertCircle, FileText, DollarSign, Store, Package, HelpCircle, SlidersHorizontal, Eye, EyeOff, Settings } from 'lucide-react';
 
 export const AdminAccounting: React.FC = () => {
   const { state } = useRestaurant();
   const { showAlert } = useUI();
   
+  // Filtros de Data
   const [dateStart, setDateStart] = useState(new Date(new Date().setDate(1)).toISOString().split('T')[0]); 
   const [dateEnd, setDateEnd] = useState(new Date().toISOString().split('T')[0]);
   const [loading, setLoading] = useState(false);
   
+  // Configurações do Relatório (Modularidade)
+  const [showConfig, setShowConfig] = useState(false);
+  const [config, setConfig] = useState({
+      accountingMethod: 'COMPETENCE' as 'COMPETENCE' | 'CASH', // Competência vs Caixa
+      taxRate: 6.0, // Alíquota de imposto editável
+  });
+  
+  // Visibilidade das Seções
+  const [visibility, setVisibility] = useState({
+      charts: true,
+      revenue: true,
+      cmv: true,
+      expenses: true,
+      financial: true
+  });
+
   const [data, setData] = useState<any>({
       grossRevenue: 0, saloonSales: 0, posSales: 0, taxes: 0, netRevenue: 0,
       cmv: 0, grossProfit: 0, operatingExpenses: 0, expensesByCategory: {},
@@ -29,6 +46,8 @@ export const AdminAccounting: React.FC = () => {
           const end = dateEnd + ' 23:59:59';
 
           // 1. Buscar Transações (Receita Bruta)
+          // Transações são sempre regime de CAIXA (o dinheiro entrou), a menos que queiramos filtrar pedidos não pagos no futuro.
+          // Por enquanto, mantemos baseadas em 'created_at' das transações confirmadas.
           const { data: transRes, error: transErr } = await supabase
             .from('transactions')
             .select('*')
@@ -49,13 +68,26 @@ export const AdminAccounting: React.FC = () => {
 
           if (itemsErr) throw itemsErr;
 
-          // 3. Buscar Despesas
-          const { data: expsRes, error: expsErr } = await supabase
+          // 3. Buscar Despesas (Dinâmico: Caixa vs Competência)
+          let expensesQuery = supabase
             .from('expenses')
             .select('*')
-            .eq('tenant_id', state.tenantId)
-            .gte('due_date', dateStart)
-            .lte('due_date', dateEnd);
+            .eq('tenant_id', state.tenantId);
+
+          if (config.accountingMethod === 'CASH') {
+              // Regime de Caixa: Considera apenas o que foi PAGO na data do PAGAMENTO
+              expensesQuery = expensesQuery
+                .eq('is_paid', true)
+                .gte('paid_date', dateStart)
+                .lte('paid_date', dateEnd);
+          } else {
+              // Regime de Competência: Considera o que VENCEU na data de VENCIMENTO (independente se pagou)
+              expensesQuery = expensesQuery
+                .gte('due_date', dateStart)
+                .lte('due_date', dateEnd);
+          }
+
+          const { data: expsRes, error: expsErr } = await expensesQuery;
 
           if (expsErr) throw expsErr;
 
@@ -75,7 +107,7 @@ export const AdminAccounting: React.FC = () => {
               cmvTotal += (qty * cost);
           });
 
-          const taxes = grossRev * 0.06; // Simulação 6% Simples Nacional
+          const taxes = grossRev * (config.taxRate / 100); // Usa a taxa configurada
           const netRevenue = grossRev - taxes;
           const grossProfit = netRevenue - cmvTotal;
 
@@ -106,7 +138,7 @@ export const AdminAccounting: React.FC = () => {
       } finally {
           setLoading(false);
       }
-  }, [state.tenantId, dateStart, dateEnd, showAlert]);
+  }, [state.tenantId, dateStart, dateEnd, config, showAlert]);
 
   useEffect(() => { if (state.tenantId) fetchDRE(); }, [state.tenantId, fetchDRE]);
 
@@ -138,52 +170,135 @@ export const AdminAccounting: React.FC = () => {
   return (
     <div className="space-y-6 animate-fade-in pb-20 print:pb-0 print:space-y-4">
         {/* Header - Controles (Escondido na impressão) */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-200 gap-4 print:hidden">
-            <div>
-                <h2 className="text-2xl font-black text-slate-800 flex items-center gap-2"><PieChart className="text-blue-600"/> DRE Gerencial</h2>
-                <p className="text-sm text-gray-500">Relatório de Lucratividade e CMV</p>
-            </div>
-            <div className="flex flex-col md:flex-row gap-2 items-end">
-                <div className="flex gap-2 bg-gray-100 p-1.5 rounded-xl border border-gray-200">
-                    <input type="date" className="bg-transparent p-1 text-xs font-bold outline-none" value={dateStart} onChange={e => setDateStart(e.target.value)} />
-                    <span className="text-gray-400 self-center font-bold">→</span>
-                    <input type="date" className="bg-transparent p-1 text-xs font-bold outline-none" value={dateEnd} onChange={e => setDateEnd(e.target.value)} />
+        <div className="flex flex-col gap-4 print:hidden">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-200 gap-4">
+                <div>
+                    <h2 className="text-2xl font-black text-slate-800 flex items-center gap-2"><PieChart className="text-blue-600"/> DRE Gerencial</h2>
+                    <p className="text-sm text-gray-500">Relatório de Lucratividade e CMV</p>
                 </div>
-                <div className="flex gap-2">
-                    <Button onClick={fetchDRE} disabled={loading} className="h-[42px] px-6">{loading ? <Loader2 className="animate-spin" size={18}/> : <RefreshCcw size={18}/>} <span className="ml-2">Atualizar</span></Button>
-                    <Button variant="secondary" onClick={() => window.print()} className="h-[42px] bg-white border-gray-200"><Printer size={18}/></Button>
+                <div className="flex flex-col md:flex-row gap-2 items-end">
+                    <div className="flex gap-2 bg-gray-100 p-1.5 rounded-xl border border-gray-200">
+                        <input type="date" className="bg-transparent p-1 text-xs font-bold outline-none" value={dateStart} onChange={e => setDateStart(e.target.value)} />
+                        <span className="text-gray-400 self-center font-bold">→</span>
+                        <input type="date" className="bg-transparent p-1 text-xs font-bold outline-none" value={dateEnd} onChange={e => setDateEnd(e.target.value)} />
+                    </div>
+                    <div className="flex gap-2">
+                        <Button onClick={() => setShowConfig(!showConfig)} variant="secondary" className={`h-[42px] px-4 border-gray-200 ${showConfig ? 'bg-blue-50 text-blue-600 border-blue-200' : 'bg-white'}`}><SlidersHorizontal size={18}/></Button>
+                        <Button onClick={fetchDRE} disabled={loading} className="h-[42px] px-6">{loading ? <Loader2 className="animate-spin" size={18}/> : <RefreshCcw size={18}/>} <span className="ml-2">Atualizar</span></Button>
+                        <Button variant="secondary" onClick={() => window.print()} className="h-[42px] bg-white border-gray-200"><Printer size={18}/></Button>
+                    </div>
                 </div>
             </div>
+
+            {/* Painel de Configuração Modular */}
+            {showConfig && (
+                <div className="bg-white p-6 rounded-2xl shadow-lg border border-blue-100 animate-fade-in grid grid-cols-1 md:grid-cols-3 gap-8">
+                    {/* Coluna 1: Origem dos Dados */}
+                    <div>
+                        <h4 className="text-xs font-black text-blue-600 uppercase tracking-widest mb-3 flex items-center gap-2"><Settings size={14}/> Origem dos Dados</h4>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 mb-1">Regime Contábil (Despesas)</label>
+                                <div className="flex bg-gray-100 p-1 rounded-lg">
+                                    <button 
+                                        onClick={() => setConfig({...config, accountingMethod: 'COMPETENCE'})}
+                                        className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all ${config.accountingMethod === 'COMPETENCE' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                                    >
+                                        Competência (Vencimento)
+                                    </button>
+                                    <button 
+                                        onClick={() => setConfig({...config, accountingMethod: 'CASH'})}
+                                        className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all ${config.accountingMethod === 'CASH' ? 'bg-white text-emerald-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                                    >
+                                        Caixa (Pagamento)
+                                    </button>
+                                </div>
+                                <p className="text-[10px] text-gray-400 mt-1">
+                                    {config.accountingMethod === 'COMPETENCE' ? 'Considera despesas pela data de vencimento, pagas ou não.' : 'Considera apenas despesas efetivamente pagas no período.'}
+                                </p>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 mb-1">Taxa de Imposto Simples (%)</label>
+                                <input 
+                                    type="number" 
+                                    step="0.1" 
+                                    className="w-full border p-2 rounded-lg text-sm font-bold" 
+                                    value={config.taxRate} 
+                                    onChange={e => setConfig({...config, taxRate: parseFloat(e.target.value) || 0})} 
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Coluna 2: Visibilidade */}
+                    <div className="md:col-span-2">
+                        <h4 className="text-xs font-black text-blue-600 uppercase tracking-widest mb-3 flex items-center gap-2"><Eye size={14}/> O que mostrar no Relatório?</h4>
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                            <label className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${visibility.charts ? 'bg-blue-50 border-blue-200' : 'bg-gray-50 border-transparent opacity-60'}`}>
+                                <input type="checkbox" className="hidden" checked={visibility.charts} onChange={e => setVisibility({...visibility, charts: e.target.checked})} />
+                                {visibility.charts ? <Eye size={18} className="text-blue-600"/> : <EyeOff size={18} className="text-gray-400"/>}
+                                <span className="text-xs font-bold text-slate-700">Gráficos de KPIs</span>
+                            </label>
+                            
+                            <label className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${visibility.revenue ? 'bg-blue-50 border-blue-200' : 'bg-gray-50 border-transparent opacity-60'}`}>
+                                <input type="checkbox" className="hidden" checked={visibility.revenue} onChange={e => setVisibility({...visibility, revenue: e.target.checked})} />
+                                {visibility.revenue ? <Eye size={18} className="text-blue-600"/> : <EyeOff size={18} className="text-gray-400"/>}
+                                <span className="text-xs font-bold text-slate-700">Receita & Vendas</span>
+                            </label>
+
+                            <label className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${visibility.cmv ? 'bg-blue-50 border-blue-200' : 'bg-gray-50 border-transparent opacity-60'}`}>
+                                <input type="checkbox" className="hidden" checked={visibility.cmv} onChange={e => setVisibility({...visibility, cmv: e.target.checked})} />
+                                {visibility.cmv ? <Eye size={18} className="text-blue-600"/> : <EyeOff size={18} className="text-gray-400"/>}
+                                <span className="text-xs font-bold text-slate-700">CMV (Custos)</span>
+                            </label>
+
+                            <label className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${visibility.expenses ? 'bg-blue-50 border-blue-200' : 'bg-gray-50 border-transparent opacity-60'}`}>
+                                <input type="checkbox" className="hidden" checked={visibility.expenses} onChange={e => setVisibility({...visibility, expenses: e.target.checked})} />
+                                {visibility.expenses ? <Eye size={18} className="text-blue-600"/> : <EyeOff size={18} className="text-gray-400"/>}
+                                <span className="text-xs font-bold text-slate-700">Despesas Operacionais</span>
+                            </label>
+
+                            <label className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${visibility.financial ? 'bg-blue-50 border-blue-200' : 'bg-gray-50 border-transparent opacity-60'}`}>
+                                <input type="checkbox" className="hidden" checked={visibility.financial} onChange={e => setVisibility({...visibility, financial: e.target.checked})} />
+                                {visibility.financial ? <Eye size={18} className="text-blue-600"/> : <EyeOff size={18} className="text-gray-400"/>}
+                                <span className="text-xs font-bold text-slate-700">Despesas Financeiras</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
 
         {data.hasData && (
             <>
                 {/* Cards de Métricas (Escondido na impressão para focar na tabela formal) */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 print:hidden">
-                    <div className={`p-6 rounded-2xl border-2 bg-white shadow-sm flex flex-col ${cmvPerc > 35 ? 'border-red-200 bg-red-50/30' : 'border-emerald-200 bg-emerald-50/30'}`}>
-                        <div className="flex justify-between items-start mb-2"><span className="text-gray-500 text-[10px] font-black uppercase tracking-widest">CMV Real (Meta: 35%)</span>{cmvPerc > 35 ? <ArrowUpRight className="text-red-500" /> : <CheckCircle2 className="text-emerald-500" />}</div>
-                        <div className="text-4xl font-black text-slate-800">{cmvPerc.toFixed(1)}%</div>
-                        <div className="mt-3 h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
-                            <div className={`h-full ${cmvPerc > 35 ? 'bg-red-500' : 'bg-emerald-500'}`} style={{ width: `${Math.min(cmvPerc, 100)}%` }}></div>
+                {visibility.charts && (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 print:hidden">
+                        <div className={`p-6 rounded-2xl border-2 bg-white shadow-sm flex flex-col ${cmvPerc > 35 ? 'border-red-200 bg-red-50/30' : 'border-emerald-200 bg-emerald-50/30'}`}>
+                            <div className="flex justify-between items-start mb-2"><span className="text-gray-500 text-[10px] font-black uppercase tracking-widest">CMV Real (Meta: 35%)</span>{cmvPerc > 35 ? <ArrowUpRight className="text-red-500" /> : <CheckCircle2 className="text-emerald-500" />}</div>
+                            <div className="text-4xl font-black text-slate-800">{cmvPerc.toFixed(1)}%</div>
+                            <div className="mt-3 h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
+                                <div className={`h-full ${cmvPerc > 35 ? 'bg-red-500' : 'bg-emerald-500'}`} style={{ width: `${Math.min(cmvPerc, 100)}%` }}></div>
+                            </div>
+                        </div>
+                        <div className="p-6 rounded-2xl border-2 bg-white shadow-sm flex flex-col border-blue-200 bg-blue-50/30">
+                            <div className="flex justify-between items-start mb-2"><span className="text-gray-500 text-[10px] font-black uppercase tracking-widest">Margem Bruta</span><TrendingUp className="text-blue-500" /></div>
+                            <div className="text-4xl font-black text-slate-800">{marginPerc.toFixed(1)}%</div>
+                            <p className="text-[10px] text-blue-600 mt-2 font-bold uppercase">Ideal acima de 30%</p>
+                        </div>
+                        <div className={`p-6 rounded-2xl border-2 bg-white shadow-sm flex flex-col ${profitPerc < 10 ? 'border-orange-200 bg-orange-50/30' : 'border-emerald-200 bg-emerald-50/30'}`}>
+                            <div className="flex justify-between items-start mb-2"><span className="text-gray-500 text-[10px] font-black uppercase tracking-widest">Lucratividade Final</span>{profitPerc < 10 ? <AlertCircle className="text-orange-500" /> : <TrendingUp className="text-emerald-500" />}</div>
+                            <div className="text-4xl font-black text-slate-800">{profitPerc.toFixed(1)}%</div>
+                            <p className="text-[10px] text-gray-500 mt-2 font-bold uppercase">Meta: 10% a 15%</p>
                         </div>
                     </div>
-                    <div className="p-6 rounded-2xl border-2 bg-white shadow-sm flex flex-col border-blue-200 bg-blue-50/30">
-                        <div className="flex justify-between items-start mb-2"><span className="text-gray-500 text-[10px] font-black uppercase tracking-widest">Margem Bruta</span><TrendingUp className="text-blue-500" /></div>
-                        <div className="text-4xl font-black text-slate-800">{marginPerc.toFixed(1)}%</div>
-                        <p className="text-[10px] text-blue-600 mt-2 font-bold uppercase">Ideal acima de 30%</p>
-                    </div>
-                    <div className={`p-6 rounded-2xl border-2 bg-white shadow-sm flex flex-col ${profitPerc < 10 ? 'border-orange-200 bg-orange-50/30' : 'border-emerald-200 bg-emerald-50/30'}`}>
-                        <div className="flex justify-between items-start mb-2"><span className="text-gray-500 text-[10px] font-black uppercase tracking-widest">Lucratividade Final</span>{profitPerc < 10 ? <AlertCircle className="text-orange-500" /> : <TrendingUp className="text-emerald-500" />}</div>
-                        <div className="text-4xl font-black text-slate-800">{profitPerc.toFixed(1)}%</div>
-                        <p className="text-[10px] text-gray-500 mt-2 font-bold uppercase">Meta: 10% a 15%</p>
-                    </div>
-                </div>
+                )}
 
                 {/* DRE Report Sheet */}
                 <div className="bg-white rounded-3xl shadow-xl border border-slate-200 overflow-hidden print:shadow-none print:border-none print:rounded-none">
                     <div className="bg-slate-900 p-10 text-white flex justify-between items-end print:bg-white print:text-black print:p-0 print:border-b-2 print:border-black print:mb-4">
                         <div>
-                            <h1 className="text-4xl font-black tracking-tighter uppercase mb-1 print:text-2xl">DRE Gerencial</h1>
+                            <h1 className="text-4xl font-black tracking-tighter uppercase mb-1 print:text-2xl">DRE {config.accountingMethod === 'CASH' ? '(Caixa)' : '(Competência)'}</h1>
                             <p className="text-blue-400 text-sm font-bold uppercase tracking-widest flex items-center gap-2 print:text-black">
                                 <Store size={16} className="print:hidden"/> {state.theme.restaurantName}
                             </p>
@@ -199,93 +314,109 @@ export const AdminAccounting: React.FC = () => {
                     <div className="p-10 max-w-4xl mx-auto print:p-0 print:max-w-none">
                         <div className="space-y-1">
                             {/* SEÇÃO 1: RECEITA */}
-                            <h3 className="text-xs font-black text-blue-600 uppercase tracking-widest mb-4 flex items-center gap-2 print:text-black print:border-b print:mt-4">
-                                <DollarSign size={14} className="print:hidden"/> 1. Receita e Deduções
-                            </h3>
-                            <Row 
-                                label="(+) Receita Bruta de Vendas" 
-                                value={data.grossRevenue} 
-                                description="Soma total de todas as vendas realizadas (cartão, dinheiro, pix) antes de qualquer desconto."
-                            />
-                            <Row 
-                                label="    Vendas Mesas / Salão" 
-                                value={data.saloonSales} 
-                                indent 
-                                description="Total vendido através de pedidos em mesas."
-                            />
-                            <Row 
-                                label="    Vendas Balcão / PDV" 
-                                value={data.posSales} 
-                                indent 
-                                description="Total vendido diretamente no caixa (balcão/delivery rápido)."
-                            />
-                            <Row 
-                                label="(-) Impostos (Simples Nacional)" 
-                                value={data.taxes} 
-                                isNegative 
-                                description="Estimativa de impostos sobre a venda (ex: 6% do Simples Nacional)."
-                            />
-                            <Row 
-                                label="(=) RECEITA LÍQUIDA" 
-                                value={data.netRevenue} 
-                                type="total" 
-                                description="O dinheiro que efetivamente entra no negócio após deduzir os impostos diretos."
-                            />
+                            {visibility.revenue && (
+                                <>
+                                    <h3 className="text-xs font-black text-blue-600 uppercase tracking-widest mb-4 flex items-center gap-2 print:text-black print:border-b print:mt-4">
+                                        <DollarSign size={14} className="print:hidden"/> 1. Receita e Deduções
+                                    </h3>
+                                    <Row 
+                                        label="(+) Receita Bruta de Vendas" 
+                                        value={data.grossRevenue} 
+                                        description="Soma total de todas as vendas realizadas (cartão, dinheiro, pix) antes de qualquer desconto."
+                                    />
+                                    <Row 
+                                        label="    Vendas Mesas / Salão" 
+                                        value={data.saloonSales} 
+                                        indent 
+                                        description="Total vendido através de pedidos em mesas."
+                                    />
+                                    <Row 
+                                        label="    Vendas Balcão / PDV" 
+                                        value={data.posSales} 
+                                        indent 
+                                        description="Total vendido diretamente no caixa (balcão/delivery rápido)."
+                                    />
+                                    <Row 
+                                        label={`(-) Impostos (${config.taxRate}%)`} 
+                                        value={data.taxes} 
+                                        isNegative 
+                                        description={`Estimativa de impostos sobre a venda (${config.taxRate}% configurado).`}
+                                    />
+                                    <Row 
+                                        label="(=) RECEITA LÍQUIDA" 
+                                        value={data.netRevenue} 
+                                        type="total" 
+                                        description="O dinheiro que efetivamente entra no negócio após deduzir os impostos diretos."
+                                    />
+                                </>
+                            )}
 
                             {/* SEÇÃO 2: CMV */}
-                            <h3 className="text-xs font-black text-orange-600 uppercase tracking-widest mb-4 mt-12 flex items-center gap-2 print:text-black print:border-b print:mt-6">
-                                <Package size={14} className="print:hidden"/> 2. Custos Variáveis (CMV)
-                            </h3>
-                            <Row 
-                                label="(-) Custo de Mercadoria Vendida" 
-                                value={data.cmv} 
-                                isNegative 
-                                description="Custo dos ingredientes/insumos utilizados para produzir os pratos vendidos."
-                            />
-                            <Row 
-                                label="(=) LUCRO BRUTO" 
-                                value={data.grossProfit} 
-                                type="total" 
-                                description="O que sobra da venda para pagar as contas fixas (aluguel, luz, pessoal)."
-                            />
+                            {visibility.cmv && (
+                                <>
+                                    <h3 className="text-xs font-black text-orange-600 uppercase tracking-widest mb-4 mt-12 flex items-center gap-2 print:text-black print:border-b print:mt-6">
+                                        <Package size={14} className="print:hidden"/> 2. Custos Variáveis (CMV)
+                                    </h3>
+                                    <Row 
+                                        label="(-) Custo de Mercadoria Vendida" 
+                                        value={data.cmv} 
+                                        isNegative 
+                                        description="Custo dos ingredientes/insumos utilizados para produzir os pratos vendidos."
+                                    />
+                                    <Row 
+                                        label="(=) LUCRO BRUTO" 
+                                        value={data.grossProfit} 
+                                        type="total" 
+                                        description="O que sobra da venda para pagar as contas fixas (aluguel, luz, pessoal)."
+                                    />
+                                </>
+                            )}
 
                             {/* SEÇÃO 3: OPERACIONAIS */}
-                            <h3 className="text-xs font-black text-purple-600 uppercase tracking-widest mb-4 mt-12 flex items-center gap-2 print:text-black print:border-b print:mt-6">
-                                <FileText size={14} className="print:hidden"/> 3. Despesas Operacionais
-                            </h3>
-                            {Object.entries(data.expensesByCategory).map(([cat, val]: any) => (
-                                <Row 
-                                    key={cat} 
-                                    label={`(-) ${cat}`} 
-                                    value={val} 
-                                    indent 
-                                    isNegative 
-                                    description={`Total gasto na categoria ${cat}.`}
-                                />
-                            ))}
-                            <Row 
-                                label="(=) EBITDA (Operacional)" 
-                                value={data.ebitda} 
-                                type="total" 
-                                description="Lucro da operação antes de juros, impostos e depreciação. Mede a eficiência do negócio."
-                            />
+                            {visibility.expenses && (
+                                <>
+                                    <h3 className="text-xs font-black text-purple-600 uppercase tracking-widest mb-4 mt-12 flex items-center gap-2 print:text-black print:border-b print:mt-6">
+                                        <FileText size={14} className="print:hidden"/> 3. Despesas Operacionais
+                                    </h3>
+                                    {Object.entries(data.expensesByCategory).map(([cat, val]: any) => (
+                                        <Row 
+                                            key={cat} 
+                                            label={`(-) ${cat}`} 
+                                            value={val} 
+                                            indent 
+                                            isNegative 
+                                            description={`Total gasto na categoria ${cat}.`}
+                                        />
+                                    ))}
+                                    <Row 
+                                        label="(=) EBITDA (Operacional)" 
+                                        value={data.ebitda} 
+                                        type="total" 
+                                        description="Lucro da operação antes de juros, impostos e depreciação. Mede a eficiência do negócio."
+                                    />
+                                </>
+                            )}
 
                             {/* SEÇÃO 4: RESULTADO */}
-                            <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 mt-12 flex items-center gap-2 print:text-black print:border-b print:mt-6">
-                                <TrendingUp size={14} className="print:hidden"/> 4. Resultado Final
-                            </h3>
-                            <Row 
-                                label="(-) Despesas Financeiras / Taxas" 
-                                value={data.financialExpenses} 
-                                isNegative 
-                                description="Taxas de cartão de crédito, tarifas bancárias e juros pagos."
-                            />
-                            <Row 
-                                label="(=) LUCRO LÍQUIDO FINAL" 
-                                value={data.netIncome} 
-                                type="total" 
-                                description="O valor real que sobrou no bolso do proprietário após pagar absolutamente tudo."
-                            />
+                            {visibility.financial && (
+                                <>
+                                    <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 mt-12 flex items-center gap-2 print:text-black print:border-b print:mt-6">
+                                        <TrendingUp size={14} className="print:hidden"/> 4. Resultado Final
+                                    </h3>
+                                    <Row 
+                                        label="(-) Despesas Financeiras / Taxas" 
+                                        value={data.financialExpenses} 
+                                        isNegative 
+                                        description="Taxas de cartão de crédito, tarifas bancárias e juros pagos."
+                                    />
+                                    <Row 
+                                        label="(=) LUCRO LÍQUIDO FINAL" 
+                                        value={data.netIncome} 
+                                        type="total" 
+                                        description="O valor real que sobrou no bolso do proprietário após pagar absolutamente tudo."
+                                    />
+                                </>
+                            )}
                         </div>
 
                         {/* Banner de Resultado Final */}
