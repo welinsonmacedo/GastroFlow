@@ -143,10 +143,11 @@ const TenantApp = () => {
         return <div className="h-screen flex items-center justify-center">Restaurante não encontrado.</div>;
     }
 
+    // MODIFICAÇÃO: "overflow-hidden" no container interno para delegar scroll para as páginas filhas.
     return (
         <div className="h-full flex flex-col bg-gray-50 overflow-hidden">
             <TenantNavigation />
-            <div className="flex-1 overflow-y-auto overflow-x-hidden relative scroll-smooth">
+            <div className="flex-1 overflow-hidden relative">
                 <Routes>
                     <Route path="/" element={<Navigate to={`/login${window.location.search}`} replace />} />
                     <Route path="/login" element={<Login />} />

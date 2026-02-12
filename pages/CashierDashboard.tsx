@@ -116,7 +116,7 @@ export const CashierDashboard: React.FC = () => {
   // --- TELA DE CAIXA FECHADO (ABRIR CAIXA) ---
   if (!finState.activeCashSession) {
       return (
-          <div className="min-h-screen flex items-center justify-center bg-slate-900 p-4">
+          <div className="h-full flex items-center justify-center bg-slate-900 p-4">
               <div className="bg-white p-8 rounded-2xl shadow-2xl text-center max-w-md w-full">
                   <div className="bg-blue-100 p-4 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-6">
                       <Lock size={40} className="text-blue-600" />
@@ -162,8 +162,8 @@ export const CashierDashboard: React.FC = () => {
   );
 
   return (
-      <div className="min-h-screen bg-gray-100 flex flex-col md:flex-row">
-          <div className="w-full md:w-24 bg-slate-900 flex md:flex-col items-center justify-between md:justify-start py-4 px-2 md:px-0 gap-2 md:gap-6 fixed md:relative bottom-0 md:h-screen z-20 shrink-0">
+      <div className="h-full bg-gray-100 flex flex-col md:flex-row overflow-hidden">
+          <div className="w-full md:w-24 bg-slate-900 flex md:flex-col items-center justify-between md:justify-start py-4 px-2 md:px-0 gap-2 md:gap-6 fixed md:relative bottom-0 md:h-full z-20 shrink-0">
               <div className="hidden md:block mb-4">
                   <div className="bg-blue-600 p-2 rounded-lg"><DollarSign className="text-white"/></div>
               </div>
@@ -175,10 +175,10 @@ export const CashierDashboard: React.FC = () => {
               </div>
           </div>
 
-          <div className="flex-1 p-4 md:p-6 overflow-y-auto mb-20 md:mb-0 h-screen">
+          <div className="flex-1 p-4 md:p-6 overflow-hidden flex flex-col mb-20 md:mb-0">
               {activeTab === 'ACTIVE' && (
-                  <div className="flex flex-col lg:flex-row gap-6 h-full">
-                      <div className="lg:w-1/3 bg-white rounded-xl shadow-sm border p-4 overflow-y-auto max-h-[40vh] lg:max-h-full">
+                  <div className="flex flex-col lg:flex-row gap-6 h-full overflow-hidden">
+                      <div className="lg:w-1/3 bg-white rounded-xl shadow-sm border p-4 overflow-y-auto lg:h-full">
                           <h3 className="font-bold mb-4 text-gray-700 flex items-center gap-2"><DollarSign size={20}/> Mesas Abertas</h3>
                           {occupiedTables.length === 0 && <p className="text-gray-400 text-center py-10">Nenhuma mesa ocupada.</p>}
                           <div className="space-y-3">
@@ -201,10 +201,10 @@ export const CashierDashboard: React.FC = () => {
                           </div>
                       </div>
 
-                      <div className="lg:w-2/3 bg-white rounded-xl shadow-sm border p-6 flex flex-col h-full">
+                      <div className="lg:w-2/3 bg-white rounded-xl shadow-sm border p-6 flex flex-col h-full overflow-hidden">
                           {selectedTable ? (
                               <>
-                                  <div className="flex justify-between items-center mb-6 pb-4 border-b">
+                                  <div className="flex justify-between items-center mb-6 pb-4 border-b shrink-0">
                                       <div>
                                           <h2 className="text-2xl font-bold text-gray-800">Mesa {selectedTable.number}</h2>
                                           <p className="text-gray-500 text-sm">Cliente: {selectedTable.customerName}</p>
@@ -239,7 +239,7 @@ export const CashierDashboard: React.FC = () => {
                                       </table>
                                   </div>
 
-                                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-4 border-t">
+                                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-4 border-t shrink-0">
                                       <Button onClick={() => handlePayment('CASH')} className="bg-emerald-600 hover:bg-emerald-700 h-12 text-sm">DINHEIRO</Button>
                                       <Button onClick={() => handlePayment('PIX')} className="bg-slate-800 hover:bg-slate-900 h-12 text-sm">PIX</Button>
                                       <Button onClick={() => handlePayment('DEBIT')} className="bg-blue-600 hover:bg-blue-700 h-12 text-sm">DÉBITO</Button>
@@ -257,9 +257,9 @@ export const CashierDashboard: React.FC = () => {
               )}
 
               {activeTab === 'PDV' && (
-                  <div className="flex flex-col lg:flex-row gap-6 h-full">
-                      <div className="lg:w-2/3 flex flex-col gap-4 h-full">
-                          <div className="relative">
+                  <div className="flex flex-col lg:flex-row gap-6 h-full overflow-hidden">
+                      <div className="lg:w-2/3 flex flex-col gap-4 h-full overflow-hidden">
+                          <div className="relative shrink-0">
                               <Search className="absolute left-3 top-3 text-gray-400" size={20}/>
                               <input 
                                   className="w-full pl-10 pr-4 py-3 rounded-xl border shadow-sm focus:ring-2 focus:ring-blue-500 outline-none" 
@@ -287,7 +287,7 @@ export const CashierDashboard: React.FC = () => {
                       </div>
 
                       <div className="lg:w-1/3 bg-white rounded-xl shadow-xl border flex flex-col h-full overflow-hidden">
-                          <div className="p-4 bg-slate-50 border-b">
+                          <div className="p-4 bg-slate-50 border-b shrink-0">
                               <h3 className="font-bold text-gray-800 flex items-center gap-2"><ShoppingCart size={18}/> Cesta de Compras</h3>
                           </div>
                           
@@ -305,7 +305,7 @@ export const CashierDashboard: React.FC = () => {
                               {posCart.length === 0 && <div className="text-center text-gray-400 py-10 text-sm">Carrinho vazio</div>}
                           </div>
 
-                          <div className="p-4 bg-gray-50 border-t space-y-3">
+                          <div className="p-4 bg-gray-50 border-t space-y-3 shrink-0">
                               <div>
                                   <label className="text-xs font-bold text-gray-500 uppercase">Cliente (Opcional)</label>
                                   <input 
@@ -331,14 +331,14 @@ export const CashierDashboard: React.FC = () => {
               )}
 
               {activeTab === 'HISTORY' && (
-                  <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
-                      <div className="p-4 border-b bg-gray-50 flex justify-between items-center">
+                  <div className="bg-white rounded-xl shadow-sm border overflow-hidden h-full flex flex-col">
+                      <div className="p-4 border-b bg-gray-50 flex justify-between items-center shrink-0">
                           <h3 className="font-bold text-gray-700">Histórico de Transações</h3>
                           <Button size="sm" variant="outline" onClick={refreshTransactions}><ArrowRight size={14} className="rotate-90"/> Atualizar</Button>
                       </div>
-                      <div className="overflow-x-auto">
+                      <div className="flex-1 overflow-auto">
                           <table className="w-full text-left text-sm">
-                              <thead className="bg-gray-100 text-gray-600">
+                              <thead className="bg-gray-100 text-gray-600 sticky top-0">
                                   <tr>
                                       <th className="p-3">Data</th>
                                       <th className="p-3">Tipo</th>
@@ -364,7 +364,7 @@ export const CashierDashboard: React.FC = () => {
               )}
 
               {activeTab === 'MANAGE' && (
-                  <div className="max-w-2xl mx-auto space-y-6">
+                  <div className="max-w-2xl mx-auto space-y-6 overflow-y-auto">
                       <div className="bg-white p-6 rounded-xl shadow-sm border">
                           <h3 className="text-xl font-bold mb-4 text-gray-800 flex items-center gap-2"><Wallet size={24}/> Gestão de Caixa</h3>
                           

@@ -46,10 +46,11 @@ export const AdminDashboard: React.FC = () => {
       }
   };
 
+  // MODIFICAÇÃO: "h-full" em vez de "min-h-screen" para não estourar o container pai.
   return (
-    <div className="min-h-screen bg-gray-100 flex relative font-sans">
+    <div className="h-full bg-gray-100 flex relative font-sans overflow-hidden">
         {/* Sidebar */}
-        <div className={`bg-slate-900 text-white w-72 p-6 fixed h-full z-50 transition-transform duration-300 shadow-xl ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:relative lg:translate-x-0 print:hidden flex flex-col`}>
+        <div className={`bg-slate-900 text-white w-72 p-6 h-full z-50 transition-transform duration-300 shadow-xl ${isSidebarOpen ? 'translate-x-0 absolute left-0 top-0' : '-translate-x-full absolute left-0 top-0'} lg:relative lg:translate-x-0 print:hidden flex flex-col shrink-0`}>
             <div className="flex justify-between items-center mb-10">
                 <h1 className="text-xl font-bold tracking-tight">Painel Admin</h1>
                 <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden p-2 hover:bg-slate-800 rounded"><X size={20}/></button>
@@ -88,14 +89,14 @@ export const AdminDashboard: React.FC = () => {
         </div>
 
         {/* Content Area */}
-        <div className="flex-1 flex flex-col h-screen overflow-hidden">
+        <div className="flex-1 flex flex-col h-full overflow-hidden relative">
             {/* Mobile Header */}
             <header className="bg-white shadow-sm border-b p-4 lg:hidden flex justify-between items-center shrink-0 print:hidden">
                 <h1 className="font-bold text-lg text-gray-800">Admin</h1>
                 <button onClick={() => setIsSidebarOpen(true)} className="p-2 bg-gray-100 rounded text-gray-600"><Menu size={24}/></button>
             </header>
 
-            {/* Main Content Scrollable */}
+            {/* Main Content Scrollable - MUDANÇA: h-full */}
             <main className="flex-1 overflow-y-auto p-4 lg:p-8">
                 <div className="max-w-7xl mx-auto h-full">
                     {renderContent()}

@@ -6,16 +6,15 @@ import { useMenu } from '../context/MenuContext';
 import { useOrder } from '../context/OrderContext';
 import { Button } from '../components/Button';
 import { TableStatus, Product } from '../types';
-// Added missing icons: Trash2, ArrowRight, Activity
 import { ShoppingCart, ChefHat, Info, Plus, Minus, X, Lock, Receipt, Loader2, Bell, AlertTriangle, ArrowLeft, Search, Edit3, Zap, UtensilsCrossed, Clock, CheckSquare, Square, Trash2, ArrowRight, Activity } from 'lucide-react';
 
 export const ClientApp: React.FC = () => {
+  // ... (código existente mantido até o return)
   const { tableId } = useParams<{ tableId: string }>();
   const { state } = useRestaurant();
   const { state: menuState } = useMenu();
   const { state: orderState, dispatch: orderDispatch } = useOrder();
   
-  // Cart Items: Agora o carrinho guarda os itens e seus sub-itens vinculados
   const [cart, setCart] = useState<{ product: Product; quantity: number; notes: string; extras?: Product[] }[]>([]);
   const [view, setView] = useState<'MENU' | 'CART' | 'STATUS' | 'BILL'>('MENU');
   const [accessPin, setAccessPin] = useState('');
@@ -24,17 +23,15 @@ export const ClientApp: React.FC = () => {
   const [errorMsg, setErrorMsg] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // --- Modal State ---
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [modalQuantity, setModalQuantity] = useState(1);
   const [modalNotes, setModalNotes] = useState('');
   const [drinkTiming, setDrinkTiming] = useState<'IMMEDIATE' | 'WITH_FOOD'>('IMMEDIATE');
   const [selectedExtraIds, setSelectedExtraIds] = useState<string[]>([]);
 
-  // Handle Loading
   if (state.isLoading || menuState.isLoading) {
       return (
-          <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 text-gray-500">
+          <div className="h-full flex flex-col items-center justify-center bg-gray-50 text-gray-500">
               <Loader2 className="animate-spin mb-2 text-blue-600" size={32} />
               <p>Carregando cardápio...</p>
           </div>
@@ -79,7 +76,6 @@ export const ClientApp: React.FC = () => {
         finalNote = timingPrefix + finalNote;
     }
 
-    // Buscamos os objetos completos dos produtos extras para o carrinho
     const chosenExtras = selectedExtraIds
         .map(id => menuState.products.find(p => p.id === id))
         .filter(Boolean) as Product[];
@@ -100,23 +96,19 @@ export const ClientApp: React.FC = () => {
   const submitOrder = async () => {
     if (!tableId || !table || cart.length === 0) return;
 
-    // Criamos um array flat de itens para o pedido
-    // Cada extra vira um item de linha separado no banco de dados para descontar estoque
     const flattenedItems: { productId: string; quantity: number; notes: string }[] = [];
 
     cart.forEach(item => {
-        // Item Principal
         flattenedItems.push({
             productId: item.product.id,
             quantity: item.quantity,
             notes: item.notes
         });
 
-        // Adicionais como itens filhos
         item.extras?.forEach(extra => {
             flattenedItems.push({
                 productId: extra.id,
-                quantity: item.quantity, // Mesma quantidade do prato principal
+                quantity: item.quantity, 
                 notes: `[ADICIONAL DE: ${item.product.name}]`
             });
         });
@@ -140,7 +132,7 @@ export const ClientApp: React.FC = () => {
 
   if (!isTableActive) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-6" style={{ backgroundColor: theme.backgroundColor }}>
+      <div className="flex flex-col items-center justify-center h-full p-6" style={{ backgroundColor: theme.backgroundColor }}>
         <div className="bg-white p-8 rounded-3xl shadow-xl text-center max-w-sm w-full border border-gray-100">
           <ChefHat size={64} className="mx-auto mb-6 text-blue-600" />
           <h1 className="text-2xl font-bold mb-2 text-gray-800">{theme.restaurantName}</h1>
@@ -157,7 +149,7 @@ export const ClientApp: React.FC = () => {
   const requiresAuth = table.accessCode && table.accessCode.length > 0;
   if (requiresAuth && !isAuthenticated) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-6" style={{ backgroundColor: theme.backgroundColor }}>
+      <div className="flex flex-col items-center justify-center h-full p-6" style={{ backgroundColor: theme.backgroundColor }}>
          <div className="bg-white p-8 rounded-3xl shadow-xl text-center max-w-sm w-full border border-gray-100">
             <div className="bg-blue-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6">
                 <Lock size={32} className="text-blue-600" />
@@ -181,7 +173,7 @@ export const ClientApp: React.FC = () => {
   const visibleProducts = menuState.products.filter(p => p.isVisible && !p.isExtra).sort((a, b) => (a.sortOrder || 99) - (b.sortOrder || 99));
 
   return (
-    <div className="min-h-screen pb-24" style={{ backgroundColor: theme.backgroundColor, color: theme.fontColor }}>
+    <div className="h-full overflow-y-auto pb-24" style={{ backgroundColor: theme.backgroundColor, color: theme.fontColor }}>
       
       {/* MODAL PRODUTO + ADICIONAIS */}
       {selectedProduct && (
@@ -192,6 +184,7 @@ export const ClientApp: React.FC = () => {
                       <button onClick={() => setSelectedProduct(null)} className="absolute top-6 right-6 bg-gray-100/80 p-3 rounded-full text-gray-800 shadow-sm backdrop-blur-sm hover:bg-red-500 hover:text-white transition-all"><X size={24} /></button>
                   </div>
                   <div className="p-8 flex-1 overflow-y-auto custom-scrollbar">
+                      {/* ... conteudo do modal mantido igual ... */}
                       <div className="flex justify-between items-start mb-2">
                           <h2 className="text-3xl font-extrabold text-gray-800 leading-tight">{selectedProduct.name}</h2>
                           <span className="text-2xl font-black text-green-600 whitespace-nowrap">R$ {selectedProduct.price.toFixed(2)}</span>
@@ -209,7 +202,6 @@ export const ClientApp: React.FC = () => {
                               </div>
                           )}
 
-                          {/* LISTA DE ADICIONAIS VINCULADOS */}
                           {selectedProduct.linkedExtraIds && selectedProduct.linkedExtraIds.length > 0 && (
                               <div className="space-y-4">
                                   <label className="block text-sm font-black text-gray-700 flex items-center gap-2 uppercase tracking-wider"><Plus size={18} className="text-green-600"/> Personalize seu prato</label>
@@ -273,6 +265,7 @@ export const ClientApp: React.FC = () => {
       {/* HEADER */}
       <header className="bg-white shadow-sm sticky top-0 z-20">
           <div className="flex justify-between items-center p-4 max-w-2xl mx-auto">
+            {/* ... header content ... */}
             <div>
                {view !== 'MENU' ? (
                    <button onClick={() => setView('MENU')} className="flex items-center gap-2 text-gray-700 font-black hover:text-blue-600 transition-colors uppercase tracking-widest text-xs">
@@ -305,9 +298,9 @@ export const ClientApp: React.FC = () => {
       </header>
 
       <main className="p-4 max-w-2xl mx-auto min-h-[calc(100vh-160px)]">
+        {/* ... main content (views: MENU, CART, BILL, STATUS) ... */}
         {view === 'MENU' && (
           <div className="space-y-12 mt-4 animate-fade-in">
-            {/* Search */}
             <div className="relative group">
                 <Search size={20} className="absolute left-4 top-3.5 text-gray-400 group-focus-within:text-blue-500 transition-colors"/>
                 <input 

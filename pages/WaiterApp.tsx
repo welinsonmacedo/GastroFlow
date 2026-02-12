@@ -12,6 +12,7 @@ import { Bell, Plus, Search, ShoppingCart, ArrowLeft, Utensils, Trash2 } from 'l
 const FALLBACK_SOUND_URL = "https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3";
 
 export const WaiterApp: React.FC = () => {
+  // ... (código existente mantido)
   const { state: restState } = useRestaurant();
   const { state: menuState } = useMenu();
   const { state: orderState, dispatch: orderDispatch } = useOrder();
@@ -192,8 +193,9 @@ export const WaiterApp: React.FC = () => {
       );
   }
 
+  // MODIFICAÇÃO: "h-full overflow-y-auto" aqui permite que esta página role independentemente
   return (
-    <div className="min-h-full bg-gray-100 p-4 lg:p-6 space-y-6">
+    <div className="h-full overflow-y-auto bg-gray-100 p-4 lg:p-6 space-y-6">
         <header className="flex justify-between items-center">
             <h1 className="text-3xl font-black text-slate-800 uppercase tracking-tighter">Atendimento</h1>
             <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-2xl shadow-sm border">
