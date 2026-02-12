@@ -7,10 +7,10 @@ import { Button } from '../../components/Button';
 import { ExpenseFormModal } from '../../components/modals/ExpenseFormModal';
 import { CashBleedModal } from '../../components/modals/CashBleedModal';
 import { Expense } from '../../types';
-import { Plus, CheckSquare, Trash2, Wallet, CreditCard, Banknote, ArrowDown, Repeat } from 'lucide-react';
+import { Plus, CheckSquare, Trash2, Wallet, CreditCard, Banknote, ArrowDown, Repeat, XCircle } from 'lucide-react';
 
 export const AdminFinance: React.FC = () => {
-  const { state: finState, payExpense, deleteExpense } = useFinance();
+  const { state: finState, payExpense, deleteExpense, voidTransaction } = useFinance(); // Adicionado voidTransaction se precisar usar aqui
   const { showConfirm, showAlert } = useUI();
   
   // State for Modals
@@ -19,15 +19,21 @@ export const AdminFinance: React.FC = () => {
   const [isBleedModalOpen, setIsBleedModalOpen] = useState(false);
 
   // --- Calculations ---
+  // Apenas transações NÃO canceladas
+  const activeTransactions = finState.transactions.filter(t => t.status !== 'CANCELLED');
+
   // 1. Receitas
-  const pixSales = finState.transactions.filter(t => t.method === 'PIX').reduce((acc, t) => acc + t.amount, 0);
-  const cardSales = finState.transactions.filter(t => ['CREDIT', 'DEBIT', 'CARD'].includes(t.method)).reduce((acc, t) => acc + t.amount, 0);
+  const pixSales = activeTransactions.filter(t => t.method === 'PIX').reduce((acc, t) => acc + t.amount, 0);
+  const cardSales = activeTransactions.filter(t => ['CREDIT', 'DEBIT', 'CARD'].includes(t.method)).reduce((acc, t) => acc + t.amount, 0);
 
   // 2. Gaveta (Sessão Atual)
   const activeSessionInitial = finState.activeCashSession?.initialAmount || 0;
-  const sessionCashSales = finState.transactions
+  
+  // Vendas em dinheiro da sessão atual (Excluindo canceladas)
+  const sessionCashSales = activeTransactions
       .filter(t => t.method === 'CASH' && finState.activeCashSession && new Date(t.timestamp) >= finState.activeCashSession.openedAt)
       .reduce((acc, t) => acc + t.amount, 0);
+      
   const sessionBleeds = finState.cashMovements
       .filter(m => m.type === 'BLEED')
       .reduce((acc, m) => acc + m.amount, 0);
@@ -174,7 +180,7 @@ export const AdminFinance: React.FC = () => {
                                 </td>
                             </tr>
                         ))}
-                        {finState.expenses.length === 0 && <tr><td colSpan={7} className="p-8 text-center text-gray-400">Nenhuma despesa registrada.</td></tr>}
+                        {finState.expenses.length === 0 && <tr><td colSpan={7} className="p-8 text-center text-gray-400">Nenhum despesa registrada.</td></tr>}
                     </tbody>
                 </table>
             </div>

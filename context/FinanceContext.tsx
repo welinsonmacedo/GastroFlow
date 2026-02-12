@@ -231,15 +231,14 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
       if (transError) throw transError;
 
-      // 4. Atualizar o PEDIDO para CANCELLED
-      // Isso é crucial: O Trigger 'trg_restore_stock_on_cancel' (no SQL) só é ativado quando a tabela 'orders' muda.
+      // 4. Atualizar o PEDIDO para CANCELLED e NÃO PAGO (Estorno)
+      // Isso dispara o Trigger de estorno de estoque
       if (transaction && transaction.order_id) {
           await supabase
               .from('orders')
-              .update({ status: 'CANCELLED' })
+              .update({ status: 'CANCELLED', is_paid: false }) // Marca como não pago para sair dos relatórios de venda
               .eq('id', transaction.order_id);
           
-          // Opcional: Marcar itens como cancelados visualmente, embora o status do pedido já resolva a maioria dos relatórios
           await supabase
               .from('order_items')
               .update({ status: 'CANCELLED' })

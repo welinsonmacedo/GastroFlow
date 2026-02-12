@@ -46,23 +46,25 @@ export const AdminAccounting: React.FC = () => {
           const end = dateEnd + ' 23:59:59';
 
           // 1. Buscar Transações (Receita Bruta)
-          // Transações são sempre regime de CAIXA (o dinheiro entrou), a menos que queiramos filtrar pedidos não pagos no futuro.
-          // Por enquanto, mantemos baseadas em 'created_at' das transações confirmadas.
+          // Excluir CANCELLED
           const { data: transRes, error: transErr } = await supabase
             .from('transactions')
             .select('*')
             .eq('tenant_id', state.tenantId)
             .gte('created_at', start)
-            .lte('created_at', end);
+            .lte('created_at', end)
+            .neq('status', 'CANCELLED'); // Filtro de cancelamento
 
           if (transErr) throw transErr;
 
           // 2. Buscar Itens de Pedidos Vendidos para CMV
+          // Excluir ordens CANCELLED
           const { data: itemsRes, error: itemsErr } = await supabase
             .from('order_items')
-            .select('quantity, product_price, product_cost_price, orders!inner(is_paid, created_at)')
+            .select('quantity, product_price, product_cost_price, orders!inner(is_paid, created_at, status)')
             .eq('tenant_id', state.tenantId)
             .eq('orders.is_paid', true)
+            .neq('orders.status', 'CANCELLED') // Filtro de cancelamento na ordem pai
             .gte('orders.created_at', start)
             .lte('orders.created_at', end);
 
@@ -322,7 +324,7 @@ export const AdminAccounting: React.FC = () => {
                                     <Row 
                                         label="(+) Receita Bruta de Vendas" 
                                         value={data.grossRevenue} 
-                                        description="Soma total de todas as vendas realizadas (cartão, dinheiro, pix) antes de qualquer desconto."
+                                        description="Soma total de todas as vendas realizadas (cartão, dinheiro, pix) excluindo cancelamentos."
                                     />
                                     <Row 
                                         label="    Vendas Mesas / Salão" 
@@ -361,7 +363,7 @@ export const AdminAccounting: React.FC = () => {
                                         label="(-) Custo de Mercadoria Vendida" 
                                         value={data.cmv} 
                                         isNegative 
-                                        description="Custo dos ingredientes/insumos utilizados para produzir os pratos vendidos."
+                                        description="Custo dos ingredientes/insumos utilizados para produzir os pratos vendidos (exclui cancelados)."
                                     />
                                     <Row 
                                         label="(=) LUCRO BRUTO" 

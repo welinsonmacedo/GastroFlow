@@ -14,9 +14,16 @@ export const AdminOverview: React.FC = () => {
   const { state: orderState } = useOrder();
   const { planLimits } = restState;
 
-  const salesToday = finState.transactions.reduce((acc, t) => acc + t.amount, 0);
+  // Filtra transações canceladas para não somar na receita
+  const salesToday = finState.transactions
+    .filter(t => t.status !== 'CANCELLED')
+    .reduce((acc, t) => acc + t.amount, 0);
+
   const lowStockCount = invState.inventory.filter(i => i.quantity <= i.minQuantity).length;
-  const openOrders = orderState.orders.filter(o => !o.isPaid).length;
+  // Filtra pedidos cancelados ou pagos
+  const openOrders = orderState.orders.filter(o => !o.isPaid && o.status !== 'CANCELLED').length;
+  
+  const validTransactionsCount = finState.transactions.filter(t => t.status !== 'CANCELLED').length;
 
   return (
     <div className="animate-fade-in">
@@ -50,8 +57,8 @@ export const AdminOverview: React.FC = () => {
             />
 
             <StatCard 
-                title="Transações" 
-                value={finState.transactions.length} 
+                title="Transações Válidas" 
+                value={validTransactionsCount} 
                 icon={<TrendingUp size={20}/>}
                 colorBorder="border-green-500"
             />
