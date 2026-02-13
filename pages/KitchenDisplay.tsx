@@ -4,7 +4,7 @@ import { useRestaurant } from '../context/RestaurantContext';
 import { useMenu } from '../context/MenuContext';
 import { useOrder } from '../context/OrderContext';
 import { OrderStatus, ProductType, OrderItem } from '../types';
-import { Clock, Check, ChefHat, CheckCircle, AlertTriangle, Volume2, Zap, Plus } from 'lucide-react';
+import { Clock, Check, ChefHat, CheckCircle, AlertTriangle, Volume2, Zap, Plus, Printer } from 'lucide-react';
 
 const BELL_SOUND_BASE64 = "data:audio/mp3;base64,//uQRAAAAWMSLwUIYAAsYkXgoQwAEaYLWfkWgAI0wWs/ItAAAG84AA0WAgAAAAAAABZsAAAAtAAAAAAAABaAAAAAABZAAABcAAABjAAAA//uQRAAAAWMSLwUIYAAsYkXgoQwAEaYLWfkWgAI0wWs/ItAAAG84AA0WAgAAAAAAABZsAAAAtAAAAAAAABaAAAAAABZAAABcAAABjAAAA"; 
 
@@ -169,6 +169,74 @@ export const KitchenDisplay: React.FC = () => {
       return grouped;
   };
 
+  // --- PRINTING LOGIC ---
+  const handlePrintOrder = (order: any, tableNumber: number) => {
+      const groupedItems = groupOrderItems(order.items);
+      const restaurantName = restState.theme.restaurantName;
+      const date = new Date(order.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+      const printContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Comanda Mesa ${tableNumber}</title>
+            <style>
+                body { font-family: 'Courier New', monospace; width: 80mm; margin: 0; padding: 5px; color: #000; }
+                .header { text-align: center; border-bottom: 2px dashed #000; padding-bottom: 10px; margin-bottom: 10px; }
+                .title { font-size: 1.5em; font-weight: bold; display: block; }
+                .meta { font-size: 1em; margin-top: 5px; display: block; }
+                .item-container { margin-bottom: 10px; border-bottom: 1px dotted #ccc; padding-bottom: 5px; }
+                .item-row { display: flex; font-size: 1.2em; font-weight: bold; }
+                .qty { width: 30px; }
+                .name { flex: 1; }
+                .extras { margin-left: 30px; font-size: 0.9em; font-weight: normal; }
+                .note { margin-left: 30px; font-size: 1em; font-weight: bold; background: #000; color: #fff; padding: 2px; display: inline-block; margin-top: 2px; }
+                .footer { text-align: center; margin-top: 20px; font-size: 0.8em; border-top: 1px solid #000; pt: 10px; }
+                @media print {
+                    @page { margin: 0; size: auto; }
+                    body { padding: 10px; }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <span class="title">MESA ${tableNumber}</span>
+                <span class="meta">Pedido #${order.id.slice(0,4)} • ${date}</span>
+                <div style="font-size: 0.8em; margin-top: 5px;">${restaurantName}</div>
+            </div>
+            
+            ${groupedItems.map(({ main, extras }) => `
+                <div class="item-container">
+                    <div class="item-row">
+                        <span class="qty">${main.quantity}x</span>
+                        <span class="name">${main.productName}</span>
+                    </div>
+                    ${main.notes ? `<div class="note">OBS: ${main.notes}</div>` : ''}
+                    ${extras.length > 0 ? `
+                        <div class="extras">
+                            ${extras.map(e => `+ ${e.quantity}x ${e.productName}`).join('<br/>')}
+                        </div>
+                    ` : ''}
+                </div>
+            `).join('')}
+
+            <div class="footer">
+                = FIM DO PEDIDO =
+            </div>
+            <script>
+                window.onload = function() { window.print(); window.close(); }
+            </script>
+        </body>
+        </html>
+      `;
+
+      const printWindow = window.open('', '_blank');
+      if (printWindow) {
+          printWindow.document.write(printContent);
+          printWindow.document.close();
+      }
+  };
+
   if (!orderState.audioUnlocked) {
       return (
           <div className="h-full bg-slate-900 flex items-center justify-center p-4">
@@ -226,8 +294,15 @@ export const KitchenDisplay: React.FC = () => {
                 <div><div className="font-bold text-3xl">Mesa {table?.number}</div><div className="text-xs opacity-75">#{order.id.slice(0,4)}</div></div>
                 <div className="flex flex-col items-end"><div className="flex items-center gap-1 text-lg font-mono font-bold bg-black/20 px-2 rounded"><Clock size={18} /> {elapsedMinutes}m</div></div>
               </div>
-              <div className="bg-slate-750 p-2 border-b border-slate-700 flex justify-end shrink-0">
-                  <button onClick={() => completeAllOrderItems(order.id)} className="text-xs bg-green-700 hover:bg-green-600 text-white px-3 py-2 rounded flex items-center gap-2 font-bold w-full justify-center transition-colors"><CheckCircle size={14}/> CONCLUIR TODOS</button>
+              <div className="bg-slate-750 p-2 border-b border-slate-700 flex justify-between shrink-0 gap-2">
+                  <button 
+                    onClick={() => handlePrintOrder(order, table?.number || 0)} 
+                    className="text-xs bg-slate-600 hover:bg-slate-500 text-white px-3 py-2 rounded flex items-center justify-center transition-colors"
+                    title="Imprimir Comanda"
+                  >
+                    <Printer size={18} />
+                  </button>
+                  <button onClick={() => completeAllOrderItems(order.id)} className="text-xs bg-green-700 hover:bg-green-600 text-white px-3 py-2 rounded flex items-center justify-center gap-2 font-bold flex-1 transition-colors"><CheckCircle size={14}/> CONCLUIR TODOS</button>
               </div>
               <div className="p-2 flex-1 space-y-2 overflow-y-auto">
                 {groupedItems.map(({ main, extras }) => {

@@ -66,7 +66,7 @@ export const ClientApp: React.FC = () => {
   const { state } = useRestaurant();
   const { state: menuState } = useMenu();
   const { state: orderState, dispatch: orderDispatch, cancelOrder } = useOrder();
-  const { showConfirm } = useUI();
+  const { showConfirm, showAlert } = useUI();
   
   const [cart, setCart] = useState<{ product: Product; quantity: number; notes: string; extras?: Product[] }[]>([]);
   const [view, setView] = useState<'MENU' | 'CART' | 'STATUS' | 'BILL'>('MENU');
@@ -98,6 +98,17 @@ export const ClientApp: React.FC = () => {
   const isTableActive = table?.status === TableStatus.OCCUPIED;
   // Filtramos apenas ordens não pagas e não canceladas
   const tableOrders = orderState.orders.filter(o => o.tableId === tableId && !o.isPaid && o.status !== 'CANCELLED');
+
+  const handleCallWaiter = () => {
+      if (!table) return;
+      orderDispatch({ type: 'CALL_WAITER', tableId: table.id });
+      setWaiterCalled(true);
+      showAlert({
+          title: "Garçom Chamado",
+          message: "Sua solicitação foi enviada. Logo alguém virá lhe atender.",
+          type: 'SUCCESS'
+      });
+  };
 
   const openProductModal = (product: Product) => {
       setSelectedProduct(product);
@@ -177,7 +188,7 @@ export const ClientApp: React.FC = () => {
           <h1 className="text-2xl font-bold mb-2 text-gray-800">{theme.restaurantName}</h1>
           <h2 className="text-xl font-bold text-gray-700 mb-6 underline decoration-blue-500 underline-offset-4">Mesa #{table.number}</h2>
           <div className="bg-red-50 text-red-600 p-4 rounded-xl font-bold mb-8 animate-pulse border border-red-100">Mesa Fechada</div>
-          <Button onClick={() => { orderDispatch({ type: 'CALL_WAITER', tableId: table.id }); setWaiterCalled(true); }} className="w-full py-4 text-lg font-bold shadow-lg">
+          <Button onClick={handleCallWaiter} className="w-full py-4 text-lg font-bold shadow-lg">
              {waiterCalled ? 'Solicitação Enviada!' : 'Chamar Garçom'}
           </Button>
         </div>
@@ -500,7 +511,7 @@ export const ClientApp: React.FC = () => {
                    <Button 
                     variant="outline" 
                     className="w-full py-5 rounded-2xl bg-white border-blue-100 text-blue-600 hover:bg-blue-50 font-black shadow-lg text-lg"
-                    onClick={() => { orderDispatch({ type: 'CALL_WAITER', tableId: table.id }); setWaiterCalled(true); }}
+                    onClick={handleCallWaiter}
                    >
                      <Bell size={24} className={waiterCalled ? "animate-ping" : ""} /> {waiterCalled ? 'GARÇOM CHAMADO' : 'CHAMAR GARÇOM AGORA'}
                    </Button>
@@ -561,7 +572,7 @@ export const ClientApp: React.FC = () => {
                         <Button 
                             variant="outline" 
                             className="w-full bg-white border-blue-200 text-blue-600 hover:bg-blue-50 font-black py-4 rounded-2xl shadow-md"
-                            onClick={() => { orderDispatch({ type: 'CALL_WAITER', tableId: table.id }); setWaiterCalled(true); }}
+                            onClick={handleCallWaiter}
                         >
                             {waiterCalled ? 'JÁ CHAMAMOS O GARÇOM' : 'CHAMAR GARÇOM'}
                         </Button>
