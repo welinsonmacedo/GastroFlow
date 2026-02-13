@@ -149,7 +149,7 @@ export const LandingPage: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-white font-sans text-slate-900 relative overflow-x-hidden">
+    <div className="h-full overflow-y-auto bg-white font-sans text-slate-900 relative overflow-x-hidden">
       
       {/* --- Floating WhatsApp Button --- */}
       <button 

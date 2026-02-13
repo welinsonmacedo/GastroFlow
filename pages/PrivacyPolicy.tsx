@@ -4,7 +4,7 @@ import { LandingNavbar } from '../components/LandingNavbar';
 
 export const PrivacyPolicy: React.FC = () => {
   return (
-    <div className="min-h-screen bg-white text-slate-900 font-sans">
+    <div className="h-full overflow-y-auto bg-white text-slate-900 font-sans">
       <LandingNavbar />
 
       <main className="max-w-4xl mx-auto px-4 py-12">
