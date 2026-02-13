@@ -5,7 +5,7 @@ import { useUI } from '../context/UIContext';
 import { Plan, PlanType, RestaurantTenant, PlanLimits } from '../types';
 import { Button } from '../components/Button';
 import { SaaSTenantCreateModal, SaaSEditTenantModal, SaaSTenantLinksModal } from '../components/modals/SaaSModals';
-import { Building2, DollarSign, Activity, Settings, Search, ExternalLink, LogOut, Plus, X, List, Edit, Lock, BarChart2, Unlock, Link as LinkIcon, FileText, Printer, ChevronDown } from 'lucide-react';
+import { Building2, DollarSign, Activity, Settings, Search, ExternalLink, LogOut, Plus, X, List, Edit, Lock, BarChart2, Unlock, Link as LinkIcon, FileText, Printer, ChevronDown, Edit3, RotateCcw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 type ViewMode = 'RESTAURANTS' | 'FINANCIAL' | 'PLANS' | 'SETTINGS' | 'CONTRACTS';
@@ -25,6 +25,7 @@ export const SuperAdminDashboard: React.FC = () => {
 
   // Contract Generator State
   const [selectedContractTenantId, setSelectedContractTenantId] = useState('');
+  const [isEditingContract, setIsEditingContract] = useState(false); // Novo estado para controle de edição
 
   // Settings State
   const [settingsForm, setSettingsForm] = useState({ name: state.adminName || '', email: state.adminEmail || '', password: '' });
@@ -144,7 +145,10 @@ export const SuperAdminDashboard: React.FC = () => {
                                    <select 
                                        className="w-full border p-3 rounded-lg appearance-none bg-gray-50 font-medium outline-none focus:ring-2 focus:ring-blue-500"
                                        value={selectedContractTenantId}
-                                       onChange={(e) => setSelectedContractTenantId(e.target.value)}
+                                       onChange={(e) => {
+                                           setSelectedContractTenantId(e.target.value);
+                                           setIsEditingContract(false); // Reseta modo edição ao trocar cliente
+                                       }}
                                    >
                                        <option value="">-- Selecione um restaurante --</option>
                                        {state.tenants.map(t => (
@@ -154,14 +158,29 @@ export const SuperAdminDashboard: React.FC = () => {
                                    <ChevronDown className="absolute right-3 top-3.5 text-gray-400 pointer-events-none" size={16}/>
                                </div>
                            </div>
+                           <Button 
+                               onClick={() => setIsEditingContract(!isEditingContract)} 
+                               variant={isEditingContract ? "secondary" : "outline"}
+                               disabled={!selectedContractTenantId} 
+                               className={`h-[46px] px-6 transition-all ${isEditingContract ? 'bg-blue-100 text-blue-700 border-blue-200' : ''}`}
+                           >
+                               {isEditingContract ? <RotateCcw size={18} className="mr-2"/> : <Edit3 size={18} className="mr-2"/>} 
+                               {isEditingContract ? 'Encerrar Edição' : 'Editar Texto'}
+                           </Button>
                            <Button onClick={() => window.print()} disabled={!selectedContractTenantId} className="h-[46px] px-6">
                                <Printer size={18} className="mr-2"/> Imprimir Contrato
                            </Button>
                        </div>
+                       {isEditingContract && <p className="text-xs text-blue-600 mt-2 font-bold animate-pulse">Modo de edição ativo. Clique no texto abaixo para alterar.</p>}
                    </div>
 
                    {selectedContractTenant ? (
-                       <div className="bg-white shadow-2xl p-[2cm] max-w-[21cm] min-h-[29.7cm] mx-auto text-justify text-sm leading-relaxed print:shadow-none print:w-full print:max-w-none print:mx-0 print:p-0">
+                       <div 
+                           key={selectedContractTenantId} // Força re-render ao trocar tenant (reseta edições)
+                           contentEditable={isEditingContract}
+                           suppressContentEditableWarning={true}
+                           className={`bg-white shadow-2xl p-[2cm] max-w-[21cm] min-h-[29.7cm] mx-auto text-justify text-sm leading-relaxed print:shadow-none print:w-full print:max-w-none print:mx-0 print:p-0 transition-all ${isEditingContract ? 'ring-4 ring-blue-200 outline-none cursor-text' : ''}`}
+                       >
                            <div className="text-center mb-8">
                                <h1 className="text-xl font-bold uppercase mb-2">Contrato de Licenciamento de Software (SaaS)</h1>
                                <p className="text-xs text-gray-500 font-bold">Nº {selectedContractTenant.id.slice(0,8).toUpperCase()}/{new Date().getFullYear()}</p>
@@ -171,7 +190,7 @@ export const SuperAdminDashboard: React.FC = () => {
                                <section>
                                    <h3 className="font-bold uppercase mb-2 text-xs text-gray-900 border-b border-gray-300 pb-1">1. Identificação das Partes</h3>
                                    <p className="mb-2">
-                                       <strong>CONTRATADA:</strong> <strong>GASTROFLOW TECNOLOGIA LTDA</strong>, inscrita no CNPJ sob o nº 00.000.000/0001-00, com sede em [Cidade/UF], doravante denominada simplesmente "CONTRATADA".
+                                       <strong>CONTRATADA:</strong> <strong>FLUX EAT TECNOLOGIA LTDA</strong>, inscrita no CNPJ sob o nº 00.000.000/0001-00, com sede em Uberlândia/MG, doravante denominada simplesmente "CONTRATADA".
                                    </p>
                                    <p>
                                        <strong>CONTRATANTE:</strong> <strong>{selectedContractTenant.businessInfo?.restaurantName || selectedContractTenant.name.toUpperCase()}</strong>, 
@@ -185,7 +204,7 @@ export const SuperAdminDashboard: React.FC = () => {
                                <section>
                                    <h3 className="font-bold uppercase mb-2 text-xs text-gray-900 border-b border-gray-300 pb-1">2. Objeto</h3>
                                    <p>
-                                       O presente contrato tem como objeto o licenciamento de uso do software <strong>GastroFlow</strong>, na modalidade SaaS (Software as a Service), para gestão de restaurante, incluindo módulos de cardápio digital, KDS e controle financeiro, conforme as especificações do plano contratado.
+                                       O presente contrato tem como objeto o licenciamento de uso do software <strong>Flux Eat</strong>, na modalidade SaaS (Software as a Service), para gestão de restaurante, incluindo módulos de cardápio digital, KDS e controle financeiro, conforme as especificações do plano contratado.
                                    </p>
                                </section>
 
@@ -220,12 +239,12 @@ export const SuperAdminDashboard: React.FC = () => {
                                        E, por estarem assim justas e contratadas, as partes assinam o presente instrumento.
                                    </p>
                                    <p className="text-right mb-16">
-                                       [Cidade/UF], {new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })}.
+                                       Uberlândia/MG, {new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })}.
                                    </p>
 
                                    <div className="flex justify-between gap-8 pt-8">
                                        <div className="flex-1 border-t border-black text-center pt-2">
-                                           <p className="font-bold text-xs uppercase">GastroFlow Tecnologia</p>
+                                           <p className="font-bold text-xs uppercase">Flux Eat Tecnologia</p>
                                            <p className="text-[10px] text-gray-500">Contratada</p>
                                        </div>
                                        <div className="flex-1 border-t border-black text-center pt-2">
