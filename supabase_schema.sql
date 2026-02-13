@@ -1,8 +1,7 @@
 
 -- ⚠️ ATENÇÃO: RODE ESTE SCRIPT NO "SQL EDITOR" DO SUPABASE ⚠️
 
--- 1. LIMPEZA DE FUNÇÕES ANTIGAS E TRIGGERS QUE CAUSAVAM CONFLITO
--- Removemos o trigger de estorno automático pois a lógica foi movida para o App (FinanceContext) para maior controle.
+-- 1. LIMPEZA DE FUNÇÕES ANTIGAS E TRIGGERS (Prevenção de conflito com estorno via código)
 DROP TRIGGER IF EXISTS trg_restore_stock_on_cancel ON orders;
 DROP FUNCTION IF EXISTS restore_inventory_on_cancellation();
 
@@ -116,8 +115,11 @@ GRANT EXECUTE ON FUNCTION process_pos_sale TO anon;
 GRANT EXECUTE ON FUNCTION close_cash_session TO authenticated;
 GRANT EXECUTE ON FUNCTION close_cash_session TO service_role;
 
+-- 7. ATIVAÇÃO REALTIME (Garante que as tabelas sejam "ouvidas" pelo Front-end)
 ALTER PUBLICATION supabase_realtime ADD TABLE orders;
 ALTER PUBLICATION supabase_realtime ADD TABLE transactions;
 ALTER PUBLICATION supabase_realtime ADD TABLE order_items;
 ALTER PUBLICATION supabase_realtime ADD TABLE inventory_items;
 ALTER PUBLICATION supabase_realtime ADD TABLE inventory_logs;
+ALTER PUBLICATION supabase_realtime ADD TABLE inventory_recipes;
+ALTER PUBLICATION supabase_realtime ADD TABLE suppliers;

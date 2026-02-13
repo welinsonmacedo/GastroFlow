@@ -100,7 +100,19 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   useEffect(() => {
     if (!tenantId) return;
+    
+    // Carregamento inicial
     fetchData();
+
+    // Inscrição no Realtime para tabelas de estoque
+    const channel = supabase.channel(`inventory_updates:${tenantId}`)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory_items', filter: `tenant_id=eq.${tenantId}` }, fetchData)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory_logs', filter: `tenant_id=eq.${tenantId}` }, fetchData)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory_recipes', filter: `tenant_id=eq.${tenantId}` }, fetchData)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'suppliers', filter: `tenant_id=eq.${tenantId}` }, fetchData)
+        .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
   }, [tenantId, fetchData]);
 
   const addInventoryItem = async (item: InventoryItem) => {
@@ -132,7 +144,7 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           const { error: recipeError } = await supabase.from('inventory_recipes').insert(recipes);
           if (recipeError) console.error("Erro ao salvar receita:", recipeError);
       }
-      fetchData();
+      // fetchData será chamado pelo realtime
   };
 
   const updateInventoryItem = async (item: InventoryItem) => {
@@ -164,7 +176,7 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
               await supabase.from('inventory_recipes').insert(recipes);
           }
       }
-      fetchData();
+      // fetchData será chamado pelo realtime
   };
 
   const updateStock = async (itemId: string, quantity: number, operation: 'IN' | 'OUT', reason: string, userName: string = 'Sistema') => {
@@ -172,11 +184,15 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       const item = state.inventory.find(i => i.id === itemId);
       if (!item) return;
       const newQty = operation === 'IN' ? item.quantity + quantity : item.quantity - quantity;
+      
+      // Atualiza quantidade
       await supabase.from('inventory_items').update({ quantity: newQty }).eq('id', itemId);
+      
+      // Insere log
       await supabase.from('inventory_logs').insert({
           tenant_id: tenantId, item_id: itemId, type: operation, quantity, reason, user_name: userName
       });
-      fetchData();
+      // fetchData será chamado pelo realtime
   };
 
   const processInventoryAdjustment = async (adjustments: { itemId: string; realQty: number }[]) => {
@@ -191,7 +207,6 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
               }
           }
       }
-      fetchData();
   };
 
   const addSupplier = async (supplier: Supplier) => {
@@ -216,13 +231,10 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       const { error } = await supabase.from('suppliers').insert(payload);
       
       if (error) throw error;
-      
-      fetchData();
   };
 
   const deleteSupplier = async (id: string) => {
       await supabase.from('suppliers').delete().eq('id', id);
-      fetchData();
   };
 
   const processPurchase = async (purchase: PurchaseEntry) => {
@@ -264,7 +276,6 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
               supplier_id: purchase.supplierId
           });
           
-          fetchData();
       } catch (error) {
           console.error("Erro ao processar compra:", error);
           throw error;
