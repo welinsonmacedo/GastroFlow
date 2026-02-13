@@ -36,9 +36,17 @@ export const WaiterApp: React.FC = () => {
   const graceMinutes = restState.businessInfo?.orderGracePeriodMinutes || 0;
 
   // Lógica para capturar itens que precisam ser servidos
-  const readyItems = orderState.orders.flatMap(order => 
-      order.items
+  const readyItems = orderState.orders.flatMap(order => {
+      // Ignora pedidos já pagos ou cancelados
+      if (order.isPaid || order.status === 'CANCELLED') return [];
+
+      return order.items
           .filter(item => {
+              // Filtra Adicionais (não aparecem como itens de entrega, pois acompanham o principal)
+              const product = menuState.products.find(p => p.id === item.productId);
+              const isExtra = product?.isExtra || item.notes?.includes('[ADICIONAL');
+              if (isExtra) return false;
+
               // 1. Itens marcados como PRONTO pela cozinha
               if (item.status === OrderStatus.READY) return true;
               
@@ -49,8 +57,8 @@ export const WaiterApp: React.FC = () => {
 
               return false;
           })
-          .map(item => ({ ...item, orderId: order.id, tableId: order.tableId }))
-  );
+          .map(item => ({ ...item, orderId: order.id, tableId: order.tableId }));
+  });
 
   useEffect(() => {
       audioRef.current = new Audio(FALLBACK_SOUND_URL);
