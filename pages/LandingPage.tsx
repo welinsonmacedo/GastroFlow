@@ -1,9 +1,10 @@
 
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ChefHat, CheckCircle, Smartphone, BarChart3, ShieldCheck, MessageCircle, ArrowRight, Star, Send, Menu, X, LogIn, Zap, Monitor, LayoutDashboard, QrCode, MonitorPlay, PieChart, TrendingUp, ListChecks, Package, Users, DollarSign, Truck, Settings } from 'lucide-react';
+import { ChefHat, CheckCircle, Smartphone, BarChart3, ShieldCheck, MessageCircle, ArrowRight, Star, Send, LogIn, Zap, MonitorPlay, LayoutDashboard, QrCode, Package, Users, DollarSign, Truck } from 'lucide-react';
 import { useSaaS } from '../context/SaaSContext';
 import { Plan } from '../types';
+import { LandingNavbar } from '../components/LandingNavbar';
 
 const FeatureCard = ({ icon, title, desc }: { icon: React.ReactNode, title: string, desc: string }) => (
   <div className="bg-white p-8 rounded-2xl shadow-lg border border-slate-100 hover:shadow-xl transition-shadow flex flex-col items-center text-center h-full">
@@ -136,7 +137,6 @@ const PricingCard: React.FC<{ plan: Plan, onClick: () => void }> = ({ plan, onCl
 
 export const LandingPage: React.FC = () => {
   const { state } = useSaaS();
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const whatsappNumber = "5534991448794";
   const defaultMessage = encodeURIComponent("Olá! Gostaria de conhecer melhor os planos do Flux Eat.");
 
@@ -160,74 +160,8 @@ export const LandingPage: React.FC = () => {
         <MessageCircle size={28} />
       </button>
 
-      {/* --- Navbar --- */}
-      <nav className="sticky top-0 bg-white/95 backdrop-blur-md z-40 border-b border-slate-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-20">
-            {/* Logo */}
-            <div className="flex items-center gap-2 cursor-pointer" onClick={() => window.scrollTo({top:0, behavior:'smooth'})}>
-              <div className="bg-gradient-to-br from-green-500 to-blue-600 text-white p-2 rounded-xl shadow-md">
-                <ChefHat size={26} /> 
-              </div>
-              <span className="text-2xl font-black tracking-tighter">
-                <span className="text-blue-600">Flux</span> <span className="text-green-500">Eat</span>
-              </span>
-            </div>
-
-            {/* Desktop Menu */}
-            <div className="hidden md:flex gap-8 items-center">
-               <a href="#features" className="text-sm font-bold text-slate-600 hover:text-green-600 transition-colors">Funcionalidades</a>
-               <a href="#modules" className="text-sm font-bold text-slate-600 hover:text-green-600 transition-colors">Gestão</a>
-               <a href="#pricing" className="text-sm font-bold text-slate-600 hover:text-green-600 transition-colors">Planos</a>
-               <a href="#contact" className="text-sm font-bold text-slate-600 hover:text-green-600 transition-colors">Contato</a>
-            </div>
-
-            {/* Desktop Actions */}
-            <div className="hidden md:flex gap-4">
-              <Link to="/login-owner" className="text-slate-700 hover:text-green-600 px-3 py-2 font-bold text-sm transition-colors flex items-center gap-2">
-                <LogIn size={18} /> Área do Cliente
-              </Link>
-              <button 
-                onClick={openWhatsApp}
-                className="bg-slate-900 text-white px-6 py-2.5 rounded-xl font-bold text-sm hover:bg-slate-800 transition-all flex items-center gap-2 shadow-lg shadow-slate-900/20"
-              >
-                <MessageCircle size={18} /> Falar com Consultor
-              </button>
-            </div>
-
-            {/* Mobile Menu Button */}
-            <div className="md:hidden">
-              <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="text-slate-600 p-2">
-                {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Mobile Menu Dropdown */}
-        {isMobileMenuOpen && (
-          <div className="md:hidden absolute top-20 left-0 w-full bg-white border-b shadow-xl animate-fade-in flex flex-col p-4 gap-4 z-50">
-             <Link 
-                to="/login-owner" 
-                className="bg-green-50 text-green-700 px-4 py-3 rounded-lg font-bold text-center flex items-center justify-center gap-2 border border-green-100"
-                onClick={() => setIsMobileMenuOpen(false)}
-             >
-                <LogIn size={18} /> Acessar Área do Cliente
-             </Link>
-             <hr className="border-slate-100" />
-             <a href="#features" className="text-slate-600 font-medium p-2 hover:bg-gray-50 rounded" onClick={() => setIsMobileMenuOpen(false)}>Funcionalidades</a>
-             <a href="#modules" className="text-slate-600 font-medium p-2 hover:bg-gray-50 rounded" onClick={() => setIsMobileMenuOpen(false)}>Módulos de Gestão</a>
-             <a href="#pricing" className="text-slate-600 font-medium p-2 hover:bg-gray-50 rounded" onClick={() => setIsMobileMenuOpen(false)}>Planos e Preços</a>
-             <a href="#contact" className="text-slate-600 font-medium p-2 hover:bg-gray-50 rounded" onClick={() => setIsMobileMenuOpen(false)}>Contato</a>
-             <button 
-                onClick={() => { openWhatsApp(); setIsMobileMenuOpen(false); }}
-                className="bg-slate-900 text-white px-4 py-3 rounded-lg font-bold text-center mt-2 flex items-center justify-center gap-2"
-             >
-                <MessageCircle size={18} /> Falar no WhatsApp
-             </button>
-          </div>
-        )}
-      </nav>
+      {/* --- Navbar (Reutilizável) --- */}
+      <LandingNavbar />
 
       {/* --- Hero Section --- */}
       <div className="relative bg-slate-900 overflow-hidden">

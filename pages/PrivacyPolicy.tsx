@@ -1,21 +1,11 @@
 
 import React from 'react';
-import { Link } from 'react-router-dom';
-import { ArrowLeft, ShieldCheck } from 'lucide-react';
+import { LandingNavbar } from '../components/LandingNavbar';
 
 export const PrivacyPolicy: React.FC = () => {
   return (
     <div className="min-h-screen bg-white text-slate-900 font-sans">
-      <nav className="sticky top-0 bg-white/90 backdrop-blur-md z-40 border-b border-slate-100">
-        <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
-            <Link to="/" className="flex items-center gap-2 text-slate-600 hover:text-green-600 transition-colors font-medium">
-                <ArrowLeft size={20} /> Voltar para Home
-            </Link>
-            <div className="flex items-center gap-2 font-bold text-green-700">
-                <ShieldCheck /> Flux Eat
-            </div>
-        </div>
-      </nav>
+      <LandingNavbar />
 
       <main className="max-w-4xl mx-auto px-4 py-12">
         <h1 className="text-4xl font-extrabold mb-8 text-slate-900">Política de Privacidade</h1>
