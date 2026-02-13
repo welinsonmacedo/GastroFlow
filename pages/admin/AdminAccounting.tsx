@@ -4,7 +4,7 @@ import { useRestaurant } from '../../context/RestaurantContext';
 import { useUI } from '../../context/UIContext';
 import { Button } from '../../components/Button';
 import { supabase } from '../../lib/supabase';
-import { Loader2, RefreshCcw, Printer, PieChart, TrendingUp, CheckCircle2, ArrowUpRight, AlertCircle, FileText, DollarSign, Store, Package, HelpCircle, SlidersHorizontal, Eye, EyeOff, Settings } from 'lucide-react';
+import { Loader2, RefreshCcw, Printer, PieChart, TrendingUp, CheckCircle2, ArrowUpRight, AlertCircle, FileText, DollarSign, Store, Package, HelpCircle, SlidersHorizontal, Eye, EyeOff, Settings, CreditCard } from 'lucide-react';
 
 export const AdminAccounting: React.FC = () => {
   const { state } = useRestaurant();
@@ -19,7 +19,14 @@ export const AdminAccounting: React.FC = () => {
   const [showConfig, setShowConfig] = useState(false);
   const [config, setConfig] = useState({
       accountingMethod: 'COMPETENCE' as 'COMPETENCE' | 'CASH', // Competência vs Caixa
-      taxRate: 6.0, // Alíquota de imposto editável
+      taxRate: 6.0, // Alíquota de imposto Simples Nacional
+      // Taxas de Maquininha (Padrões de mercado, editáveis)
+      fees: {
+          credit: 3.99,
+          debit: 1.99,
+          pix: 0.0,
+          voucher: 4.5
+      }
   });
   
   // Visibilidade das Seções
@@ -32,7 +39,8 @@ export const AdminAccounting: React.FC = () => {
   });
 
   const [data, setData] = useState<any>({
-      grossRevenue: 0, saloonSales: 0, posSales: 0, taxes: 0, netRevenue: 0,
+      grossRevenue: 0, saloonSales: 0, posSales: 0, 
+      taxes: 0, cardFees: 0, netRevenue: 0,
       cmv: 0, grossProfit: 0, operatingExpenses: 0, expensesByCategory: {},
       ebitda: 0, financialExpenses: 0, netIncome: 0, hasData: false
   });
@@ -53,7 +61,7 @@ export const AdminAccounting: React.FC = () => {
             .eq('tenant_id', state.tenantId)
             .gte('created_at', start)
             .lte('created_at', end)
-            .neq('status', 'CANCELLED'); // Filtro de cancelamento
+            .neq('status', 'CANCELLED');
 
           if (transErr) throw transErr;
 
@@ -64,7 +72,7 @@ export const AdminAccounting: React.FC = () => {
             .select('quantity, product_price, product_cost_price, orders!inner(is_paid, created_at, status)')
             .eq('tenant_id', state.tenantId)
             .eq('orders.is_paid', true)
-            .neq('orders.status', 'CANCELLED') // Filtro de cancelamento na ordem pai
+            .neq('orders.status', 'CANCELLED')
             .gte('orders.created_at', start)
             .lte('orders.created_at', end);
 
@@ -77,13 +85,11 @@ export const AdminAccounting: React.FC = () => {
             .eq('tenant_id', state.tenantId);
 
           if (config.accountingMethod === 'CASH') {
-              // Regime de Caixa: Considera apenas o que foi PAGO na data do PAGAMENTO
               expensesQuery = expensesQuery
                 .eq('is_paid', true)
                 .gte('paid_date', dateStart)
                 .lte('paid_date', dateEnd);
           } else {
-              // Regime de Competência: Considera o que VENCEU na data de VENCIMENTO (independente se pagou)
               expensesQuery = expensesQuery
                 .gte('due_date', dateStart)
                 .lte('due_date', dateEnd);
@@ -95,11 +101,23 @@ export const AdminAccounting: React.FC = () => {
 
           // --- Cálculos ---
           let grossRev = 0, saloonSales = 0, posSales = 0;
+          let calculatedCardFees = 0;
+
           transRes?.forEach((t: any) => {
               const amt = Number(t.amount) || 0;
               grossRev += amt;
+              
               if (t.items_summary?.includes('Mesa')) saloonSales += amt;
               else posSales += amt;
+
+              // Cálculo de Taxas de Maquininha por transação
+              let rate = 0;
+              if (t.method === 'CREDIT') rate = config.fees.credit;
+              else if (t.method === 'DEBIT') rate = config.fees.debit;
+              else if (t.method === 'PIX') rate = config.fees.pix;
+              else if (t.method === 'MEAL_VOUCHER') rate = config.fees.voucher;
+              
+              calculatedCardFees += amt * (rate / 100);
           });
 
           let cmvTotal = 0;
@@ -109,8 +127,8 @@ export const AdminAccounting: React.FC = () => {
               cmvTotal += (qty * cost);
           });
 
-          const taxes = grossRev * (config.taxRate / 100); // Usa a taxa configurada
-          const netRevenue = grossRev - taxes;
+          const taxes = grossRev * (config.taxRate / 100); // Imposto Simples
+          const netRevenue = grossRev - taxes - calculatedCardFees; // Receita Líquida Real
           const grossProfit = netRevenue - cmvTotal;
 
           let opExpenses = 0, finExpenses = 0;
@@ -127,7 +145,8 @@ export const AdminAccounting: React.FC = () => {
           const ebitda = grossProfit - opExpenses;
           
           setData({
-              grossRevenue: grossRev, saloonSales, posSales, taxes, netRevenue,
+              grossRevenue: grossRev, saloonSales, posSales, 
+              taxes, cardFees: calculatedCardFees, netRevenue,
               cmv: cmvTotal, grossProfit, operatingExpenses: opExpenses,
               expensesByCategory: expByCat, ebitda, financialExpenses: finExpenses,
               netIncome: ebitda - finExpenses,
@@ -195,76 +214,58 @@ export const AdminAccounting: React.FC = () => {
             {/* Painel de Configuração Modular */}
             {showConfig && (
                 <div className="bg-white p-6 rounded-2xl shadow-lg border border-blue-100 animate-fade-in grid grid-cols-1 md:grid-cols-3 gap-8">
-                    {/* Coluna 1: Origem dos Dados */}
+                    {/* Coluna 1: Origem dos Dados e Impostos */}
                     <div>
-                        <h4 className="text-xs font-black text-blue-600 uppercase tracking-widest mb-3 flex items-center gap-2"><Settings size={14}/> Origem dos Dados</h4>
+                        <h4 className="text-xs font-black text-blue-600 uppercase tracking-widest mb-3 flex items-center gap-2"><Settings size={14}/> Dados Gerais</h4>
                         <div className="space-y-4">
                             <div>
-                                <label className="block text-xs font-bold text-gray-500 mb-1">Regime Contábil (Despesas)</label>
+                                <label className="block text-xs font-bold text-gray-500 mb-1">Regime Contábil</label>
                                 <div className="flex bg-gray-100 p-1 rounded-lg">
-                                    <button 
-                                        onClick={() => setConfig({...config, accountingMethod: 'COMPETENCE'})}
-                                        className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all ${config.accountingMethod === 'COMPETENCE' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-                                    >
-                                        Competência (Vencimento)
-                                    </button>
-                                    <button 
-                                        onClick={() => setConfig({...config, accountingMethod: 'CASH'})}
-                                        className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all ${config.accountingMethod === 'CASH' ? 'bg-white text-emerald-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-                                    >
-                                        Caixa (Pagamento)
-                                    </button>
+                                    <button onClick={() => setConfig({...config, accountingMethod: 'COMPETENCE'})} className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all ${config.accountingMethod === 'COMPETENCE' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500'}`}>Competência</button>
+                                    <button onClick={() => setConfig({...config, accountingMethod: 'CASH'})} className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all ${config.accountingMethod === 'CASH' ? 'bg-white text-emerald-600 shadow-sm' : 'text-gray-500'}`}>Caixa</button>
                                 </div>
-                                <p className="text-[10px] text-gray-400 mt-1">
-                                    {config.accountingMethod === 'COMPETENCE' ? 'Considera despesas pela data de vencimento, pagas ou não.' : 'Considera apenas despesas efetivamente pagas no período.'}
-                                </p>
                             </div>
                             <div>
-                                <label className="block text-xs font-bold text-gray-500 mb-1">Taxa de Imposto Simples (%)</label>
-                                <input 
-                                    type="number" 
-                                    step="0.1" 
-                                    className="w-full border p-2 rounded-lg text-sm font-bold" 
-                                    value={config.taxRate} 
-                                    onChange={e => setConfig({...config, taxRate: parseFloat(e.target.value) || 0})} 
-                                />
+                                <label className="block text-xs font-bold text-gray-500 mb-1">Imposto Simples (%)</label>
+                                <input type="number" step="0.1" className="w-full border p-2 rounded-lg text-sm font-bold" value={config.taxRate} onChange={e => setConfig({...config, taxRate: parseFloat(e.target.value) || 0})} />
                             </div>
                         </div>
                     </div>
 
-                    {/* Coluna 2: Visibilidade */}
-                    <div className="md:col-span-2">
-                        <h4 className="text-xs font-black text-blue-600 uppercase tracking-widest mb-3 flex items-center gap-2"><Eye size={14}/> O que mostrar no Relatório?</h4>
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                            <label className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${visibility.charts ? 'bg-blue-50 border-blue-200' : 'bg-gray-50 border-transparent opacity-60'}`}>
-                                <input type="checkbox" className="hidden" checked={visibility.charts} onChange={e => setVisibility({...visibility, charts: e.target.checked})} />
-                                {visibility.charts ? <Eye size={18} className="text-blue-600"/> : <EyeOff size={18} className="text-gray-400"/>}
-                                <span className="text-xs font-bold text-slate-700">Gráficos de KPIs</span>
-                            </label>
-                            
-                            <label className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${visibility.revenue ? 'bg-blue-50 border-blue-200' : 'bg-gray-50 border-transparent opacity-60'}`}>
-                                <input type="checkbox" className="hidden" checked={visibility.revenue} onChange={e => setVisibility({...visibility, revenue: e.target.checked})} />
-                                {visibility.revenue ? <Eye size={18} className="text-blue-600"/> : <EyeOff size={18} className="text-gray-400"/>}
-                                <span className="text-xs font-bold text-slate-700">Receita & Vendas</span>
-                            </label>
+                    {/* Coluna 2: Taxas de Maquininha (NOVO) */}
+                    <div>
+                        <h4 className="text-xs font-black text-blue-600 uppercase tracking-widest mb-3 flex items-center gap-2"><CreditCard size={14}/> Taxas de Recebimento (%)</h4>
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <label className="block text-[10px] font-bold text-gray-500 mb-1">Crédito</label>
+                                <input type="number" step="0.01" className="w-full border p-2 rounded-lg text-sm font-bold text-slate-700" value={config.fees.credit} onChange={e => setConfig({...config, fees: {...config.fees, credit: parseFloat(e.target.value) || 0}})} />
+                            </div>
+                            <div>
+                                <label className="block text-[10px] font-bold text-gray-500 mb-1">Débito</label>
+                                <input type="number" step="0.01" className="w-full border p-2 rounded-lg text-sm font-bold text-slate-700" value={config.fees.debit} onChange={e => setConfig({...config, fees: {...config.fees, debit: parseFloat(e.target.value) || 0}})} />
+                            </div>
+                            <div>
+                                <label className="block text-[10px] font-bold text-gray-500 mb-1">Vale (Voucher)</label>
+                                <input type="number" step="0.01" className="w-full border p-2 rounded-lg text-sm font-bold text-slate-700" value={config.fees.voucher} onChange={e => setConfig({...config, fees: {...config.fees, voucher: parseFloat(e.target.value) || 0}})} />
+                            </div>
+                            <div>
+                                <label className="block text-[10px] font-bold text-gray-500 mb-1">PIX</label>
+                                <input type="number" step="0.01" className="w-full border p-2 rounded-lg text-sm font-bold text-slate-700" value={config.fees.pix} onChange={e => setConfig({...config, fees: {...config.fees, pix: parseFloat(e.target.value) || 0}})} />
+                            </div>
+                        </div>
+                        <p className="text-[9px] text-gray-400 mt-2 italic">Estas taxas serão descontadas automaticamente das vendas correspondentes no DRE.</p>
+                    </div>
 
-                            <label className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${visibility.cmv ? 'bg-blue-50 border-blue-200' : 'bg-gray-50 border-transparent opacity-60'}`}>
-                                <input type="checkbox" className="hidden" checked={visibility.cmv} onChange={e => setVisibility({...visibility, cmv: e.target.checked})} />
-                                {visibility.cmv ? <Eye size={18} className="text-blue-600"/> : <EyeOff size={18} className="text-gray-400"/>}
-                                <span className="text-xs font-bold text-slate-700">CMV (Custos)</span>
-                            </label>
-
-                            <label className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${visibility.expenses ? 'bg-blue-50 border-blue-200' : 'bg-gray-50 border-transparent opacity-60'}`}>
-                                <input type="checkbox" className="hidden" checked={visibility.expenses} onChange={e => setVisibility({...visibility, expenses: e.target.checked})} />
-                                {visibility.expenses ? <Eye size={18} className="text-blue-600"/> : <EyeOff size={18} className="text-gray-400"/>}
-                                <span className="text-xs font-bold text-slate-700">Despesas Operacionais</span>
-                            </label>
-
-                            <label className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${visibility.financial ? 'bg-blue-50 border-blue-200' : 'bg-gray-50 border-transparent opacity-60'}`}>
-                                <input type="checkbox" className="hidden" checked={visibility.financial} onChange={e => setVisibility({...visibility, financial: e.target.checked})} />
-                                {visibility.financial ? <Eye size={18} className="text-blue-600"/> : <EyeOff size={18} className="text-gray-400"/>}
-                                <span className="text-xs font-bold text-slate-700">Despesas Financeiras</span>
-                            </label>
+                    {/* Coluna 3: Visibilidade */}
+                    <div>
+                        <h4 className="text-xs font-black text-blue-600 uppercase tracking-widest mb-3 flex items-center gap-2"><Eye size={14}/> Exibir Seções</h4>
+                        <div className="grid grid-cols-2 gap-2">
+                            {Object.keys(visibility).map(key => (
+                                <label key={key} className={`flex items-center gap-2 p-2 rounded-lg border cursor-pointer ${visibility[key as keyof typeof visibility] ? 'bg-blue-50 border-blue-200' : 'bg-gray-50 border-transparent opacity-60'}`}>
+                                    <input type="checkbox" className="hidden" checked={visibility[key as keyof typeof visibility]} onChange={e => setVisibility({...visibility, [key]: e.target.checked})} />
+                                    <span className="text-[10px] font-bold uppercase">{key}</span>
+                                </label>
+                            ))}
                         </div>
                     </div>
                 </div>
@@ -273,7 +274,7 @@ export const AdminAccounting: React.FC = () => {
 
         {data.hasData && (
             <>
-                {/* Cards de Métricas (Escondido na impressão para focar na tabela formal) */}
+                {/* Cards de Métricas */}
                 {visibility.charts && (
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 print:hidden">
                         <div className={`p-6 rounded-2xl border-2 bg-white shadow-sm flex flex-col ${cmvPerc > 35 ? 'border-red-200 bg-red-50/30' : 'border-emerald-200 bg-emerald-50/30'}`}>
@@ -345,10 +346,16 @@ export const AdminAccounting: React.FC = () => {
                                         description={`Estimativa de impostos sobre a venda (${config.taxRate}% configurado).`}
                                     />
                                     <Row 
+                                        label="(-) Taxas de Cartão / Recebimento" 
+                                        value={data.cardFees} 
+                                        isNegative 
+                                        description="Custos variáveis de maquininha (Crédito, Débito, Voucher, Pix) configurados no painel."
+                                    />
+                                    <Row 
                                         label="(=) RECEITA LÍQUIDA" 
                                         value={data.netRevenue} 
                                         type="total" 
-                                        description="O dinheiro que efetivamente entra no negócio após deduzir os impostos diretos."
+                                        description="O dinheiro que efetivamente entra no negócio após deduzir impostos e taxas de maquininha."
                                     />
                                 </>
                             )}
@@ -406,10 +413,10 @@ export const AdminAccounting: React.FC = () => {
                                         <TrendingUp size={14} className="print:hidden"/> 4. Resultado Final
                                     </h3>
                                     <Row 
-                                        label="(-) Despesas Financeiras / Taxas" 
+                                        label="(-) Despesas Financeiras / Bancárias" 
                                         value={data.financialExpenses} 
                                         isNegative 
-                                        description="Taxas de cartão de crédito, tarifas bancárias e juros pagos."
+                                        description="Tarifas de manutenção de conta, TED/DOC e juros pagos (lançados em Despesas)."
                                     />
                                     <Row 
                                         label="(=) LUCRO LÍQUIDO FINAL" 

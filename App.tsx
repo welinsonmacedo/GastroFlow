@@ -100,21 +100,21 @@ const TenantNavigation = () => {
 
     return (
         <div className="hidden md:flex bg-white border-b px-6 py-3 justify-between items-center sticky top-0 z-50 shadow-sm shrink-0">
-            <div className="font-bold text-xl flex items-center gap-2 text-blue-600">
+            <div className="font-bold text-xl flex items-center gap-2 text-green-600">
                 {restState.theme.logoUrl && <img src={restState.theme.logoUrl} className="h-8 w-8 object-contain" />}
                 {!restState.theme.logoUrl && <ChefHat />} 
                 {restState.theme.restaurantName}
             </div>
             <div className="flex gap-1 bg-gray-100 p-1 rounded-lg">
                 {navLinks.map(link => (
-                    <Link key={link.to} to={link.to} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2 ${location.pathname === link.to ? 'bg-white shadow text-blue-600' : 'text-gray-600 hover:text-gray-900'}`}>
+                    <Link key={link.to} to={link.to} className={`px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2 ${location.pathname === link.to ? 'bg-white shadow text-green-600' : 'text-gray-600 hover:text-gray-900'}`}>
                         {link.icon} {link.label}
                     </Link>
                 ))}
             </div>
              <div className="flex items-center gap-4">
                  <div className="flex items-center gap-2 text-sm font-medium text-gray-700 bg-gray-50 px-3 py-1.5 rounded-full border">
-                    <UserIcon size={14} className="text-blue-500" />
+                    <UserIcon size={14} className="text-green-500" />
                     {authState.currentUser?.name}
                  </div>
                  <button onClick={handleLogoutClick} className="text-red-500 hover:text-red-700" title="Sair">

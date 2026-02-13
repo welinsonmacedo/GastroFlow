@@ -1,5 +1,5 @@
 {
-  "name": "GastroFlow - Restaurant System",
-  "description": "A complete, real-time restaurant management ecosystem featuring Client QR ordering, Waiter App, Kitchen Display System (KDS), Cashier, and AI-powered Admin dashboard.",
+  "name": "Flux Eat - Restaurant System",
+  "description": "Sistema completo para gestão de restaurantes. Onde gestão e vendas acontecem sem parar.",
   "requestFramePermissions": []
 }

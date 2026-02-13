@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, ShieldCheck } from 'lucide-react';
@@ -7,11 +8,11 @@ export const PrivacyPolicy: React.FC = () => {
     <div className="min-h-screen bg-white text-slate-900 font-sans">
       <nav className="sticky top-0 bg-white/90 backdrop-blur-md z-40 border-b border-slate-100">
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
-            <Link to="/" className="flex items-center gap-2 text-slate-600 hover:text-blue-600 transition-colors font-medium">
+            <Link to="/" className="flex items-center gap-2 text-slate-600 hover:text-green-600 transition-colors font-medium">
                 <ArrowLeft size={20} /> Voltar para Home
             </Link>
-            <div className="flex items-center gap-2 font-bold text-blue-700">
-                <ShieldCheck /> GastroFlow
+            <div className="flex items-center gap-2 font-bold text-green-700">
+                <ShieldCheck /> Flux Eat
             </div>
         </div>
       </nav>
@@ -24,7 +25,7 @@ export const PrivacyPolicy: React.FC = () => {
             <section>
                 <h2 className="text-2xl font-bold mb-4 text-slate-800">1. Introdução</h2>
                 <p>
-                    O GastroFlow ("nós", "nosso" ou "plataforma") respeita a sua privacidade e está comprometido em proteger os dados pessoais que você compartilha conosco. Esta política descreve como coletamos, usamos e protegemos suas informações ao utilizar nosso sistema de gestão para restaurantes.
+                    O Flux Eat ("nós", "nosso" ou "plataforma") respeita a sua privacidade e está comprometido em proteger os dados pessoais que você compartilha conosco. Esta política descreve como coletamos, usamos e protegemos suas informações ao utilizar nosso sistema de gestão para restaurantes.
                 </p>
             </section>
 
@@ -42,7 +43,7 @@ export const PrivacyPolicy: React.FC = () => {
                 <h2 className="text-2xl font-bold mb-4 text-slate-800">3. Uso das Informações</h2>
                 <p>Utilizamos seus dados para:</p>
                 <ul className="list-disc pl-6 space-y-2 mt-2">
-                    <li>Fornecer e manter o serviço GastroFlow operacional.</li>
+                    <li>Fornecer e manter o serviço Flux Eat operacional.</li>
                     <li>Processar pagamentos e gerenciar assinaturas.</li>
                     <li>Melhorar a experiência do usuário e desenvolver novas funcionalidades.</li>
                     <li>Enviar comunicações importantes sobre atualizações do sistema ou segurança.</li>
@@ -73,7 +74,7 @@ export const PrivacyPolicy: React.FC = () => {
             <section>
                 <h2 className="text-2xl font-bold mb-4 text-slate-800">7. Contato</h2>
                 <p>
-                    Se tiver dúvidas sobre esta Política de Privacidade, entre em contato conosco pelo e-mail: privacidade@gastroflow.com.
+                    Se tiver dúvidas sobre esta Política de Privacidade, entre em contato conosco pelo e-mail: privacidade@fluxeat.com.
                 </p>
             </section>
         </div>
@@ -81,7 +82,7 @@ export const PrivacyPolicy: React.FC = () => {
 
       <footer className="bg-slate-50 border-t border-slate-200 py-8 mt-12">
           <div className="max-w-4xl mx-auto px-4 text-center text-slate-500 text-sm">
-              &copy; 2026 GastroFlow Systems. Todos os direitos reservados.
+              &copy; 2026 Flux Eat Systems. Todos os direitos reservados.
           </div>
       </footer>
     </div>

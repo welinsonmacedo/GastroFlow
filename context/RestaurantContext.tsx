@@ -31,7 +31,7 @@ const initialState: RestaurantState = {
   isValidTenant: false,
   isInactiveTenant: false,
   planLimits: { maxTables: -1, maxProducts: -1, maxStaff: -1, allowKds: true, allowCashier: true, allowReports: true, allowInventory: true, allowPurchases: true, allowExpenses: true, allowStaff: true, allowTableMgmt: true, allowCustomization: true },
-  theme: { primaryColor: '#000', backgroundColor: '#fff', fontColor: '#000', logoUrl: '', restaurantName: 'Carregando...' },
+  theme: { primaryColor: '#22c55e', backgroundColor: '#fff', fontColor: '#000', logoUrl: '', restaurantName: 'Carregando...' },
   businessInfo: {}, 
 };
 
