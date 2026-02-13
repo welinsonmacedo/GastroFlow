@@ -4,10 +4,10 @@ import { useRestaurant } from '../context/RestaurantContext';
 import { useMenu } from '../context/MenuContext';
 import { useOrder } from '../context/OrderContext';
 import { useUI } from '../context/UIContext';
-import { TableStatus, Product } from '../types';
+import { TableStatus, Product, OrderStatus } from '../types';
 import { Button } from '../components/Button';
 import { WaiterProductModal, OpenTableModal, TableActionsModal } from '../components/modals/WaiterModals';
-import { Bell, Plus, Search, ShoppingCart, ArrowLeft, Utensils, Trash2, Clock } from 'lucide-react';
+import { Bell, Plus, Search, ShoppingCart, ArrowLeft, Utensils, Trash2, Clock, CheckCircle, ChevronUp, ChevronDown, Zap } from 'lucide-react';
 
 const FALLBACK_SOUND_URL = "https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3";
 
@@ -27,10 +27,30 @@ export const WaiterApp: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('Todos');
   
+  // Drawer de Itens Prontos
+  const [isServingDrawerOpen, setIsServingDrawerOpen] = useState(false);
+  
   const [productModal, setProductModal] = useState<Product | null>(null);
 
   const pendingCalls = orderState.serviceCalls.filter(c => c.status === 'PENDING');
   const graceMinutes = restState.businessInfo?.orderGracePeriodMinutes || 0;
+
+  // Lógica para capturar itens que precisam ser servidos
+  const readyItems = orderState.orders.flatMap(order => 
+      order.items
+          .filter(item => {
+              // 1. Itens marcados como PRONTO pela cozinha
+              if (item.status === OrderStatus.READY) return true;
+              
+              // 2. Bebidas Imediatas (Pendentes e com a flag [IMEDIATA])
+              // Estas não passam pelo KDS, o garçom deve pegar e entregar direto
+              const isImmediate = item.notes?.includes('[IMEDIATA]');
+              if (isImmediate && item.status === OrderStatus.PENDING) return true;
+
+              return false;
+          })
+          .map(item => ({ ...item, orderId: order.id, tableId: order.tableId }))
+  );
 
   useEffect(() => {
       audioRef.current = new Audio(FALLBACK_SOUND_URL);
@@ -72,6 +92,10 @@ export const WaiterApp: React.FC = () => {
     setCart([]); 
     setOrderingTableId(null);
     showAlert({ title: "Sucesso", message: "Pedido enviado para produção!", type: 'SUCCESS' });
+  };
+
+  const handleMarkDelivered = (orderId: string, itemId: string) => {
+      orderDispatch({ type: 'UPDATE_ITEM_STATUS', orderId, itemId, status: OrderStatus.DELIVERED });
   };
 
   if (!orderState.audioUnlocked) {
@@ -175,8 +199,8 @@ export const WaiterApp: React.FC = () => {
   }
 
   return (
-    <div className="h-full overflow-y-auto bg-gray-100 p-4 lg:p-6 space-y-6">
-        <header className="flex justify-between items-center">
+    <div className="h-full overflow-y-auto bg-gray-100 p-4 lg:p-6 pb-32">
+        <header className="flex justify-between items-center mb-6">
             <h1 className="text-3xl font-black text-slate-800 uppercase tracking-tighter">Atendimento</h1>
             <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-2xl shadow-sm border">
                 <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
@@ -189,7 +213,6 @@ export const WaiterApp: React.FC = () => {
                 const hasCall = pendingCalls.find(c => c.tableId === table.id);
                 
                 // Lógica de "Buffered Orders" para o garçom:
-                // Se o cliente pediu agora, mas está no grace period, a mesa pode mostrar um indicador visual
                 const tableOrders = orderState.orders.filter(o => o.tableId === table.id && !o.isPaid && o.status !== 'CANCELLED');
                 const hasBufferedOrder = tableOrders.some(o => {
                     const diffMin = (new Date().getTime() - new Date(o.timestamp).getTime()) / 60000;
@@ -234,6 +257,62 @@ export const WaiterApp: React.FC = () => {
                 );
             })}
         </div>
+
+        {/* --- READY ITEMS DRAWER (PARA SERVIR) --- */}
+        {readyItems.length > 0 && (
+            <div className={`fixed bottom-0 left-0 right-0 z-40 bg-white shadow-[0_-5px_20px_rgba(0,0,0,0.1)] transition-transform duration-300 rounded-t-3xl border-t border-gray-200 ${isServingDrawerOpen ? 'translate-y-0' : 'translate-y-[calc(100%-80px)]'}`}>
+                {/* Handle / Header */}
+                <div 
+                    onClick={() => setIsServingDrawerOpen(!isServingDrawerOpen)}
+                    className="p-4 flex justify-between items-center cursor-pointer bg-yellow-50 rounded-t-3xl border-b border-yellow-100 hover:bg-yellow-100 transition-colors"
+                >
+                    <div className="flex items-center gap-3">
+                        <div className="bg-yellow-500 text-white p-2 rounded-full animate-bounce">
+                            <Utensils size={20}/>
+                        </div>
+                        <div>
+                            <h3 className="font-black text-slate-800 uppercase tracking-tight">Pronto para Servir</h3>
+                            <p className="text-xs text-yellow-700 font-bold">{readyItems.length} itens aguardando entrega</p>
+                        </div>
+                    </div>
+                    <div className="text-yellow-600">
+                        {isServingDrawerOpen ? <ChevronDown size={24}/> : <ChevronUp size={24}/>}
+                    </div>
+                </div>
+
+                {/* List Content */}
+                <div className="max-h-[60vh] overflow-y-auto p-4 space-y-3 bg-gray-50">
+                    {readyItems.map((item, idx) => {
+                        const tableNumber = orderState.tables.find(t => t.id === item.tableId)?.number || '?';
+                        const isImmediate = item.notes?.includes('[IMEDIATA]');
+                        
+                        return (
+                            <div key={`${item.id}-${idx}`} className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex justify-between items-center animate-fade-in">
+                                <div className="flex items-center gap-4">
+                                    <div className="bg-slate-900 text-white w-10 h-10 rounded-lg flex items-center justify-center font-black text-lg">
+                                        {tableNumber}
+                                    </div>
+                                    <div>
+                                        <div className="font-bold text-slate-800 text-sm">{item.quantity}x {item.productName}</div>
+                                        <div className="flex gap-2 mt-1">
+                                            {isImmediate && <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-black flex items-center gap-1"><Zap size={10}/> IMEDIATA</span>}
+                                            {item.notes && <span className="text-[10px] text-gray-500 italic max-w-[150px] truncate">{item.notes}</span>}
+                                        </div>
+                                    </div>
+                                </div>
+                                <Button 
+                                    onClick={() => handleMarkDelivered(item.orderId, item.id)}
+                                    size="sm" 
+                                    className="bg-green-600 hover:bg-green-700 text-white shadow-md"
+                                >
+                                    <CheckCircle size={16} className="mr-1"/> Entregue
+                                </Button>
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+        )}
         
         <OpenTableModal 
             isOpen={!!selectedTableForOpen} 
