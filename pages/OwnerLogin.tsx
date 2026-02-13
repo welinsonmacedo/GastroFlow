@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useNavigate, Link } from 'react-router-dom';
@@ -121,7 +122,7 @@ export const OwnerLogin: React.FC = () => {
                             <input 
                                 type="email"
                                 className="w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                                placeholder="exemplo@gastroflow.com"
+                                placeholder="exemplo@fluxeat.com"
                                 value={form.email}
                                 onChange={(e) => setForm({...form, email: e.target.value})}
                                 autoFocus

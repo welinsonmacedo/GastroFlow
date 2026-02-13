@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { Download, X } from 'lucide-react';
 
@@ -52,7 +53,7 @@ export const InstallPWA: React.FC = () => {
                 <Download size={24} />
             </div>
             <div>
-                <h3 className="font-bold text-sm">Instalar GastroFlow</h3>
+                <h3 className="font-bold text-sm">Instalar Flux Eat</h3>
                 <p className="text-xs text-slate-400">Adicione à tela inicial para acesso rápido.</p>
             </div>
         </div>
@@ -65,7 +66,7 @@ export const InstallPWA: React.FC = () => {
             </button>
             <button 
                 onClick={handleInstallClick}
-                className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors"
+                className="bg-blue-600 hover:bg-blue-50 text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors"
             >
                 Instalar
             </button>

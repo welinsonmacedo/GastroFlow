@@ -209,11 +209,35 @@ export const SuperAdminDashboard: React.FC = () => {
                                </section>
 
                                <section>
-                                   <h3 className="font-bold uppercase mb-2 text-xs text-gray-900 border-b border-gray-300 pb-1">3. Plano e Valores</h3>
+                                   <h3 className="font-bold uppercase mb-2 text-xs text-gray-900 border-b border-gray-300 pb-1">3. Plano e Escopo de Uso</h3>
                                    <p>
-                                       A CONTRATANTE opta pelo plano <strong>{selectedContractPlan?.name.toUpperCase() || selectedContractTenant.plan}</strong>, 
-                                       que inclui {selectedContractPlan?.features?.[0] || 'acesso ao sistema'} e demais funcionalidades descritas na proposta comercial.
+                                       A CONTRATANTE opta pelo plano <strong>{selectedContractPlan?.name.toUpperCase() || selectedContractTenant.plan}</strong>.
+                                       A licença de software concede direito de uso das seguintes funcionalidades e limites operacionais:
                                    </p>
+                                   
+                                   {/* Dynamic Feature List */}
+                                   <ul className="list-disc pl-5 my-3 text-xs space-y-1">
+                                       {/* Explicit Features */}
+                                       {selectedContractPlan?.features.map((feature, idx) => (
+                                           <li key={idx}>{feature}</li>
+                                       ))}
+
+                                       {/* Limits extracted from PlanLimits */}
+                                       {selectedContractPlan?.limits && (
+                                           <>
+                                               <li><strong>Capacidade de Mesas:</strong> {selectedContractPlan.limits.maxTables === -1 ? 'Ilimitada' : `${selectedContractPlan.limits.maxTables} mesas simultâneas`}</li>
+                                               <li><strong>Contas de Staff (Usuários):</strong> {selectedContractPlan.limits.maxStaff === -1 ? 'Ilimitadas' : `Até ${selectedContractPlan.limits.maxStaff} usuários`}</li>
+                                               <li><strong>Cadastro de Produtos:</strong> {selectedContractPlan.limits.maxProducts === -1 ? 'Ilimitado' : `Até ${selectedContractPlan.limits.maxProducts} itens`}</li>
+                                               
+                                               {/* Modules */}
+                                               <li><strong>Módulo KDS (Cozinha):</strong> {selectedContractPlan.limits.allowKds ? 'Incluso' : 'Não contratado'}</li>
+                                               <li><strong>Frente de Caixa (PDV):</strong> {selectedContractPlan.limits.allowCashier ? 'Incluso' : 'Não contratado'}</li>
+                                               <li><strong>Controle de Estoque:</strong> {selectedContractPlan.limits.allowInventory ? 'Incluso' : 'Não contratado'}</li>
+                                               <li><strong>Gestão Financeira:</strong> {selectedContractPlan.limits.allowExpenses ? 'Incluso' : 'Não contratado'}</li>
+                                           </>
+                                       )}
+                                   </ul>
+
                                    <p className="mt-2">
                                        Pela licença de uso, a CONTRATANTE pagará à CONTRATADA o valor mensal de <strong>{selectedContractPlan?.price || 'A DEFINIR'}</strong>.
                                        Os pagamentos deverão ser efetuados via [Boleto/Pix/Cartão] até o dia [Dia] de cada mês.

@@ -1,3 +1,4 @@
+
 export const getTenantSlug = (): string | null => {
   const path = window.location.pathname;
 
@@ -16,13 +17,13 @@ export const getTenantSlug = (): string | null => {
   
   if (tenantParam && tenantParam !== 'null' && tenantParam !== 'undefined') {
       // Persiste na sessão para navegação interna não perder o contexto
-      sessionStorage.setItem('gastroflow_tenant_slug', tenantParam);
+      sessionStorage.setItem('fluxeat_tenant_slug', tenantParam);
       return tenantParam;
   }
 
   // 2. Session Storage (Fallback Prioritário)
   // Verifica o storage ANTES de validar o host para garantir persistência em Vercel/Localhost
-  const storedSlug = sessionStorage.getItem('gastroflow_tenant_slug');
+  const storedSlug = sessionStorage.getItem('fluxeat_tenant_slug');
   if (storedSlug && storedSlug !== 'null' && storedSlug !== 'undefined') {
       return storedSlug;
   }

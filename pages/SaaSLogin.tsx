@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useSaaS } from '../context/SaaSContext';
@@ -182,7 +183,7 @@ export const SaaSLogin: React.FC = () => {
                 <input 
                     type="email" 
                     className="w-full border p-3 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                    placeholder="admin@gastroflow.com"
+                    placeholder="admin@fluxeat.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     autoFocus

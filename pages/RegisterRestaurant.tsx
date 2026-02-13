@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useNavigate, Link } from 'react-router-dom';
@@ -132,7 +133,7 @@ export const RegisterRestaurant: React.FC = () => {
                     </p>
                     <div className="bg-gray-50 p-4 rounded-lg text-sm text-left mb-6 border">
                         <p className="mb-1"><span className="font-bold">Login:</span> {form.email}</p>
-                        <p><span className="font-bold">Link Direto:</span> gastroflow.com/?restaurant={form.slug}</p>
+                        <p><span className="font-bold">Link Direto:</span> fluxeat.com/?restaurant={form.slug}</p>
                     </div>
                     <Button onClick={() => window.location.href = `/?restaurant=${form.slug}`} className="w-full">
                         Acessar Meu Restaurante
@@ -176,7 +177,7 @@ export const RegisterRestaurant: React.FC = () => {
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">URL Personalizada (Slug)</label>
                             <div className="flex items-center border rounded-lg overflow-hidden bg-gray-50">
-                                <span className="pl-3 pr-1 text-gray-500 text-sm select-none">gastroflow.com/</span>
+                                <span className="pl-3 pr-1 text-gray-500 text-sm select-none">fluxeat.com/</span>
                                 <input 
                                     required
                                     className="flex-1 p-3 bg-transparent focus:outline-none text-blue-600 font-medium"
