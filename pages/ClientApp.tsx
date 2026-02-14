@@ -11,7 +11,7 @@ import {
     ShoppingCart, ChefHat, Plus, Minus, X, Lock, 
     Receipt, Loader2, Bell, ArrowLeft, Search, Edit3, 
     Zap, Clock, Trash2, ArrowRight, 
-    Activity, AlertCircle, RefreshCcw 
+    Activity, AlertCircle, RefreshCcw, Utensils
 } from 'lucide-react';
 
 const OrderGraceTimer: React.FC<{ order: Order; graceMinutes: number; onCancel: (id: string) => void }> = ({ order, graceMinutes, onCancel }) => {
@@ -85,6 +85,21 @@ export const ClientApp: React.FC = () => {
     const graceMinutes = state.businessInfo?.orderGracePeriodMinutes || 0;
     const tableOrders = orderState.orders.filter(o => o.tableId === tableId && !o.isPaid && o.status !== 'CANCELLED');
 
+    // Helper para agrupar itens (Pais e Adicionais) nas telas de Status e Conta
+    const groupItems = (items: any[]) => {
+        const grouped: any[] = [];
+        items.forEach(item => {
+            const isExtra = item.notes?.includes('[ADICIONAL]');
+            if (isExtra && grouped.length > 0) {
+                if (!grouped[grouped.length - 1].extras) grouped[grouped.length - 1].extras = [];
+                grouped[grouped.length - 1].extras.push(item);
+            } else {
+                grouped.push({ ...item, extras: [] });
+            }
+        });
+        return grouped;
+    };
+
     const handleManualRefresh = useCallback(() => {
         setIsRefreshing(true);
         setTimeout(() => setIsRefreshing(false), 800);
@@ -103,10 +118,15 @@ export const ClientApp: React.FC = () => {
 
     const handleAddToCart = () => {
         if (!selectedProduct) return;
+        
         let finalNote = modalNotes;
+        // Lógica específica para bebidas: substitui nota livre por seleção de timing
         if (selectedProduct.category === 'Bebidas') {
-            finalNote = (drinkTiming === 'IMMEDIATE' ? '[IMEDIATA] ' : '[COM COMIDA] ') + finalNote;
+            const timingText = drinkTiming === 'IMMEDIATE' ? '[IMEDIATA]' : '[COM COMIDA]';
+            // Se já tiver alguma nota interna (futuro), concatena, senão usa só o timing
+            finalNote = timingText; 
         }
+
         const chosenExtras = selectedExtraIds
             .map(id => menuState.products.find(p => p.id === id))
             .filter(Boolean) as Product[];
@@ -118,6 +138,7 @@ export const ClientApp: React.FC = () => {
         setSelectedProduct(null);
         setModalQuantity(1);
         setModalNotes('');
+        setDrinkTiming('IMMEDIATE'); // Reset
         setSelectedExtraIds([]);
     };
 
@@ -331,7 +352,7 @@ export const ClientApp: React.FC = () => {
                                                 <span className="font-black text-emerald-600 text-lg">R$ {(item.product.price * item.quantity).toFixed(2)}</span>
                                             </div>
                                             {item.extras?.map(ex => (
-                                                <div key={ex.id} className="text-[11px] font-black text-orange-600 uppercase flex items-center gap-1">
+                                                <div key={ex.id} className="text-[11px] font-black text-orange-600 uppercase flex items-center gap-1 pl-4 border-l-2 border-orange-200 mt-1">
                                                     <Plus size={12} /> {ex.name} (+R$ {ex.price.toFixed(2)})
                                                 </div>
                                             ))}
@@ -376,13 +397,26 @@ export const ClientApp: React.FC = () => {
                         </div>
                         <div className="p-8 flex-1 overflow-y-auto custom-scrollbar">
                             <div className="space-y-4 mb-10">
-                                {tableOrders.flatMap(o => o.items).map((item, idx) => (
-                                    <div key={idx} className="flex justify-between items-center border-b-2 border-dashed border-gray-50 pb-4">
-                                        <div className="space-y-0.5">
-                                            <p className="text-slate-800 font-black uppercase tracking-tighter text-sm">{item.quantity}x {item.productName}</p>
-                                            {item.notes && <p className="text-[10px] text-gray-400 font-bold italic">{item.notes}</p>}
+                                {tableOrders.flatMap(o => groupItems(o.items)).map((item, idx) => (
+                                    <div key={idx} className="border-b-2 border-dashed border-gray-50 pb-4">
+                                        <div className="flex justify-between items-center">
+                                            <div className="space-y-0.5">
+                                                <p className="text-slate-800 font-black uppercase tracking-tighter text-sm">{item.quantity}x {item.productName}</p>
+                                                {item.notes && <p className="text-[10px] text-gray-400 font-bold italic">{item.notes}</p>}
+                                            </div>
+                                            <span className="font-black text-slate-900 text-sm">R$ {(item.productPrice * item.quantity).toFixed(2)}</span>
                                         </div>
-                                        <span className="font-black text-slate-900 text-sm">R$ {(item.productPrice * item.quantity).toFixed(2)}</span>
+                                        {/* Adicionais agrupados */}
+                                        {item.extras && item.extras.length > 0 && (
+                                            <div className="mt-2 pl-3 border-l-2 border-orange-200 space-y-1">
+                                                {item.extras.map((ex: any, i: number) => (
+                                                    <div key={i} className="flex justify-between text-xs text-orange-600 font-bold">
+                                                        <span>+ {ex.quantity}x {ex.productName}</span>
+                                                        <span>R$ {(ex.productPrice * ex.quantity).toFixed(2)}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
                                     </div>
                                 ))}
                                 {tableOrders.length === 0 && (
@@ -445,18 +479,31 @@ export const ClientApp: React.FC = () => {
                                             <span>{order.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                                         </div>
                                         <div className="space-y-6">
-                                            {order.items.map(item => (
-                                                <div key={item.id} className="flex justify-between items-center gap-4">
-                                                    <div className="flex-1 min-w-0 pr-4">
-                                                        <span className="text-slate-800 font-black uppercase tracking-tighter block truncate">{item.quantity}x {item.productName}</span>
-                                                        {item.notes && <span className="text-[10px] text-gray-400 font-bold italic block truncate mt-1">"{item.notes}"</span>}
+                                            {groupItems(order.items).map((item, idx) => (
+                                                <div key={idx}>
+                                                    <div className="flex justify-between items-center gap-4">
+                                                        <div className="flex-1 min-w-0 pr-4">
+                                                            <span className="text-slate-800 font-black uppercase tracking-tighter block truncate">{item.quantity}x {item.productName}</span>
+                                                            {item.notes && <span className="text-[10px] text-gray-400 font-bold italic block truncate mt-1">"{item.notes}"</span>}
+                                                        </div>
+                                                        <span className={`text-[9px] px-3 py-1.5 rounded-xl font-black uppercase tracking-tighter shrink-0 border shadow-sm ${item.status === 'PENDING' ? 'bg-white text-gray-500 border-gray-200' : ''} ${item.status === 'PREPARING' ? 'bg-yellow-100 text-yellow-700 border-yellow-200 animate-pulse' : ''} ${item.status === 'READY' ? 'bg-emerald-600 text-white border-emerald-700 shadow-emerald-500/20' : ''} ${item.status === 'DELIVERED' ? 'bg-blue-100 text-blue-700 border-blue-200' : ''}`}>
+                                                            {item.status === 'PENDING' && 'Na Fila'} 
+                                                            {item.status === 'PREPARING' && 'Preparando'} 
+                                                            {item.status === 'READY' && 'Pronto!'} 
+                                                            {item.status === 'DELIVERED' && 'Entregue'}
+                                                        </span>
                                                     </div>
-                                                    <span className={`text-[9px] px-3 py-1.5 rounded-xl font-black uppercase tracking-tighter shrink-0 border shadow-sm ${item.status === 'PENDING' ? 'bg-white text-gray-500 border-gray-200' : ''} ${item.status === 'PREPARING' ? 'bg-yellow-100 text-yellow-700 border-yellow-200 animate-pulse' : ''} ${item.status === 'READY' ? 'bg-emerald-600 text-white border-emerald-700 shadow-emerald-500/20' : ''} ${item.status === 'DELIVERED' ? 'bg-blue-100 text-blue-700 border-blue-200' : ''}`}>
-                                                        {item.status === 'PENDING' && 'Na Fila'} 
-                                                        {item.status === 'PREPARING' && 'Preparando'} 
-                                                        {item.status === 'READY' && 'Pronto!'} 
-                                                        {item.status === 'DELIVERED' && 'Entregue'}
-                                                    </span>
+                                                    {/* Exibe adicionais agrupados */}
+                                                    {item.extras && item.extras.length > 0 && (
+                                                        <div className="mt-1 pl-3 border-l-2 border-orange-200 space-y-1">
+                                                            {item.extras.map((ex: any, i: number) => (
+                                                                <div key={i} className="flex justify-between items-center">
+                                                                    <span className="text-xs text-orange-600 font-bold">+ {ex.quantity}x {ex.productName}</span>
+                                                                    {/* Status do adicional segue o pai ou individual se necessário, aqui simplificado */}
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
                                                 </div>
                                             ))}
                                         </div>
@@ -477,14 +524,26 @@ export const ClientApp: React.FC = () => {
                     </div>
                 )}
 
-                {/* MODAL ADD TO CART */}
+                {/* MODAL ADD TO CART (ATUALIZADO) */}
                 {selectedProduct && (
                     <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 animate-fade-in">
                         <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col max-h-[90vh]">
-                            <div className="bg-slate-900 text-white p-6 flex justify-between items-center shrink-0">
-                                <h3 className="font-black text-xl truncate pr-4">{selectedProduct.name}</h3>
-                                <button onClick={() => setSelectedProduct(null)} className="bg-white/10 p-2 rounded-full hover:bg-red-500 hover:text-white transition-colors"><X size={20}/></button>
+                            {/* Header com Imagem Pequena (Cover) */}
+                            <div className="relative">
+                                <div className="h-32 w-full overflow-hidden relative">
+                                    <img 
+                                        src={selectedProduct.image || 'https://via.placeholder.com/400x200?text=Sem+Foto'} 
+                                        className="w-full h-full object-cover" 
+                                        alt={selectedProduct.name} 
+                                    />
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent"></div>
+                                </div>
+                                <div className="absolute bottom-0 left-0 w-full p-4 text-white flex justify-between items-end">
+                                    <h3 className="font-black text-xl truncate pr-4 text-shadow">{selectedProduct.name}</h3>
+                                    <button onClick={() => setSelectedProduct(null)} className="bg-white/20 backdrop-blur-sm p-2 rounded-full hover:bg-red-500 hover:text-white transition-colors absolute top-4 right-4"><X size={20}/></button>
+                                </div>
                             </div>
+
                             <div className="p-6 space-y-6 overflow-y-auto custom-scrollbar">
                                 <div>
                                     <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-4 text-center">Quantidade</label>
@@ -512,10 +571,34 @@ export const ClientApp: React.FC = () => {
                                         </div>
                                     </div>
                                 )}
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Observações</label>
-                                    <textarea className="w-full border-2 border-gray-100 bg-gray-50 rounded-2xl p-4 text-sm font-medium focus:border-blue-500 focus:bg-white outline-none transition-all resize-none" rows={3} placeholder="Ex: Sem cebola, ponto da carne..." value={modalNotes} onChange={e => setModalNotes(e.target.value)} />
-                                </div>
+                                
+                                {/* CONDITIONAL RENDERING FOR DRINKS */}
+                                {selectedProduct.category === 'Bebidas' ? (
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Quando Servir?</label>
+                                        <div className="flex gap-3">
+                                            <button 
+                                                onClick={() => setDrinkTiming('IMMEDIATE')}
+                                                className={`flex-1 p-4 rounded-2xl border-2 font-bold text-xs uppercase tracking-wider transition-all ${drinkTiming === 'IMMEDIATE' ? 'bg-blue-600 text-white border-blue-600 shadow-lg' : 'bg-white text-gray-400 border-gray-200'}`}
+                                            >
+                                                <Zap size={16} className="mx-auto mb-1"/>
+                                                Imediata
+                                            </button>
+                                            <button 
+                                                onClick={() => setDrinkTiming('WITH_FOOD')}
+                                                className={`flex-1 p-4 rounded-2xl border-2 font-bold text-xs uppercase tracking-wider transition-all ${drinkTiming === 'WITH_FOOD' ? 'bg-blue-600 text-white border-blue-600 shadow-lg' : 'bg-white text-gray-400 border-gray-200'}`}
+                                            >
+                                                <Utensils size={16} className="mx-auto mb-1"/>
+                                                Com Comida
+                                            </button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Observações</label>
+                                        <textarea className="w-full border-2 border-gray-100 bg-gray-50 rounded-2xl p-4 text-sm font-medium focus:border-blue-500 focus:bg-white outline-none transition-all resize-none" rows={3} placeholder="Ex: Sem cebola, ponto da carne..." value={modalNotes} onChange={e => setModalNotes(e.target.value)} />
+                                    </div>
+                                )}
                             </div>
                             <div className="p-6 border-t bg-gray-50 shrink-0">
                                 <Button onClick={handleAddToCart} className="w-full py-5 text-xl font-black shadow-2xl shadow-blue-200 rounded-2xl uppercase tracking-widest">
