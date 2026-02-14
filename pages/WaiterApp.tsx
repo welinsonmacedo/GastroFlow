@@ -46,14 +46,38 @@ export const WaiterApp: React.FC = () => {
   // Itens prontos para servir (Drawer Inferior)
   const readyItems = orderState.orders.flatMap(order => {
       if (order.isPaid || order.status === 'CANCELLED') return [];
+
+      // Verifica se existe algum item de COZINHA (KITCHEN) com status READY neste pedido
+      // Isso serve de gatilho para liberar as bebidas "Com Comida"
+      const hasKitchenFoodReady = order.items.some(i => 
+          i.status === OrderStatus.READY && 
+          i.productType === 'KITCHEN'
+      );
+
       return order.items.filter(item => {
               const product = menuState.products.find(p => p.id === item.productId);
               if (product?.isExtra || item.notes?.includes('[ADICIONAL')) return false;
+              
+              // 1. Se o item já está pronto (Cozinha marcou READY)
               if (item.status === OrderStatus.READY) return true;
+              
+              // 2. Bebidas Imediatas (aparecem assim que pedidas, se ainda PENDING)
               if (item.notes?.includes('[IMEDIATA]') && item.status === OrderStatus.PENDING) return true;
+
+              // 3. Bebidas "Com Comida" (aparecem visualmente apenas se houver comida pronta no pedido)
+              if (item.notes?.includes('[COM COMIDA]') && item.status === OrderStatus.PENDING) {
+                  return hasKitchenFoodReady;
+              }
+
               return false;
           })
-          .map(item => ({ ...item, orderId: order.id, tableId: order.tableId }));
+          .map(item => ({ 
+              ...item, 
+              orderId: order.id, 
+              tableId: order.tableId,
+              // Flag para UI saber se foi liberado pelo prato
+              isTriggeredByFood: hasKitchenFoodReady && item.notes?.includes('[COM COMIDA]')
+          }));
   });
 
   // Lógica de Filtragem da Aba Pedidos
@@ -119,11 +143,6 @@ export const WaiterApp: React.FC = () => {
       const stockItem = invState.inventory.find(i => i.id === product.linkedInventoryItemId);
       
       if (!stockItem) return { status: 'OK', qty: 999 };
-      
-      // Se for prato (Composite), assumimos OK por enquanto ou precisaríamos calcular a receita.
-      // Para simplificar no realtime, vamos olhar a quantidade direta se for revenda, ou assumir ilimitado se for produzido,
-      // a menos que o sistema de estoque desconte composite direto.
-      // Assumindo que inventory_items armazena a quantidade disponível:
       
       if (stockItem.quantity <= 0) return { status: 'OUT', qty: 0 };
       if (stockItem.quantity <= stockItem.minQuantity) return { status: 'LOW', qty: stockItem.quantity };
@@ -447,9 +466,11 @@ export const WaiterApp: React.FC = () => {
                                 <div className="bg-slate-900 text-white w-10 h-10 rounded-xl flex items-center justify-center font-black text-lg shadow-lg">{orderState.tables.find(t => t.id === item.tableId)?.number}</div>
                                 <div>
                                     <div className="font-black text-slate-800 text-sm">{item.quantity}x {item.productName}</div>
-                                    <div className="flex gap-2 mt-0.5">
+                                    <div className="flex gap-2 mt-0.5 flex-wrap">
                                         {item.notes?.includes('[IMEDIATA]') && <span className="text-[9px] bg-blue-600 text-white px-2 py-0.5 rounded-lg font-black uppercase tracking-tighter flex items-center gap-1"><Zap size={10}/> Imediata</span>}
-                                        {item.notes && <span className="text-[10px] text-gray-400 italic truncate max-w-[120px]">{item.notes}</span>}
+                                        {/* Badge específica para bebida liberada com comida */}
+                                        {(item as any).isTriggeredByFood && <span className="text-[9px] bg-purple-600 text-white px-2 py-0.5 rounded-lg font-black uppercase tracking-tighter flex items-center gap-1"><Utensils size={10}/> Liberado c/ Prato</span>}
+                                        {item.notes && !item.notes.includes('[IMEDIATA]') && !item.notes.includes('[COM COMIDA]') && <span className="text-[10px] text-gray-400 italic truncate max-w-[120px]">{item.notes}</span>}
                                     </div>
                                 </div>
                             </div>
