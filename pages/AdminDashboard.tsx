@@ -16,7 +16,7 @@ import { AdminFinance } from './admin/AdminFinance';
 import { AdminAccounting } from './admin/AdminAccounting';
 import { AccountingReport } from './admin/AccountingReport'; 
 import { AdminSettings } from './admin/AdminSettings';
-import { AdminMenuAppearance } from './admin/AdminMenuAppearance'; // NEW
+import { AdminMenuAppearance } from './admin/AdminMenuAppearance'; 
 import { AdminPurchaseSuggestions } from './admin/AdminPurchaseSuggestions'; 
 import { AdminFinancialTips } from './admin/AdminFinancialTips'; 
 
@@ -209,6 +209,14 @@ export const AdminDashboard: React.FC = () => {
 
             {/* Footer Sidebar */}
             <div className="p-4 border-t border-white/5 mt-auto bg-slate-900/50">
+                {/* Status do Sistema (Movido do Header) */}
+                <div className={`flex items-center gap-3 p-3 mb-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 transition-all ${!isSidebarHovered && !isSidebarOpen ? 'justify-center' : ''}`}>
+                    <div className="bg-emerald-500 w-2 h-2 rounded-full animate-pulse shrink-0"></div>
+                    <span className={`text-[10px] font-black text-emerald-500 uppercase tracking-widest whitespace-nowrap transition-all ${isSidebarHovered || isSidebarOpen ? 'opacity-100' : 'opacity-0 w-0 overflow-hidden'}`}>
+                        Sistema Online
+                    </span>
+                </div>
+
                 <div className="space-y-1">
                     <Link to="/manual" target="_blank" className={`w-full flex items-center gap-3 p-3 rounded-xl text-slate-500 hover:bg-white/5 hover:text-white transition-all ${!isSidebarHovered && !isSidebarOpen ? 'justify-center' : ''} group relative`}>
                         <ArrowLeft size={20} className="shrink-0"/>
@@ -238,10 +246,6 @@ export const AdminDashboard: React.FC = () => {
                     >
                         <RefreshCcw size={22}/>
                     </button>
-                    <div className="bg-slate-900 text-white px-5 py-3 rounded-[1.5rem] flex items-center gap-3 shadow-xl shadow-slate-900/10">
-                        <div className="bg-emerald-500 w-2 h-2 rounded-full animate-pulse"></div>
-                        <span className="text-[10px] font-black uppercase tracking-widest hidden sm:inline">Painel Conectado</span>
-                    </div>
                 </div>
             </header>
 
