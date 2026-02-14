@@ -18,10 +18,13 @@ export const InventoryItemModal: React.FC<InventoryItemModalProps> = ({ isOpen, 
   const { state, addInventoryItem, updateInventoryItem } = useInventory();
   const { showAlert } = useUI();
 
+  // Estado local do formulário
   const [form, setForm] = useState<Partial<InventoryItem>>({
     name: '', unit: 'UN', type: 'INGREDIENT', quantity: 0, minQuantity: 5, costPrice: 0, isExtra: false, image: ''
   });
-  const [recipeItems, setRecipeItems] = useState<{ ingredientId: string, qty: number }[]>([]);
+
+  // Estado local da receita (Padronizado para 'quantity')
+  const [recipeItems, setRecipeItems] = useState<{ ingredientId: string, quantity: number }[]>([]);
   const [selectedIngToAdd, setSelectedIngToAdd] = useState('');
 
   // Reset form when modal opens
@@ -29,7 +32,8 @@ export const InventoryItemModal: React.FC<InventoryItemModalProps> = ({ isOpen, 
     if (isOpen) {
       if (itemToEdit) {
         setForm({ ...itemToEdit });
-        setRecipeItems(itemToEdit.recipe?.map(r => ({ ingredientId: r.ingredientId, qty: r.quantity })) || []);
+        // Mapeia corretamente os itens existentes para o estado local
+        setRecipeItems(itemToEdit.recipe?.map(r => ({ ingredientId: r.ingredientId, quantity: r.quantity })) || []);
       } else {
         setForm({ name: '', unit: 'UN', type: 'INGREDIENT', quantity: 0, minQuantity: 5, costPrice: 0, isExtra: false, image: '' });
         setRecipeItems([]);
@@ -40,7 +44,7 @@ export const InventoryItemModal: React.FC<InventoryItemModalProps> = ({ isOpen, 
   const calculateRecipeCost = () => {
     return recipeItems.reduce((acc, item) => {
       const ing = state.inventory.find(i => i.id === item.ingredientId);
-      return acc + ((ing?.costPrice || 0) * item.qty);
+      return acc + ((ing?.costPrice || 0) * item.quantity);
     }, 0);
   };
 
@@ -48,7 +52,8 @@ export const InventoryItemModal: React.FC<InventoryItemModalProps> = ({ isOpen, 
     if (!selectedIngToAdd) return;
     const ing = state.inventory.find(i => i.id === selectedIngToAdd);
     if (ing) {
-      setRecipeItems([...recipeItems, { ingredientId: ing.id, qty: 1 }]);
+      // Adiciona com quantity
+      setRecipeItems([...recipeItems, { ingredientId: ing.id, quantity: 1 }]);
       setSelectedIngToAdd('');
     }
   };
@@ -59,8 +64,10 @@ export const InventoryItemModal: React.FC<InventoryItemModalProps> = ({ isOpen, 
 
     try {
       const finalItem: any = { ...form };
+      
+      // Se for item composto, anexa a receita e calcula custo
       if (finalItem.type === 'COMPOSITE') {
-        finalItem.recipe = recipeItems;
+        finalItem.recipe = recipeItems; // Agora recipeItems tem a estrutura correta { ingredientId, quantity }
         finalItem.costPrice = calculateRecipeCost();
       }
 
@@ -73,6 +80,7 @@ export const InventoryItemModal: React.FC<InventoryItemModalProps> = ({ isOpen, 
       showAlert({ title: "Sucesso", message: "Item salvo no estoque!", type: 'SUCCESS' });
       onClose();
     } catch (error: any) {
+      console.error("Erro no submit:", error);
       showAlert({ title: "Erro", message: error.message || "Erro ao salvar item.", type: 'ERROR' });
     }
   };
@@ -131,9 +139,17 @@ export const InventoryItemModal: React.FC<InventoryItemModalProps> = ({ isOpen, 
                           <div className="text-[10px] text-slate-400">Custo unitário: R$ {(ing?.costPrice || 0).toFixed(2)} / {ing?.unit}</div>
                         </div>
                         <div className="flex items-center gap-2">
-                          <input type="number" step="0.001" className="w-20 border-2 p-1 rounded-lg text-right font-bold" value={step.qty} onChange={e => {
-                            const n = [...recipeItems]; n[idx].qty = parseFloat(e.target.value); setRecipeItems(n);
-                          }} />
+                          <input 
+                            type="number" 
+                            step="0.001" 
+                            className="w-20 border-2 p-1 rounded-lg text-right font-bold" 
+                            value={step.quantity} // Alterado de qty para quantity
+                            onChange={e => {
+                                const n = [...recipeItems]; 
+                                n[idx].quantity = parseFloat(e.target.value); 
+                                setRecipeItems(n);
+                            }} 
+                          />
                           <button type="button" onClick={() => setRecipeItems(recipeItems.filter((_, i) => i !== idx))} className="text-red-400 hover:text-red-600 p-1"><X size={16} /></button>
                         </div>
                       </div>

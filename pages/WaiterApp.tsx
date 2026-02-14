@@ -178,6 +178,11 @@ export const WaiterApp: React.FC = () => {
       if (!product.linkedInventoryItemId) return { status: 'OK', qty: 999 };
       const stockItem = invState.inventory.find(i => i.id === product.linkedInventoryItemId);
       if (!stockItem) return { status: 'OK', qty: 999 };
+      
+      // MUDANÇA: Se for item Composto (Produzido), permite venda mesmo com estoque 0
+      // A lógica é que o estoque "virtual" do prato não importa, apenas os ingredientes.
+      if (stockItem.type === 'COMPOSITE') return { status: 'OK', qty: 999 };
+
       if (stockItem.quantity <= 0) return { status: 'OUT', qty: 0 };
       if (stockItem.quantity <= stockItem.minQuantity) return { status: 'LOW', qty: stockItem.quantity };
       return { status: 'OK', qty: stockItem.quantity };

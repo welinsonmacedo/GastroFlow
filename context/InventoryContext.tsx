@@ -65,7 +65,6 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
                     id: i.id, 
                     name: i.name, 
                     unit: i.unit, 
-                    // Proteção contra NULL: Converte para Number e usa 0 como fallback
                     quantity: Number(i.quantity) || 0, 
                     minQuantity: Number(i.min_quantity) || 0, 
                     costPrice: Number(i.cost_price) || 0, 
@@ -137,9 +136,13 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           throw new Error(`Erro ao salvar item: ${error.message}`);
       }
 
+      // Adicionar Receita
       if (newItem && item.type === 'COMPOSITE' && item.recipe && item.recipe.length > 0) {
           const recipes = item.recipe.map(r => ({
-              tenant_id: tenantId, parent_item_id: newItem.id, ingredient_item_id: r.ingredientId, quantity: r.quantity
+              tenant_id: tenantId, 
+              parent_item_id: newItem.id, 
+              ingredient_item_id: r.ingredientId, 
+              quantity: r.quantity // Garante que quantity está sendo passado
           }));
           const { error: recipeError } = await supabase.from('inventory_recipes').insert(recipes);
           if (recipeError) console.error("Erro ao salvar receita:", recipeError);
@@ -166,13 +169,19 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           throw new Error(`Erro ao atualizar item: ${error.message}`);
       }
 
-      if (item.type === 'COMPOSITE' && item.recipe) {
+      if (item.type === 'COMPOSITE') {
+          // Remove receitas antigas para evitar duplicação ou dados órfãos
           await supabase.from('inventory_recipes').delete().eq('parent_item_id', item.id);
-          if (item.recipe.length > 0) {
+          
+          if (item.recipe && item.recipe.length > 0) {
               const recipes = item.recipe.map(r => ({
-                  tenant_id: tenantId, parent_item_id: item.id, ingredient_item_id: r.ingredientId, quantity: r.quantity
+                  tenant_id: tenantId, 
+                  parent_item_id: item.id, 
+                  ingredient_item_id: r.ingredientId, 
+                  quantity: r.quantity
               }));
-              await supabase.from('inventory_recipes').insert(recipes);
+              const { error: recError } = await supabase.from('inventory_recipes').insert(recipes);
+              if (recError) console.error("Erro ao atualizar receita:", recError);
           }
       }
   };

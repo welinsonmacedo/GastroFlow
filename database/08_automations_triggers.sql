@@ -29,21 +29,23 @@ BEGIN
     FROM inventory_items
     WHERE id = v_linked_item_id;
 
-    IF v_item_type = 'COMPOSITE' THEN
+    -- Normaliza para evitar problemas de case sensitive ('Composite' vs 'COMPOSITE')
+    IF UPPER(v_item_type) = 'COMPOSITE' THEN
         -- Se for Prato, baixa cada ingrediente da receita proporcionalmente
         FOR r_recipe IN 
             SELECT ingredient_item_id, quantity 
             FROM inventory_recipes 
             WHERE parent_item_id = v_linked_item_id
         LOOP
+            -- Baixa o estoque do INGREDIENTE. Permite ficar negativo.
             UPDATE inventory_items
             SET quantity = quantity - (r_recipe.quantity * NEW.quantity)
             WHERE id = r_recipe.ingredient_item_id;
             
-            -- Opcional: Inserir log de 'SALE' na inventory_logs aqui
+            -- Opcional: Inserir log de 'SALE' na inventory_logs aqui se desejar rastreio granular
         END LOOP;
     ELSE
-        -- Se for Revenda/Simples, baixa o item direto
+        -- Se for Revenda/Simples, baixa o item direto. Permite ficar negativo.
         UPDATE inventory_items
         SET quantity = quantity - NEW.quantity
         WHERE id = v_linked_item_id;
