@@ -120,6 +120,7 @@ export interface InventoryItem {
     minQuantity: number;
     costPrice: number;
     salePrice: number; // Novo campo para venda direta no PDV
+    category?: string; // Nova categoria vinda do estoque
     type: InventoryType;
     image?: string;
     recipe?: InventoryRecipeItem[];

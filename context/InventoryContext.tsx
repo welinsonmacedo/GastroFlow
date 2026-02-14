@@ -70,6 +70,7 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
                     costPrice: Number(i.cost_price) || 0, 
                     salePrice: Number(i.sale_price) || 0, 
                     type: (i.type || 'INGREDIENT').toUpperCase() as InventoryType, 
+                    category: i.category, // Categoria vinda do banco
                     image: i.image, 
                     recipe: recipeItems,
                     isExtra: i.is_extra || false,
@@ -121,13 +122,12 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       if (!tenantId) return;
 
       if (item.isExtra) {
-          // Busca se já existe o produto vinculado
           const { data: existingProd } = await supabase.from('products').select('id').eq('linked_inventory_item_id', inventoryId).eq('is_extra', true).maybeSingle();
           
           const productPayload = {
               tenant_id: tenantId,
               name: item.name,
-              price: item.salePrice || 0, // Adicionais usam o SalePrice do estoque
+              price: item.salePrice || 0,
               cost_price: item.costPrice || 0,
               linked_inventory_item_id: inventoryId,
               is_extra: true,
@@ -144,7 +144,6 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
               await supabase.from('products').insert(productPayload);
           }
       } else {
-          // Se deixou de ser Extra, remove o produto vinculado que seja extra
           await supabase.from('products').delete().eq('linked_inventory_item_id', inventoryId).eq('is_extra', true);
       }
   };
@@ -161,6 +160,7 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           cost_price: item.costPrice || 0, 
           sale_price: item.salePrice || 0, 
           type: item.type, 
+          category: item.category, // Persiste categoria
           image: item.image,
           is_extra: item.isExtra,
           target_categories: item.targetCategories
@@ -173,7 +173,6 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           throw new Error(`Erro ao salvar item: ${error.message}`);
       }
 
-      // Adicionar Receita
       if (newItem && item.type === 'COMPOSITE' && item.recipe && item.recipe.length > 0) {
           const recipes = item.recipe.map(r => ({
               tenant_id: tenantId, 
@@ -185,7 +184,6 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           if (recipeError) console.error("Erro ao salvar receita:", recipeError);
       }
 
-      // Sincronizar Produto se for Extra
       if (newItem) {
           await syncExtraToProducts(item, newItem.id);
       }
@@ -202,6 +200,7 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           sale_price: item.salePrice || 0,
           image: item.image, 
           type: item.type,
+          category: item.category, // Persiste categoria
           is_extra: item.isExtra,
           target_categories: item.targetCategories
       };
@@ -228,22 +227,17 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           }
       }
 
-      // Sincronizar Produto se for Extra
       await syncExtraToProducts(item, item.id);
   };
 
   const deleteInventoryItem = async (itemId: string) => {
       const { error } = await supabase.from('inventory_items').delete().eq('id', itemId);
       if (error) {
-          if (error.code === '23503') { // Foreign Key Violation
+          if (error.code === '23503') {
               throw new Error("Não é possível excluir este item pois ele está vinculado a produtos, receitas ou histórico de vendas.");
           }
           throw error;
       }
-      // Produto vinculado via FK com ON DELETE SET NULL ou CASCADE, mas se for CASCADE no produto->inventory, ok.
-      // Se product aponta para inventory e inventory morre, product morre se tiver CASCADE. 
-      // Nosso schema 04_menu_products tem ON DELETE SET NULL.
-      // Então precisamos limpar manualmente os extras gerados
       await supabase.from('products').delete().eq('linked_inventory_item_id', itemId).eq('is_extra', true);
   };
 

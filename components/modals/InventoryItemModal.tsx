@@ -4,7 +4,6 @@ import { Modal } from '../Modal';
 import { Button } from '../Button';
 import { ImageUploader } from '../ImageUploader';
 import { useInventory } from '../../context/InventoryContext';
-import { useMenu } from '../../context/MenuContext'; // Importando para pegar categorias existentes
 import { useUI } from '../../context/UIContext';
 import { InventoryItem, InventoryType } from '../../types';
 import { Layers, CheckSquare, Square, Plus, X, Tag } from 'lucide-react';
@@ -17,34 +16,29 @@ interface InventoryItemModalProps {
 
 export const InventoryItemModal: React.FC<InventoryItemModalProps> = ({ isOpen, onClose, itemToEdit }) => {
   const { state, addInventoryItem, updateInventoryItem } = useInventory();
-  const { state: menuState } = useMenu(); // Para listar categorias
   const { showAlert } = useUI();
 
-  // Estado local do formulário
   const [form, setForm] = useState<Partial<InventoryItem>>({
-    name: '', unit: 'UN', type: 'INGREDIENT', quantity: 0, minQuantity: 5, costPrice: 0, salePrice: 0, isExtra: false, image: '', targetCategories: []
+    name: '', unit: 'UN', type: 'INGREDIENT', quantity: 0, minQuantity: 5, costPrice: 0, salePrice: 0, category: '', isExtra: false, image: '', targetCategories: []
   });
 
-  // Estado local da receita
   const [recipeItems, setRecipeItems] = useState<{ ingredientId: string, quantity: number }[]>([]);
   const [selectedIngToAdd, setSelectedIngToAdd] = useState('');
 
-  // Reset form when modal opens
   useEffect(() => {
     if (isOpen) {
       if (itemToEdit) {
         setForm({ ...itemToEdit });
         setRecipeItems(itemToEdit.recipe?.map(r => ({ ingredientId: r.ingredientId, quantity: r.quantity })) || []);
       } else {
-        setForm({ name: '', unit: 'UN', type: 'INGREDIENT', quantity: 0, minQuantity: 5, costPrice: 0, salePrice: 0, isExtra: false, image: '', targetCategories: [] });
+        setForm({ name: '', unit: 'UN', type: 'INGREDIENT', quantity: 0, minQuantity: 5, costPrice: 0, salePrice: 0, category: '', isExtra: false, image: '', targetCategories: [] });
         setRecipeItems([]);
       }
     }
   }, [isOpen, itemToEdit]);
 
-  // Lista de categorias existentes no cardápio para seleção
-  const existingCategories = Array.from(new Set(menuState.products.filter(p => !p.isExtra).map(p => p.category))).sort();
-  const displayCategories = existingCategories.length > 0 ? existingCategories : ['Lanches', 'Pizzas', 'Bebidas', 'Sobremesas', 'Pratos Principais'];
+  // Categorias padrão para cardápio (podemos melhorar isso permitindo novas)
+  const defaultCategories = ['Lanches', 'Pizzas', 'Pratos Principais', 'Acompanhamentos', 'Bebidas', 'Sobremesas'];
 
   const toggleTargetCategory = (cat: string) => {
       const current = form.targetCategories || [];
@@ -75,13 +69,23 @@ export const InventoryItemModal: React.FC<InventoryItemModalProps> = ({ isOpen, 
     e.preventDefault();
     if (!form.name) return;
 
+    // Validação de categoria para revenda/produzido
+    if (form.type !== 'INGREDIENT' && !form.category) {
+        return showAlert({ title: "Categoria Obrigatória", message: "Itens de venda (Revenda/Produzido) precisam de uma categoria.", type: 'WARNING' });
+    }
+
     try {
       const finalItem: any = { ...form };
       
-      // Se for item composto, anexa a receita e calcula custo
       if (finalItem.type === 'COMPOSITE') {
         finalItem.recipe = recipeItems; 
         finalItem.costPrice = calculateRecipeCost();
+      }
+
+      // Se for Matéria Prima, zera o preço de venda para garantir
+      if (finalItem.type === 'INGREDIENT') {
+          finalItem.salePrice = 0;
+          finalItem.category = ''; 
       }
 
       if (itemToEdit && itemToEdit.id) {
@@ -114,9 +118,9 @@ export const InventoryItemModal: React.FC<InventoryItemModalProps> = ({ isOpen, 
                   <div>
                     <label className="block text-xs font-bold mb-1">Tipo de Item</label>
                     <select className="w-full border-2 p-3 rounded-xl bg-white" value={form.type} onChange={e => setForm({ ...form, type: e.target.value as InventoryType })}>
-                      <option value="INGREDIENT">Matéria Prima</option>
-                      <option value="RESALE">Revenda</option>
-                      <option value="COMPOSITE">Ficha Técnica (Produzido)</option>
+                      <option value="INGREDIENT">Matéria Prima (Uso Interno)</option>
+                      <option value="RESALE">Revenda (Venda Direta)</option>
+                      <option value="COMPOSITE">Produzido (Prato/Ficha)</option>
                     </select>
                   </div>
                   <div>
@@ -129,6 +133,19 @@ export const InventoryItemModal: React.FC<InventoryItemModalProps> = ({ isOpen, 
                     </select>
                   </div>
                 </div>
+                
+                {/* CATEGORIA: Apenas para itens de venda (Não-Ingrediente) */}
+                {form.type !== 'INGREDIENT' && (
+                    <div>
+                        <label className="block text-xs font-bold mb-1 text-purple-700">Categoria no Cardápio</label>
+                        <select className="w-full border-2 p-3 rounded-xl bg-white border-purple-200" value={form.category || ''} onChange={e => setForm({...form, category: e.target.value})}>
+                            <option value="">Selecione...</option>
+                            {defaultCategories.map(cat => (
+                                <option key={cat} value={cat}>{cat}</option>
+                            ))}
+                        </select>
+                    </div>
+                )}
               </div>
             </div>
 
@@ -194,7 +211,7 @@ export const InventoryItemModal: React.FC<InventoryItemModalProps> = ({ isOpen, 
                           <Tag size={12}/> Disponível nas Categorias:
                       </label>
                       <div className="max-h-40 overflow-y-auto space-y-1 bg-white/50 p-2 rounded-xl border border-orange-100">
-                          {displayCategories.map(cat => (
+                          {defaultCategories.map(cat => (
                               <label key={cat} className="flex items-center gap-2 p-1.5 hover:bg-orange-100 rounded cursor-pointer">
                                   <div className={`w-4 h-4 border-2 rounded flex items-center justify-center ${form.targetCategories?.includes(cat) ? 'bg-orange-600 border-orange-600' : 'bg-white border-orange-300'}`}>
                                       {form.targetCategories?.includes(cat) && <CheckSquare size={12} className="text-white"/>}
@@ -209,7 +226,6 @@ export const InventoryItemModal: React.FC<InventoryItemModalProps> = ({ isOpen, 
                               </label>
                           ))}
                       </div>
-                      <p className="text-[9px] text-orange-700 mt-2 italic">Ao salvar, este item aparecerá como opção extra para produtos destas categorias.</p>
                   </div>
               )}
             </div>
@@ -219,11 +235,15 @@ export const InventoryItemModal: React.FC<InventoryItemModalProps> = ({ isOpen, 
             <div className="bg-white p-6 rounded-2xl border border-slate-200">
               <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">3. Financeiro e Alertas</h4>
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold mb-1 text-emerald-700">Preço de Venda (PDV/Extra)</label>
-                  <input type="number" step="0.01" className="w-full border-2 p-3 rounded-xl font-black text-emerald-600 border-emerald-100 bg-emerald-50" value={form.salePrice} onChange={e => setForm({ ...form, salePrice: parseFloat(e.target.value) })} />
-                  <p className="text-[10px] text-gray-400 mt-1">Usado para vendas diretas no caixa ou como valor do adicional.</p>
-                </div>
+                {/* Preço de Venda APENAS se não for ingrediente */}
+                {form.type !== 'INGREDIENT' && (
+                    <div>
+                        <label className="block text-xs font-bold mb-1 text-emerald-700">Preço de Venda (PDV/Extra)</label>
+                        <input type="number" step="0.01" className="w-full border-2 p-3 rounded-xl font-black text-emerald-600 border-emerald-100 bg-emerald-50" value={form.salePrice} onChange={e => setForm({ ...form, salePrice: parseFloat(e.target.value) })} />
+                        <p className="text-[10px] text-gray-400 mt-1">Valor de venda final para o cliente.</p>
+                    </div>
+                )}
+                
                 <div>
                   <label className="block text-xs font-bold mb-1">Custo Médio (R$)</label>
                   <input type="number" step="0.01" className={`w-full border-2 p-3 rounded-xl font-bold text-gray-600 ${form.type === 'COMPOSITE' ? 'bg-gray-50' : ''}`} value={form.type === 'COMPOSITE' ? calculateRecipeCost() : form.costPrice} onChange={e => setForm({ ...form, costPrice: parseFloat(e.target.value) })} disabled={form.type === 'COMPOSITE'} />
@@ -240,10 +260,14 @@ export const InventoryItemModal: React.FC<InventoryItemModalProps> = ({ isOpen, 
                 )}
               </div>
             </div>
-            <div className="bg-white p-6 rounded-2xl border border-slate-200">
-              <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">4. Imagem do Produto</h4>
-              <ImageUploader value={form.image || ''} onChange={(val) => setForm({ ...form, image: val })} maxSizeKB={250} />
-            </div>
+            
+            {/* Upload de Imagem visível para Revenda e Produzido */}
+            {form.type !== 'INGREDIENT' && (
+                <div className="bg-white p-6 rounded-2xl border border-slate-200">
+                    <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">4. Imagem do Produto</h4>
+                    <ImageUploader value={form.image || ''} onChange={(val) => setForm({ ...form, image: val })} maxSizeKB={250} />
+                </div>
+            )}
           </div>
         </div>
         <div className="flex gap-4 pt-6 border-t">
