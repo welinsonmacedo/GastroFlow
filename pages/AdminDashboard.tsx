@@ -29,13 +29,14 @@ export const AdminDashboard: React.FC = () => {
   const [isSidebarHovered, setIsSidebarHovered] = useState(false); // Desktop hover
   const [isRefreshing, setIsRefreshing] = useState(false);
   
-  // Controle dos grupos do menu (Dropdowns)
-  const [openGroups, setOpenGroups] = useState<string[]>(['OPERATIONAL', 'MANAGEMENT', 'SYSTEM']);
+  // Controle dos grupos do menu (Dropdowns) - Inicia apenas com OPERATIONAL aberto
+  const [openGroups, setOpenGroups] = useState<string[]>(['OPERATIONAL']);
 
   const { planLimits } = state;
 
+  // Lógica Acordeão: Abre um e fecha os outros
   const toggleGroup = (group: string) => {
-      setOpenGroups(prev => prev.includes(group) ? prev.filter(g => g !== group) : [...prev, group]);
+      setOpenGroups(prev => prev.includes(group) ? [] : [group]);
   };
 
   const handleGlobalRefresh = () => {
