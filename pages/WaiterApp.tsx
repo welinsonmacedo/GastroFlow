@@ -7,7 +7,7 @@ import { useUI } from '../context/UIContext';
 import { TableStatus, Product, OrderStatus } from '../types';
 import { Button } from '../components/Button';
 import { WaiterProductModal, OpenTableModal, TableActionsModal } from '../components/modals/WaiterModals';
-import { Bell, Plus, Search, ShoppingCart, ArrowLeft, Utensils, Trash2, Clock, CheckCircle, ChevronUp, ChevronDown, Zap, RefreshCcw, Lock, List, Grid } from 'lucide-react';
+import { Bell, Plus, Search, ShoppingCart, ArrowLeft, Utensils, Trash2, Clock, CheckCircle, ChevronUp, ChevronDown, Zap, RefreshCcw, Lock, List, Grid, History } from 'lucide-react';
 import { Modal } from '../components/Modal'; // Importado para o modal de confirmação de chamado
 
 const FALLBACK_SOUND_URL = "https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3";
@@ -18,6 +18,7 @@ export const WaiterApp: React.FC = () => {
   const { state: orderState, dispatch: orderDispatch } = useOrder();
   
   const [activeTab, setActiveTab] = useState<'TABLES' | 'ORDERS'>('TABLES');
+  const [showHistory, setShowHistory] = useState(false); // Estado para alternar entre ativos e histórico
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [, setTick] = useState(0);
   const { showAlert } = useUI();
@@ -53,8 +54,14 @@ export const WaiterApp: React.FC = () => {
           .map(item => ({ ...item, orderId: order.id, tableId: order.tableId }));
   });
 
-  // Todos os pedidos ativos para a aba "Pedidos"
-  const allActiveOrders = orderState.orders.filter(o => !o.isPaid && o.status !== 'CANCELLED').sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  // Lógica de Filtragem da Aba Pedidos
+  const baseOrders = orderState.orders
+      .filter(o => !o.isPaid && o.status !== 'CANCELLED')
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+  const displayedOrders = baseOrders.filter(o => 
+      showHistory ? o.status === 'DELIVERED' : o.status !== 'DELIVERED'
+  );
 
   useEffect(() => {
       audioRef.current = new Audio(FALLBACK_SOUND_URL);
@@ -300,16 +307,35 @@ export const WaiterApp: React.FC = () => {
             {/* VIEW: ORDERS */}
             {activeTab === 'ORDERS' && (
                 <div className="space-y-4">
-                    {allActiveOrders.length === 0 && (
+                    {/* Header da Lista de Pedidos */}
+                    <div className="flex justify-between items-center mb-6 px-2">
+                        <h2 className={`font-black text-lg ${showHistory ? 'text-slate-400' : 'text-slate-800'}`}>
+                            {showHistory ? 'Histórico (Entregues)' : 'Em Andamento'}
+                        </h2>
+                        <button 
+                            onClick={() => setShowHistory(!showHistory)} 
+                            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest transition-all
+                                ${showHistory ? 'bg-slate-800 text-white' : 'bg-white text-slate-500 hover:bg-slate-100 border border-gray-200'}
+                            `}
+                        >
+                            <History size={16} /> 
+                            {showHistory ? 'Voltar para Ativos' : 'Ver Histórico'}
+                        </button>
+                    </div>
+
+                    {displayedOrders.length === 0 && (
                         <div className="flex flex-col items-center justify-center py-20 opacity-50">
                             <Utensils size={64} className="text-slate-300 mb-4"/>
-                            <p className="text-slate-400 font-bold uppercase tracking-widest text-sm">Sem pedidos no momento</p>
+                            <p className="text-slate-400 font-bold uppercase tracking-widest text-sm">
+                                {showHistory ? 'Nenhum pedido entregue recentemente' : 'Sem pedidos ativos no momento'}
+                            </p>
                         </div>
                     )}
-                    {allActiveOrders.map(order => {
+
+                    {displayedOrders.map(order => {
                         const table = orderState.tables.find(t => t.id === order.tableId);
                         return (
-                            <div key={order.id} className="bg-white p-5 rounded-[2rem] shadow-sm border border-gray-100">
+                            <div key={order.id} className={`bg-white p-5 rounded-[2rem] shadow-sm border border-gray-100 ${order.status === 'DELIVERED' ? 'opacity-70' : ''}`}>
                                 <div className="flex justify-between items-center border-b pb-3 mb-3">
                                     <div className="flex items-center gap-3">
                                         <div className="bg-slate-900 text-white w-10 h-10 rounded-xl flex items-center justify-center font-black text-lg">{table?.number}</div>
