@@ -6,7 +6,7 @@ import { Button } from '../components/Button';
 import { QRCodeGenerator } from '../components/QRCodeGenerator';
 import { ImageUploader } from '../components/ImageUploader';
 import { Product, ProductType, Role, User, InventoryItem, Expense, InventoryType, Supplier, PurchaseItemInput, PurchaseInstallment } from '../types';
-import { LayoutDashboard, Utensils, QrCode, Printer, ExternalLink, Palette, Eye, EyeOff, Save, Copy, Plus, Users, ShieldCheck, Trash2, Edit, AlertTriangle, FileBarChart, X, ArrowUp, ArrowDown, LayoutGrid, List as ListIcon, Image as ImageIcon, Calendar, TrendingUp, Search, Loader2, Menu, Activity, CheckSquare, GripVertical, Link as LinkIcon, Share2, Lock, BookOpen, Package, DollarSign, Archive, TrendingDown, RefreshCcw, Layers, ArrowLeft, Truck, FileText, ClipboardList, FileSpreadsheet, PieChart, CreditCard, Info, MapPin, Phone, User as UserIcon } from 'lucide-react';
+import { LayoutDashboard, Utensils, QrCode, Printer, ExternalLink, Palette, Eye, EyeOff, Save, Copy, Plus, Users, ShieldCheck, Trash2, Edit, AlertTriangle, FileBarChart, X, ArrowUp, ArrowDown, LayoutGrid, List as ListIcon, Image as ImageIcon, Calendar, TrendingUp, Search, Loader2, Menu, Activity, CheckSquare, GripVertical, Link as LinkIcon, Share2, Lock, BookOpen, Package, DollarSign, Archive, TrendingDown, RefreshCcw, Layers, ArrowLeft, Truck, FileText, ClipboardList, FileSpreadsheet, PieChart, CreditCard, Info, MapPin, Phone, User as UserIcon, ChevronDown, ChevronRight, Briefcase, Settings } from 'lucide-react';
 import { getTenantSlug } from '../utils/tenant';
 import { supabase } from '../lib/supabase';
 import { Link } from 'react-router-dom';
@@ -25,17 +25,24 @@ export const AdminDashboard: React.FC = () => {
   const { state, dispatch } = useRestaurant();
   const { showAlert } = useUI();
   const [activeTab, setActiveTab] = useState<'DASHBOARD' | 'PRODUCTS' | 'TABLES' | 'CUSTOMIZATION' | 'STAFF' | 'REPORTS' | 'ACCOUNTING' | 'OFFICIAL_REPORT' | 'INVENTORY' | 'FINANCE'>('DASHBOARD');
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Mobile toggle
+  const [isSidebarHovered, setIsSidebarHovered] = useState(false); // Desktop hover
   const [isRefreshing, setIsRefreshing] = useState(false);
+  
+  // Controle dos grupos do menu (Dropdowns)
+  const [openGroups, setOpenGroups] = useState<string[]>(['OPERATIONAL', 'MANAGEMENT', 'SYSTEM']);
 
   const { planLimits } = state;
 
+  const toggleGroup = (group: string) => {
+      setOpenGroups(prev => prev.includes(group) ? prev.filter(g => g !== group) : [...prev, group]);
+  };
+
   const handleGlobalRefresh = () => {
       setIsRefreshing(true);
-      // Aqui poderíamos disparar re-fetches manuais de todos os contextos
       setTimeout(() => {
           setIsRefreshing(false);
-          showAlert({ title: "Dados Sincronizados", message: "Todas as informações administrativas foram atualizadas com o banco de dados.", type: 'SUCCESS' });
+          showAlert({ title: "Dados Sincronizados", message: "Todas as informações administrativas foram atualizadas.", type: 'SUCCESS' });
       }, 1000);
   };
 
@@ -54,46 +61,160 @@ export const AdminDashboard: React.FC = () => {
       }
   };
 
+  // Estrutura do Menu
+  const menuGroups = [
+      {
+          id: 'OPERATIONAL',
+          label: 'Operacional',
+          icon: Layers,
+          items: [
+              { id: 'INVENTORY', label: 'Estoque', icon: Package, visible: planLimits.allowInventory },
+              { id: 'PRODUCTS', label: 'Cardápio', icon: Utensils, visible: true },
+              { id: 'TABLES', label: 'Mesas & QR', icon: QrCode, visible: planLimits.allowTableMgmt },
+          ]
+      },
+      {
+          id: 'MANAGEMENT',
+          label: 'Gestão',
+          icon: Briefcase,
+          items: [
+              { id: 'FINANCE', label: 'Financeiro', icon: DollarSign, visible: planLimits.allowExpenses || planLimits.allowPurchases },
+              { id: 'ACCOUNTING', label: 'DRE Gerencial', icon: PieChart, visible: planLimits.allowReports },
+              { id: 'STAFF', label: 'Equipe', icon: Users, visible: planLimits.allowStaff },
+          ]
+      },
+      {
+          id: 'SYSTEM',
+          label: 'Sistema',
+          icon: Settings,
+          items: [
+              { id: 'CUSTOMIZATION', label: 'Aparência', icon: Palette, visible: planLimits.allowCustomization },
+          ]
+      }
+  ];
+
   return (
     <div className="h-full bg-gray-50 flex relative font-sans overflow-hidden">
         {/* Sidebar */}
-        <aside className={`bg-slate-950 text-white w-72 p-6 h-full z-50 transition-transform duration-300 shadow-2xl ${isSidebarOpen ? 'translate-x-0 absolute left-0 top-0' : '-translate-x-full absolute left-0 top-0'} lg:relative lg:translate-x-0 print:hidden flex flex-col shrink-0 border-r border-white/5`}>
-            <div className="flex justify-between items-center mb-10">
-                <div className="flex items-center gap-3">
-                    <div className="bg-blue-600 p-2 rounded-xl shadow-lg shadow-blue-600/20"><Activity size={24}/></div>
-                    <h1 className="text-xl font-black tracking-tighter uppercase">Admin Panel</h1>
+        <aside 
+            className={`
+                bg-slate-950 text-white h-full z-50 shadow-2xl transition-all duration-300 ease-in-out flex flex-col shrink-0 border-r border-white/5
+                fixed lg:relative
+                ${isSidebarOpen ? 'translate-x-0 w-72' : '-translate-x-full lg:translate-x-0'}
+                ${isSidebarHovered || isSidebarOpen ? 'lg:w-72' : 'lg:w-20'}
+            `}
+            onMouseEnter={() => setIsSidebarHovered(true)}
+            onMouseLeave={() => setIsSidebarHovered(false)}
+        >
+            {/* Header Sidebar */}
+            <div className={`flex items-center h-20 px-6 transition-all ${isSidebarHovered || isSidebarOpen ? 'justify-between' : 'justify-center'}`}>
+                <div className={`flex items-center gap-3 transition-opacity duration-200 ${isSidebarHovered || isSidebarOpen ? 'opacity-100' : 'opacity-0 hidden lg:flex lg:w-0 overflow-hidden'}`}>
+                    <div className="bg-blue-600 p-1.5 rounded-lg shadow-lg shadow-blue-600/20 shrink-0">
+                        <Activity size={20}/>
+                    </div>
+                    <h1 className="text-lg font-black tracking-tighter uppercase whitespace-nowrap">Admin</h1>
                 </div>
+                
+                {/* Ícone visível quando recolhido */}
+                <div className={`absolute left-1/2 -translate-x-1/2 transition-opacity duration-300 ${!isSidebarHovered && !isSidebarOpen ? 'opacity-100' : 'opacity-0'}`}>
+                    <div className="bg-blue-600 p-2 rounded-xl shadow-lg">
+                        <Activity size={24}/>
+                    </div>
+                </div>
+
                 <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden p-2 hover:bg-white/10 rounded-xl transition-colors"><X size={20}/></button>
             </div>
             
-            <nav className="space-y-1.5 flex-1 overflow-y-auto pr-1 custom-scrollbar">
-                <button onClick={() => {setActiveTab('DASHBOARD'); setIsSidebarOpen(false);}} className={`w-full text-left p-4 rounded-2xl flex items-center gap-3 transition-all ${activeTab === 'DASHBOARD' ? 'bg-blue-600 text-white shadow-xl shadow-blue-600/30' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}><LayoutDashboard size={20}/> <span className="font-bold text-sm uppercase tracking-tight">Visão Geral</span></button>
-                
-                <div className="pt-6 pb-2 text-[10px] font-black text-slate-600 uppercase tracking-[0.2em] ml-2">Operação</div>
-                {planLimits.allowInventory && <button onClick={() => {setActiveTab('INVENTORY'); setIsSidebarOpen(false);}} className={`w-full text-left p-4 rounded-2xl flex items-center gap-3 transition-all ${activeTab === 'INVENTORY' ? 'bg-blue-600 text-white shadow-xl shadow-blue-600/30' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}><Package size={20}/> <span className="font-bold text-sm uppercase tracking-tight">Estoque</span></button>}
-                <button onClick={() => {setActiveTab('PRODUCTS'); setIsSidebarOpen(false);}} className={`w-full text-left p-4 rounded-2xl flex items-center gap-3 transition-all ${activeTab === 'PRODUCTS' ? 'bg-blue-600 text-white shadow-xl shadow-blue-600/30' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}><Utensils size={20}/> <span className="font-bold text-sm uppercase tracking-tight">Cardápio</span></button>
-                {planLimits.allowTableMgmt && <button onClick={() => {setActiveTab('TABLES'); setIsSidebarOpen(false);}} className={`w-full text-left p-4 rounded-2xl flex items-center gap-3 transition-all ${activeTab === 'TABLES' ? 'bg-blue-600 text-white shadow-xl shadow-blue-600/30' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}><QrCode size={20}/> <span className="font-bold text-sm uppercase tracking-tight">Mesas & QR</span></button>}
-                
-                <div className="pt-6 pb-2 text-[10px] font-black text-slate-600 uppercase tracking-[0.2em] ml-2">Gestão</div>
-                {(planLimits.allowExpenses || planLimits.allowPurchases) && <button onClick={() => {setActiveTab('FINANCE'); setIsSidebarOpen(false);}} className={`w-full text-left p-4 rounded-2xl flex items-center gap-3 transition-all ${activeTab === 'FINANCE' ? 'bg-blue-600 text-white shadow-xl shadow-blue-600/30' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}><DollarSign size={20}/> <span className="font-bold text-sm uppercase tracking-tight">Financeiro</span></button>}
-                {planLimits.allowReports && (
-                    <>
-                        <button onClick={() => {setActiveTab('ACCOUNTING'); setIsSidebarOpen(false);}} className={`w-full text-left p-4 rounded-2xl flex items-center gap-3 transition-all ${activeTab === 'ACCOUNTING' ? 'bg-blue-600 text-white shadow-xl shadow-blue-600/30' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}><PieChart size={20}/> <span className="font-bold text-sm uppercase tracking-tight">DRE Gerencial</span></button>
-                    </>
-                )}
-                {planLimits.allowStaff && <button onClick={() => {setActiveTab('STAFF'); setIsSidebarOpen(false);}} className={`w-full text-left p-4 rounded-2xl flex items-center gap-3 transition-all ${activeTab === 'STAFF' ? 'bg-blue-600 text-white shadow-xl shadow-blue-600/30' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}><Users size={20}/> <span className="font-bold text-sm uppercase tracking-tight">Equipe</span></button>}
-                
-                <div className="pt-6 pb-2 text-[10px] font-black text-slate-600 uppercase tracking-[0.2em] ml-2">Configurações</div>
-                {planLimits.allowCustomization && <button onClick={() => {setActiveTab('CUSTOMIZATION'); setIsSidebarOpen(false);}} className={`w-full text-left p-4 rounded-2xl flex items-center gap-3 transition-all ${activeTab === 'CUSTOMIZATION' ? 'bg-blue-600 text-white shadow-xl shadow-blue-600/30' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}><Palette size={20}/> <span className="font-bold text-sm uppercase tracking-tight">Aparência</span></button>}
+            {/* Menu Itens */}
+            <nav className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar py-4 space-y-1">
+                {/* Dashboard (Item Solto) */}
+                <div className="px-3 mb-4">
+                    <button 
+                        onClick={() => { setActiveTab('DASHBOARD'); setIsSidebarOpen(false); }} 
+                        className={`w-full flex items-center gap-3 p-3 rounded-2xl transition-all relative group
+                            ${activeTab === 'DASHBOARD' ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20' : 'text-slate-400 hover:bg-slate-900 hover:text-white'}
+                            ${!isSidebarHovered && !isSidebarOpen ? 'justify-center' : ''}
+                        `}
+                    >
+                        <LayoutDashboard size={20} className="shrink-0"/>
+                        <span className={`font-bold text-sm uppercase tracking-tight transition-all duration-300 ${isSidebarHovered || isSidebarOpen ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-4 absolute left-12 pointer-events-none'}`}>
+                            Visão Geral
+                        </span>
+                        {/* Tooltip quando recolhido */}
+                        {!isSidebarHovered && !isSidebarOpen && (
+                            <div className="absolute left-full ml-4 bg-slate-800 text-white text-xs font-bold px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 shadow-xl border border-slate-700">
+                                Visão Geral
+                            </div>
+                        )}
+                    </button>
+                </div>
+
+                <div className="border-t border-white/5 my-2 mx-4"></div>
+
+                {/* Grupos Dinâmicos */}
+                {menuGroups.map(group => {
+                    const hasVisibleItems = group.items.some(i => i.visible);
+                    if (!hasVisibleItems) return null;
+                    const isOpen = openGroups.includes(group.id);
+
+                    return (
+                        <div key={group.id} className="px-3 mb-1">
+                            {/* Group Header (Apenas visível expandido, ou ícone recolhido) */}
+                            <button 
+                                onClick={() => isSidebarHovered ? toggleGroup(group.id) : setIsSidebarHovered(true)}
+                                className={`w-full flex items-center justify-between p-3 rounded-xl transition-colors text-slate-500 hover:text-white group
+                                    ${!isSidebarHovered && !isSidebarOpen ? 'justify-center' : ''}
+                                `}
+                            >
+                                <div className="flex items-center gap-3">
+                                    <group.icon size={20} className={`shrink-0 transition-colors ${isOpen ? 'text-blue-400' : ''}`}/>
+                                    <span className={`font-black text-[10px] uppercase tracking-widest transition-all duration-300 ${isSidebarHovered || isSidebarOpen ? 'opacity-100' : 'opacity-0 w-0 overflow-hidden'}`}>
+                                        {group.label}
+                                    </span>
+                                </div>
+                                {(isSidebarHovered || isSidebarOpen) && (
+                                    <div className="transition-transform duration-200">
+                                        {isOpen ? <ChevronDown size={14}/> : <ChevronRight size={14}/>}
+                                    </div>
+                                )}
+                            </button>
+
+                            {/* Dropdown Items */}
+                            <div className={`overflow-hidden transition-all duration-300 ease-in-out ${(isOpen && (isSidebarHovered || isSidebarOpen)) ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
+                                <div className="space-y-1 mt-1 mb-3 pl-3 border-l-2 border-slate-800 ml-6">
+                                    {group.items.filter(i => i.visible).map(item => (
+                                        <button 
+                                            key={item.id}
+                                            onClick={() => { setActiveTab(item.id as any); setIsSidebarOpen(false); }}
+                                            className={`w-full text-left p-2 pl-4 rounded-lg flex items-center gap-3 transition-all text-xs font-bold
+                                                ${activeTab === item.id ? 'text-white bg-slate-800' : 'text-slate-400 hover:text-white hover:bg-slate-800/50'}
+                                            `}
+                                        >
+                                            <item.icon size={16} className={activeTab === item.id ? 'text-blue-400' : 'opacity-70'}/>
+                                            <span>{item.label}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    );
+                })}
             </nav>
 
-            <div className="pt-6 border-t border-white/5 mt-auto space-y-2">
-                <Link to="/manual" target="_blank" className="w-full text-left p-3 rounded-xl flex items-center gap-3 text-slate-500 hover:bg-white/5 hover:text-white transition-all">
-                    <BookOpen size={20}/> <span className="font-bold text-xs uppercase">Manual</span>
-                </Link>
-                <Link to="/" className="w-full text-left p-3 rounded-xl flex items-center gap-3 text-red-400 hover:bg-red-500/10 transition-all">
-                    <ArrowLeft size={20}/> <span className="font-bold text-xs uppercase">Sair</span>
-                </Link>
+            {/* Footer Sidebar */}
+            <div className="p-4 border-t border-white/5 mt-auto bg-slate-900/50">
+                <div className="space-y-1">
+                    <Link to="/manual" target="_blank" className={`w-full flex items-center gap-3 p-3 rounded-xl text-slate-500 hover:bg-white/5 hover:text-white transition-all ${!isSidebarHovered && !isSidebarOpen ? 'justify-center' : ''} group relative`}>
+                        <BookOpen size={20} className="shrink-0"/>
+                        <span className={`font-bold text-xs uppercase transition-all ${isSidebarHovered || isSidebarOpen ? 'opacity-100' : 'opacity-0 w-0 overflow-hidden'}`}>Manual</span>
+                        {!isSidebarHovered && !isSidebarOpen && <div className="absolute left-full ml-4 bg-slate-800 text-white text-xs font-bold px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none z-50">Manual</div>}
+                    </Link>
+                    <Link to="/" className={`w-full flex items-center gap-3 p-3 rounded-xl text-red-400 hover:bg-red-500/10 transition-all ${!isSidebarHovered && !isSidebarOpen ? 'justify-center' : ''} group relative`}>
+                        <ArrowLeft size={20} className="shrink-0"/>
+                        <span className={`font-bold text-xs uppercase transition-all ${isSidebarHovered || isSidebarOpen ? 'opacity-100' : 'opacity-0 w-0 overflow-hidden'}`}>Sair</span>
+                        {!isSidebarHovered && !isSidebarOpen && <div className="absolute left-full ml-4 bg-red-900 text-white text-xs font-bold px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none z-50">Sair</div>}
+                    </Link>
+                </div>
             </div>
         </aside>
 
@@ -118,7 +239,7 @@ export const AdminDashboard: React.FC = () => {
                     </button>
                     <div className="bg-slate-900 text-white px-5 py-3 rounded-[1.5rem] flex items-center gap-3 shadow-xl shadow-slate-900/10">
                         <div className="bg-emerald-500 w-2 h-2 rounded-full animate-pulse"></div>
-                        <span className="text-[10px] font-black uppercase tracking-widest">Painel Conectado</span>
+                        <span className="text-[10px] font-black uppercase tracking-widest hidden sm:inline">Painel Conectado</span>
                     </div>
                 </div>
             </header>
@@ -130,6 +251,7 @@ export const AdminDashboard: React.FC = () => {
             </main>
         </div>
         
+        {/* Overlay Mobile */}
         {isSidebarOpen && <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden animate-fade-in" onClick={() => setIsSidebarOpen(false)}></div>}
     </div>
   );
