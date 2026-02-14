@@ -8,7 +8,7 @@ import { useUI } from '../context/UIContext';
 import { TableStatus, Product, OrderStatus, ProductType } from '../types';
 import { Button } from '../components/Button';
 import { WaiterProductModal, OpenTableModal, TableActionsModal } from '../components/modals/WaiterModals';
-import { Bell, Plus, Search, ShoppingCart, ArrowLeft, Utensils, Trash2, Clock, CheckCircle, ChevronUp, ChevronDown, Zap, RefreshCcw, Lock, List, Grid, History, AlertTriangle, PackageX, CheckCheck, Check } from 'lucide-react';
+import { Bell, Plus, Search, ShoppingCart, ArrowLeft, Utensils, Trash2, Clock, CheckCircle, ChevronUp, ChevronDown, Zap, RefreshCcw, Lock, List, Grid, History, AlertTriangle, PackageX, CheckCheck, Check, LayoutGrid } from 'lucide-react';
 import { Modal } from '../components/Modal';
 
 const FALLBACK_SOUND_URL = "https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3";
@@ -30,6 +30,9 @@ export const WaiterApp: React.FC = () => {
   const [selectedTableForOpen, setSelectedTableForOpen] = useState<string | null>(null);
   const [selectedTableForAction, setSelectedTableForAction] = useState<string | null>(null);
   
+  // Estado para expandir/recolher mesas na aba de pedidos
+  const [expandedTables, setExpandedTables] = useState<Set<string>>(new Set());
+
   // Confirmação de Chamado
   const [confirmCallId, setConfirmCallId] = useState<string | null>(null);
   const [callingTableNumber, setCallingTableNumber] = useState<number | null>(null);
@@ -41,15 +44,6 @@ export const WaiterApp: React.FC = () => {
 
   const pendingCalls = orderState.serviceCalls.filter(c => c.status === 'PENDING');
   const graceMinutes = restState.businessInfo?.orderGracePeriodMinutes || 0;
-
-  // Lógica de Filtragem da Aba Pedidos
-  const baseOrders = orderState.orders
-      .filter(o => !o.isPaid && o.status !== 'CANCELLED')
-      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-
-  const displayedOrders = baseOrders.filter(o => 
-      showHistory ? o.status === 'DELIVERED' : o.status !== 'DELIVERED'
-  );
 
   useEffect(() => {
       audioRef.current = new Audio(FALLBACK_SOUND_URL);
@@ -102,7 +96,6 @@ export const WaiterApp: React.FC = () => {
   };
 
   const handleDeliverAllOrder = (order: any) => {
-      // Usa a função auxiliar para saber o que pode ser entregue
       const foodReady = hasReadyKitchenFood(order.items);
       order.items.forEach((item: any) => {
           if (canDeliverItem(item, foodReady)) {
@@ -120,40 +113,57 @@ export const WaiterApp: React.FC = () => {
       return { status: 'OK', qty: stockItem.quantity };
   };
 
-  // Helper para verificar se há comida pronta no pedido
   const hasReadyKitchenFood = (items: any[]) => {
       return items.some(i => i.productType === ProductType.KITCHEN && i.status === OrderStatus.READY);
   };
 
-  // Helper para verificar se item pode ser entregue
   const canDeliverItem = (item: any, foodReady: boolean) => {
-      // 1. Se já foi entregue ou cancelado, não precisa ação
       if (item.status === OrderStatus.DELIVERED || item.status === OrderStatus.CANCELLED) return false;
-
-      // 2. PRIORIDADE: Tag [IMEDIATA]
-      // Se tiver essa tag, libera SEMPRE, independente do tipo (BAR/KITCHEN) ou status (PENDING/READY).
-      if (item.notes?.includes('[IMEDIATA]')) {
-          return true;
-      }
-
-      // 3. PRIORIDADE: Tag [COM COMIDA]
-      // Aguarda sinal da cozinha (foodReady).
-      if (item.notes?.includes('[COM COMIDA]')) {
-          return foodReady;
-      }
-
-      // 4. Lógica Padrão por Tipo
+      if (item.notes?.includes('[IMEDIATA]')) return true;
+      if (item.notes?.includes('[COM COMIDA]')) return foodReady;
       const isBarItem = item.productType === ProductType.BAR;
-      
-      if (isBarItem) {
-          // Itens de Bar normais (sem tag) são liberados imediatamente
-          return true; 
-      }
-
-      // 5. Itens de Cozinha Padrão (Sem tags)
-      // Só liberam quando o status for READY (Pronto pelo KDS)
+      if (isBarItem) return true; 
       return item.status === OrderStatus.READY;
   };
+
+  const toggleTableExpand = (tableId: string) => {
+      const newSet = new Set(expandedTables);
+      if (newSet.has(tableId)) {
+          newSet.delete(tableId);
+      } else {
+          newSet.add(tableId);
+      }
+      setExpandedTables(newSet);
+  };
+
+  // --- LÓGICA DE FILTRAGEM E AGRUPAMENTO ---
+
+  // 1. Pedidos Ativos: Não Pagos, Não Cancelados, e status != DELIVERED
+  const activeOrders = orderState.orders
+      .filter(o => !o.isPaid && o.status !== 'CANCELLED')
+      .map(o => ({
+          ...o,
+          // Filtra itens dentro do pedido para mostrar apenas os não entregues na aba principal
+          items: o.items.filter(i => i.status !== 'DELIVERED' && i.status !== 'CANCELLED')
+      }))
+      .filter(o => o.items.length > 0); // Remove pedidos que ficaram vazios após o filtro
+
+  // 2. Pedidos Histórico: Itens Entregues
+  const historyOrders = orderState.orders
+      .filter(o => !o.isPaid && o.status !== 'CANCELLED')
+      .map(o => ({
+          ...o,
+          items: o.items.filter(i => i.status === 'DELIVERED')
+      }))
+      .filter(o => o.items.length > 0)
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+  // 3. Agrupamento por Mesa (Apenas para Active Orders)
+  const ordersByTable = activeOrders.reduce((acc, order) => {
+      if (!acc[order.tableId]) acc[order.tableId] = [];
+      acc[order.tableId].push(order);
+      return acc;
+  }, {} as Record<string, typeof activeOrders>);
 
   // Tela Inicial: Bloqueio de Áudio
   if (!orderState.audioUnlocked) {
@@ -173,6 +183,7 @@ export const WaiterApp: React.FC = () => {
 
   // Tela de Lançamento de Pedido (Overlay)
   if (orderingTableId) {
+      // ... (Mantém a lógica do modal de pedido igual)
       const table = orderState.tables.find(t => t.id === orderingTableId);
       const filteredProducts = menuState.products.filter(p => !p.isExtra && (selectedCategory === 'Todos' || p.category === selectedCategory) && p.name.toLowerCase().includes(searchQuery.toLowerCase()));
       const categories = ['Todos', ...Array.from(new Set(menuState.products.filter(p => !p.isExtra).map(p => p.category)))];
@@ -235,7 +246,6 @@ export const WaiterApp: React.FC = () => {
                                         ${isOutOfStock ? 'opacity-60 grayscale cursor-not-allowed bg-gray-100' : 'hover:border-blue-200 active:scale-95'}
                                     `}
                                   >
-                                      {/* Faixa Esgotado */}
                                       {isOutOfStock && (
                                           <div className="absolute inset-0 bg-white/50 z-10 flex items-center justify-center">
                                               <span className="bg-red-600 text-white text-[10px] font-black uppercase px-3 py-1 rounded-full shadow-lg transform -rotate-6 border-2 border-white">Esgotado</span>
@@ -322,7 +332,7 @@ export const WaiterApp: React.FC = () => {
         {/* Content Area */}
         <div className="flex-1 overflow-y-auto p-4 pb-40">
             
-            {/* VIEW: TABLES */}
+            {/* VIEW: TABLES (Mapa de Mesas) */}
             {activeTab === 'TABLES' && (
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
                     {orderState.tables.map(table => {
@@ -377,7 +387,7 @@ export const WaiterApp: React.FC = () => {
                 </div>
             )}
 
-            {/* VIEW: ORDERS */}
+            {/* VIEW: ORDERS (Lista de Pedidos) */}
             {activeTab === 'ORDERS' && (
                 <div className="space-y-4">
                     {/* Header da Lista de Pedidos */}
@@ -396,105 +406,159 @@ export const WaiterApp: React.FC = () => {
                         </button>
                     </div>
 
-                    {displayedOrders.length === 0 && (
-                        <div className="flex flex-col items-center justify-center py-20 opacity-50">
-                            <Utensils size={64} className="text-slate-300 mb-4"/>
-                            <p className="text-slate-400 font-bold uppercase tracking-widest text-sm">
-                                {showHistory ? 'Nenhum pedido entregue recentemente' : 'Sem pedidos ativos no momento'}
-                            </p>
+                    {/* MODO ATIVO: Agrupado por Mesas (Recolhido) */}
+                    {!showHistory && (
+                        <div className="space-y-4">
+                            {Object.keys(ordersByTable).length === 0 && (
+                                <div className="flex flex-col items-center justify-center py-20 opacity-50">
+                                    <Utensils size={64} className="text-slate-300 mb-4"/>
+                                    <p className="text-slate-400 font-bold uppercase tracking-widest text-sm">Sem pedidos ativos</p>
+                                </div>
+                            )}
+
+                            {Object.entries(ordersByTable).map(([tblId, tableOrders]) => {
+                                const table = orderState.tables.find(t => t.id === tblId);
+                                const isExpanded = expandedTables.has(tblId);
+                                const totalItems = tableOrders.reduce((acc, o) => acc + o.items.length, 0);
+                                
+                                // Verifica se há itens prontos para destaque
+                                const hasReadyItems = tableOrders.some(o => o.items.some(i => i.status === OrderStatus.READY));
+
+                                return (
+                                    <div key={tblId} className={`bg-white rounded-[2rem] shadow-sm border overflow-hidden transition-all ${hasReadyItems ? 'border-emerald-400 shadow-emerald-100' : 'border-gray-100'}`}>
+                                        {/* Cabeçalho da Mesa (Accordion Trigger) */}
+                                        <button 
+                                            onClick={() => toggleTableExpand(tblId)}
+                                            className={`w-full flex items-center justify-between p-5 text-left transition-colors ${isExpanded ? 'bg-gray-50' : 'bg-white hover:bg-gray-50'}`}
+                                        >
+                                            <div className="flex items-center gap-4">
+                                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-black text-xl shadow-inner ${hasReadyItems ? 'bg-emerald-500 text-white animate-pulse' : 'bg-slate-900 text-white'}`}>
+                                                    {table?.number}
+                                                </div>
+                                                <div>
+                                                    <h3 className="font-black text-slate-800 uppercase tracking-tighter">Mesa {table?.number}</h3>
+                                                    <p className="text-xs font-bold text-slate-400 flex items-center gap-1">
+                                                        {totalItems} itens pendentes
+                                                        {hasReadyItems && <span className="text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full text-[9px] uppercase tracking-wide ml-2 border border-emerald-100">Pronto para Servir</span>}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className="text-slate-400">
+                                                {isExpanded ? <ChevronUp size={24}/> : <ChevronDown size={24}/>}
+                                            </div>
+                                        </button>
+
+                                        {/* Conteúdo Expandido (Pedidos) */}
+                                        {isExpanded && (
+                                            <div className="p-2 bg-gray-50/50 space-y-3">
+                                                {tableOrders.map(order => {
+                                                    const foodReady = hasReadyKitchenFood(order.items);
+                                                    
+                                                    // Filtragem interna: Não mostra itens entregues na lista ativa
+                                                    const visibleItems = order.items.filter(i => i.status !== OrderStatus.DELIVERED);
+                                                    const isAllReady = visibleItems.length > 0 && visibleItems.every(item => canDeliverItem(item, foodReady));
+
+                                                    return (
+                                                        <div key={order.id} className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm mx-2">
+                                                            <div className="flex justify-between items-center mb-3 pb-2 border-b border-dashed border-gray-100">
+                                                                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Pedido #{order.id.slice(0,4)}</span>
+                                                                {isAllReady && (
+                                                                    <button 
+                                                                        onClick={() => handleDeliverAllOrder(order)}
+                                                                        className="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-1 shadow-lg shadow-emerald-600/20 transition-all"
+                                                                    >
+                                                                        <CheckCheck size={14} /> Entregar Tudo
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                            <div className="space-y-2">
+                                                                {visibleItems.map(item => {
+                                                                    const isDeliverable = canDeliverItem(item, foodReady);
+                                                                    const isDrinkWithFood = item.notes?.includes('[COM COMIDA]');
+                                                                    const isImmediate = item.notes?.includes('[IMEDIATA]');
+                                                                    const shouldHold = isDrinkWithFood && !foodReady;
+
+                                                                    return (
+                                                                        <div key={item.id} className={`flex justify-between items-center text-sm p-2 rounded-xl transition-colors ${shouldHold ? 'bg-gray-50 opacity-60' : 'hover:bg-gray-50'}`}>
+                                                                            <div className="flex-1">
+                                                                                <span className="font-bold text-slate-700">{item.quantity}x {item.productName}</span>
+                                                                                <div className="flex gap-2 flex-wrap mt-0.5">
+                                                                                    {isImmediate && <span className="text-[9px] bg-blue-600 text-white px-2 py-0.5 rounded-lg font-black uppercase tracking-tighter flex items-center gap-1"><Zap size={10}/> Imediata</span>}
+                                                                                    {isDrinkWithFood && (
+                                                                                        <span className={`text-[9px] px-2 py-0.5 rounded-lg font-black uppercase tracking-tighter flex items-center gap-1 border ${shouldHold ? 'bg-amber-100 text-amber-700 border-amber-200' : 'bg-purple-100 text-purple-700 border-purple-200 animate-pulse'}`}>
+                                                                                            {shouldHold ? <><Clock size={10}/> Aguardando Prato</> : <><Utensils size={10}/> Liberado c/ Prato</>}
+                                                                                        </span>
+                                                                                    )}
+                                                                                    {item.notes && !isImmediate && !isDrinkWithFood && <span className="text-[10px] text-gray-400 italic truncate max-w-[150px]">{item.notes}</span>}
+                                                                                </div>
+                                                                            </div>
+                                                                            <div className="flex items-center gap-2">
+                                                                                <span className={`text-[9px] font-bold px-2 py-0.5 rounded uppercase tracking-wider ${item.status === 'READY' ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
+                                                                                    {item.status === 'PENDING' && (item.productType === ProductType.BAR ? 'Bar' : 'Fila')}
+                                                                                    {item.status === 'PREPARING' && 'Prep'}
+                                                                                    {item.status === 'READY' && 'Pronto'}
+                                                                                </span>
+                                                                                {isDeliverable && (
+                                                                                    <button 
+                                                                                        onClick={() => handleDeliverItem(order.id, item.id)}
+                                                                                        className="bg-emerald-100 hover:bg-emerald-200 text-emerald-700 p-1.5 rounded-full transition-colors"
+                                                                                        title="Marcar como Entregue"
+                                                                                    >
+                                                                                        <Check size={16} strokeWidth={3} />
+                                                                                    </button>
+                                                                                )}
+                                                                            </div>
+                                                                        </div>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
                         </div>
                     )}
 
-                    {displayedOrders.map(order => {
-                        const table = orderState.tables.find(t => t.id === order.tableId);
-                        const foodReady = hasReadyKitchenFood(order.items);
-                        const pendingItems = order.items.filter(i => i.status !== OrderStatus.DELIVERED && i.status !== OrderStatus.CANCELLED);
-                        
-                        // Lógica "Entregar Tudo": Verifica se TODOS os itens pendentes podem ser entregues
-                        const isAllReady = pendingItems.length > 0 && pendingItems.every(item => canDeliverItem(item, foodReady));
-
-                        return (
-                            <div key={order.id} className={`bg-white p-5 rounded-[2rem] shadow-sm border border-gray-100 ${order.status === 'DELIVERED' ? 'opacity-70' : ''}`}>
-                                <div className="flex justify-between items-center border-b pb-3 mb-3">
-                                    <div className="flex items-center gap-3">
-                                        <div className="bg-slate-900 text-white w-10 h-10 rounded-xl flex items-center justify-center font-black text-lg">{table?.number}</div>
-                                        <div>
-                                            <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Pedido #{order.id.slice(0,4)}</p>
-                                            <p className="text-[10px] text-slate-400">{new Date(order.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</p>
-                                        </div>
-                                    </div>
-                                    
-                                    <div className="flex items-center gap-2">
-                                        {/* Botão Entregar Tudo */}
-                                        {isAllReady && !showHistory && (
-                                            <button 
-                                                onClick={() => handleDeliverAllOrder(order)}
-                                                className="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-1 shadow-lg shadow-emerald-600/20 transition-all animate-pulse"
-                                            >
-                                                <CheckCheck size={14} /> Entregar Tudo
-                                            </button>
-                                        )}
-                                        
-                                        <div className={`px-3 py-1 rounded-xl text-[10px] font-black uppercase ${order.status === 'DELIVERED' ? 'bg-blue-100 text-blue-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                                            {order.status === 'PENDING' ? 'Na Fila' : order.status === 'PREPARING' ? 'Preparando' : order.status === 'READY' ? 'Pronto' : 'Entregue'}
-                                        </div>
-                                    </div>
+                    {/* MODO HISTÓRICO: Lista Plana de Itens Entregues */}
+                    {showHistory && (
+                        <div className="space-y-4">
+                            {historyOrders.length === 0 && (
+                                <div className="flex flex-col items-center justify-center py-20 opacity-50">
+                                    <Utensils size={64} className="text-slate-300 mb-4"/>
+                                    <p className="text-slate-400 font-bold uppercase tracking-widest text-sm">Nenhum pedido entregue recentemente</p>
                                 </div>
-                                <div className="space-y-2">
-                                    {order.items.map(item => {
-                                        const isDeliverable = canDeliverItem(item, foodReady);
-                                        const isDrinkWithFood = item.notes?.includes('[COM COMIDA]');
-                                        const isImmediate = item.notes?.includes('[IMEDIATA]');
-                                        // Visualmente destaca se está "Segurando"
-                                        const shouldHold = isDrinkWithFood && !foodReady;
-
-                                        return (
-                                            <div key={item.id} className={`flex justify-between items-center text-sm p-2 rounded-xl transition-colors ${shouldHold ? 'bg-gray-50 opacity-60' : 'hover:bg-gray-50'}`}>
-                                                <div className="flex-1">
-                                                    <span className="font-bold text-slate-700">{item.quantity}x {item.productName}</span>
-                                                    <div className="flex gap-2 flex-wrap mt-0.5">
-                                                        {isImmediate && <span className="text-[9px] bg-blue-600 text-white px-2 py-0.5 rounded-lg font-black uppercase tracking-tighter flex items-center gap-1"><Zap size={10}/> Imediata</span>}
-                                                        
-                                                        {isDrinkWithFood && (
-                                                            <span className={`text-[9px] px-2 py-0.5 rounded-lg font-black uppercase tracking-tighter flex items-center gap-1 border
-                                                                ${shouldHold ? 'bg-amber-100 text-amber-700 border-amber-200' : 'bg-purple-100 text-purple-700 border-purple-200 animate-pulse'}
-                                                            `}>
-                                                                {shouldHold ? <><Clock size={10}/> Aguardando Prato</> : <><Utensils size={10}/> Liberado c/ Prato</>}
-                                                            </span>
-                                                        )}
-
-                                                        {item.notes && !isImmediate && !isDrinkWithFood && <span className="text-[10px] text-gray-400 italic truncate max-w-[150px]">{item.notes}</span>}
-                                                    </div>
-                                                </div>
-                                                
-                                                <div className="flex items-center gap-2">
-                                                    <span className={`text-[9px] font-bold px-2 py-0.5 rounded uppercase tracking-wider
-                                                        ${item.status === 'READY' ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'}
-                                                    `}>
-                                                        {item.status === 'PENDING' && (item.productType === ProductType.BAR ? 'Bar' : 'Fila')}
-                                                        {item.status === 'PREPARING' && 'Prep'}
-                                                        {item.status === 'READY' && 'Pronto'}
-                                                        {item.status === 'DELIVERED' && 'Entregue'}
-                                                    </span>
-
-                                                    {/* Botão Entregar Individual - Visível se isDeliverable for true */}
-                                                    {isDeliverable && !showHistory && (
-                                                        <button 
-                                                            onClick={() => handleDeliverItem(order.id, item.id)}
-                                                            className="bg-emerald-100 hover:bg-emerald-200 text-emerald-700 p-1.5 rounded-full transition-colors"
-                                                            title="Marcar como Entregue"
-                                                        >
-                                                            <Check size={16} strokeWidth={3} />
-                                                        </button>
-                                                    )}
+                            )}
+                            {historyOrders.map(order => {
+                                const table = orderState.tables.find(t => t.id === order.tableId);
+                                return (
+                                    <div key={order.id} className="bg-white p-5 rounded-[2rem] shadow-sm border border-gray-100 opacity-80">
+                                        <div className="flex justify-between items-center border-b pb-3 mb-3">
+                                            <div className="flex items-center gap-3">
+                                                <div className="bg-gray-200 text-gray-600 w-10 h-10 rounded-xl flex items-center justify-center font-black text-lg">{table?.number}</div>
+                                                <div>
+                                                    <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Pedido #{order.id.slice(0,4)}</p>
+                                                    <p className="text-[10px] text-slate-400">{new Date(order.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</p>
                                                 </div>
                                             </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        );
-                    })}
+                                            <div className="px-3 py-1 rounded-xl text-[10px] font-black uppercase bg-blue-100 text-blue-700">Entregue</div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            {order.items.map(item => (
+                                                <div key={item.id} className="flex justify-between items-center text-sm p-2 rounded-xl bg-gray-50">
+                                                    <span className="font-bold text-slate-700">{item.quantity}x {item.productName}</span>
+                                                    <CheckCircle size={16} className="text-blue-400"/>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
                 </div>
             )}
         </div>
