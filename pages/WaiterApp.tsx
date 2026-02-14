@@ -5,7 +5,7 @@ import { useMenu } from '../context/MenuContext';
 import { useOrder } from '../context/OrderContext';
 import { useInventory } from '../context/InventoryContext';
 import { useUI } from '../context/UIContext';
-import { TableStatus, Product, OrderStatus } from '../types';
+import { TableStatus, Product, OrderStatus, ProductType } from '../types';
 import { Button } from '../components/Button';
 import { WaiterProductModal, OpenTableModal, TableActionsModal } from '../components/modals/WaiterModals';
 import { Bell, Plus, Search, ShoppingCart, ArrowLeft, Utensils, Trash2, Clock, CheckCircle, ChevronUp, ChevronDown, Zap, RefreshCcw, Lock, List, Grid, History, AlertTriangle, PackageX, CheckCheck, Check } from 'lucide-react';
@@ -116,6 +116,11 @@ export const WaiterApp: React.FC = () => {
       if (stockItem.quantity <= 0) return { status: 'OUT', qty: 0 };
       if (stockItem.quantity <= stockItem.minQuantity) return { status: 'LOW', qty: stockItem.quantity };
       return { status: 'OK', qty: stockItem.quantity };
+  };
+
+  // Helper para verificar se há comida pronta no pedido
+  const hasReadyKitchenFood = (items: any[]) => {
+      return items.some(i => i.productType === ProductType.KITCHEN && i.status === OrderStatus.READY);
   };
 
   // Tela Inicial: Bloqueio de Áudio
@@ -371,10 +376,27 @@ export const WaiterApp: React.FC = () => {
                     {displayedOrders.map(order => {
                         const table = orderState.tables.find(t => t.id === order.tableId);
                         
-                        // Lógica para detectar se TODO o pedido está pronto
+                        // Lógica: Se tem algum item KITCHEN e READY
+                        const foodReady = hasReadyKitchenFood(order.items);
+
+                        // Filtragem para "Entregar Tudo": 
+                        // Itens de bebida [COM COMIDA] só contam como "prontos para entrega" se a comida estiver pronta.
+                        // Se não estiver, eles não bloqueiam o "Entregar Tudo" (pois estão segurados) OU bloqueiam?
+                        // Melhor UX: Botão "Entregar Tudo" só aparece se TODOS os itens liberados estiverem prontos.
                         const pendingItems = order.items.filter(i => i.status !== OrderStatus.DELIVERED && i.status !== OrderStatus.CANCELLED);
-                        const readyCount = pendingItems.filter(i => i.status === OrderStatus.READY).length;
-                        const isAllReady = pendingItems.length > 0 && pendingItems.length === readyCount;
+                        
+                        // Lógica refinada para "Tudo Pronto":
+                        // Um item está "pronto para entrega" se:
+                        // 1. Status == READY
+                        // 2. Se for bebida [COM COMIDA], foodReady deve ser true.
+                        const actionableItems = pendingItems.filter(item => {
+                            const isDrinkWithFood = item.notes?.includes('[COM COMIDA]');
+                            if (isDrinkWithFood && !foodReady) return false; // Está segurado, não conta
+                            return true;
+                        });
+
+                        const readyCount = actionableItems.filter(i => i.status === OrderStatus.READY).length;
+                        const isAllReady = actionableItems.length > 0 && actionableItems.length === readyCount;
 
                         return (
                             <div key={order.id} className={`bg-white p-5 rounded-[2rem] shadow-sm border border-gray-100 ${order.status === 'DELIVERED' ? 'opacity-70' : ''}`}>
@@ -404,39 +426,54 @@ export const WaiterApp: React.FC = () => {
                                     </div>
                                 </div>
                                 <div className="space-y-2">
-                                    {order.items.map(item => (
-                                        <div key={item.id} className="flex justify-between items-center text-sm p-2 rounded-xl hover:bg-gray-50 transition-colors">
-                                            <div className="flex-1">
-                                                <span className="font-bold text-slate-700">{item.quantity}x {item.productName}</span>
-                                                <div className="flex gap-2 flex-wrap mt-0.5">
-                                                    {item.notes?.includes('[IMEDIATA]') && <span className="text-[9px] bg-blue-600 text-white px-2 py-0.5 rounded-lg font-black uppercase tracking-tighter flex items-center gap-1"><Zap size={10}/> Imediata</span>}
-                                                    {item.notes && !item.notes.includes('[IMEDIATA]') && <span className="text-[10px] text-gray-400 italic truncate max-w-[150px]">{item.notes}</span>}
+                                    {order.items.map(item => {
+                                        const isDrinkWithFood = item.notes?.includes('[COM COMIDA]');
+                                        // Se for bebida com comida e NÃO tem comida pronta, deve segurar.
+                                        const shouldHold = isDrinkWithFood && !foodReady;
+                                        
+                                        return (
+                                            <div key={item.id} className={`flex justify-between items-center text-sm p-2 rounded-xl transition-colors ${shouldHold ? 'bg-gray-50 opacity-60' : 'hover:bg-gray-50'}`}>
+                                                <div className="flex-1">
+                                                    <span className="font-bold text-slate-700">{item.quantity}x {item.productName}</span>
+                                                    <div className="flex gap-2 flex-wrap mt-0.5">
+                                                        {item.notes?.includes('[IMEDIATA]') && <span className="text-[9px] bg-blue-600 text-white px-2 py-0.5 rounded-lg font-black uppercase tracking-tighter flex items-center gap-1"><Zap size={10}/> Imediata</span>}
+                                                        
+                                                        {isDrinkWithFood && (
+                                                            <span className={`text-[9px] px-2 py-0.5 rounded-lg font-black uppercase tracking-tighter flex items-center gap-1 border
+                                                                ${shouldHold ? 'bg-amber-100 text-amber-700 border-amber-200' : 'bg-purple-100 text-purple-700 border-purple-200 animate-pulse'}
+                                                            `}>
+                                                                {shouldHold ? <><Clock size={10}/> Aguardando Prato</> : <><Utensils size={10}/> Liberado c/ Prato</>}
+                                                            </span>
+                                                        )}
+
+                                                        {item.notes && !item.notes.includes('[IMEDIATA]') && !item.notes.includes('[COM COMIDA]') && <span className="text-[10px] text-gray-400 italic truncate max-w-[150px]">{item.notes}</span>}
+                                                    </div>
+                                                </div>
+                                                
+                                                <div className="flex items-center gap-2">
+                                                    <span className={`text-[9px] font-bold px-2 py-0.5 rounded uppercase tracking-wider
+                                                        ${item.status === 'READY' ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'}
+                                                    `}>
+                                                        {item.status === 'PENDING' && 'Fila'}
+                                                        {item.status === 'PREPARING' && 'Prep'}
+                                                        {item.status === 'READY' && 'Pronto'}
+                                                        {item.status === 'DELIVERED' && 'Entregue'}
+                                                    </span>
+
+                                                    {/* Botão Entregar Individual - Oculto se estiver segurado (hold) */}
+                                                    {item.status === OrderStatus.READY && !showHistory && !shouldHold && (
+                                                        <button 
+                                                            onClick={() => handleDeliverItem(order.id, item.id)}
+                                                            className="bg-emerald-100 hover:bg-emerald-200 text-emerald-700 p-1.5 rounded-full transition-colors"
+                                                            title="Marcar como Entregue"
+                                                        >
+                                                            <Check size={16} strokeWidth={3} />
+                                                        </button>
+                                                    )}
                                                 </div>
                                             </div>
-                                            
-                                            <div className="flex items-center gap-2">
-                                                <span className={`text-[9px] font-bold px-2 py-0.5 rounded uppercase tracking-wider
-                                                    ${item.status === 'READY' ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'}
-                                                `}>
-                                                    {item.status === 'PENDING' && 'Fila'}
-                                                    {item.status === 'PREPARING' && 'Prep'}
-                                                    {item.status === 'READY' && 'Pronto'}
-                                                    {item.status === 'DELIVERED' && 'Entregue'}
-                                                </span>
-
-                                                {/* Botão Entregar Individual */}
-                                                {item.status === OrderStatus.READY && !showHistory && (
-                                                    <button 
-                                                        onClick={() => handleDeliverItem(order.id, item.id)}
-                                                        className="bg-emerald-100 hover:bg-emerald-200 text-emerald-700 p-1.5 rounded-full transition-colors"
-                                                        title="Marcar como Entregue"
-                                                    >
-                                                        <Check size={16} strokeWidth={3} />
-                                                    </button>
-                                                )}
-                                            </div>
-                                        </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                             </div>
                         );

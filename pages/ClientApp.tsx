@@ -85,6 +85,16 @@ export const ClientApp: React.FC = () => {
     const graceMinutes = state.businessInfo?.orderGracePeriodMinutes || 0;
     const tableOrders = orderState.orders.filter(o => o.tableId === tableId && !o.isPaid && o.status !== 'CANCELLED');
 
+    // Resetar estado do modal sempre que um produto for selecionado
+    useEffect(() => {
+        if (selectedProduct) {
+            setModalQuantity(1);
+            setModalNotes('');
+            setDrinkTiming('IMMEDIATE');
+            setSelectedExtraIds([]);
+        }
+    }, [selectedProduct]);
+
     // Helper para agrupar itens (Pais e Adicionais) nas telas de Status e Conta
     const groupItems = (items: any[]) => {
         const grouped: any[] = [];
@@ -116,14 +126,17 @@ export const ClientApp: React.FC = () => {
         });
     };
 
+    const isDrinkProduct = (product: Product) => {
+        return product.category === 'Bebidas' || product.type === 'BAR' || product.category.toLowerCase().includes('bebida');
+    };
+
     const handleAddToCart = () => {
         if (!selectedProduct) return;
         
         let finalNote = modalNotes;
-        // Lógica específica para bebidas: substitui nota livre por seleção de timing
-        if (selectedProduct.category === 'Bebidas') {
+        // Lógica específica para bebidas
+        if (isDrinkProduct(selectedProduct)) {
             const timingText = drinkTiming === 'IMMEDIATE' ? '[IMEDIATA]' : '[COM COMIDA]';
-            // Se já tiver alguma nota interna (futuro), concatena, senão usa só o timing
             finalNote = timingText; 
         }
 
@@ -136,10 +149,6 @@ export const ClientApp: React.FC = () => {
             { product: selectedProduct, quantity: modalQuantity, notes: finalNote.trim(), extras: chosenExtras }
         ]);
         setSelectedProduct(null);
-        setModalQuantity(1);
-        setModalNotes('');
-        setDrinkTiming('IMMEDIATE'); // Reset
-        setSelectedExtraIds([]);
     };
 
     const handleConfirmOrder = async () => {
@@ -573,7 +582,7 @@ export const ClientApp: React.FC = () => {
                                 )}
                                 
                                 {/* CONDITIONAL RENDERING FOR DRINKS */}
-                                {selectedProduct.category === 'Bebidas' ? (
+                                {isDrinkProduct(selectedProduct) ? (
                                     <div className="space-y-2">
                                         <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Quando Servir?</label>
                                         <div className="flex gap-3">
