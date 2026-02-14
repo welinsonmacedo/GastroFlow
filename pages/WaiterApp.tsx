@@ -7,7 +7,8 @@ import { useUI } from '../context/UIContext';
 import { TableStatus, Product, OrderStatus } from '../types';
 import { Button } from '../components/Button';
 import { WaiterProductModal, OpenTableModal, TableActionsModal } from '../components/modals/WaiterModals';
-import { Bell, Plus, Search, ShoppingCart, ArrowLeft, Utensils, Trash2, Clock, CheckCircle, ChevronUp, ChevronDown, Zap, RefreshCcw } from 'lucide-react';
+import { Bell, Plus, Search, ShoppingCart, ArrowLeft, Utensils, Trash2, Clock, CheckCircle, ChevronUp, ChevronDown, Zap, RefreshCcw, Lock, List, Grid } from 'lucide-react';
+import { Modal } from '../components/Modal'; // Importado para o modal de confirmação de chamado
 
 const FALLBACK_SOUND_URL = "https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3";
 
@@ -16,6 +17,7 @@ export const WaiterApp: React.FC = () => {
   const { state: menuState } = useMenu();
   const { state: orderState, dispatch: orderDispatch } = useOrder();
   
+  const [activeTab, setActiveTab] = useState<'TABLES' | 'ORDERS'>('TABLES');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [, setTick] = useState(0);
   const { showAlert } = useUI();
@@ -24,6 +26,11 @@ export const WaiterApp: React.FC = () => {
   const [orderingTableId, setOrderingTableId] = useState<string | null>(null);
   const [selectedTableForOpen, setSelectedTableForOpen] = useState<string | null>(null);
   const [selectedTableForAction, setSelectedTableForAction] = useState<string | null>(null);
+  
+  // Confirmação de Chamado
+  const [confirmCallId, setConfirmCallId] = useState<string | null>(null);
+  const [callingTableNumber, setCallingTableNumber] = useState<number | null>(null);
+
   const [cart, setCart] = useState<{ product: Product; quantity: number; notes: string; extras?: Product[] }[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('Todos');
@@ -33,6 +40,7 @@ export const WaiterApp: React.FC = () => {
   const pendingCalls = orderState.serviceCalls.filter(c => c.status === 'PENDING');
   const graceMinutes = restState.businessInfo?.orderGracePeriodMinutes || 0;
 
+  // Itens prontos para servir (Drawer Inferior)
   const readyItems = orderState.orders.flatMap(order => {
       if (order.isPaid || order.status === 'CANCELLED') return [];
       return order.items.filter(item => {
@@ -44,6 +52,9 @@ export const WaiterApp: React.FC = () => {
           })
           .map(item => ({ ...item, orderId: order.id, tableId: order.tableId }));
   });
+
+  // Todos os pedidos ativos para a aba "Pedidos"
+  const allActiveOrders = orderState.orders.filter(o => !o.isPaid && o.status !== 'CANCELLED').sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
   useEffect(() => {
       audioRef.current = new Audio(FALLBACK_SOUND_URL);
@@ -68,9 +79,13 @@ export const WaiterApp: React.FC = () => {
     if (!orderingTableId || cart.length === 0) return;
     const flattenedItems: any[] = [];
     cart.forEach(item => {
-        flattenedItems.push({ productId: item.product.id, quantity: item.quantity, notes: item.notes });
+        // Marca que foi o garçom nas notas
+        const waiterNote = item.notes ? `${item.notes} [GARÇOM]` : `[GARÇOM]`;
+        
+        flattenedItems.push({ productId: item.product.id, quantity: item.quantity, notes: waiterNote });
+        
         item.extras?.forEach(extra => {
-            flattenedItems.push({ productId: extra.id, quantity: item.quantity, notes: `[ADICIONAL DE: ${item.product.name}]` });
+            flattenedItems.push({ productId: extra.id, quantity: item.quantity, notes: `[ADICIONAL DE: ${item.product.name}] [GARÇOM]` });
         });
     });
     await orderDispatch({ type: 'PLACE_ORDER', tableId: orderingTableId, items: flattenedItems });
@@ -79,6 +94,16 @@ export const WaiterApp: React.FC = () => {
     showAlert({ title: "Sucesso", message: "Pedido enviado para produção!", type: 'SUCCESS' });
   };
 
+  const handleResolveCall = () => {
+      if (confirmCallId) {
+          orderDispatch({ type: 'RESOLVE_WAITER_CALL', callId: confirmCallId });
+          setConfirmCallId(null);
+          setCallingTableNumber(null);
+          showAlert({ title: "Atendido", message: "Chamado finalizado.", type: 'SUCCESS' });
+      }
+  };
+
+  // Tela Inicial: Bloqueio de Áudio
   if (!orderState.audioUnlocked) {
     return (
         <div className="h-full bg-slate-950 flex items-center justify-center p-4">
@@ -94,13 +119,14 @@ export const WaiterApp: React.FC = () => {
     );
   }
 
+  // Tela de Lançamento de Pedido (Overlay)
   if (orderingTableId) {
       const table = orderState.tables.find(t => t.id === orderingTableId);
       const filteredProducts = menuState.products.filter(p => !p.isExtra && (selectedCategory === 'Todos' || p.category === selectedCategory) && p.name.toLowerCase().includes(searchQuery.toLowerCase()));
       const categories = ['Todos', ...Array.from(new Set(menuState.products.filter(p => !p.isExtra).map(p => p.category)))];
 
       return (
-          <div className="flex flex-col h-full bg-gray-50 overflow-hidden font-sans">
+          <div className="flex flex-col h-full bg-gray-50 overflow-hidden font-sans fixed inset-0 z-[60]">
               <WaiterProductModal 
                   isOpen={!!productModal} 
                   onClose={() => setProductModal(null)} 
@@ -188,12 +214,16 @@ export const WaiterApp: React.FC = () => {
       );
   }
 
+  // TELA PRINCIPAL DO GARÇOM
   return (
-    <div className="h-full overflow-y-auto bg-gray-50 p-4 lg:p-8 pb-40 font-sans">
-        <header className="flex justify-between items-center mb-8 bg-white/60 backdrop-blur-md p-4 rounded-[2rem] border border-white shadow-sm sticky top-0 z-30">
+    <div className="h-full flex flex-col bg-gray-50 font-sans">
+        {/* Header */}
+        <header className="flex justify-between items-center bg-white/60 backdrop-blur-md p-4 rounded-b-[2rem] border-b border-white shadow-sm sticky top-0 z-30 shrink-0">
             <div>
-                <h1 className="text-2xl font-black text-slate-900 uppercase tracking-tighter">Atendimento</h1>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Status do Salão</p>
+                <h1 className="text-xl font-black text-slate-900 uppercase tracking-tighter">Atendimento</h1>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
+                    {activeTab === 'TABLES' ? 'Mapa de Mesas' : 'Fila de Pedidos'}
+                </p>
             </div>
             <div className="flex items-center gap-3">
                 <button 
@@ -204,78 +234,190 @@ export const WaiterApp: React.FC = () => {
                 </button>
                 <div className="flex items-center gap-2 bg-emerald-500/10 px-4 py-2 rounded-2xl border border-emerald-500/20">
                     <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
-                    <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Sincronizado</span>
+                    <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest hidden sm:inline">Online</span>
                 </div>
             </div>
         </header>
         
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6">
-            {orderState.tables.map(table => {
-                const hasCall = pendingCalls.find(c => c.tableId === table.id);
-                const tableOrders = orderState.orders.filter(o => o.tableId === table.id && !o.isPaid && o.status !== 'CANCELLED');
-                const hasBufferedOrder = tableOrders.some(o => (new Date().getTime() - new Date(o.timestamp).getTime()) / 60000 < graceMinutes);
+        {/* Content Area */}
+        <div className="flex-1 overflow-y-auto p-4 pb-40">
+            
+            {/* VIEW: TABLES */}
+            {activeTab === 'TABLES' && (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                    {orderState.tables.map(table => {
+                        const hasCall = pendingCalls.find(c => c.tableId === table.id);
+                        const tableOrders = orderState.orders.filter(o => o.tableId === table.id && !o.isPaid && o.status !== 'CANCELLED');
+                        const hasBufferedOrder = tableOrders.some(o => (new Date().getTime() - new Date(o.timestamp).getTime()) / 60000 < graceMinutes);
 
-                return (
-                    <div 
-                        key={table.id} 
-                        onClick={() => hasCall ? orderDispatch({ type: 'RESOLVE_WAITER_CALL', callId: hasCall.id }) : (table.status === TableStatus.AVAILABLE ? setSelectedTableForOpen(table.id) : setSelectedTableForAction(table.id))} 
-                        className={`p-6 rounded-[2.5rem] shadow-xl border-4 flex flex-col items-center justify-center min-h-[160px] transition-all cursor-pointer relative active:scale-95
-                            ${hasCall ? 'bg-red-500 border-red-200 text-white animate-pulse' : 
-                              (table.status === TableStatus.OCCUPIED ? 'bg-white border-blue-500 text-slate-800' : 'bg-gray-100 border-transparent text-slate-400 opacity-50')}
-                        `}
-                    >
-                        <div className={`text-5xl font-black mb-1 tracking-tighter ${hasCall ? 'text-white' : 'text-slate-900'}`}>{table.number}</div>
-                        {hasCall && <Bell size={28} className="absolute top-4 right-4 animate-bounce" fill="white" />}
-                        {hasBufferedOrder && !hasCall && <div className="absolute top-4 right-4 text-blue-500 animate-spin"><Clock size={24} /></div>}
+                        return (
+                            <div 
+                                key={table.id} 
+                                onClick={() => {
+                                    if (hasCall) {
+                                        setConfirmCallId(hasCall.id);
+                                        setCallingTableNumber(table.number);
+                                    } else if (table.status === TableStatus.AVAILABLE) {
+                                        setSelectedTableForOpen(table.id);
+                                    } else {
+                                        setSelectedTableForAction(table.id);
+                                    }
+                                }} 
+                                className={`p-4 rounded-[2rem] shadow-sm border-4 flex flex-col items-center justify-between min-h-[140px] transition-all cursor-pointer relative active:scale-95
+                                    ${hasCall ? 'bg-red-500 border-red-200 text-white animate-pulse shadow-red-500/30' : 
+                                    (table.status === TableStatus.OCCUPIED ? 'bg-white border-blue-500 text-slate-800' : 'bg-gray-100 border-transparent text-slate-400 opacity-60')}
+                                `}
+                            >
+                                <div className="w-full flex justify-between items-start">
+                                    <span className="text-[10px] font-black uppercase tracking-widest opacity-60">
+                                        {hasCall ? 'CHAMANDO!' : (table.status === TableStatus.AVAILABLE ? 'LIVRE' : 'OCUPADA')}
+                                    </span>
+                                    {table.status === TableStatus.OCCUPIED && (
+                                        <div className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-lg text-[10px] font-mono font-bold flex items-center gap-1">
+                                            <Lock size={8}/> {table.accessCode}
+                                        </div>
+                                    )}
+                                </div>
 
-                        <div className="text-[10px] font-black uppercase tracking-widest opacity-40 mt-1">
-                            {hasCall ? 'CHAMANDO!' : (table.status === TableStatus.AVAILABLE ? 'LIVRE' : 'OCUPADA')}
-                        </div>
-                        
-                        {table.status === TableStatus.OCCUPIED && (
-                            <div className="mt-3 bg-blue-50 px-3 py-1 rounded-full text-[10px] font-black text-blue-600 border border-blue-100 truncate max-w-full uppercase tracking-tighter">
-                                {table.customerName || 'Cliente'}
+                                <div className={`text-5xl font-black tracking-tighter ${hasCall ? 'text-white' : 'text-slate-900'}`}>{table.number}</div>
+                                
+                                {hasCall && <Bell size={28} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-bounce" fill="white" />}
+                                {hasBufferedOrder && !hasCall && <div className="absolute top-4 right-4 text-blue-500 animate-spin"><Clock size={20} /></div>}
+
+                                <div className="w-full mt-2">
+                                    {table.status === TableStatus.OCCUPIED && (
+                                        <div className="bg-blue-50 px-3 py-1.5 rounded-xl text-[10px] font-black text-blue-600 border border-blue-100 truncate w-full text-center uppercase tracking-tight">
+                                            {table.customerName || 'Cliente'}
+                                        </div>
+                                    )}
+                                </div>
                             </div>
-                        )}
-                    </div>
-                );
-            })}
+                        );
+                    })}
+                </div>
+            )}
+
+            {/* VIEW: ORDERS */}
+            {activeTab === 'ORDERS' && (
+                <div className="space-y-4">
+                    {allActiveOrders.length === 0 && (
+                        <div className="flex flex-col items-center justify-center py-20 opacity-50">
+                            <Utensils size={64} className="text-slate-300 mb-4"/>
+                            <p className="text-slate-400 font-bold uppercase tracking-widest text-sm">Sem pedidos no momento</p>
+                        </div>
+                    )}
+                    {allActiveOrders.map(order => {
+                        const table = orderState.tables.find(t => t.id === order.tableId);
+                        return (
+                            <div key={order.id} className="bg-white p-5 rounded-[2rem] shadow-sm border border-gray-100">
+                                <div className="flex justify-between items-center border-b pb-3 mb-3">
+                                    <div className="flex items-center gap-3">
+                                        <div className="bg-slate-900 text-white w-10 h-10 rounded-xl flex items-center justify-center font-black text-lg">{table?.number}</div>
+                                        <div>
+                                            <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Pedido #{order.id.slice(0,4)}</p>
+                                            <p className="text-[10px] text-slate-400">{new Date(order.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</p>
+                                        </div>
+                                    </div>
+                                    <div className={`px-3 py-1 rounded-xl text-[10px] font-black uppercase ${order.status === 'DELIVERED' ? 'bg-blue-100 text-blue-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                                        {order.status === 'PENDING' ? 'Na Fila' : order.status === 'PREPARING' ? 'Preparando' : order.status === 'READY' ? 'Pronto' : 'Entregue'}
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    {order.items.map(item => (
+                                        <div key={item.id} className="flex justify-between items-start text-sm">
+                                            <div className="flex-1">
+                                                <span className="font-bold text-slate-700">{item.quantity}x {item.productName}</span>
+                                                {item.notes && <p className="text-[10px] text-gray-400 italic">{item.notes}</p>}
+                                            </div>
+                                            <span className={`text-[9px] font-bold px-2 py-0.5 rounded ${item.status === 'READY' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>{item.status}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
         </div>
 
+        {/* Bottom Tab Navigation */}
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-2 flex justify-around items-center z-40 safe-area-bottom">
+            <button onClick={() => setActiveTab('TABLES')} className={`flex flex-col items-center gap-1 p-2 rounded-2xl flex-1 transition-all ${activeTab === 'TABLES' ? 'text-blue-600 bg-blue-50' : 'text-gray-400'}`}>
+                <Grid size={24} />
+                <span className="text-[10px] font-black uppercase tracking-widest">Mesas</span>
+            </button>
+            <button onClick={() => setActiveTab('ORDERS')} className={`flex flex-col items-center gap-1 p-2 rounded-2xl flex-1 transition-all ${activeTab === 'ORDERS' ? 'text-blue-600 bg-blue-50' : 'text-gray-400'}`}>
+                <List size={24} />
+                <span className="text-[10px] font-black uppercase tracking-widest">Pedidos</span>
+            </button>
+        </div>
+
+        {/* Drawer de Prontos */}
         {readyItems.length > 0 && (
-            <div className={`fixed bottom-0 left-0 right-0 z-50 transition-transform duration-500 ease-in-out ${isServingDrawerOpen ? 'translate-y-0' : 'translate-y-[calc(100%-80px)]'}`}>
-                <div onClick={() => setIsServingDrawerOpen(!isServingDrawerOpen)} className="mx-auto max-w-lg bg-emerald-600 p-5 flex justify-between items-center cursor-pointer rounded-t-[2.5rem] shadow-[0_-10px_40px_rgba(16,185,129,0.3)] border-b border-emerald-500/20">
-                    <div className="flex items-center gap-4 text-white">
-                        <div className="bg-white/20 p-2.5 rounded-2xl animate-bounce"><Utensils size={24}/></div>
+            <div className={`fixed bottom-[80px] left-0 right-0 z-50 transition-transform duration-500 ease-in-out ${isServingDrawerOpen ? 'translate-y-0' : 'translate-y-[calc(100%-60px)]'}`}>
+                <div onClick={() => setIsServingDrawerOpen(!isServingDrawerOpen)} className="mx-4 bg-emerald-600 p-4 flex justify-between items-center cursor-pointer rounded-t-[2rem] shadow-[0_-10px_40px_rgba(16,185,129,0.3)] border-b border-emerald-500/20">
+                    <div className="flex items-center gap-3 text-white">
+                        <div className="bg-white/20 p-2 rounded-xl animate-bounce"><Utensils size={20}/></div>
                         <div>
-                            <h3 className="font-black text-lg uppercase tracking-tight leading-none">Pronto para Servir</h3>
-                            <p className="text-[10px] font-bold opacity-80 uppercase tracking-widest mt-1">{readyItems.length} pratos aguardando</p>
+                            <h3 className="font-black text-sm uppercase tracking-tight leading-none">Pronto para Servir</h3>
+                            <p className="text-[10px] font-bold opacity-80 uppercase tracking-widest mt-0.5">{readyItems.length} itens aguardando</p>
                         </div>
                     </div>
-                    <div className="bg-white/10 p-2 rounded-full text-white">{isServingDrawerOpen ? <ChevronDown size={24}/> : <ChevronUp size={24}/>}</div>
+                    <div className="bg-white/10 p-1.5 rounded-full text-white">{isServingDrawerOpen ? <ChevronDown size={20}/> : <ChevronUp size={20}/>}</div>
                 </div>
-                <div className="mx-auto max-w-lg max-h-[60vh] overflow-y-auto p-6 space-y-4 bg-white shadow-2xl rounded-b-none border-x border-t border-gray-100 safe-area-bottom">
+                <div className="mx-4 max-h-[50vh] overflow-y-auto p-4 space-y-3 bg-white shadow-2xl rounded-b-none border-x border-t border-gray-100 safe-area-bottom pb-6">
                     {readyItems.map((item, idx) => (
-                        <div key={`${item.id}-${idx}`} className="bg-gray-50 p-5 rounded-[2rem] border-2 border-transparent hover:border-emerald-200 transition-all flex justify-between items-center animate-fade-in shadow-sm">
-                            <div className="flex items-center gap-4">
-                                <div className="bg-slate-900 text-white w-12 h-12 rounded-2xl flex items-center justify-center font-black text-xl shadow-lg">{orderState.tables.find(t => t.id === item.tableId)?.number}</div>
+                        <div key={`${item.id}-${idx}`} className="bg-gray-50 p-4 rounded-[1.5rem] border-2 border-transparent hover:border-emerald-200 transition-all flex justify-between items-center animate-fade-in shadow-sm">
+                            <div className="flex items-center gap-3">
+                                <div className="bg-slate-900 text-white w-10 h-10 rounded-xl flex items-center justify-center font-black text-lg shadow-lg">{orderState.tables.find(t => t.id === item.tableId)?.number}</div>
                                 <div>
-                                    <div className="font-black text-slate-800">{item.quantity}x {item.productName}</div>
-                                    <div className="flex gap-2 mt-1">
+                                    <div className="font-black text-slate-800 text-sm">{item.quantity}x {item.productName}</div>
+                                    <div className="flex gap-2 mt-0.5">
                                         {item.notes?.includes('[IMEDIATA]') && <span className="text-[9px] bg-blue-600 text-white px-2 py-0.5 rounded-lg font-black uppercase tracking-tighter flex items-center gap-1"><Zap size={10}/> Imediata</span>}
-                                        {item.notes && <span className="text-[10px] text-gray-400 italic truncate max-w-[140px]">{item.notes}</span>}
+                                        {item.notes && <span className="text-[10px] text-gray-400 italic truncate max-w-[120px]">{item.notes}</span>}
                                     </div>
                                 </div>
                             </div>
-                            <button onClick={() => orderDispatch({ type: 'UPDATE_ITEM_STATUS', orderId: item.orderId, itemId: item.id, status: OrderStatus.DELIVERED })} className="bg-emerald-600 hover:bg-emerald-500 text-white p-3 rounded-2xl shadow-lg shadow-emerald-600/20 transition-all"><CheckCircle size={24}/></button>
+                            <button onClick={() => orderDispatch({ type: 'UPDATE_ITEM_STATUS', orderId: item.orderId, itemId: item.id, status: OrderStatus.DELIVERED })} className="bg-emerald-600 hover:bg-emerald-500 text-white p-2.5 rounded-xl shadow-lg shadow-emerald-600/20 transition-all"><CheckCircle size={20}/></button>
                         </div>
                     ))}
                 </div>
             </div>
         )}
         
+        {/* Modais */}
         <OpenTableModal isOpen={!!selectedTableForOpen} onClose={() => setSelectedTableForOpen(null)} tableId={selectedTableForOpen} />
-        <TableActionsModal isOpen={!!selectedTableForAction} onClose={() => setSelectedTableForAction(null)} tableId={selectedTableForAction} onOrder={() => { setOrderingTableId(selectedTableForAction); setSelectedTableForAction(null); setCart([]); }} />
+        
+        <TableActionsModal 
+            isOpen={!!selectedTableForAction} 
+            onClose={() => setSelectedTableForAction(null)} 
+            tableId={selectedTableForAction} 
+            orders={orderState.orders.filter(o => o.tableId === selectedTableForAction && o.status !== 'CANCELLED')}
+            onOrder={() => { setOrderingTableId(selectedTableForAction); setSelectedTableForAction(null); setCart([]); }} 
+        />
+
+        {/* Modal de Confirmação de Chamado */}
+        <Modal 
+            isOpen={!!confirmCallId} 
+            onClose={() => { setConfirmCallId(null); setCallingTableNumber(null); }} 
+            title="Atender Chamado?" 
+            variant="dialog" 
+            maxWidth="sm"
+        >
+            <div className="flex flex-col items-center text-center space-y-6">
+                <div className="bg-red-100 p-6 rounded-full text-red-600 animate-pulse">
+                    <Bell size={48} />
+                </div>
+                <div>
+                    <h3 className="text-2xl font-black text-slate-900 mb-1">Mesa {callingTableNumber}</h3>
+                    <p className="text-gray-500 text-sm">O cliente solicitou a presença de um garçom.</p>
+                </div>
+                <div className="flex gap-3 w-full">
+                    <Button variant="secondary" onClick={() => { setConfirmCallId(null); setCallingTableNumber(null); }} className="flex-1">Cancelar</Button>
+                    <Button onClick={handleResolveCall} className="flex-1 bg-red-600 hover:bg-red-700 text-white shadow-red-200">Confirmar</Button>
+                </div>
+            </div>
+        </Modal>
     </div>
   );
 };

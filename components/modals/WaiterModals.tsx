@@ -1,10 +1,11 @@
+
 import React, { useState, useEffect } from 'react';
 import { Modal } from '../Modal';
 import { Button } from '../Button';
 import { useOrder } from '../../context/OrderContext';
 import { useMenu } from '../../context/MenuContext';
-import { Product } from '../../types';
-import { Utensils, Trash2, X, Minus, Plus, CheckSquare, Square } from 'lucide-react';
+import { Product, Order, OrderStatus } from '../../types';
+import { Utensils, Trash2, X, Minus, Plus, CheckSquare, Square, AlertCircle } from 'lucide-react';
 
 // --- Open Table Modal ---
 export const OpenTableModal: React.FC<{ isOpen: boolean, onClose: () => void, tableId: string | null }> = ({ isOpen, onClose, tableId }) => {
@@ -34,20 +35,53 @@ export const OpenTableModal: React.FC<{ isOpen: boolean, onClose: () => void, ta
     );
 };
 
-// --- Table Actions Modal ---
-export const TableActionsModal: React.FC<{ isOpen: boolean, onClose: () => void, tableId: string | null, onOrder: () => void }> = ({ isOpen, onClose, tableId, onOrder }) => {
+// --- Table Actions Modal (UPDATED) ---
+interface TableActionsModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    tableId: string | null;
+    onOrder: () => void;
+    orders?: Order[]; // Lista de pedidos dessa mesa
+}
+
+export const TableActionsModal: React.FC<TableActionsModalProps> = ({ isOpen, onClose, tableId, onOrder, orders = [] }) => {
     const { state, dispatch } = useOrder();
     const table = state.tables.find(t => t.id === tableId);
 
+    // Verifica se há itens pendentes (não entregues e não cancelados)
+    const hasPendingItems = orders.some(o => 
+        !o.isPaid && o.status !== 'CANCELLED' && 
+        o.items.some(i => i.status !== OrderStatus.DELIVERED && i.status !== OrderStatus.CANCELLED)
+    );
+
     return (
         <Modal isOpen={isOpen} onClose={onClose} title={`Mesa ${table?.number}`} variant="dialog" maxWidth="sm">
-            <div className="p-1 space-y-3">
+            <div className="p-1 space-y-4">
+                {table?.accessCode && (
+                    <div className="bg-gray-100 p-3 rounded-xl text-center">
+                        <span className="text-xs font-bold text-gray-500 uppercase block mb-1">Código de Acesso</span>
+                        <span className="text-3xl font-black text-slate-800 tracking-widest">{table.accessCode}</span>
+                    </div>
+                )}
+
                 <button onClick={onOrder} className="w-full py-5 bg-blue-600 text-white font-black rounded-2xl flex items-center justify-center gap-3 shadow-xl shadow-blue-200 hover:scale-[1.02] active:scale-95 transition-all">
                     <Utensils size={24} /> LANÇAR PEDIDO
                 </button>
-                <button onClick={() => { dispatch({ type: 'CLOSE_TABLE', tableId }); onClose(); }} className="w-full py-5 bg-red-50 text-red-600 font-black rounded-2xl flex items-center justify-center gap-3 border-2 border-red-100 hover:bg-red-100 transition-all">
-                    <Trash2 size={24} /> CANCELAR MESA
-                </button>
+                
+                {hasPendingItems ? (
+                    <div className="w-full py-4 bg-orange-50 text-orange-600 font-bold rounded-2xl flex flex-col items-center justify-center gap-2 border-2 border-orange-100 text-center px-4">
+                        <AlertCircle size={24} />
+                        <span className="text-xs uppercase tracking-wide">Não é possível fechar</span>
+                        <span className="text-[10px] font-normal">Existem pedidos pendentes na cozinha ou a serem entregues.</span>
+                    </div>
+                ) : (
+                    <button 
+                        onClick={() => { dispatch({ type: 'CLOSE_TABLE', tableId }); onClose(); }} 
+                        className="w-full py-5 bg-red-50 text-red-600 font-black rounded-2xl flex items-center justify-center gap-3 border-2 border-red-100 hover:bg-red-100 transition-all"
+                    >
+                        <Trash2 size={24} /> FECHAR / CANCELAR MESA
+                    </button>
+                )}
             </div>
         </Modal>
     );
