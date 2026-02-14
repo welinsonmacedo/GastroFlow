@@ -3,12 +3,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useRestaurant } from '../context/RestaurantContext';
 import { useUI } from '../context/UIContext';
 import { Button } from '../components/Button';
-import { QRCodeGenerator } from '../components/QRCodeGenerator';
-import { ImageUploader } from '../components/ImageUploader';
-import { Product, ProductType, Role, User, InventoryItem, Expense, InventoryType, Supplier, PurchaseItemInput, PurchaseInstallment } from '../types';
-import { LayoutDashboard, Utensils, QrCode, Printer, ExternalLink, Palette, Eye, EyeOff, Save, Copy, Plus, Users, ShieldCheck, Trash2, Edit, AlertTriangle, FileBarChart, X, ArrowUp, ArrowDown, LayoutGrid, List as ListIcon, Image as ImageIcon, Calendar, TrendingUp, Search, Loader2, Menu, Activity, CheckSquare, GripVertical, Link as LinkIcon, Share2, Lock, BookOpen, Package, DollarSign, Archive, TrendingDown, RefreshCcw, Layers, ArrowLeft, Truck, FileText, ClipboardList, FileSpreadsheet, PieChart, CreditCard, Info, MapPin, Phone, User as UserIcon, ChevronDown, ChevronRight, Briefcase, Settings, ShoppingCart, Lightbulb } from 'lucide-react';
+import { LayoutDashboard, Utensils, QrCode, Palette, Activity, X, LayoutGrid, Package, DollarSign, Layers, ArrowLeft, PieChart, CreditCard, User as UserIcon, ChevronDown, ChevronRight, Briefcase, Settings, ShoppingCart, Lightbulb, Menu, Users, RefreshCcw } from 'lucide-react';
 import { getTenantSlug } from '../utils/tenant';
-import { supabase } from '../lib/supabase';
 import { Link } from 'react-router-dom';
 
 import { AdminOverview } from './admin/AdminOverview';
@@ -20,13 +16,14 @@ import { AdminFinance } from './admin/AdminFinance';
 import { AdminAccounting } from './admin/AdminAccounting';
 import { AccountingReport } from './admin/AccountingReport'; 
 import { AdminSettings } from './admin/AdminSettings';
-import { AdminPurchaseSuggestions } from './admin/AdminPurchaseSuggestions'; // NEW
-import { AdminFinancialTips } from './admin/AdminFinancialTips'; // NEW
+import { AdminMenuAppearance } from './admin/AdminMenuAppearance'; // NEW
+import { AdminPurchaseSuggestions } from './admin/AdminPurchaseSuggestions'; 
+import { AdminFinancialTips } from './admin/AdminFinancialTips'; 
 
 export const AdminDashboard: React.FC = () => {
-  const { state, dispatch } = useRestaurant();
+  const { state } = useRestaurant();
   const { showAlert } = useUI();
-  const [activeTab, setActiveTab] = useState<'DASHBOARD' | 'PRODUCTS' | 'TABLES' | 'CUSTOMIZATION' | 'STAFF' | 'REPORTS' | 'ACCOUNTING' | 'OFFICIAL_REPORT' | 'INVENTORY' | 'FINANCE' | 'PURCHASE_SUGGESTIONS' | 'FINANCIAL_TIPS'>('DASHBOARD');
+  const [activeTab, setActiveTab] = useState<'DASHBOARD' | 'PRODUCTS' | 'TABLES' | 'CUSTOMIZATION' | 'MENU_APPEARANCE' | 'STAFF' | 'REPORTS' | 'ACCOUNTING' | 'OFFICIAL_REPORT' | 'INVENTORY' | 'FINANCE' | 'PURCHASE_SUGGESTIONS' | 'FINANCIAL_TIPS'>('DASHBOARD');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Mobile toggle
   const [isSidebarHovered, setIsSidebarHovered] = useState(false); // Desktop hover
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -60,6 +57,7 @@ export const AdminDashboard: React.FC = () => {
           case 'ACCOUNTING': return <AdminAccounting />;
           case 'OFFICIAL_REPORT': return <AccountingReport />;
           case 'CUSTOMIZATION': return <AdminSettings />;
+          case 'MENU_APPEARANCE': return <AdminMenuAppearance />;
           case 'PURCHASE_SUGGESTIONS': return <AdminPurchaseSuggestions />;
           case 'FINANCIAL_TIPS': return <AdminFinancialTips />;
           default: return <AdminOverview />;
@@ -95,7 +93,8 @@ export const AdminDashboard: React.FC = () => {
           label: 'Sistema',
           icon: Settings,
           items: [
-              { id: 'CUSTOMIZATION', label: 'Aparência', icon: Palette, visible: planLimits.allowCustomization },
+              { id: 'MENU_APPEARANCE', label: 'Aparência Cardápio', icon: Palette, visible: planLimits.allowCustomization },
+              { id: 'CUSTOMIZATION', label: 'Configurações', icon: Settings, visible: true },
           ]
       }
   ];
@@ -212,11 +211,6 @@ export const AdminDashboard: React.FC = () => {
             <div className="p-4 border-t border-white/5 mt-auto bg-slate-900/50">
                 <div className="space-y-1">
                     <Link to="/manual" target="_blank" className={`w-full flex items-center gap-3 p-3 rounded-xl text-slate-500 hover:bg-white/5 hover:text-white transition-all ${!isSidebarHovered && !isSidebarOpen ? 'justify-center' : ''} group relative`}>
-                        <BookOpen size={20} className="shrink-0"/>
-                        <span className={`font-bold text-xs uppercase transition-all ${isSidebarHovered || isSidebarOpen ? 'opacity-100' : 'opacity-0 w-0 overflow-hidden'}`}>Manual</span>
-                        {!isSidebarHovered && !isSidebarOpen && <div className="absolute left-full ml-4 bg-slate-800 text-white text-xs font-bold px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none z-50">Manual</div>}
-                    </Link>
-                    <Link to="/" className={`w-full flex items-center gap-3 p-3 rounded-xl text-red-400 hover:bg-red-500/10 transition-all ${!isSidebarHovered && !isSidebarOpen ? 'justify-center' : ''} group relative`}>
                         <ArrowLeft size={20} className="shrink-0"/>
                         <span className={`font-bold text-xs uppercase transition-all ${isSidebarHovered || isSidebarOpen ? 'opacity-100' : 'opacity-0 w-0 overflow-hidden'}`}>Sair</span>
                         {!isSidebarHovered && !isSidebarOpen && <div className="absolute left-full ml-4 bg-red-900 text-white text-xs font-bold px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none z-50">Sair</div>}
