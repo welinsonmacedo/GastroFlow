@@ -3,12 +3,13 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useRestaurant } from '../context/RestaurantContext';
 import { useMenu } from '../context/MenuContext';
 import { useOrder } from '../context/OrderContext';
+import { useInventory } from '../context/InventoryContext'; // Adicionado InventoryContext
 import { useUI } from '../context/UIContext';
 import { TableStatus, Product, OrderStatus } from '../types';
 import { Button } from '../components/Button';
 import { WaiterProductModal, OpenTableModal, TableActionsModal } from '../components/modals/WaiterModals';
-import { Bell, Plus, Search, ShoppingCart, ArrowLeft, Utensils, Trash2, Clock, CheckCircle, ChevronUp, ChevronDown, Zap, RefreshCcw, Lock, List, Grid, History } from 'lucide-react';
-import { Modal } from '../components/Modal'; // Importado para o modal de confirmação de chamado
+import { Bell, Plus, Search, ShoppingCart, ArrowLeft, Utensils, Trash2, Clock, CheckCircle, ChevronUp, ChevronDown, Zap, RefreshCcw, Lock, List, Grid, History, AlertTriangle, PackageX } from 'lucide-react';
+import { Modal } from '../components/Modal';
 
 const FALLBACK_SOUND_URL = "https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3";
 
@@ -16,9 +17,10 @@ export const WaiterApp: React.FC = () => {
   const { state: restState } = useRestaurant();
   const { state: menuState } = useMenu();
   const { state: orderState, dispatch: orderDispatch } = useOrder();
+  const { state: invState } = useInventory(); // Estado do estoque em tempo real
   
   const [activeTab, setActiveTab] = useState<'TABLES' | 'ORDERS'>('TABLES');
-  const [showHistory, setShowHistory] = useState(false); // Estado para alternar entre ativos e histórico
+  const [showHistory, setShowHistory] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [, setTick] = useState(0);
   const { showAlert } = useUI();
@@ -110,6 +112,25 @@ export const WaiterApp: React.FC = () => {
       }
   };
 
+  // Helper para checar estoque de um produto
+  const getProductStockStatus = (product: Product) => {
+      if (!product.linkedInventoryItemId) return { status: 'OK', qty: 999 };
+      
+      const stockItem = invState.inventory.find(i => i.id === product.linkedInventoryItemId);
+      
+      if (!stockItem) return { status: 'OK', qty: 999 };
+      
+      // Se for prato (Composite), assumimos OK por enquanto ou precisaríamos calcular a receita.
+      // Para simplificar no realtime, vamos olhar a quantidade direta se for revenda, ou assumir ilimitado se for produzido,
+      // a menos que o sistema de estoque desconte composite direto.
+      // Assumindo que inventory_items armazena a quantidade disponível:
+      
+      if (stockItem.quantity <= 0) return { status: 'OUT', qty: 0 };
+      if (stockItem.quantity <= stockItem.minQuantity) return { status: 'LOW', qty: stockItem.quantity };
+      
+      return { status: 'OK', qty: stockItem.quantity };
+  };
+
   // Tela Inicial: Bloqueio de Áudio
   if (!orderState.audioUnlocked) {
     return (
@@ -177,16 +198,44 @@ export const WaiterApp: React.FC = () => {
                           </div>
                       </div>
                       <div className="flex-1 overflow-y-auto p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 content-start pb-32">
-                          {filteredProducts.map(product => (
-                              <div key={product.id} onClick={() => setProductModal(product)} className="bg-white p-4 rounded-3xl border-2 border-transparent shadow-sm flex justify-between items-center cursor-pointer hover:border-blue-200 active:scale-95 transition-all group">
-                                  <div className="flex-1 min-w-0 pr-2">
-                                      <div className="font-black text-slate-800 truncate leading-tight">{product.name}</div>
-                                      <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-0.5">{product.category}</div>
-                                      <div className="text-base font-black text-blue-600 mt-2">R$ {product.price.toFixed(2)}</div>
+                          {filteredProducts.map(product => {
+                              const stockInfo = getProductStockStatus(product);
+                              const isOutOfStock = stockInfo.status === 'OUT';
+                              const isLowStock = stockInfo.status === 'LOW';
+
+                              return (
+                                  <div 
+                                    key={product.id} 
+                                    onClick={() => !isOutOfStock && setProductModal(product)} 
+                                    className={`bg-white p-4 rounded-3xl border-2 border-transparent shadow-sm flex justify-between items-center cursor-pointer transition-all group relative overflow-hidden
+                                        ${isOutOfStock ? 'opacity-60 grayscale cursor-not-allowed bg-gray-100' : 'hover:border-blue-200 active:scale-95'}
+                                    `}
+                                  >
+                                      {/* Faixa Esgotado */}
+                                      {isOutOfStock && (
+                                          <div className="absolute inset-0 bg-white/50 z-10 flex items-center justify-center">
+                                              <span className="bg-red-600 text-white text-[10px] font-black uppercase px-3 py-1 rounded-full shadow-lg transform -rotate-6 border-2 border-white">Esgotado</span>
+                                          </div>
+                                      )}
+
+                                      <div className="flex-1 min-w-0 pr-2">
+                                          <div className="font-black text-slate-800 truncate leading-tight">{product.name}</div>
+                                          <div className="flex items-center gap-2 mt-1">
+                                              <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{product.category}</div>
+                                              {isLowStock && !isOutOfStock && (
+                                                  <span className="text-[9px] bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded font-bold flex items-center gap-1">
+                                                      <AlertTriangle size={8}/> Restam {stockInfo.qty}
+                                                  </span>
+                                              )}
+                                          </div>
+                                          <div className="text-base font-black text-blue-600 mt-2">R$ {product.price.toFixed(2)}</div>
+                                      </div>
+                                      <div className={`p-3 rounded-2xl shadow-inner transition-all ${isOutOfStock ? 'bg-gray-200 text-gray-400' : 'bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white'}`}>
+                                          {isOutOfStock ? <PackageX size={22} /> : <Plus size={22} strokeWidth={3} />}
+                                      </div>
                                   </div>
-                                  <div className="bg-blue-50 p-3 rounded-2xl text-blue-600 shadow-inner group-hover:bg-blue-600 group-hover:text-white transition-all"><Plus size={22} strokeWidth={3} /></div>
-                              </div>
-                          ))}
+                              );
+                          })}
                       </div>
                   </div>
 
