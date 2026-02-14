@@ -220,6 +220,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({ isOpen, onCl
                                         value={price}
                                         onChange={e => setPrice(e.target.value)}
                                         required 
+                                        placeholder="0.00"
                                     />
                                 </div>
                             </div>

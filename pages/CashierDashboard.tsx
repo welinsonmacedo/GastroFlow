@@ -248,7 +248,10 @@ export const CashierDashboard: React.FC = () => {
                                   <input className="w-full pl-16 pr-6 py-5 rounded-[2rem] border-2 border-transparent bg-white shadow-xl focus:border-blue-500 outline-none transition-all font-bold" placeholder="Filtrar produtos por nome..." value={posSearch} onChange={e => setPosSearch(e.target.value)} autoFocus />
                               </div>
                               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 overflow-y-auto flex-1 content-start p-1 custom-scrollbar">
-                                  {menuState.products.filter(p => p.name.toLowerCase().includes(posSearch.toLowerCase())).map(product => (
+                                  {/* Filtro modificado: Exclui Adicionais (!p.isExtra) para mostrar apenas produtos de venda */}
+                                  {menuState.products
+                                    .filter(p => !p.isExtra && p.name.toLowerCase().includes(posSearch.toLowerCase()))
+                                    .map(product => (
                                       <button key={product.id} onClick={() => setPosCart([...posCart, { product, quantity: 1, notes: '' }])} className="bg-white p-5 rounded-[2rem] shadow-sm border-2 border-transparent hover:border-blue-400 hover:shadow-xl transition-all flex flex-col items-start text-left h-44 active:scale-95 group relative overflow-hidden">
                                           <div className="bg-blue-50 text-blue-600 p-2 rounded-xl absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity"><Plus size={18}/></div>
                                           <div className="flex-1 w-full"><div className="font-black text-slate-800 text-sm leading-tight mb-2 line-clamp-2 uppercase tracking-tighter">{product.name}</div><div className="text-[9px] font-black text-blue-600 bg-blue-50 px-2 py-1 rounded-lg uppercase tracking-widest inline-block">{product.category}</div></div>
