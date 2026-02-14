@@ -238,10 +238,10 @@ export const KitchenDisplay: React.FC = () => {
 
                             {/* Adicionais VISUALMENTE DENTRO DO BLOCO */}
                             {extras.length > 0 && (
-                                <div className="mt-2 space-y-1 bg-slate-900/50 p-3 rounded-xl border border-white/5">
+                                <div className="mt-2 pl-4 border-l-2 border-dashed border-white/20 space-y-1">
                                     {extras.map(e => (
-                                        <div key={e.id} className="text-emerald-400 text-sm font-bold flex items-center gap-2">
-                                            <Plus size={14} /> {e.quantity}x {e.productName}
+                                        <div key={e.id} className="text-emerald-300 text-sm font-bold flex items-center gap-2">
+                                            <Plus size={12} /> {e.quantity}x {e.productName}
                                         </div>
                                     ))}
                                 </div>

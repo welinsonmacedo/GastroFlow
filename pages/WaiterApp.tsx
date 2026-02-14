@@ -127,20 +127,31 @@ export const WaiterApp: React.FC = () => {
 
   // Helper para verificar se item pode ser entregue
   const canDeliverItem = (item: any, foodReady: boolean) => {
+      // 1. Se já foi entregue ou cancelado, não precisa ação
       if (item.status === OrderStatus.DELIVERED || item.status === OrderStatus.CANCELLED) return false;
 
+      // 2. PRIORIDADE: Tag [IMEDIATA]
+      // Se tiver essa tag, libera SEMPRE, independente do tipo (BAR/KITCHEN) ou status (PENDING/READY).
+      if (item.notes?.includes('[IMEDIATA]')) {
+          return true;
+      }
+
+      // 3. PRIORIDADE: Tag [COM COMIDA]
+      // Aguarda sinal da cozinha (foodReady).
+      if (item.notes?.includes('[COM COMIDA]')) {
+          return foodReady;
+      }
+
+      // 4. Lógica Padrão por Tipo
       const isBarItem = item.productType === ProductType.BAR;
       
       if (isBarItem) {
-          // Bebida 'Com Comida': Só libera se a comida estiver PRONTA
-          if (item.notes?.includes('[COM COMIDA]')) {
-              return foodReady;
-          }
-          // Bebida 'Imediata' ou sem tag: Libera assim que entra (PENDING ou READY)
+          // Itens de Bar normais (sem tag) são liberados imediatamente
           return true; 
       }
 
-      // Item de Cozinha: Só libera se estiver PRONTO
+      // 5. Itens de Cozinha Padrão (Sem tags)
+      // Só liberam quando o status for READY (Pronto pelo KDS)
       return item.status === OrderStatus.READY;
   };
 
@@ -433,6 +444,7 @@ export const WaiterApp: React.FC = () => {
                                     {order.items.map(item => {
                                         const isDeliverable = canDeliverItem(item, foodReady);
                                         const isDrinkWithFood = item.notes?.includes('[COM COMIDA]');
+                                        const isImmediate = item.notes?.includes('[IMEDIATA]');
                                         // Visualmente destaca se está "Segurando"
                                         const shouldHold = isDrinkWithFood && !foodReady;
 
@@ -441,7 +453,7 @@ export const WaiterApp: React.FC = () => {
                                                 <div className="flex-1">
                                                     <span className="font-bold text-slate-700">{item.quantity}x {item.productName}</span>
                                                     <div className="flex gap-2 flex-wrap mt-0.5">
-                                                        {item.notes?.includes('[IMEDIATA]') && <span className="text-[9px] bg-blue-600 text-white px-2 py-0.5 rounded-lg font-black uppercase tracking-tighter flex items-center gap-1"><Zap size={10}/> Imediata</span>}
+                                                        {isImmediate && <span className="text-[9px] bg-blue-600 text-white px-2 py-0.5 rounded-lg font-black uppercase tracking-tighter flex items-center gap-1"><Zap size={10}/> Imediata</span>}
                                                         
                                                         {isDrinkWithFood && (
                                                             <span className={`text-[9px] px-2 py-0.5 rounded-lg font-black uppercase tracking-tighter flex items-center gap-1 border
@@ -451,7 +463,7 @@ export const WaiterApp: React.FC = () => {
                                                             </span>
                                                         )}
 
-                                                        {item.notes && !item.notes.includes('[IMEDIATA]') && !item.notes.includes('[COM COMIDA]') && <span className="text-[10px] text-gray-400 italic truncate max-w-[150px]">{item.notes}</span>}
+                                                        {item.notes && !isImmediate && !isDrinkWithFood && <span className="text-[10px] text-gray-400 italic truncate max-w-[150px]">{item.notes}</span>}
                                                     </div>
                                                 </div>
                                                 
