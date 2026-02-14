@@ -25,6 +25,7 @@ CREATE TABLE order_items (
     order_id UUID NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
     
     product_id UUID REFERENCES products(id) ON DELETE SET NULL,
+    inventory_item_id UUID REFERENCES inventory_items(id) ON DELETE SET NULL, -- Venda direta do estoque
     
     -- Snapshot dos dados no momento da venda (se o produto mudar preço depois, o histórico não muda)
     product_name TEXT NOT NULL,
@@ -52,6 +53,7 @@ CREATE TABLE transactions (
     
     items_summary TEXT, -- Resumo rápido: "Mesa 10" ou "Coca, X-Burger"
     cashier_name TEXT,
+    status TEXT DEFAULT 'COMPLETED', -- COMPLETED, CANCELLED
     
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );

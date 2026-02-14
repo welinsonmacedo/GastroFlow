@@ -20,10 +20,10 @@ export const InventoryItemModal: React.FC<InventoryItemModalProps> = ({ isOpen, 
 
   // Estado local do formulário
   const [form, setForm] = useState<Partial<InventoryItem>>({
-    name: '', unit: 'UN', type: 'INGREDIENT', quantity: 0, minQuantity: 5, costPrice: 0, isExtra: false, image: ''
+    name: '', unit: 'UN', type: 'INGREDIENT', quantity: 0, minQuantity: 5, costPrice: 0, salePrice: 0, isExtra: false, image: ''
   });
 
-  // Estado local da receita (Padronizado para 'quantity')
+  // Estado local da receita
   const [recipeItems, setRecipeItems] = useState<{ ingredientId: string, quantity: number }[]>([]);
   const [selectedIngToAdd, setSelectedIngToAdd] = useState('');
 
@@ -32,10 +32,9 @@ export const InventoryItemModal: React.FC<InventoryItemModalProps> = ({ isOpen, 
     if (isOpen) {
       if (itemToEdit) {
         setForm({ ...itemToEdit });
-        // Mapeia corretamente os itens existentes para o estado local
         setRecipeItems(itemToEdit.recipe?.map(r => ({ ingredientId: r.ingredientId, quantity: r.quantity })) || []);
       } else {
-        setForm({ name: '', unit: 'UN', type: 'INGREDIENT', quantity: 0, minQuantity: 5, costPrice: 0, isExtra: false, image: '' });
+        setForm({ name: '', unit: 'UN', type: 'INGREDIENT', quantity: 0, minQuantity: 5, costPrice: 0, salePrice: 0, isExtra: false, image: '' });
         setRecipeItems([]);
       }
     }
@@ -52,7 +51,6 @@ export const InventoryItemModal: React.FC<InventoryItemModalProps> = ({ isOpen, 
     if (!selectedIngToAdd) return;
     const ing = state.inventory.find(i => i.id === selectedIngToAdd);
     if (ing) {
-      // Adiciona com quantity
       setRecipeItems([...recipeItems, { ingredientId: ing.id, quantity: 1 }]);
       setSelectedIngToAdd('');
     }
@@ -67,7 +65,7 @@ export const InventoryItemModal: React.FC<InventoryItemModalProps> = ({ isOpen, 
       
       // Se for item composto, anexa a receita e calcula custo
       if (finalItem.type === 'COMPOSITE') {
-        finalItem.recipe = recipeItems; // Agora recipeItems tem a estrutura correta { ingredientId, quantity }
+        finalItem.recipe = recipeItems; 
         finalItem.costPrice = calculateRecipeCost();
       }
 
@@ -143,7 +141,7 @@ export const InventoryItemModal: React.FC<InventoryItemModalProps> = ({ isOpen, 
                             type="number" 
                             step="0.001" 
                             className="w-20 border-2 p-1 rounded-lg text-right font-bold" 
-                            value={step.quantity} // Alterado de qty para quantity
+                            value={step.quantity} 
                             onChange={e => {
                                 const n = [...recipeItems]; 
                                 n[idx].quantity = parseFloat(e.target.value); 
@@ -180,20 +178,25 @@ export const InventoryItemModal: React.FC<InventoryItemModalProps> = ({ isOpen, 
               <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">3. Financeiro e Alertas</h4>
               <div className="grid grid-cols-2 gap-4">
                 <div>
+                  <label className="block text-xs font-bold mb-1 text-emerald-700">Preço de Venda (PDV)</label>
+                  <input type="number" step="0.01" className="w-full border-2 p-3 rounded-xl font-black text-emerald-600 border-emerald-100 bg-emerald-50" value={form.salePrice} onChange={e => setForm({ ...form, salePrice: parseFloat(e.target.value) })} />
+                  <p className="text-[10px] text-gray-400 mt-1">Usado apenas para vendas diretas no caixa.</p>
+                </div>
+                <div>
                   <label className="block text-xs font-bold mb-1">Custo Médio (R$)</label>
-                  <input type="number" step="0.01" className={`w-full border-2 p-3 rounded-xl font-bold text-emerald-600 ${form.type === 'COMPOSITE' ? 'bg-gray-50' : ''}`} value={form.type === 'COMPOSITE' ? calculateRecipeCost() : form.costPrice} onChange={e => setForm({ ...form, costPrice: parseFloat(e.target.value) })} disabled={form.type === 'COMPOSITE'} />
+                  <input type="number" step="0.01" className={`w-full border-2 p-3 rounded-xl font-bold text-gray-600 ${form.type === 'COMPOSITE' ? 'bg-gray-50' : ''}`} value={form.type === 'COMPOSITE' ? calculateRecipeCost() : form.costPrice} onChange={e => setForm({ ...form, costPrice: parseFloat(e.target.value) })} disabled={form.type === 'COMPOSITE'} />
                 </div>
                 <div>
                   <label className="block text-xs font-bold mb-1">Estoque Mínimo</label>
                   <input type="number" className="w-full border-2 p-3 rounded-xl font-bold text-red-600" value={form.minQuantity} onChange={e => setForm({ ...form, minQuantity: parseFloat(e.target.value) })} />
                 </div>
+                {!itemToEdit && form.type !== 'COMPOSITE' && (
+                  <div>
+                    <label className="block text-xs font-bold mb-1 text-blue-600 uppercase">Estoque Inicial</label>
+                    <input type="number" step="0.001" className="w-full border-2 border-blue-100 p-3 rounded-xl font-bold bg-blue-50" value={form.quantity} onChange={e => setForm({ ...form, quantity: parseFloat(e.target.value) })} />
+                  </div>
+                )}
               </div>
-              {!itemToEdit && form.type !== 'COMPOSITE' && (
-                <div className="mt-4">
-                  <label className="block text-xs font-bold mb-1 text-blue-600 uppercase">Estoque Inicial</label>
-                  <input type="number" step="0.001" className="w-full border-2 border-blue-100 p-3 rounded-xl font-bold bg-blue-50" value={form.quantity} onChange={e => setForm({ ...form, quantity: parseFloat(e.target.value) })} />
-                </div>
-              )}
             </div>
             <div className="bg-white p-6 rounded-2xl border border-slate-200">
               <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">4. Imagem do Produto</h4>

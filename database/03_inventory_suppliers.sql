@@ -37,6 +37,7 @@ CREATE TABLE inventory_items (
     quantity NUMERIC(10, 4) DEFAULT 0, -- Permite casas decimais para KG/LT
     min_quantity NUMERIC(10, 4) DEFAULT 5, -- Ponto de recompra (alerta)
     cost_price NUMERIC(10, 2) DEFAULT 0, -- Custo médio ponderado
+    sale_price NUMERIC(10, 2) DEFAULT 0, -- Preço de venda direta (PDV)
     
     image TEXT, -- URL da imagem (útil se for um item de revenda)
     is_extra BOOLEAN DEFAULT false, -- Se é um adicional (ex: Bacon Extra)

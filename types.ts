@@ -119,6 +119,7 @@ export interface InventoryItem {
     quantity: number;
     minQuantity: number;
     costPrice: number;
+    salePrice: number; // Novo campo para venda direta no PDV
     type: InventoryType;
     image?: string;
     recipe?: InventoryRecipeItem[];
@@ -266,7 +267,7 @@ export interface Transaction {
   timestamp: Date;
   itemsSummary: string;
   cashierName: string;
-  status: 'COMPLETED' | 'CANCELLED'; // Novo campo
+  status: 'COMPLETED' | 'CANCELLED'; 
 }
 
 export interface CashSession {

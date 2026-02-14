@@ -68,6 +68,7 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
                     quantity: Number(i.quantity) || 0, 
                     minQuantity: Number(i.min_quantity) || 0, 
                     costPrice: Number(i.cost_price) || 0, 
+                    salePrice: Number(i.sale_price) || 0, // Novo campo
                     type: (i.type || 'INGREDIENT').toUpperCase() as InventoryType, 
                     image: i.image, 
                     recipe: recipeItems,
@@ -124,6 +125,7 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           quantity: item.quantity || 0,
           min_quantity: item.minQuantity || 0, 
           cost_price: item.costPrice || 0, 
+          sale_price: item.salePrice || 0, // Envia salePrice
           type: item.type, 
           image: item.image,
           is_extra: item.isExtra 
@@ -142,7 +144,7 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
               tenant_id: tenantId, 
               parent_item_id: newItem.id, 
               ingredient_item_id: r.ingredientId, 
-              quantity: r.quantity // Garante que quantity está sendo passado
+              quantity: r.quantity 
           }));
           const { error: recipeError } = await supabase.from('inventory_recipes').insert(recipes);
           if (recipeError) console.error("Erro ao salvar receita:", recipeError);
@@ -157,6 +159,7 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           unit: item.unit, 
           min_quantity: item.minQuantity || 0,
           cost_price: item.costPrice || 0, 
+          sale_price: item.salePrice || 0,
           image: item.image, 
           type: item.type,
           is_extra: item.isExtra

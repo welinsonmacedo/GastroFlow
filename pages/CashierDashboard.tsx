@@ -1,20 +1,20 @@
 
 import React, { useState } from 'react';
 import { useRestaurant } from '../context/RestaurantContext';
-import { useMenu } from '../context/MenuContext';
+import { useInventory } from '../context/InventoryContext'; // Changed to useInventory
 import { useOrder } from '../context/OrderContext';
 import { useFinance } from '../context/FinanceContext';
 import { useUI } from '../context/UIContext';
-import { TableStatus, Product } from '../types';
+import { TableStatus, InventoryItem } from '../types'; // Changed Product to InventoryItem
 import { Button } from '../components/Button';
-import { DollarSign, History, ShoppingCart, Search, Wallet, Receipt, Trash2, User, Lock, ArrowRight, XCircle, RefreshCcw, LayoutDashboard, CreditCard, Banknote, MapPin, Zap, Plus, Clock, Eye } from 'lucide-react';
+import { DollarSign, History, ShoppingCart, Search, Wallet, Receipt, Trash2, User, Lock, ArrowRight, XCircle, RefreshCcw, LayoutDashboard, CreditCard, Banknote, MapPin, Zap, Plus, Clock, Eye, Package } from 'lucide-react';
 import { CloseRegisterModal } from '../components/modals/CloseRegisterModal';
 import { CashBleedModal } from '../components/modals/CashBleedModal';
 import { Modal } from '../components/Modal';
 
 export const CashierDashboard: React.FC = () => {
   const { state: restState } = useRestaurant();
-  const { state: menuState } = useMenu();
+  const { state: invState } = useInventory(); // Using Inventory Context
   const { state: orderState, dispatch: orderDispatch } = useOrder();
   const { state: finState, openRegister, refreshTransactions, voidTransaction } = useFinance();
   const { showAlert, showConfirm } = useUI();
@@ -32,7 +32,9 @@ export const CashierDashboard: React.FC = () => {
   
   const [transactionToVoid, setTransactionToVoid] = useState<string | null>(null);
   const [voidPin, setVoidPin] = useState('');
-  const [posCart, setPosCart] = useState<{ product: Product; quantity: number; notes: string }[]>([]);
+  
+  // Carrinho agora usa InventoryItem
+  const [posCart, setPosCart] = useState<{ item: InventoryItem; quantity: number; notes: string }[]>([]);
   const [posSearch, setPosSearch] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [processingSale, setProcessingSale] = useState(false);
@@ -103,7 +105,7 @@ export const CashierDashboard: React.FC = () => {
       if (!finState.activeCashSession) return showAlert({ title: "Caixa Fechado", message: "Abra o caixa antes de vender.", type: 'ERROR' });
       if (posCart.length === 0) return showAlert({ title: "Carrinho Vazio", message: "Adicione produtos.", type: 'WARNING' });
       
-      const total = posCart.reduce((acc, item) => acc + (item.product.price * item.quantity), 0);
+      const total = posCart.reduce((acc, cartItem) => acc + (cartItem.item.salePrice * cartItem.quantity), 0);
 
       if (method === 'CASH') {
           initiateCashPayment('POS', total);
@@ -115,9 +117,25 @@ export const CashierDashboard: React.FC = () => {
 
   const finalizePosSale = async (method: string) => {
       setProcessingSale(true);
-      const total = posCart.reduce((acc, item) => acc + (item.product.price * item.quantity), 0);
+      const total = posCart.reduce((acc, cartItem) => acc + (cartItem.item.salePrice * cartItem.quantity), 0);
       try {
-          await orderDispatch({ type: 'PROCESS_POS_SALE', sale: { customerName: customerName.trim() || 'Consumidor Final', items: posCart.map(i => ({ productId: i.product.id, quantity: i.quantity, notes: i.notes })), totalAmount: total, method }});
+          // Mapeia para o formato esperado pela API (agora com inventoryItemId)
+          const itemsPayload = posCart.map(i => ({
+              inventoryItemId: i.item.id,
+              quantity: i.quantity,
+              notes: i.notes
+          }));
+
+          await orderDispatch({ 
+              type: 'PROCESS_POS_SALE', 
+              sale: { 
+                  customerName: customerName.trim() || 'Consumidor Final', 
+                  items: itemsPayload, 
+                  totalAmount: total, 
+                  method 
+              }
+          });
+          
           setPosCart([]); setCustomerName('');
           showAlert({ title: "Venda Registrada", message: `Venda de R$ ${total.toFixed(2)} realizada!`, type: 'SUCCESS' });
           await refreshTransactions();
@@ -245,17 +263,28 @@ export const CashierDashboard: React.FC = () => {
                           <div className="lg:w-2/3 flex flex-col gap-6 h-full overflow-hidden animate-fade-in">
                               <div className="relative shrink-0 group">
                                   <Search className="absolute left-6 top-5 text-gray-400 group-focus-within:text-blue-600 transition-colors" size={24}/>
-                                  <input className="w-full pl-16 pr-6 py-5 rounded-[2rem] border-2 border-transparent bg-white shadow-xl focus:border-blue-500 outline-none transition-all font-bold" placeholder="Filtrar produtos por nome..." value={posSearch} onChange={e => setPosSearch(e.target.value)} autoFocus />
+                                  <input className="w-full pl-16 pr-6 py-5 rounded-[2rem] border-2 border-transparent bg-white shadow-xl focus:border-blue-500 outline-none transition-all font-bold" placeholder="Filtrar estoque (nome)..." value={posSearch} onChange={e => setPosSearch(e.target.value)} autoFocus />
                               </div>
                               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 overflow-y-auto flex-1 content-start p-1 custom-scrollbar">
-                                  {/* Filtro modificado: Exclui Adicionais (!p.isExtra) para mostrar apenas produtos de venda */}
-                                  {menuState.products
-                                    .filter(p => !p.isExtra && p.name.toLowerCase().includes(posSearch.toLowerCase()))
-                                    .map(product => (
-                                      <button key={product.id} onClick={() => setPosCart([...posCart, { product, quantity: 1, notes: '' }])} className="bg-white p-5 rounded-[2rem] shadow-sm border-2 border-transparent hover:border-blue-400 hover:shadow-xl transition-all flex flex-col items-start text-left h-44 active:scale-95 group relative overflow-hidden">
+                                  {/* Filtro: Usa ESTOQUE, remove INGREDIENT e filtra por nome */}
+                                  {invState.inventory
+                                    .filter(item => 
+                                        item.type !== 'INGREDIENT' && 
+                                        item.name.toLowerCase().includes(posSearch.toLowerCase())
+                                    )
+                                    .map(item => (
+                                      <button key={item.id} onClick={() => setPosCart([...posCart, { item, quantity: 1, notes: '' }])} className="bg-white p-5 rounded-[2rem] shadow-sm border-2 border-transparent hover:border-blue-400 hover:shadow-xl transition-all flex flex-col items-start text-left h-44 active:scale-95 group relative overflow-hidden">
                                           <div className="bg-blue-50 text-blue-600 p-2 rounded-xl absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity"><Plus size={18}/></div>
-                                          <div className="flex-1 w-full"><div className="font-black text-slate-800 text-sm leading-tight mb-2 line-clamp-2 uppercase tracking-tighter">{product.name}</div><div className="text-[9px] font-black text-blue-600 bg-blue-50 px-2 py-1 rounded-lg uppercase tracking-widest inline-block">{product.category}</div></div>
-                                          <div className="font-black text-xl text-slate-900 mt-2">R$ {product.price.toFixed(2)}</div>
+                                          <div className="flex-1 w-full">
+                                              <div className="font-black text-slate-800 text-sm leading-tight mb-2 line-clamp-2 uppercase tracking-tighter">{item.name}</div>
+                                              <div className="flex gap-2">
+                                                  <div className="text-[9px] font-black text-blue-600 bg-blue-50 px-2 py-1 rounded-lg uppercase tracking-widest inline-block">{item.type === 'COMPOSITE' ? 'Prato' : 'Revenda'}</div>
+                                                  <div className={`text-[9px] font-black px-2 py-1 rounded-lg uppercase tracking-widest inline-block ${item.quantity <= item.minQuantity && item.type !== 'COMPOSITE' ? 'bg-red-50 text-red-600' : 'bg-gray-50 text-gray-500'}`}>
+                                                      {item.type === 'COMPOSITE' ? 'Receita' : `Est: ${item.quantity}`}
+                                                  </div>
+                                              </div>
+                                          </div>
+                                          <div className="font-black text-xl text-slate-900 mt-2">R$ {item.salePrice.toFixed(2)}</div>
                                       </button>
                                   ))}
                               </div>
@@ -263,17 +292,17 @@ export const CashierDashboard: React.FC = () => {
                           <div className="lg:w-1/3 bg-white rounded-[2.5rem] shadow-2xl border border-gray-100 flex flex-col h-full overflow-hidden animate-fade-in">
                               <div className="p-6 bg-slate-900 text-white shrink-0 flex items-center gap-3"><ShoppingCart size={24} className="text-blue-400"/><h3 className="font-black text-xl uppercase tracking-tighter">Venda Balcão</h3></div>
                               <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar">
-                                  {posCart.map((item, idx) => (
+                                  {posCart.map((cartItem, idx) => (
                                       <div key={idx} className="flex justify-between items-center bg-gray-50 p-4 rounded-2xl relative group animate-fade-in">
-                                          <div className="flex-1 pr-4"><div className="text-sm font-black text-slate-800">{item.product.name}</div><div className="text-[10px] font-bold text-gray-400 mt-0.5">{item.quantity} x R$ {item.product.price.toFixed(2)}</div></div>
-                                          <div className="font-black text-slate-900 mr-4">R$ {(item.quantity * item.product.price).toFixed(2)}</div>
+                                          <div className="flex-1 pr-4"><div className="text-sm font-black text-slate-800">{cartItem.item.name}</div><div className="text-[10px] font-bold text-gray-400 mt-0.5">{cartItem.quantity} x R$ {cartItem.item.salePrice.toFixed(2)}</div></div>
+                                          <div className="font-black text-slate-900 mr-4">R$ {(cartItem.quantity * cartItem.item.salePrice).toFixed(2)}</div>
                                           <button onClick={() => setPosCart(posCart.filter((_, i) => i !== idx))} className="text-red-400 hover:text-red-600 transition-colors p-2"><Trash2 size={18}/></button>
                                       </div>
                                   ))}
-                                  {posCart.length === 0 && <div className="h-full flex flex-col items-center justify-center text-gray-300 opacity-40 py-20"><ShoppingCart size={64} strokeWidth={1} /><p className="font-black uppercase text-xs mt-2">Carrinho Vazio</p></div>}
+                                  {posCart.length === 0 && <div className="h-full flex flex-col items-center justify-center text-gray-300 opacity-40 py-20"><Package size={64} strokeWidth={1} /><p className="font-black uppercase text-xs mt-2">Selecione Itens do Estoque</p></div>}
                               </div>
                               <div className="p-8 bg-white border-t space-y-6 shrink-0 safe-area-bottom">
-                                  <div className="flex justify-between items-center"><span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Total Geral</span><span className="text-4xl font-black text-blue-600">R$ {posCart.reduce((acc, item) => acc + (item.product.price * item.quantity), 0).toFixed(2)}</span></div>
+                                  <div className="flex justify-between items-center"><span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Total Geral</span><span className="text-4xl font-black text-blue-600">R$ {posCart.reduce((acc, cartItem) => acc + (cartItem.item.salePrice * cartItem.quantity), 0).toFixed(2)}</span></div>
                                   <div className="grid grid-cols-2 gap-3">
                                       <button onClick={() => handlePosSale('CASH')} className="py-4 bg-emerald-600 text-white rounded-2xl font-black text-[10px] uppercase shadow-lg shadow-emerald-600/20 active:scale-95 transition-all">Dinheiro</button>
                                       <button onClick={() => handlePosSale('PIX')} className="py-4 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase shadow-lg shadow-slate-900/20 active:scale-95 transition-all">PIX</button>
