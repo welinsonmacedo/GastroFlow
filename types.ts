@@ -124,6 +124,7 @@ export interface InventoryItem {
     image?: string;
     recipe?: InventoryRecipeItem[];
     isExtra: boolean; 
+    targetCategories?: string[]; // Categorias onde este adicional aparece
 }
 
 export interface InventoryLog {

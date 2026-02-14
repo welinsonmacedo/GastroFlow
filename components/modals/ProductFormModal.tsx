@@ -3,12 +3,12 @@ import React, { useState, useEffect } from 'react';
 import { Modal } from '../Modal';
 import { Button } from '../Button';
 import { ImageUploader } from '../ImageUploader';
-import { useMenu } from '../../context/MenuContext'; // NEW
+import { useMenu } from '../../context/MenuContext';
 import { useRestaurant } from '../../context/RestaurantContext';
 import { useInventory } from '../../context/InventoryContext';
 import { useUI } from '../../context/UIContext';
 import { Product, ProductType } from '../../types';
-import { Archive, DollarSign, Layers, CheckSquare, Square, ImageIcon, Tag } from 'lucide-react';
+import { Archive, DollarSign, Layers, CheckSquare, Square, ImageIcon } from 'lucide-react';
 
 interface ProductFormModalProps {
   isOpen: boolean;
@@ -18,14 +18,12 @@ interface ProductFormModalProps {
 
 export const ProductFormModal: React.FC<ProductFormModalProps> = ({ isOpen, onClose, productToEdit }) => {
   const { state: menuState, addProduct, updateProduct } = useMenu();
-  const { state: restState } = useRestaurant(); // Only needed for general restaurant info if any, actually menuState.products covers products now
+  const { state: restState } = useRestaurant(); 
   const { state: invState } = useInventory();
   const { showAlert } = useUI();
 
   const [selectedStockId, setSelectedStockId] = useState('');
-  const [isExtra, setIsExtra] = useState(false);
   const [selectedExtraIds, setSelectedExtraIds] = useState<string[]>([]);
-  const [selectedTargetCategories, setSelectedTargetCategories] = useState<string[]>([]);
   
   // Form States
   const [name, setName] = useState('');
@@ -44,9 +42,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({ isOpen, onCl
             setDescription(productToEdit.description);
             setImage(productToEdit.image);
             setSelectedStockId(productToEdit.linkedInventoryItemId || '');
-            setIsExtra(productToEdit.isExtra || false);
             setSelectedExtraIds(productToEdit.linkedExtraIds || []);
-            setSelectedTargetCategories(productToEdit.targetCategories || []);
         } else {
             setName('');
             setPrice('');
@@ -54,31 +50,24 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({ isOpen, onCl
             setDescription('');
             setImage('');
             setSelectedStockId('');
-            setIsExtra(false);
             setSelectedExtraIds([]);
-            setSelectedTargetCategories([]);
         }
     }
   }, [isOpen, productToEdit]);
 
   const availableForMenu = invState.inventory.filter(i => 
       (i.type === 'RESALE' || i.type === 'COMPOSITE') && 
-      !menuState.products.some(p => p.linkedInventoryItemId === i.id && (!productToEdit || p.id !== productToEdit.id))
+      !menuState.products.some(p => p.linkedInventoryItemId === i.id && (!productToEdit || p.id !== productToEdit.id)) &&
+      !i.isExtra // Filtra fora os extras, pois aqui só cadastramos produtos principais
   );
 
-  const allAvailableExtras = menuState.products.filter(p => p.isExtra && (!productToEdit || p.id !== productToEdit.id));
-
-  // Obtém todas as categorias usadas por produtos que NÃO são extras
-  const existingCategories = Array.from(new Set(menuState.products.filter(p => !p.isExtra).map(p => p.category))).sort();
-  // Se não houver nenhuma, sugere algumas padrões
-  const displayCategories = existingCategories.length > 0 ? existingCategories : ['Lanches', 'Pizzas', 'Bebidas', 'Sobremesas', 'Pratos Principais'];
+  // Lista de Extras disponíveis (Aqueles configurados no Estoque como Extras)
+  // O InventoryContext garante que se isExtra=true no estoque, existe um produto oculto correspondente.
+  // Filtramos aqui produtos que são extras.
+  const allAvailableExtras = menuState.products.filter(p => p.isExtra);
 
   const toggleExtraSelection = (id: string) => {
       setSelectedExtraIds(prev => prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]);
-  };
-
-  const toggleTargetCategory = (cat: string) => {
-      setSelectedTargetCategories(prev => prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat]);
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -94,13 +83,13 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({ isOpen, onCl
           const productData = {
               name: name || stockItem.name,
               price: parseFloat(price),
-              category: isExtra ? 'Adicionais' : category,
+              category: category,
               description,
               image: image || stockItem.image || '',
               linkedInventoryItemId: stockItem.id, 
-              isExtra: isExtra,
-              linkedExtraIds: isExtra ? [] : selectedExtraIds,
-              targetCategories: isExtra ? selectedTargetCategories : [], // Salva apenas se for extra
+              isExtra: false, // Produtos criados aqui nunca são extras
+              linkedExtraIds: selectedExtraIds,
+              targetCategories: [],
               costPrice: stockItem.costPrice || 0,
               type: stockItem.type === 'RESALE' ? ProductType.BAR : ProductType.KITCHEN,
               isVisible: true
@@ -111,9 +100,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({ isOpen, onCl
                   ...productToEdit, 
                   ...productData,
                   linkedInventoryItemId: productData.linkedInventoryItemId,
-                  isExtra: productData.isExtra,
-                  linkedExtraIds: productData.linkedExtraIds,
-                  targetCategories: productData.targetCategories
+                  linkedExtraIds: productData.linkedExtraIds
               } as Product);
           } else {
               await addProduct({
@@ -122,7 +109,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({ isOpen, onCl
               });
           }
           
-          showAlert({ title: "Sucesso", message: isExtra ? "Adicional salvo com sucesso!" : "Produto salvo no cardápio!", type: 'SUCCESS' });
+          showAlert({ title: "Sucesso", message: "Produto salvo no cardápio!", type: 'SUCCESS' });
           onClose();
       } catch (error: any) {
           console.error("Erro ao salvar produto:", error);
@@ -145,7 +132,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({ isOpen, onCl
         <form onSubmit={handleSave} className="space-y-8">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 
-                {/* Coluna 1: Origem e Tipo */}
+                {/* Coluna 1: Origem */}
                 <div className="space-y-6">
                     <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200">
                         <h4 className="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
@@ -180,37 +167,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({ isOpen, onCl
                                     </option>
                                 )}
                             </select>
-                            <p className="text-[10px] text-slate-400 leading-tight">Ao selecionar um item do estoque, o sistema gerencia automaticamente o custo médio e a baixa de estoque na venda.</p>
-                        </div>
-                    </div>
-
-                    <div className={`p-6 rounded-2xl border transition-all ${isExtra ? 'bg-orange-50 border-orange-200' : 'bg-white border-slate-200'}`}>
-                        <div className="flex items-center justify-between mb-4">
-                            <h4 className={`text-sm font-bold flex items-center gap-2 ${isExtra ? 'text-orange-800' : 'text-slate-800'}`}>
-                                <Layers size={16}/> 2. Tipo de Venda
-                            </h4>
-                            <button 
-                                type="button"
-                                onClick={() => {
-                                    const newVal = !isExtra;
-                                    setIsExtra(newVal);
-                                    if(newVal) setCategory('Adicionais');
-                                    else setCategory('Lanches'); // Reset padrão
-                                }}
-                                className={`p-1.5 rounded-lg transition-all ${isExtra ? 'bg-orange-600 text-white shadow-lg shadow-orange-200' : 'bg-slate-100 text-slate-400 border'}`}
-                            >
-                                {isExtra ? <CheckSquare size={20}/> : <Square size={20}/>}
-                            </button>
-                        </div>
-                        <div>
-                            <p className={`text-xs font-bold mb-1 ${isExtra ? 'text-orange-700' : 'text-slate-700'}`}>
-                                {isExtra ? 'PRODUTO ADICIONAL (EXTRA)' : 'PRODUTO PRINCIPAL'}
-                            </p>
-                            <p className="text-[10px] text-slate-500 leading-relaxed">
-                                {isExtra 
-                                    ? 'Este item NÃO aparecerá no cardápio principal. Ele será oferecido como um opcional de outros pratos.' 
-                                    : 'Este item aparecerá nas categorias principais do cardápio para o cliente escolher.'}
-                            </p>
+                            <p className="text-[10px] text-slate-400 leading-tight">Itens marcados como "Extra" no estoque não aparecem aqui.</p>
                         </div>
                     </div>
                 </div>
@@ -219,7 +176,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({ isOpen, onCl
                 <div className="space-y-6">
                     <div className="bg-white p-6 rounded-2xl border border-slate-200 space-y-4">
                         <h4 className="text-sm font-bold text-slate-800 flex items-center gap-2">
-                            <DollarSign size={16} className="text-green-600"/> 3. Dados Comerciais
+                            <DollarSign size={16} className="text-green-600"/> 2. Dados Comerciais
                         </h4>
                         
                         <div>
@@ -259,45 +216,18 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({ isOpen, onCl
                             </div>
                         </div>
 
-                        {!isExtra && (
-                            <div>
-                                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Categoria Principal</label>
-                                <select 
-                                    className="w-full border-2 p-3 rounded-xl text-sm bg-white focus:border-blue-500 outline-none" 
-                                    value={category}
-                                    onChange={e => setCategory(e.target.value)}
-                                >
-                                    {['Lanches', 'Pizzas', 'Pratos Principais', 'Acompanhamentos', 'Bebidas', 'Sobremesas'].map(c => (
-                                        <option key={c} value={c}>{c}</option>
-                                    ))}
-                                </select>
-                            </div>
-                        )}
-
-                        {isExtra && (
-                            <div className="bg-orange-50 p-4 rounded-xl border border-orange-200">
-                                <label className="block text-xs font-bold text-orange-800 uppercase mb-2 flex items-center gap-2">
-                                    <Tag size={12}/> Disponível nas Categorias:
-                                </label>
-                                <div className="max-h-40 overflow-y-auto space-y-1">
-                                    {displayCategories.map(cat => (
-                                        <label key={cat} className="flex items-center gap-2 p-1.5 hover:bg-orange-100 rounded cursor-pointer">
-                                            <div className={`w-4 h-4 border-2 rounded flex items-center justify-center ${selectedTargetCategories.includes(cat) ? 'bg-orange-600 border-orange-600' : 'bg-white border-orange-300'}`}>
-                                                {selectedTargetCategories.includes(cat) && <CheckSquare size={12} className="text-white"/>}
-                                            </div>
-                                            <input 
-                                                type="checkbox" 
-                                                className="hidden" 
-                                                checked={selectedTargetCategories.includes(cat)} 
-                                                onChange={() => toggleTargetCategory(cat)} 
-                                            />
-                                            <span className="text-xs font-bold text-orange-900">{cat}</span>
-                                        </label>
-                                    ))}
-                                </div>
-                                <p className="text-[9px] text-orange-700 mt-2 italic">Selecione quais tipos de prato podem ter este adicional.</p>
-                            </div>
-                        )}
+                        <div>
+                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Categoria Principal</label>
+                            <select 
+                                className="w-full border-2 p-3 rounded-xl text-sm bg-white focus:border-blue-500 outline-none" 
+                                value={category}
+                                onChange={e => setCategory(e.target.value)}
+                            >
+                                {['Lanches', 'Pizzas', 'Pratos Principais', 'Acompanhamentos', 'Bebidas', 'Sobremesas'].map(c => (
+                                    <option key={c} value={c}>{c}</option>
+                                ))}
+                            </select>
+                        </div>
 
                         <div>
                             <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Descrição Curta</label>
@@ -313,39 +243,37 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({ isOpen, onCl
 
                 {/* Coluna 3: Adicionais e Imagem */}
                 <div className="space-y-6">
-                    {!isExtra && (
-                        <div className="bg-blue-50 p-6 rounded-2xl border border-blue-100 flex flex-col h-[300px]">
-                            <h4 className="text-sm font-bold text-blue-800 mb-4 flex items-center gap-2 shrink-0">
-                                <Layers size={16}/> 4. Adicionais Vinculados
-                            </h4>
-                            <p className="text-[10px] text-blue-600 mb-2">Selecione quais itens extras podem ser adicionados a este prato.</p>
-                            <div className="flex-1 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
-                                {allAvailableExtras.map(extra => (
-                                    <div 
-                                        key={extra.id} 
-                                        onClick={() => toggleExtraSelection(extra.id)}
-                                        className={`flex items-center justify-between p-3 rounded-xl border-2 cursor-pointer transition-all ${selectedExtraIds.includes(extra.id) ? 'bg-white border-blue-500 ring-2 ring-blue-100' : 'bg-white/50 border-transparent opacity-60 hover:opacity-100 hover:border-slate-200'}`}
-                                    >
-                                        <div className="flex items-center gap-3">
-                                            {selectedExtraIds.includes(extra.id) ? <CheckSquare size={18} className="text-blue-600"/> : <Square size={18} className="text-slate-300"/>}
-                                            <span className="text-xs font-bold text-slate-700">{extra.name}</span>
-                                        </div>
-                                        <span className="text-[10px] font-extrabold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100">+ R$ {extra.price.toFixed(2)}</span>
+                    <div className="bg-blue-50 p-6 rounded-2xl border border-blue-100 flex flex-col h-[300px]">
+                        <h4 className="text-sm font-bold text-blue-800 mb-4 flex items-center gap-2 shrink-0">
+                            <Layers size={16}/> 3. Adicionais Específicos
+                        </h4>
+                        <p className="text-[10px] text-blue-600 mb-2">Vincule itens extras para este prato (além dos automáticos por categoria).</p>
+                        <div className="flex-1 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+                            {allAvailableExtras.map(extra => (
+                                <div 
+                                    key={extra.id} 
+                                    onClick={() => toggleExtraSelection(extra.id)}
+                                    className={`flex items-center justify-between p-3 rounded-xl border-2 cursor-pointer transition-all ${selectedExtraIds.includes(extra.id) ? 'bg-white border-blue-500 ring-2 ring-blue-100' : 'bg-white/50 border-transparent opacity-60 hover:opacity-100 hover:border-slate-200'}`}
+                                >
+                                    <div className="flex items-center gap-3">
+                                        {selectedExtraIds.includes(extra.id) ? <CheckSquare size={18} className="text-blue-600"/> : <Square size={18} className="text-slate-300"/>}
+                                        <span className="text-xs font-bold text-slate-700">{extra.name}</span>
                                     </div>
-                                ))}
-                                {allAvailableExtras.length === 0 && (
-                                    <div className="text-center py-10">
-                                        <p className="text-[10px] text-blue-400 italic">Nenhum "Produto Adicional" cadastrado ainda.</p>
-                                        <p className="text-[9px] text-blue-300">Cadastre itens como "Adicional" (Passo 2) para que apareçam aqui.</p>
-                                    </div>
-                                )}
-                            </div>
+                                    <span className="text-[10px] font-extrabold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100">+ R$ {extra.price.toFixed(2)}</span>
+                                </div>
+                            ))}
+                            {allAvailableExtras.length === 0 && (
+                                <div className="text-center py-10">
+                                    <p className="text-[10px] text-blue-400 italic">Nenhum Adicional Disponível.</p>
+                                    <p className="text-[9px] text-blue-300">Cadastre itens como "Adicional de Venda" no Estoque.</p>
+                                </div>
+                            )}
                         </div>
-                    )}
+                    </div>
 
                     <div className="bg-white p-6 rounded-2xl border border-slate-200">
                         <h4 className="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
-                            <ImageIcon size={16} className="text-purple-600"/> 5. Imagem
+                            <ImageIcon size={16} className="text-purple-600"/> 4. Imagem
                         </h4>
                         <ImageUploader 
                             value={image || invState.inventory.find(i => i.id === selectedStockId)?.image || ''} 

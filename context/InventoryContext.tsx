@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { InventoryItem, InventoryRecipeItem, InventoryLog, Supplier, PurchaseEntry, InventoryType } from '../types';
+import { InventoryItem, InventoryRecipeItem, InventoryLog, Supplier, PurchaseEntry, InventoryType, ProductType } from '../types';
 import { supabase } from '../lib/supabase';
 import { useRestaurant } from './RestaurantContext'; 
 import { useUI } from './UIContext';
@@ -68,11 +68,12 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
                     quantity: Number(i.quantity) || 0, 
                     minQuantity: Number(i.min_quantity) || 0, 
                     costPrice: Number(i.cost_price) || 0, 
-                    salePrice: Number(i.sale_price) || 0, // Novo campo
+                    salePrice: Number(i.sale_price) || 0, 
                     type: (i.type || 'INGREDIENT').toUpperCase() as InventoryType, 
                     image: i.image, 
                     recipe: recipeItems,
-                    isExtra: i.is_extra || false
+                    isExtra: i.is_extra || false,
+                    targetCategories: i.target_categories || []
                 };
             });
             
@@ -115,6 +116,39 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     return () => { supabase.removeChannel(channel); };
   }, [tenantId, fetchData]);
 
+  // Função auxiliar para sincronizar o adicional na tabela de produtos
+  const syncExtraToProducts = async (item: InventoryItem, inventoryId: string) => {
+      if (!tenantId) return;
+
+      if (item.isExtra) {
+          // Busca se já existe o produto vinculado
+          const { data: existingProd } = await supabase.from('products').select('id').eq('linked_inventory_item_id', inventoryId).eq('is_extra', true).maybeSingle();
+          
+          const productPayload = {
+              tenant_id: tenantId,
+              name: item.name,
+              price: item.salePrice || 0, // Adicionais usam o SalePrice do estoque
+              cost_price: item.costPrice || 0,
+              linked_inventory_item_id: inventoryId,
+              is_extra: true,
+              target_categories: item.targetCategories || [],
+              category: 'Adicionais',
+              type: item.type === 'RESALE' ? ProductType.BAR : ProductType.KITCHEN,
+              image: item.image,
+              is_visible: true
+          };
+
+          if (existingProd) {
+              await supabase.from('products').update(productPayload).eq('id', existingProd.id);
+          } else {
+              await supabase.from('products').insert(productPayload);
+          }
+      } else {
+          // Se deixou de ser Extra, remove o produto vinculado que seja extra
+          await supabase.from('products').delete().eq('linked_inventory_item_id', inventoryId).eq('is_extra', true);
+      }
+  };
+
   const addInventoryItem = async (item: InventoryItem) => {
       if(!tenantId) return;
       
@@ -125,10 +159,11 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           quantity: item.quantity || 0,
           min_quantity: item.minQuantity || 0, 
           cost_price: item.costPrice || 0, 
-          sale_price: item.salePrice || 0, // Envia salePrice
+          sale_price: item.salePrice || 0, 
           type: item.type, 
           image: item.image,
-          is_extra: item.isExtra 
+          is_extra: item.isExtra,
+          target_categories: item.targetCategories
       };
 
       const { data: newItem, error } = await supabase.from('inventory_items').insert(payload).select().single();
@@ -149,6 +184,11 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           const { error: recipeError } = await supabase.from('inventory_recipes').insert(recipes);
           if (recipeError) console.error("Erro ao salvar receita:", recipeError);
       }
+
+      // Sincronizar Produto se for Extra
+      if (newItem) {
+          await syncExtraToProducts(item, newItem.id);
+      }
   };
 
   const updateInventoryItem = async (item: InventoryItem) => {
@@ -162,7 +202,8 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           sale_price: item.salePrice || 0,
           image: item.image, 
           type: item.type,
-          is_extra: item.isExtra
+          is_extra: item.isExtra,
+          target_categories: item.targetCategories
       };
 
       const { error } = await supabase.from('inventory_items').update(payload).eq('id', item.id);
@@ -173,7 +214,6 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       }
 
       if (item.type === 'COMPOSITE') {
-          // Remove receitas antigas para evitar duplicação ou dados órfãos
           await supabase.from('inventory_recipes').delete().eq('parent_item_id', item.id);
           
           if (item.recipe && item.recipe.length > 0) {
@@ -187,6 +227,9 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
               if (recError) console.error("Erro ao atualizar receita:", recError);
           }
       }
+
+      // Sincronizar Produto se for Extra
+      await syncExtraToProducts(item, item.id);
   };
 
   const deleteInventoryItem = async (itemId: string) => {
@@ -197,6 +240,11 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           }
           throw error;
       }
+      // Produto vinculado via FK com ON DELETE SET NULL ou CASCADE, mas se for CASCADE no produto->inventory, ok.
+      // Se product aponta para inventory e inventory morre, product morre se tiver CASCADE. 
+      // Nosso schema 04_menu_products tem ON DELETE SET NULL.
+      // Então precisamos limpar manualmente os extras gerados
+      await supabase.from('products').delete().eq('linked_inventory_item_id', itemId).eq('is_extra', true);
   };
 
   const updateStock = async (itemId: string, quantity: number, operation: 'IN' | 'OUT', reason: string, userName: string = 'Sistema') => {

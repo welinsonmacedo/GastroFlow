@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
-import { useMenu } from '../../context/MenuContext'; // Changed from RestaurantContext
-import { useRestaurant } from '../../context/RestaurantContext'; // Still needed for dispatch generic updates? No, MenuContext handles product updates
+import { useMenu } from '../../context/MenuContext'; 
+import { useRestaurant } from '../../context/RestaurantContext'; 
 import { useInventory } from '../../context/InventoryContext';
 import { useUI } from '../../context/UIContext';
 import { Button } from '../../components/Button';
@@ -21,8 +21,8 @@ export const AdminProducts: React.FC = () => {
   
   const sortedProducts = [...menuState.products].sort((a,b) => (a.sortOrder || 0) - (b.sortOrder || 0));
   
-  // Categorias dinâmicas + Adicionais
-  const categories = ['Todas', 'Adicionais', ...Array.from(new Set(menuState.products.filter(p => !p.isExtra).map(p => p.category)))];
+  // Categorias dinâmicas (Apenas de produtos visíveis/principais)
+  const categories = ['Todas', ...Array.from(new Set(menuState.products.filter(p => !p.isExtra).map(p => p.category)))];
 
   const handleOpenAdd = () => {
       setEditingProduct(null);
@@ -50,19 +50,19 @@ export const AdminProducts: React.FC = () => {
       setDraggedItemIndex(null);
   };
 
+  // Filtra produtos normais e exclui Extras
   const displayedProducts = sortedProducts.filter(p => {
+      const isNotExtra = !p.isExtra; // Importante: Esconde extras
       const matchSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase());
       
       let matchCategory = false;
       if (filterCategory === 'Todas') {
           matchCategory = true;
-      } else if (filterCategory === 'Adicionais') {
-          matchCategory = p.isExtra === true;
       } else {
-          matchCategory = p.category === filterCategory && !p.isExtra;
+          matchCategory = p.category === filterCategory;
       }
 
-      return matchSearch && matchCategory;
+      return matchSearch && matchCategory && isNotExtra;
   });
 
   return (
@@ -72,7 +72,7 @@ export const AdminProducts: React.FC = () => {
                 <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
                     <Utensils size={24} className="text-blue-600"/> Gestão de Cardápio
                 </h2>
-                <p className="text-sm text-gray-500">Configure produtos de venda e seus opcionais (adicionais).</p>
+                <p className="text-sm text-gray-500">Configure produtos de venda principais. (Adicionais são geridos no Estoque)</p>
             </div>
             <Button onClick={handleOpenAdd} className="w-full md:w-auto">
                 <Plus size={18}/> Novo Produto
@@ -128,7 +128,6 @@ export const AdminProducts: React.FC = () => {
                             <div className="flex-1 min-w-0">
                                 <div className="font-bold text-gray-800 truncate flex items-center gap-2">
                                     {product.name}
-                                    {product.isExtra && <span className="bg-orange-100 text-orange-700 text-[10px] px-2 py-0.5 rounded-full font-extrabold uppercase">Adicional</span>}
                                 </div>
                                 <div className="text-xs text-gray-500 flex items-center gap-2 mt-0.5">
                                     <span className="bg-gray-100 px-2 py-0.5 rounded">{product.category}</span>
@@ -160,10 +159,7 @@ export const AdminProducts: React.FC = () => {
                 {displayedProducts.length === 0 && (
                     <div className="p-20 text-center text-gray-400 flex flex-col items-center gap-2">
                         <Tag size={48} className="opacity-10"/>
-                        <p>Nenhum produto encontrado nesta visualização.</p>
-                        {filterCategory === 'Adicionais' && (
-                            <p className="text-xs text-orange-500">Certifique-se de marcar a opção "Produto Adicional" ao criar o item.</p>
-                        )}
+                        <p>Nenhum produto principal encontrado nesta visualização.</p>
                     </div>
                 )}
             </div>

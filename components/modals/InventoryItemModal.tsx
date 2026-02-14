@@ -4,9 +4,10 @@ import { Modal } from '../Modal';
 import { Button } from '../Button';
 import { ImageUploader } from '../ImageUploader';
 import { useInventory } from '../../context/InventoryContext';
+import { useMenu } from '../../context/MenuContext'; // Importando para pegar categorias existentes
 import { useUI } from '../../context/UIContext';
 import { InventoryItem, InventoryType } from '../../types';
-import { Layers, CheckSquare, Square, Plus, X } from 'lucide-react';
+import { Layers, CheckSquare, Square, Plus, X, Tag } from 'lucide-react';
 
 interface InventoryItemModalProps {
   isOpen: boolean;
@@ -16,11 +17,12 @@ interface InventoryItemModalProps {
 
 export const InventoryItemModal: React.FC<InventoryItemModalProps> = ({ isOpen, onClose, itemToEdit }) => {
   const { state, addInventoryItem, updateInventoryItem } = useInventory();
+  const { state: menuState } = useMenu(); // Para listar categorias
   const { showAlert } = useUI();
 
   // Estado local do formulário
   const [form, setForm] = useState<Partial<InventoryItem>>({
-    name: '', unit: 'UN', type: 'INGREDIENT', quantity: 0, minQuantity: 5, costPrice: 0, salePrice: 0, isExtra: false, image: ''
+    name: '', unit: 'UN', type: 'INGREDIENT', quantity: 0, minQuantity: 5, costPrice: 0, salePrice: 0, isExtra: false, image: '', targetCategories: []
   });
 
   // Estado local da receita
@@ -34,11 +36,24 @@ export const InventoryItemModal: React.FC<InventoryItemModalProps> = ({ isOpen, 
         setForm({ ...itemToEdit });
         setRecipeItems(itemToEdit.recipe?.map(r => ({ ingredientId: r.ingredientId, quantity: r.quantity })) || []);
       } else {
-        setForm({ name: '', unit: 'UN', type: 'INGREDIENT', quantity: 0, minQuantity: 5, costPrice: 0, salePrice: 0, isExtra: false, image: '' });
+        setForm({ name: '', unit: 'UN', type: 'INGREDIENT', quantity: 0, minQuantity: 5, costPrice: 0, salePrice: 0, isExtra: false, image: '', targetCategories: [] });
         setRecipeItems([]);
       }
     }
   }, [isOpen, itemToEdit]);
+
+  // Lista de categorias existentes no cardápio para seleção
+  const existingCategories = Array.from(new Set(menuState.products.filter(p => !p.isExtra).map(p => p.category))).sort();
+  const displayCategories = existingCategories.length > 0 ? existingCategories : ['Lanches', 'Pizzas', 'Bebidas', 'Sobremesas', 'Pratos Principais'];
+
+  const toggleTargetCategory = (cat: string) => {
+      const current = form.targetCategories || [];
+      if (current.includes(cat)) {
+          setForm({ ...form, targetCategories: current.filter(c => c !== cat) });
+      } else {
+          setForm({ ...form, targetCategories: [...current, cat] });
+      }
+  };
 
   const calculateRecipeCost = () => {
     return recipeItems.reduce((acc, item) => {
@@ -162,14 +177,41 @@ export const InventoryItemModal: React.FC<InventoryItemModalProps> = ({ isOpen, 
               </div>
             )}
 
-            <div className="bg-orange-50 p-6 rounded-2xl border border-orange-100 flex justify-between items-center">
-              <div className="pr-4">
-                <h4 className="text-xs font-black text-orange-700 uppercase tracking-widest mb-1">Adicional de Venda</h4>
-                <p className="text-[10px] text-orange-600 font-medium">Permite oferecer este item como opcional pago no cardápio.</p>
+            <div className={`p-6 rounded-2xl border transition-all ${form.isExtra ? 'bg-orange-50 border-orange-200' : 'bg-gray-50 border-gray-100'}`}>
+              <div className="flex justify-between items-center mb-4">
+                  <div className="pr-4">
+                    <h4 className={`text-xs font-black uppercase tracking-widest mb-1 ${form.isExtra ? 'text-orange-700' : 'text-slate-500'}`}>Adicional de Venda</h4>
+                    <p className={`text-[10px] font-medium ${form.isExtra ? 'text-orange-600' : 'text-slate-400'}`}>Permite oferecer este item como opcional pago no cardápio.</p>
+                  </div>
+                  <button type="button" onClick={() => setForm({ ...form, isExtra: !form.isExtra })} className={`p-2 rounded-xl transition-all ${form.isExtra ? 'bg-orange-600 text-white shadow-lg' : 'bg-white border text-slate-200'}`}>
+                    {form.isExtra ? <CheckSquare size={24} /> : <Square size={24} />}
+                  </button>
               </div>
-              <button type="button" onClick={() => setForm({ ...form, isExtra: !form.isExtra })} className={`p-2 rounded-xl transition-all ${form.isExtra ? 'bg-orange-600 text-white shadow-lg' : 'bg-white border text-slate-200'}`}>
-                {form.isExtra ? <CheckSquare size={24} /> : <Square size={24} />}
-              </button>
+
+              {form.isExtra && (
+                  <div className="mt-4 pt-4 border-t border-orange-200">
+                      <label className="block text-xs font-bold text-orange-800 uppercase mb-2 flex items-center gap-2">
+                          <Tag size={12}/> Disponível nas Categorias:
+                      </label>
+                      <div className="max-h-40 overflow-y-auto space-y-1 bg-white/50 p-2 rounded-xl border border-orange-100">
+                          {displayCategories.map(cat => (
+                              <label key={cat} className="flex items-center gap-2 p-1.5 hover:bg-orange-100 rounded cursor-pointer">
+                                  <div className={`w-4 h-4 border-2 rounded flex items-center justify-center ${form.targetCategories?.includes(cat) ? 'bg-orange-600 border-orange-600' : 'bg-white border-orange-300'}`}>
+                                      {form.targetCategories?.includes(cat) && <CheckSquare size={12} className="text-white"/>}
+                                  </div>
+                                  <input 
+                                      type="checkbox" 
+                                      className="hidden" 
+                                      checked={form.targetCategories?.includes(cat)} 
+                                      onChange={() => toggleTargetCategory(cat)} 
+                                  />
+                                  <span className="text-xs font-bold text-orange-900">{cat}</span>
+                              </label>
+                          ))}
+                      </div>
+                      <p className="text-[9px] text-orange-700 mt-2 italic">Ao salvar, este item aparecerá como opção extra para produtos destas categorias.</p>
+                  </div>
+              )}
             </div>
           </div>
 
@@ -178,9 +220,9 @@ export const InventoryItemModal: React.FC<InventoryItemModalProps> = ({ isOpen, 
               <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">3. Financeiro e Alertas</h4>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold mb-1 text-emerald-700">Preço de Venda (PDV)</label>
+                  <label className="block text-xs font-bold mb-1 text-emerald-700">Preço de Venda (PDV/Extra)</label>
                   <input type="number" step="0.01" className="w-full border-2 p-3 rounded-xl font-black text-emerald-600 border-emerald-100 bg-emerald-50" value={form.salePrice} onChange={e => setForm({ ...form, salePrice: parseFloat(e.target.value) })} />
-                  <p className="text-[10px] text-gray-400 mt-1">Usado apenas para vendas diretas no caixa.</p>
+                  <p className="text-[10px] text-gray-400 mt-1">Usado para vendas diretas no caixa ou como valor do adicional.</p>
                 </div>
                 <div>
                   <label className="block text-xs font-bold mb-1">Custo Médio (R$)</label>
