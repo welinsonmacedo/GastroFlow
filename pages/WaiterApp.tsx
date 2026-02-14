@@ -101,7 +101,22 @@ export const WaiterApp: React.FC = () => {
 
       return (
           <div className="flex flex-col h-full bg-gray-50 overflow-hidden font-sans">
-              <WaiterProductModal isOpen={!!productModal} onClose={() => setProductModal(null)} product={productModal} onConfirm={(item) => setCart([...cart, item])} />
+              <WaiterProductModal 
+                  isOpen={!!productModal} 
+                  onClose={() => setProductModal(null)} 
+                  product={productModal} 
+                  onConfirm={(item) => {
+                      const extras = item.selectedExtraIds
+                          .map(id => menuState.products.find(p => p.id === id))
+                          .filter((p): p is Product => !!p);
+                      setCart([...cart, { 
+                          product: item.product, 
+                          quantity: item.qty, 
+                          notes: item.note, 
+                          extras 
+                      }]);
+                  }} 
+              />
               <header className="bg-white/80 backdrop-blur-md border-b p-4 flex items-center justify-between shadow-sm sticky top-0 z-30">
                   <div className="flex items-center gap-3">
                       <button onClick={() => setOrderingTableId(null)} className="p-3 bg-gray-100 hover:bg-gray-200 rounded-2xl text-slate-600 transition-colors"><ArrowLeft size={24}/></button>

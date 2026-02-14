@@ -8,9 +8,9 @@ import { useUI } from '../context/UIContext';
 import { Button } from '../components/Button';
 import { TableStatus, Product, Order } from '../types';
 import { 
-    ShoppingCart, ChefHat, Info, Plus, Minus, X, Lock, 
+    ShoppingCart, ChefHat, Plus, Minus, X, Lock, 
     Receipt, Loader2, Bell, ArrowLeft, Search, Edit3, 
-    Zap, Clock, CheckSquare, Square, Trash2, ArrowRight, 
+    Zap, Clock, Trash2, ArrowRight, 
     Activity, AlertCircle, RefreshCcw 
 } from 'lucide-react';
 
@@ -116,6 +116,9 @@ export const ClientApp: React.FC = () => {
             { product: selectedProduct, quantity: modalQuantity, notes: finalNote.trim(), extras: chosenExtras }
         ]);
         setSelectedProduct(null);
+        setModalQuantity(1);
+        setModalNotes('');
+        setSelectedExtraIds([]);
     };
 
     const handleConfirmOrder = async () => {
@@ -468,6 +471,55 @@ export const ClientApp: React.FC = () => {
                                     onClick={handleCallWaiter}
                                 >
                                     {waiterCalled ? 'Solicitação Enviada' : 'Chamar Garçom na Mesa'}
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* MODAL ADD TO CART */}
+                {selectedProduct && (
+                    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 animate-fade-in">
+                        <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col max-h-[90vh]">
+                            <div className="bg-slate-900 text-white p-6 flex justify-between items-center shrink-0">
+                                <h3 className="font-black text-xl truncate pr-4">{selectedProduct.name}</h3>
+                                <button onClick={() => setSelectedProduct(null)} className="bg-white/10 p-2 rounded-full hover:bg-red-500 hover:text-white transition-colors"><X size={20}/></button>
+                            </div>
+                            <div className="p-6 space-y-6 overflow-y-auto custom-scrollbar">
+                                <div>
+                                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-4 text-center">Quantidade</label>
+                                    <div className="flex items-center gap-6 justify-center">
+                                        <button onClick={() => setModalQuantity(Math.max(1, modalQuantity - 1))} className="p-4 bg-gray-100 rounded-2xl hover:bg-red-50 hover:text-red-600 transition-colors"><Minus size={24}/></button>
+                                        <span className="text-5xl font-black w-20 text-center text-blue-600">{modalQuantity}</span>
+                                        <button onClick={() => setModalQuantity(modalQuantity + 1)} className="p-4 bg-gray-100 rounded-2xl hover:bg-emerald-50 hover:text-emerald-600 transition-colors"><Plus size={24}/></button>
+                                    </div>
+                                </div>
+                                {selectedProduct.linkedExtraIds && selectedProduct.linkedExtraIds.length > 0 && (
+                                    <div className="border-t border-b border-gray-100 py-6 space-y-3">
+                                        <label className="block text-xs font-black text-gray-400 uppercase tracking-wider flex items-center gap-1"><Plus size={12} className="text-green-500"/> Adicionais</label>
+                                        <div className="space-y-2">
+                                            {selectedProduct.linkedExtraIds.map(id => {
+                                                const extra = menuState.products.find(p => p.id === id);
+                                                if (!extra) return null;
+                                                const isSelected = selectedExtraIds.includes(id);
+                                                return (
+                                                    <div key={id} onClick={() => setSelectedExtraIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id])} className={`flex items-center justify-between p-4 rounded-2xl border-2 transition-all cursor-pointer ${isSelected ? 'bg-orange-50 border-orange-400' : 'bg-gray-50 border-transparent hover:border-gray-200'}`}>
+                                                        <span className="text-sm font-black text-slate-700">{extra.name}</span>
+                                                        <span className="text-xs font-bold text-slate-400">+ R$ {extra.price.toFixed(2)}</span>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Observações</label>
+                                    <textarea className="w-full border-2 border-gray-100 bg-gray-50 rounded-2xl p-4 text-sm font-medium focus:border-blue-500 focus:bg-white outline-none transition-all resize-none" rows={3} placeholder="Ex: Sem cebola, ponto da carne..." value={modalNotes} onChange={e => setModalNotes(e.target.value)} />
+                                </div>
+                            </div>
+                            <div className="p-6 border-t bg-gray-50 shrink-0">
+                                <Button onClick={handleAddToCart} className="w-full py-5 text-xl font-black shadow-2xl shadow-blue-200 rounded-2xl uppercase tracking-widest">
+                                    Adicionar • R$ {((selectedProduct.price + selectedExtraIds.reduce((sum, id) => sum + (menuState.products.find(p => p.id === id)?.price || 0), 0)) * modalQuantity).toFixed(2)}
                                 </Button>
                             </div>
                         </div>

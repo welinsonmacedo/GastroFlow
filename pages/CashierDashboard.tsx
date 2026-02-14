@@ -7,7 +7,6 @@ import { useFinance } from '../context/FinanceContext';
 import { useUI } from '../context/UIContext';
 import { TableStatus, Product } from '../types';
 import { Button } from '../components/Button';
-/* Fix: Added Zap, Plus, Clock to imports from lucide-react */
 import { DollarSign, History, ShoppingCart, Search, Wallet, Receipt, Trash2, User, Lock, ArrowRight, XCircle, RefreshCcw, LayoutDashboard, CreditCard, Banknote, MapPin, Zap, Plus, Clock } from 'lucide-react';
 import { CloseRegisterModal } from '../components/modals/CloseRegisterModal';
 import { CashBleedModal } from '../components/modals/CashBleedModal';
@@ -45,7 +44,6 @@ export const CashierDashboard: React.FC = () => {
       setTimeout(() => setIsRefreshing(false), 800);
   };
 
-  /* Fix: Added handlePayment function to process payments for tables */
   const handlePayment = async (method: string) => {
       if (!selectedTableId || totalAmount <= 0) return;
       
