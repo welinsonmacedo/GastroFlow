@@ -160,6 +160,7 @@ export const ClientApp: React.FC = () => {
                 flattenedItems.push({ productId: extra.id, quantity: item.quantity, notes: `[ADICIONAL]` });
             });
         });
+        // Isso cria um NOVO pedido (Order ID único) a cada envio. Não junta com os anteriores.
         await orderDispatch({ type: 'PLACE_ORDER', tableId, items: flattenedItems });
         setCart([]);
         setView('STATUS');
@@ -251,6 +252,15 @@ export const ClientApp: React.FC = () => {
                         )}
                     </div>
                     <div className="flex gap-2">
+                        {/* Botão Chamar Garçom (Sino) no Header */}
+                        <button 
+                            onClick={handleCallWaiter} 
+                            className={`p-3 rounded-2xl bg-gray-100 text-blue-600 hover:bg-blue-50 active:scale-90 transition-all ${waiterCalled ? 'animate-pulse bg-blue-100' : ''}`}
+                            title="Chamar Garçom"
+                        >
+                            <Bell size={20} fill={waiterCalled ? "currentColor" : "none"} />
+                        </button>
+
                         <button onClick={handleManualRefresh} className={`p-3 rounded-2xl bg-gray-100 text-slate-600 transition-all ${isRefreshing ? 'animate-spin' : 'active:scale-90'}`}>
                             <RefreshCcw size={20} />
                         </button>

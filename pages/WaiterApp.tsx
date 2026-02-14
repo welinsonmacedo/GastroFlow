@@ -139,16 +139,18 @@ export const WaiterApp: React.FC = () => {
   // --- LÓGICA DE FILTRAGEM E AGRUPAMENTO ---
 
   // 1. Pedidos Ativos: Não Pagos, Não Cancelados, e status != DELIVERED
+  // IMPORTANTE: Filtra os ITENS. Se todos os itens de um pedido forem entregues, o pedido some daqui.
   const activeOrders = orderState.orders
       .filter(o => !o.isPaid && o.status !== 'CANCELLED')
       .map(o => ({
           ...o,
-          // Filtra itens dentro do pedido para mostrar apenas os não entregues na aba principal
+          // Mantém APENAS itens não entregues
           items: o.items.filter(i => i.status !== 'DELIVERED' && i.status !== 'CANCELLED')
       }))
-      .filter(o => o.items.length > 0); // Remove pedidos que ficaram vazios após o filtro
+      .filter(o => o.items.length > 0); // Se não sobrou nenhum item pendente, remove o pedido da lista ativa
 
   // 2. Pedidos Histórico: Itens Entregues
+  // Mostra apenas itens que JÁ FORAM entregues
   const historyOrders = orderState.orders
       .filter(o => !o.isPaid && o.status !== 'CANCELLED')
       .map(o => ({
@@ -457,6 +459,8 @@ export const WaiterApp: React.FC = () => {
                                                     // Filtragem interna: Não mostra itens entregues na lista ativa
                                                     const visibleItems = order.items.filter(i => i.status !== OrderStatus.DELIVERED);
                                                     const isAllReady = visibleItems.length > 0 && visibleItems.every(item => canDeliverItem(item, foodReady));
+
+                                                    if (visibleItems.length === 0) return null; // Não renderiza card vazio
 
                                                     return (
                                                         <div key={order.id} className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm mx-2">
