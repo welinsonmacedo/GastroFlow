@@ -3,12 +3,12 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useRestaurant } from '../context/RestaurantContext';
 import { useMenu } from '../context/MenuContext';
 import { useOrder } from '../context/OrderContext';
-import { useInventory } from '../context/InventoryContext'; // Adicionado InventoryContext
+import { useInventory } from '../context/InventoryContext';
 import { useUI } from '../context/UIContext';
 import { TableStatus, Product, OrderStatus } from '../types';
 import { Button } from '../components/Button';
 import { WaiterProductModal, OpenTableModal, TableActionsModal } from '../components/modals/WaiterModals';
-import { Bell, Plus, Search, ShoppingCart, ArrowLeft, Utensils, Trash2, Clock, CheckCircle, ChevronUp, ChevronDown, Zap, RefreshCcw, Lock, List, Grid, History, AlertTriangle, PackageX } from 'lucide-react';
+import { Bell, Plus, Search, ShoppingCart, ArrowLeft, Utensils, Trash2, Clock, CheckCircle, ChevronUp, ChevronDown, Zap, RefreshCcw, Lock, List, Grid, History, AlertTriangle, PackageX, CheckCheck, Check } from 'lucide-react';
 import { Modal } from '../components/Modal';
 
 const FALLBACK_SOUND_URL = "https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3";
@@ -17,7 +17,7 @@ export const WaiterApp: React.FC = () => {
   const { state: restState } = useRestaurant();
   const { state: menuState } = useMenu();
   const { state: orderState, dispatch: orderDispatch } = useOrder();
-  const { state: invState } = useInventory(); // Estado do estoque em tempo real
+  const { state: invState } = useInventory();
   
   const [activeTab, setActiveTab] = useState<'TABLES' | 'ORDERS'>('TABLES');
   const [showHistory, setShowHistory] = useState(false);
@@ -37,48 +37,10 @@ export const WaiterApp: React.FC = () => {
   const [cart, setCart] = useState<{ product: Product; quantity: number; notes: string; extras?: Product[] }[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('Todos');
-  const [isServingDrawerOpen, setIsServingDrawerOpen] = useState(false);
   const [productModal, setProductModal] = useState<Product | null>(null);
 
   const pendingCalls = orderState.serviceCalls.filter(c => c.status === 'PENDING');
   const graceMinutes = restState.businessInfo?.orderGracePeriodMinutes || 0;
-
-  // Itens prontos para servir (Drawer Inferior)
-  const readyItems = orderState.orders.flatMap(order => {
-      if (order.isPaid || order.status === 'CANCELLED') return [];
-
-      // Verifica se existe algum item de COZINHA (KITCHEN) com status READY neste pedido
-      // Isso serve de gatilho para liberar as bebidas "Com Comida"
-      const hasKitchenFoodReady = order.items.some(i => 
-          i.status === OrderStatus.READY && 
-          i.productType === 'KITCHEN'
-      );
-
-      return order.items.filter(item => {
-              const product = menuState.products.find(p => p.id === item.productId);
-              if (product?.isExtra || item.notes?.includes('[ADICIONAL')) return false;
-              
-              // 1. Se o item já está pronto (Cozinha marcou READY)
-              if (item.status === OrderStatus.READY) return true;
-              
-              // 2. Bebidas Imediatas (aparecem assim que pedidas, se ainda PENDING)
-              if (item.notes?.includes('[IMEDIATA]') && item.status === OrderStatus.PENDING) return true;
-
-              // 3. Bebidas "Com Comida" (aparecem visualmente apenas se houver comida pronta no pedido)
-              if (item.notes?.includes('[COM COMIDA]') && item.status === OrderStatus.PENDING) {
-                  return hasKitchenFoodReady;
-              }
-
-              return false;
-          })
-          .map(item => ({ 
-              ...item, 
-              orderId: order.id, 
-              tableId: order.tableId,
-              // Flag para UI saber se foi liberado pelo prato
-              isTriggeredByFood: hasKitchenFoodReady && item.notes?.includes('[COM COMIDA]')
-          }));
-  });
 
   // Lógica de Filtragem da Aba Pedidos
   const baseOrders = orderState.orders
@@ -112,7 +74,6 @@ export const WaiterApp: React.FC = () => {
     if (!orderingTableId || cart.length === 0) return;
     const flattenedItems: any[] = [];
     cart.forEach(item => {
-        // Marca que foi o garçom nas notas
         const waiterNote = item.notes ? `${item.notes} [GARÇOM]` : `[GARÇOM]`;
         
         flattenedItems.push({ productId: item.product.id, quantity: item.quantity, notes: waiterNote });
@@ -136,17 +97,24 @@ export const WaiterApp: React.FC = () => {
       }
   };
 
-  // Helper para checar estoque de um produto
+  const handleDeliverItem = (orderId: string, itemId: string) => {
+      orderDispatch({ type: 'UPDATE_ITEM_STATUS', orderId, itemId, status: OrderStatus.DELIVERED });
+  };
+
+  const handleDeliverAllOrder = (order: any) => {
+      order.items.forEach((item: any) => {
+          if (item.status === OrderStatus.READY) {
+              orderDispatch({ type: 'UPDATE_ITEM_STATUS', orderId: order.id, itemId: item.id, status: OrderStatus.DELIVERED });
+          }
+      });
+  };
+
   const getProductStockStatus = (product: Product) => {
       if (!product.linkedInventoryItemId) return { status: 'OK', qty: 999 };
-      
       const stockItem = invState.inventory.find(i => i.id === product.linkedInventoryItemId);
-      
       if (!stockItem) return { status: 'OK', qty: 999 };
-      
       if (stockItem.quantity <= 0) return { status: 'OUT', qty: 0 };
       if (stockItem.quantity <= stockItem.minQuantity) return { status: 'LOW', qty: stockItem.quantity };
-      
       return { status: 'OK', qty: stockItem.quantity };
   };
 
@@ -402,6 +370,12 @@ export const WaiterApp: React.FC = () => {
 
                     {displayedOrders.map(order => {
                         const table = orderState.tables.find(t => t.id === order.tableId);
+                        
+                        // Lógica para detectar se TODO o pedido está pronto
+                        const pendingItems = order.items.filter(i => i.status !== OrderStatus.DELIVERED && i.status !== OrderStatus.CANCELLED);
+                        const readyCount = pendingItems.filter(i => i.status === OrderStatus.READY).length;
+                        const isAllReady = pendingItems.length > 0 && pendingItems.length === readyCount;
+
                         return (
                             <div key={order.id} className={`bg-white p-5 rounded-[2rem] shadow-sm border border-gray-100 ${order.status === 'DELIVERED' ? 'opacity-70' : ''}`}>
                                 <div className="flex justify-between items-center border-b pb-3 mb-3">
@@ -412,18 +386,55 @@ export const WaiterApp: React.FC = () => {
                                             <p className="text-[10px] text-slate-400">{new Date(order.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</p>
                                         </div>
                                     </div>
-                                    <div className={`px-3 py-1 rounded-xl text-[10px] font-black uppercase ${order.status === 'DELIVERED' ? 'bg-blue-100 text-blue-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                                        {order.status === 'PENDING' ? 'Na Fila' : order.status === 'PREPARING' ? 'Preparando' : order.status === 'READY' ? 'Pronto' : 'Entregue'}
+                                    
+                                    <div className="flex items-center gap-2">
+                                        {/* Botão Entregar Tudo */}
+                                        {isAllReady && !showHistory && (
+                                            <button 
+                                                onClick={() => handleDeliverAllOrder(order)}
+                                                className="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center gap-1 shadow-lg shadow-emerald-600/20 transition-all animate-pulse"
+                                            >
+                                                <CheckCheck size={14} /> Entregar Tudo
+                                            </button>
+                                        )}
+                                        
+                                        <div className={`px-3 py-1 rounded-xl text-[10px] font-black uppercase ${order.status === 'DELIVERED' ? 'bg-blue-100 text-blue-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                                            {order.status === 'PENDING' ? 'Na Fila' : order.status === 'PREPARING' ? 'Preparando' : order.status === 'READY' ? 'Pronto' : 'Entregue'}
+                                        </div>
                                     </div>
                                 </div>
                                 <div className="space-y-2">
                                     {order.items.map(item => (
-                                        <div key={item.id} className="flex justify-between items-start text-sm">
+                                        <div key={item.id} className="flex justify-between items-center text-sm p-2 rounded-xl hover:bg-gray-50 transition-colors">
                                             <div className="flex-1">
                                                 <span className="font-bold text-slate-700">{item.quantity}x {item.productName}</span>
-                                                {item.notes && <p className="text-[10px] text-gray-400 italic">{item.notes}</p>}
+                                                <div className="flex gap-2 flex-wrap mt-0.5">
+                                                    {item.notes?.includes('[IMEDIATA]') && <span className="text-[9px] bg-blue-600 text-white px-2 py-0.5 rounded-lg font-black uppercase tracking-tighter flex items-center gap-1"><Zap size={10}/> Imediata</span>}
+                                                    {item.notes && !item.notes.includes('[IMEDIATA]') && <span className="text-[10px] text-gray-400 italic truncate max-w-[150px]">{item.notes}</span>}
+                                                </div>
                                             </div>
-                                            <span className={`text-[9px] font-bold px-2 py-0.5 rounded ${item.status === 'READY' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>{item.status}</span>
+                                            
+                                            <div className="flex items-center gap-2">
+                                                <span className={`text-[9px] font-bold px-2 py-0.5 rounded uppercase tracking-wider
+                                                    ${item.status === 'READY' ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'}
+                                                `}>
+                                                    {item.status === 'PENDING' && 'Fila'}
+                                                    {item.status === 'PREPARING' && 'Prep'}
+                                                    {item.status === 'READY' && 'Pronto'}
+                                                    {item.status === 'DELIVERED' && 'Entregue'}
+                                                </span>
+
+                                                {/* Botão Entregar Individual */}
+                                                {item.status === OrderStatus.READY && !showHistory && (
+                                                    <button 
+                                                        onClick={() => handleDeliverItem(order.id, item.id)}
+                                                        className="bg-emerald-100 hover:bg-emerald-200 text-emerald-700 p-1.5 rounded-full transition-colors"
+                                                        title="Marcar como Entregue"
+                                                    >
+                                                        <Check size={16} strokeWidth={3} />
+                                                    </button>
+                                                )}
+                                            </div>
                                         </div>
                                     ))}
                                 </div>
@@ -445,41 +456,6 @@ export const WaiterApp: React.FC = () => {
                 <span className="text-[10px] font-black uppercase tracking-widest">Pedidos</span>
             </button>
         </div>
-
-        {/* Drawer de Prontos */}
-        {readyItems.length > 0 && (
-            <div className={`fixed bottom-[80px] left-0 right-0 z-50 transition-transform duration-500 ease-in-out ${isServingDrawerOpen ? 'translate-y-0' : 'translate-y-[calc(100%-60px)]'}`}>
-                <div onClick={() => setIsServingDrawerOpen(!isServingDrawerOpen)} className="mx-4 bg-emerald-600 p-4 flex justify-between items-center cursor-pointer rounded-t-[2rem] shadow-[0_-10px_40px_rgba(16,185,129,0.3)] border-b border-emerald-500/20">
-                    <div className="flex items-center gap-3 text-white">
-                        <div className="bg-white/20 p-2 rounded-xl animate-bounce"><Utensils size={20}/></div>
-                        <div>
-                            <h3 className="font-black text-sm uppercase tracking-tight leading-none">Pronto para Servir</h3>
-                            <p className="text-[10px] font-bold opacity-80 uppercase tracking-widest mt-0.5">{readyItems.length} itens aguardando</p>
-                        </div>
-                    </div>
-                    <div className="bg-white/10 p-1.5 rounded-full text-white">{isServingDrawerOpen ? <ChevronDown size={20}/> : <ChevronUp size={20}/>}</div>
-                </div>
-                <div className="mx-4 max-h-[50vh] overflow-y-auto p-4 space-y-3 bg-white shadow-2xl rounded-b-none border-x border-t border-gray-100 safe-area-bottom pb-6">
-                    {readyItems.map((item, idx) => (
-                        <div key={`${item.id}-${idx}`} className="bg-gray-50 p-4 rounded-[1.5rem] border-2 border-transparent hover:border-emerald-200 transition-all flex justify-between items-center animate-fade-in shadow-sm">
-                            <div className="flex items-center gap-3">
-                                <div className="bg-slate-900 text-white w-10 h-10 rounded-xl flex items-center justify-center font-black text-lg shadow-lg">{orderState.tables.find(t => t.id === item.tableId)?.number}</div>
-                                <div>
-                                    <div className="font-black text-slate-800 text-sm">{item.quantity}x {item.productName}</div>
-                                    <div className="flex gap-2 mt-0.5 flex-wrap">
-                                        {item.notes?.includes('[IMEDIATA]') && <span className="text-[9px] bg-blue-600 text-white px-2 py-0.5 rounded-lg font-black uppercase tracking-tighter flex items-center gap-1"><Zap size={10}/> Imediata</span>}
-                                        {/* Badge específica para bebida liberada com comida */}
-                                        {(item as any).isTriggeredByFood && <span className="text-[9px] bg-purple-600 text-white px-2 py-0.5 rounded-lg font-black uppercase tracking-tighter flex items-center gap-1"><Utensils size={10}/> Liberado c/ Prato</span>}
-                                        {item.notes && !item.notes.includes('[IMEDIATA]') && !item.notes.includes('[COM COMIDA]') && <span className="text-[10px] text-gray-400 italic truncate max-w-[120px]">{item.notes}</span>}
-                                    </div>
-                                </div>
-                            </div>
-                            <button onClick={() => orderDispatch({ type: 'UPDATE_ITEM_STATUS', orderId: item.orderId, itemId: item.id, status: OrderStatus.DELIVERED })} className="bg-emerald-600 hover:bg-emerald-500 text-white p-2.5 rounded-xl shadow-lg shadow-emerald-600/20 transition-all"><CheckCircle size={20}/></button>
-                        </div>
-                    ))}
-                </div>
-            </div>
-        )}
         
         {/* Modais */}
         <OpenTableModal isOpen={!!selectedTableForOpen} onClose={() => setSelectedTableForOpen(null)} tableId={selectedTableForOpen} />
