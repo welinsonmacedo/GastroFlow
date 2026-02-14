@@ -73,16 +73,18 @@ export const KitchenDisplay: React.FC = () => {
   useEffect(() => {
     // Inicializa o áudio
     audioRef.current = new Audio(KITCHEN_SOUND_URL);
-    // Define o volume (opcional)
     audioRef.current.volume = 1.0;
+    audioRef.current.preload = 'auto';
   }, []);
 
   // Lógica de Disparo do Som
   useEffect(() => {
       // Se o áudio estiver desbloqueado E o número de pendentes aumentou
       if (orderState.audioUnlocked && currentPendingCount > prevPendingCount.current) {
-          audioRef.current?.play().catch(e => console.log("Áudio bloqueado pelo navegador:", e));
-          
+          if (audioRef.current) {
+              audioRef.current.currentTime = 0; // Reinicia o som
+              audioRef.current.play().catch(e => console.log("Áudio bloqueado pelo navegador:", e));
+          }
           if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
       }
       // Atualiza a referência
@@ -94,7 +96,11 @@ export const KitchenDisplay: React.FC = () => {
           audioRef.current.play().then(() => {
               orderDispatch({ type: 'UNLOCK_AUDIO' });
               requestWakeLock();
-          }).catch(e => console.error("Erro ao ativar áudio:", e));
+          }).catch(e => {
+              console.error("Erro ao ativar áudio inicial:", e);
+              // Força o desbloqueio mesmo se falhar o play inicial (para UI)
+              orderDispatch({ type: 'UNLOCK_AUDIO' });
+          });
       } else {
           orderDispatch({ type: 'UNLOCK_AUDIO' });
           requestWakeLock();

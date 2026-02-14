@@ -53,6 +53,7 @@ export const WaiterApp: React.FC = () => {
   useEffect(() => {
       audioRef.current = new Audio(WAITER_SOUND_URL);
       audioRef.current.volume = 1.0;
+      audioRef.current.preload = 'auto'; // Garante carregamento prévio
       
       const interval = setInterval(() => setTick(t => t + 1), 10000);
       return () => clearInterval(interval);
@@ -82,8 +83,11 @@ export const WaiterApp: React.FC = () => {
       const hasNewOrder = currentNewOrdersCount > prevNewOrdersCount.current;
 
       if (hasNewCall || hasNewReady || hasNewOrder) {
-          audioRef.current?.play().catch(e => console.log("Som bloqueado", e));
-          if (navigator.vibrate) navigator.vibrate(300);
+          if (audioRef.current) {
+              audioRef.current.currentTime = 0; // Reinicia o som se já estiver tocando ou no fim
+              audioRef.current.play().catch(e => console.warn("Som bloqueado ou erro:", e));
+          }
+          if (navigator.vibrate) navigator.vibrate([300, 100, 300]);
       }
 
       // Atualiza refs
@@ -100,7 +104,13 @@ export const WaiterApp: React.FC = () => {
 
   const enableAudio = () => {
       if (audioRef.current) {
-          audioRef.current.play().then(() => { orderDispatch({ type: 'UNLOCK_AUDIO' }); }).catch(() => {});
+          audioRef.current.play().then(() => { 
+              orderDispatch({ type: 'UNLOCK_AUDIO' }); 
+          }).catch(() => {
+              // Tenta novamente caso o browser tenha bloqueado
+              console.log("Audio unlock failed initially");
+              orderDispatch({ type: 'UNLOCK_AUDIO' });
+          });
       } else {
           orderDispatch({ type: 'UNLOCK_AUDIO' });
       }

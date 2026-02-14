@@ -97,13 +97,25 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   useEffect(() => {
       if (tenantId) {
           fetchData();
-          const channel = supabase.channel(`orders:${tenantId}`)
-              .on('postgres_changes', { event: '*', schema: 'public', filter: `tenant_id=eq.${tenantId}` }, (payload) => {
-                  if (['orders', 'order_items', 'restaurant_tables', 'service_calls'].includes(payload.table)) {
+          
+          // CRÍTICO: Escuta QUALQUER mudança vinculada a este Tenant ID
+          // Removemos o filtro de 'table' para garantir que nada seja perdido.
+          const channel = supabase.channel(`orders_realtime:${tenantId}`)
+              .on(
+                  'postgres_changes', 
+                  { 
+                      event: '*', 
+                      schema: 'public', 
+                      filter: `tenant_id=eq.${tenantId}` 
+                  }, 
+                  () => {
+                      // Simplesmente recarrega tudo quando houver qualquer sinal de vida do banco
+                      console.log("⚡ Realtime Update Detected - Refreshing Data");
                       fetchData();
                   }
-              })
+              )
               .subscribe();
+
           return () => { supabase.removeChannel(channel); };
       }
   }, [tenantId, fetchData]);
@@ -123,6 +135,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               };
           });
           await supabase.from('order_items').insert(dbItems);
+          // O Realtime cuidará do update, mas chamamos fetchData para feedback instantâneo local
           fetchData();
       }
   };
@@ -150,8 +163,6 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const processPayment = async (tableId: string, amount: number, method: string, cashierName: string = 'Caixa') => {
       if(!tenantId) return;
       await supabase.from('orders').update({ is_paid: true, status: 'DELIVERED' }).eq('table_id', tableId).eq('is_paid', false).neq('status', 'CANCELLED');
-      // A mesa NÃO é liberada automaticamente aqui, apenas marcada como paga. O fechamento é manual ou via botão "Fechar Mesa"
-      // await supabase.from('restaurant_tables').update({ status: 'AVAILABLE', customer_name: null, access_code: null }).eq('id', tableId);
       await supabase.from('transactions').insert({ 
           tenant_id: tenantId, 
           table_id: tableId, 
