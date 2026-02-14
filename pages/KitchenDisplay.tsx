@@ -71,21 +71,27 @@ export const KitchenDisplay: React.FC = () => {
   };
 
   useEffect(() => {
-    // Inicializa o áudio
+    // Inicializa o áudio com Preload
     audioRef.current = new Audio(KITCHEN_SOUND_URL);
     audioRef.current.volume = 1.0;
-    audioRef.current.preload = 'auto';
+    audioRef.current.preload = 'auto'; 
   }, []);
+
+  // Função auxiliar de reprodução robusta
+  const playSound = () => {
+      if (audioRef.current && orderState.audioUnlocked) {
+          audioRef.current.currentTime = 0; // Reinicia o som
+          audioRef.current.play().catch(e => console.warn("Áudio bloqueado:", e));
+          if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+      }
+  };
 
   // Lógica de Disparo do Som
   useEffect(() => {
       // Se o áudio estiver desbloqueado E o número de pendentes aumentou
       if (orderState.audioUnlocked && currentPendingCount > prevPendingCount.current) {
-          if (audioRef.current) {
-              audioRef.current.currentTime = 0; // Reinicia o som
-              audioRef.current.play().catch(e => console.log("Áudio bloqueado pelo navegador:", e));
-          }
-          if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+          console.log("🔔 Novo Pedido na Cozinha!");
+          playSound();
       }
       // Atualiza a referência
       prevPendingCount.current = currentPendingCount;
