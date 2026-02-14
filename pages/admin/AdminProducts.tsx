@@ -7,7 +7,7 @@ import { useUI } from '../../context/UIContext';
 import { Button } from '../../components/Button';
 import { ProductFormModal } from '../../components/modals/ProductFormModal';
 import { Product } from '../../types';
-import { Plus, GripVertical, Edit, Eye, EyeOff, Trash2, Layers, Tag, Search, Utensils } from 'lucide-react';
+import { Plus, GripVertical, Eye, EyeOff, Trash2, Tag, Search, Utensils } from 'lucide-react';
 
 export const AdminProducts: React.FC = () => {
   const { state: menuState, updateProduct, deleteProduct } = useMenu();
@@ -21,16 +21,11 @@ export const AdminProducts: React.FC = () => {
   
   const sortedProducts = [...menuState.products].sort((a,b) => (a.sortOrder || 0) - (b.sortOrder || 0));
   
-  // Categorias dinâmicas (Apenas de produtos visíveis/principais)
+  // Categorias dinâmicas
   const categories = ['Todas', ...Array.from(new Set(menuState.products.filter(p => !p.isExtra).map(p => p.category)))];
 
   const handleOpenAdd = () => {
       setEditingProduct(null);
-      setIsModalOpen(true);
-  };
-
-  const handleOpenEdit = (product: Product) => {
-      setEditingProduct(product);
       setIsModalOpen(true);
   };
 
@@ -50,9 +45,8 @@ export const AdminProducts: React.FC = () => {
       setDraggedItemIndex(null);
   };
 
-  // Filtra produtos normais e exclui Extras
   const displayedProducts = sortedProducts.filter(p => {
-      const isNotExtra = !p.isExtra; // Importante: Esconde extras
+      const isNotExtra = !p.isExtra; 
       const matchSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase());
       
       let matchCategory = false;
@@ -72,10 +66,10 @@ export const AdminProducts: React.FC = () => {
                 <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
                     <Utensils size={24} className="text-blue-600"/> Gestão de Cardápio
                 </h2>
-                <p className="text-sm text-gray-500">Configure produtos de venda principais. (Adicionais são geridos no Estoque)</p>
+                <p className="text-sm text-gray-500">Organize a exibição dos produtos. Preços e detalhes são geridos no Estoque.</p>
             </div>
             <Button onClick={handleOpenAdd} className="w-full md:w-auto">
-                <Plus size={18}/> Novo Produto
+                <Plus size={18}/> Adicionar Item
             </Button>
         </div>
 
@@ -131,25 +125,17 @@ export const AdminProducts: React.FC = () => {
                                 </div>
                                 <div className="text-xs text-gray-500 flex items-center gap-2 mt-0.5">
                                     <span className="bg-gray-100 px-2 py-0.5 rounded">{product.category}</span>
-                                    {product.linkedExtraIds && product.linkedExtraIds.length > 0 && (
-                                        <span className="bg-blue-50 text-blue-600 px-2 py-0.5 rounded flex items-center gap-1 font-medium">
-                                            <Layers size={10}/> {product.linkedExtraIds.length} Adicionais vinculados
-                                        </span>
-                                    )}
                                 </div>
                             </div>
                             <div className="text-right shrink-0">
                                 <div className="font-bold text-blue-600">R$ {product.price.toFixed(2)}</div>
-                                <div className="text-[10px] text-gray-400 font-medium">Lucro: R$ {(product.price - (product.costPrice || 0)).toFixed(2)}</div>
                             </div>
                             <div className="flex gap-1 border-l pl-3 ml-2 shrink-0">
-                                <button onClick={() => handleOpenEdit(product)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Editar">
-                                    <Edit size={18}/>
-                                </button>
+                                {/* Apenas Botão de Visibilidade e Excluir */}
                                 <button onClick={() => updateProduct({...product, isVisible: !product.isVisible})} className={`p-2 rounded-lg transition-colors ${product.isVisible ? 'text-green-600 hover:bg-green-50' : 'text-gray-400 hover:bg-gray-100'}`} title={product.isVisible ? "Ocultar do Cliente" : "Mostrar no Menu"}>
                                     {product.isVisible ? <Eye size={18}/> : <EyeOff size={18}/>}
                                 </button>
-                                <button onClick={() => showConfirm({ title: 'Remover do Cardápio', message: 'O item continuará no estoque, mas não poderá mais ser vendido.', onConfirm: () => deleteProduct(product.id) })} className="p-2 text-red-400 hover:bg-red-50 rounded-lg transition-colors" title="Excluir">
+                                <button onClick={() => showConfirm({ title: 'Remover do Cardápio', message: 'O item continuará no estoque, mas não aparecerá mais no menu.', onConfirm: () => deleteProduct(product.id) })} className="p-2 text-red-400 hover:bg-red-50 rounded-lg transition-colors" title="Excluir da Lista">
                                     <Trash2 size={18}/>
                                 </button>
                             </div>
@@ -159,7 +145,7 @@ export const AdminProducts: React.FC = () => {
                 {displayedProducts.length === 0 && (
                     <div className="p-20 text-center text-gray-400 flex flex-col items-center gap-2">
                         <Tag size={48} className="opacity-10"/>
-                        <p>Nenhum produto principal encontrado nesta visualização.</p>
+                        <p>Nenhum produto principal encontrado.</p>
                     </div>
                 )}
             </div>
