@@ -56,68 +56,74 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       tables: [], orders: [], serviceCalls: [], audioUnlocked: false
   });
 
+  // Função central de busca de dados
   const fetchData = useCallback(async () => {
       if (!tenantId) return;
       const yesterday = new Date(); yesterday.setHours(yesterday.getHours() - 24);
 
-      const [tablesRes, ordersRes, callsRes] = await Promise.all([
-          supabase.from('restaurant_tables').select('*').eq('tenant_id', tenantId).order('number'),
-          supabase.from('orders').select(`*, items:order_items (*)`).eq('tenant_id', tenantId).gte('created_at', yesterday.toISOString()),
-          supabase.from('service_calls').select('*').eq('tenant_id', tenantId).eq('status', 'PENDING'),
-      ]);
+      try {
+          const [tablesRes, ordersRes, callsRes] = await Promise.all([
+              supabase.from('restaurant_tables').select('*').eq('tenant_id', tenantId).order('number'),
+              supabase.from('orders').select(`*, items:order_items (*)`).eq('tenant_id', tenantId).gte('created_at', yesterday.toISOString()),
+              supabase.from('service_calls').select('*').eq('tenant_id', tenantId).eq('status', 'PENDING'),
+          ]);
 
-      if (tablesRes.data) localDispatch({ type: 'SET_TABLES', tables: tablesRes.data.map(t => ({ id: t.id, number: t.number, status: t.status, customerName: t.customer_name, accessCode: t.access_code })) });
-      
-      if (ordersRes.data) {
-          const mappedOrders = ordersRes.data.map(o => ({
-              id: o.id, 
-              tableId: o.table_id, 
-              timestamp: new Date(o.created_at), 
-              isPaid: o.is_paid, 
-              status: o.status,
-              items: (o.items || []).map((i: any) => ({ 
-                  id: i.id, 
-                  productId: i.product_id, 
-                  quantity: Number(i.quantity) || 0, 
-                  notes: i.notes, 
-                  status: i.status, 
-                  productName: i.product_name, 
-                  productType: i.product_type, 
-                  productPrice: Number(i.product_price) || 0, // Fallback 
-                  productCostPrice: Number(i.product_cost_price) || 0 // Fallback
-              }))
-          }));
-          localDispatch({ type: 'SET_ORDERS', orders: mappedOrders });
+          if (tablesRes.data) localDispatch({ type: 'SET_TABLES', tables: tablesRes.data.map(t => ({ id: t.id, number: t.number, status: t.status, customerName: t.customer_name, accessCode: t.access_code })) });
+          
+          if (ordersRes.data) {
+              const mappedOrders = ordersRes.data.map(o => ({
+                  id: o.id, 
+                  tableId: o.table_id, 
+                  timestamp: new Date(o.created_at), 
+                  isPaid: o.is_paid, 
+                  status: o.status,
+                  items: (o.items || []).map((i: any) => ({ 
+                      id: i.id, 
+                      productId: i.product_id, 
+                      quantity: Number(i.quantity) || 0, 
+                      notes: i.notes, 
+                      status: i.status, 
+                      productName: i.product_name, 
+                      productType: i.product_type, 
+                      productPrice: Number(i.product_price) || 0, 
+                      productCostPrice: Number(i.product_cost_price) || 0
+                  }))
+              }));
+              localDispatch({ type: 'SET_ORDERS', orders: mappedOrders });
+          }
+
+          if (callsRes.data) localDispatch({ type: 'SET_CALLS', calls: callsRes.data.map(c => ({ id: c.id, tableId: c.table_id, status: c.status, timestamp: new Date(c.created_at) })) });
+      } catch (e) {
+          console.error("Erro ao buscar dados:", e);
       }
-
-      if (callsRes.data) localDispatch({ type: 'SET_CALLS', calls: callsRes.data.map(c => ({ id: c.id, tableId: c.table_id, status: c.status, timestamp: new Date(c.created_at) })) });
 
   }, [tenantId]);
 
+  // CONFIGURAÇÃO DO REALTIME
   useEffect(() => {
-      if (tenantId) {
-          fetchData();
-          
-          // CRÍTICO: Escuta QUALQUER mudança vinculada a este Tenant ID
-          // Removemos o filtro de 'table' para garantir que nada seja perdido.
-          const channel = supabase.channel(`orders_realtime:${tenantId}`)
-              .on(
-                  'postgres_changes', 
-                  { 
-                      event: '*', 
-                      schema: 'public', 
-                      filter: `tenant_id=eq.${tenantId}` 
-                  }, 
-                  () => {
-                      // Simplesmente recarrega tudo quando houver qualquer sinal de vida do banco
-                      console.log("⚡ Realtime Update Detected - Refreshing Data");
-                      fetchData();
-                  }
-              )
-              .subscribe();
+      if (!tenantId) return;
 
-          return () => { supabase.removeChannel(channel); };
-      }
+      // Carrega dados iniciais
+      fetchData();
+      
+      const handleRealtimeUpdate = (payload: any) => {
+          console.log('⚡ Realtime Event:', payload.eventType, payload.table);
+          fetchData(); // Recarrega tudo ao receber qualquer sinal
+      };
+
+      // Cria canais específicos para garantir que o filtro funcione corretamente
+      const channel = supabase.channel(`restaurant_room:${tenantId}`)
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `tenant_id=eq.${tenantId}` }, handleRealtimeUpdate)
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'order_items', filter: `tenant_id=eq.${tenantId}` }, handleRealtimeUpdate)
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'service_calls', filter: `tenant_id=eq.${tenantId}` }, handleRealtimeUpdate)
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'restaurant_tables', filter: `tenant_id=eq.${tenantId}` }, handleRealtimeUpdate)
+          .subscribe((status) => {
+              if (status === 'SUBSCRIBED') {
+                  console.log(`✅ Conectado ao Realtime do Restaurante ${tenantId}`);
+              }
+          });
+
+      return () => { supabase.removeChannel(channel); };
   }, [tenantId, fetchData]);
 
   // --- ACTIONS ---
@@ -135,7 +141,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               };
           });
           await supabase.from('order_items').insert(dbItems);
-          // O Realtime cuidará do update, mas chamamos fetchData para feedback instantâneo local
+          // O Realtime cuidará do update, mas chamamos fetchData para feedback instantâneo local (otimismo)
           fetchData();
       }
   };

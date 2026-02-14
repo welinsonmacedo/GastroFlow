@@ -23,7 +23,7 @@ export const WaiterApp: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'TABLES' | 'ORDERS'>('TABLES');
   const [showHistory, setShowHistory] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [, setTick] = useState(0);
+  const [lastSoundTime, setLastSoundTime] = useState(0); // Controle de debounce do som
   const { showAlert } = useUI();
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -53,11 +53,21 @@ export const WaiterApp: React.FC = () => {
   useEffect(() => {
       audioRef.current = new Audio(WAITER_SOUND_URL);
       audioRef.current.volume = 1.0;
-      audioRef.current.preload = 'auto'; // Garante carregamento prévio
-      
-      const interval = setInterval(() => setTick(t => t + 1), 10000);
-      return () => clearInterval(interval);
+      audioRef.current.preload = 'auto'; 
   }, []);
+
+  const playSound = () => {
+      if (audioRef.current && orderState.audioUnlocked) {
+          const now = Date.now();
+          // Evita tocar mais de uma vez a cada 2 segundos (debounce leve)
+          if (now - lastSoundTime > 2000) {
+              audioRef.current.currentTime = 0; // Reinicia o som
+              audioRef.current.play().catch(e => console.warn("Som bloqueado ou erro:", e));
+              if (navigator.vibrate) navigator.vibrate([300, 100, 300]);
+              setLastSoundTime(now);
+          }
+      }
+  };
 
   // Lógica de Notificação Sonora
   useEffect(() => {
@@ -83,11 +93,7 @@ export const WaiterApp: React.FC = () => {
       const hasNewOrder = currentNewOrdersCount > prevNewOrdersCount.current;
 
       if (hasNewCall || hasNewReady || hasNewOrder) {
-          if (audioRef.current) {
-              audioRef.current.currentTime = 0; // Reinicia o som se já estiver tocando ou no fim
-              audioRef.current.play().catch(e => console.warn("Som bloqueado ou erro:", e));
-          }
-          if (navigator.vibrate) navigator.vibrate([300, 100, 300]);
+          playSound();
       }
 
       // Atualiza refs
@@ -96,6 +102,18 @@ export const WaiterApp: React.FC = () => {
       prevNewOrdersCount.current = currentNewOrdersCount;
 
   }, [pendingCalls.length, orderState.orders, orderState.audioUnlocked]);
+
+  // Efeito de "Loop" para chamados pendentes (Lembrete a cada 15s)
+  useEffect(() => {
+      if (!orderState.audioUnlocked) return;
+      const interval = setInterval(() => {
+          if (pendingCalls.length > 0) {
+              console.log("🔔 Lembrete de chamado pendente");
+              playSound();
+          }
+      }, 15000); 
+      return () => clearInterval(interval);
+  }, [pendingCalls.length, orderState.audioUnlocked]);
 
   const handleManualRefresh = () => {
       setIsRefreshing(true);
@@ -106,9 +124,9 @@ export const WaiterApp: React.FC = () => {
       if (audioRef.current) {
           audioRef.current.play().then(() => { 
               orderDispatch({ type: 'UNLOCK_AUDIO' }); 
-          }).catch(() => {
-              // Tenta novamente caso o browser tenha bloqueado
-              console.log("Audio unlock failed initially");
+          }).catch((e) => {
+              console.error("Audio unlock failed initially", e);
+              // Tenta forçar unlock visual mesmo se o áudio falhar
               orderDispatch({ type: 'UNLOCK_AUDIO' });
           });
       } else {
