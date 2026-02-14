@@ -6,7 +6,6 @@ import { createClient } from '@supabase/supabase-js';
 import { useUI } from './UIContext';
 
 // Cliente Supabase auxiliar para operações administrativas sem afetar a sessão atual
-// Adicionada verificação segura para import.meta.env para evitar erros em alguns ambientes
 const env: any = import.meta.env || {};
 const supabaseUrl = env.VITE_SUPABASE_URL || '';
 const supabaseKey = env.VITE_SUPABASE_ANON_KEY || '';
@@ -24,7 +23,7 @@ type SaaSAction =
   | { type: 'LOGIN_ADMIN'; name: string; id: string; email: string }
   | { type: 'LOGOUT_ADMIN' }
   | { type: 'SET_TENANTS'; payload: RestaurantTenant[] }
-  | { type: 'UPDATE_TENANT_STATS'; payload: { id: string; count: number }[] } // Nova action
+  | { type: 'UPDATE_TENANT_STATS'; payload: { id: string; count: number }[] }
   | { type: 'SET_PLANS'; payload: Plan[] }
   | { type: 'CREATE_TENANT'; payload: { name: string; slug: string; ownerName: string; email: string; plan: PlanType } }
   | { type: 'UPDATE_TENANT'; payload: { id: string; name: string; slug: string; ownerName: string; email: string } }
@@ -79,6 +78,8 @@ const saasReducer = (state: SaaSState, action: SaaSAction): SaaSState => {
         return { ...state, plans: action.payload };
 
     case 'ADD_TENANT_TO_LIST':
+      // Evita duplicatas se o realtime já tiver inserido
+      if (state.tenants.some(t => t.id === action.tenant.id)) return state;
       return { ...state, tenants: [action.tenant, ...state.tenants] };
     
     case 'TOGGLE_STATUS':
@@ -134,7 +135,6 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const restoreSession = async () => {
           const { data: { session } } = await supabase.auth.getSession();
           if (session?.user && !state.isAuthenticated) {
-              // Se existe uma sessão válida, restaura o estado de login
               dispatch({ 
                   type: 'LOGIN_ADMIN', 
                   name: session.user.user_metadata?.name || 'Admin', 
@@ -168,22 +168,19 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
     fetchPlans();
   }, []);
 
-  // 3. Carregar Tenants (Depende de Auth) - Refatorado para Resiliência
+  // 3. Carregar Tenants e Ativar Realtime
   useEffect(() => {
     let isMounted = true;
 
     if (state.isAuthenticated) {
         const fetchTenants = async (retryCount = 0) => {
             try {
-                // Passo 1: Busca SIMPLES (Garante que a lista apareça rápido)
-                // INCLUI business_info para o gerador de contratos
                 const { data, error } = await supabase
                     .from('tenants')
                     .select('*')
                     .order('created_at', { ascending: false });
 
                 if (!isMounted) return;
-
                 if (error) throw error;
 
                 if (data) {
@@ -196,36 +193,23 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
                         status: t.status as 'ACTIVE' | 'INACTIVE',
                         plan: t.plan as PlanType,
                         joinedAt: new Date(t.created_at),
-                        requestCount: 0, // Placeholder inicial
-                        businessInfo: t.business_info || {} // Mapeia info de negócio
+                        requestCount: 0, 
+                        businessInfo: t.business_info || {} 
                     }));
                     dispatch({ type: 'SET_TENANTS', payload: mapped });
-
-                    // Passo 2: Busca Estatísticas (Logs) separadamente para não bloquear
                     fetchTenantStats(mapped.map(t => t.id));
                 }
             } catch (err: any) {
-                console.error(`Erro ao buscar restaurantes (Tentativa ${retryCount + 1}):`, err);
-                
-                // Retry logic para AbortError ou falhas de rede
-                const isAbort = err.name === 'AbortError' || err.message?.includes('AbortError') || err.message?.includes('signal is aborted');
-                
-                if (isAbort && retryCount < 3 && isMounted) {
-                    setTimeout(() => fetchTenants(retryCount + 1), 500);
-                }
+                console.error(`Erro ao buscar restaurantes:`, err);
             }
         };
 
         const fetchTenantStats = async (tenantIds: string[]) => {
             if (tenantIds.length === 0) return;
             try {
-                const { data, error } = await supabase
-                    .from('tenants')
-                    .select('id, audit_logs(count)');
-                
+                const { data } = await supabase.from('tenants').select('id, audit_logs(count)');
                 if (!isMounted) return;
-
-                if (data && !error) {
+                if (data) {
                     const stats = data.map((t: any) => ({
                         id: t.id,
                         count: (t.audit_logs && t.audit_logs[0] && t.audit_logs[0].count) || 0
@@ -233,14 +217,22 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     dispatch({ type: 'UPDATE_TENANT_STATS', payload: stats });
                 }
             } catch (e) {
-                console.warn("Falha ao carregar estatísticas secundárias (não crítico)", e);
+                console.warn("Falha stats", e);
             }
         };
 
         fetchTenants();
-    }
 
-    return () => { isMounted = false; };
+        // REALTIME SUBSCRIPTION FOR SUPER ADMIN
+        const channel = supabase.channel('saas_admin_updates')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'tenants' }, fetchTenants)
+            .subscribe();
+
+        return () => { 
+            isMounted = false; 
+            supabase.removeChannel(channel); 
+        };
+    }
   }, [state.isAuthenticated]);
 
   // INACTIVITY LOGOUT TIMER (30 Minutes for CEO/Admin)
@@ -276,35 +268,19 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
       };
   }, [state.isAuthenticated, showAlert]);
 
-  // Intercepta ações de mutação para atualizar o Supabase também
   const dispatchWithSideEffects = async (action: SaaSAction) => {
+    // Intercepta e executa ações de banco, depois atualiza o estado
+    // O Realtime também atualizará o estado, mas o dispatch direto garante feedback imediato da UI
     
     if (action.type === 'CREATE_TENANT') {
         try {
-            // 0. Verificar Disponibilidade do Slug
-            const { data: existing } = await supabase
-                .from('tenants')
-                .select('id')
-                .eq('slug', action.payload.slug)
-                .maybeSingle();
-            
+            const { data: existing } = await supabase.from('tenants').select('id').eq('slug', action.payload.slug).maybeSingle();
             if (existing) {
-                showAlert({
-                    title: "Endereço Indisponível",
-                    message: "O endereço (slug) escolhido já está em uso por outro restaurante. Por favor, tente um nome diferente.",
-                    type: 'WARNING'
-                });
+                showAlert({ title: "Endereço Indisponível", message: "Slug já em uso.", type: 'WARNING' });
                 return; 
             }
 
-            // 1. Criar Tenant
-            const defaultTheme = {
-                primaryColor: '#2563eb',
-                backgroundColor: '#ffffff',
-                fontColor: '#1f2937',
-                restaurantName: action.payload.name,
-                logoUrl: ''
-            };
+            const defaultTheme = { primaryColor: '#2563eb', backgroundColor: '#ffffff', fontColor: '#1f2937', restaurantName: action.payload.name, logoUrl: '' };
 
             const { data: newTenant, error } = await supabase.from('tenants').insert({
                 name: action.payload.name,
@@ -319,15 +295,9 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
             if (error) throw error;
 
             if (newTenant) {
-                // 2. Criar Staff ADMIN padrão
-                await supabase.from('staff').insert({
-                    tenant_id: newTenant.id,
-                    name: 'Admin',
-                    role: 'ADMIN',
-                    pin: '1234'
-                });
-
-                // 3. Atualizar UI
+                await supabase.from('staff').insert({ tenant_id: newTenant.id, name: 'Admin', role: 'ADMIN', pin: '1234' });
+                
+                // Realtime fará o update, mas forçamos localmente para UX
                 dispatch({
                     type: 'ADD_TENANT_TO_LIST',
                     tenant: {
@@ -339,25 +309,14 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
                         status: newTenant.status,
                         plan: newTenant.plan,
                         joinedAt: new Date(newTenant.created_at),
-                        requestCount: 0
+                        requestCount: 0,
+                        businessInfo: {}
                     }
                 });
             }
         } catch (error: any) {
             console.error("Erro ao criar tenant:", error);
-            if (error.code === '23505') {
-                 showAlert({
-                     title: "Erro de Duplicidade",
-                     message: "Este Slug já está cadastrado no sistema.",
-                     type: 'ERROR'
-                 });
-            } else {
-                 showAlert({
-                     title: "Erro",
-                     message: "Erro ao criar restaurante. Verifique o console para mais detalhes.",
-                     type: 'ERROR'
-                 });
-            }
+            showAlert({ title: "Erro", message: "Erro ao criar restaurante.", type: 'ERROR' });
         }
         return;
     }
@@ -370,12 +329,10 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 owner_name: action.payload.ownerName,
                 email: action.payload.email
             }).eq('id', action.payload.id);
-
             if (error) throw error;
-            dispatch(action); // Atualiza UI
+            dispatch(action);
         } catch (error) {
-            console.error("Erro ao atualizar tenant:", error);
-            showAlert({ title: "Erro", message: "Erro ao atualizar dados do restaurante.", type: 'ERROR' });
+            showAlert({ title: "Erro", message: "Erro ao atualizar.", type: 'ERROR' });
         }
         return;
     }
@@ -383,36 +340,16 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (action.type === 'CREATE_TENANT_ADMIN') {
         try {
             let authUserId = null;
-
             if (action.payload.password) {
-                if (!supabaseUrl || !supabaseKey) {
-                    throw new Error("Configuração do Supabase (URL/Key) não encontrada para criar usuário Auth.");
-                }
-
-                const tempClient: any = createClient(supabaseUrl, supabaseKey, {
-                    auth: {
-                        persistSession: false,
-                        autoRefreshToken: false,
-                        detectSessionInUrl: false
-                    }
-                });
-
+                const tempClient: any = createClient(supabaseUrl, supabaseKey, { auth: { persistSession: false } });
                 const { data: authData, error: authError } = await tempClient.auth.signUp({
                     email: action.payload.email,
                     password: action.payload.password,
-                    options: {
-                        data: { name: action.payload.name }
-                    }
+                    options: { data: { name: action.payload.name } }
                 });
-
-                if (authError) {
-                    console.error("Erro Auth:", authError);
-                    showAlert({ title: "Erro Auth", message: `Erro ao criar login Auth: ${authError.message}`, type: 'ERROR' });
-                } else if (authData.user) {
-                    authUserId = authData.user.id;
-                }
+                if (authError) { showAlert({ title: "Erro Auth", message: authError.message, type: 'ERROR' }); } 
+                else if (authData.user) { authUserId = authData.user.id; }
             }
-
             const { error } = await supabase.from('staff').insert({
                 tenant_id: action.payload.tenantId,
                 name: action.payload.name,
@@ -421,56 +358,33 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 pin: action.payload.pin,
                 auth_user_id: authUserId
             });
-
             if (error) throw error;
-            
-            if (authUserId) {
-                showAlert({ title: "Sucesso", message: "Usuário Admin criado com sucesso! Login Auth e PIN configurados.", type: 'SUCCESS' });
-            } else {
-                showAlert({ title: "Sucesso", message: "Usuário Admin criado apenas localmente (PIN).", type: 'SUCCESS' });
-            }
-
+            showAlert({ title: "Sucesso", message: "Admin criado!", type: 'SUCCESS' });
         } catch (error: any) {
-             console.error("Erro ao criar admin:", error);
-             showAlert({ title: "Erro", message: `Erro ao criar usuário admin: ${error.message}`, type: 'ERROR' });
+             showAlert({ title: "Erro", message: error.message, type: 'ERROR' });
         }
         return;
     }
 
     if (action.type === 'UPDATE_PROFILE') {
         if (state.adminId) {
-            const { error } = await supabase.auth.updateUser({ 
-                email: action.email,
-                data: { name: action.name }
-            });
-            if (!error) dispatch(action);
-            
-            await supabase.from('saas_admins').update({
-                name: action.name,
-                email: action.email
-            }).eq('id', state.adminId);
+            await supabase.auth.updateUser({ email: action.email, data: { name: action.name } });
+            await supabase.from('saas_admins').update({ name: action.name, email: action.email }).eq('id', state.adminId);
+            dispatch(action);
         }
         return;
     }
     
     if (action.type === 'UPDATE_PLAN_DETAILS') {
         const { error } = await supabase.from('plans').update({
-            name: action.plan.name,
-            price: action.plan.price,
-            features: action.plan.features,
-            limits: action.plan.limits, // Salva os limites no banco
-            button_text: action.plan.button_text
+            name: action.plan.name, price: action.plan.price, features: action.plan.features, limits: action.plan.limits, button_text: action.plan.button_text
         }).eq('id', action.plan.id);
-
-        if (!error) {
-            dispatch(action);
-        } else {
-            console.error("Erro ao atualizar plano", error);
-            showAlert({ title: "Erro", message: "Erro ao salvar plano no banco de dados.", type: 'ERROR' });
-        }
+        if (!error) dispatch(action);
+        else showAlert({ title: "Erro", message: "Erro ao salvar plano.", type: 'ERROR' });
         return;
     }
 
+    // Ações simples (Toggle Status, Change Plan)
     dispatch(action);
 
     if (action.type === 'CHANGE_PLAN') {
