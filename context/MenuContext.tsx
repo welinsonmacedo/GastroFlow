@@ -27,9 +27,19 @@ export const MenuProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const mapProducts = (data: any[]): Product[] => {
       return data.map(p => ({
-        id: p.id, linkedInventoryItemId: p.linked_inventory_item_id, name: p.name, description: p.description, price: p.price, costPrice: p.cost_price || 0,
-        category: p.category, type: p.type, image: p.image, isVisible: p.is_visible, sortOrder: p.sort_order, 
-        isExtra: p.is_extra || false, linkedExtraIds: p.linked_extra_ids || []
+        id: p.id, 
+        linkedInventoryItemId: p.linked_inventory_item_id, 
+        name: p.name, 
+        description: p.description, 
+        price: Number(p.price) || 0, // Fallback
+        costPrice: Number(p.cost_price) || 0, // Fallback
+        category: p.category, 
+        type: p.type, 
+        image: p.image, 
+        isVisible: p.is_visible, 
+        sortOrder: p.sort_order, 
+        isExtra: p.is_extra || false, 
+        linkedExtraIds: p.linked_extra_ids || []
       }));
   };
 

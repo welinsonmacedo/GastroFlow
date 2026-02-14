@@ -54,9 +54,9 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
                     return {
                         ingredientId: r.ingredient_item_id,
                         ingredientName: ing?.name || '?',
-                        quantity: r.quantity,
+                        quantity: Number(r.quantity) || 0,
                         unit: ing?.unit,
-                        cost: ing?.cost_price
+                        cost: Number(ing?.cost_price) || 0
                     };
                 });
 
@@ -64,9 +64,10 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
                     id: i.id, 
                     name: i.name, 
                     unit: i.unit, 
-                    quantity: i.quantity, 
-                    minQuantity: i.min_quantity, 
-                    costPrice: i.cost_price, 
+                    // Proteção contra NULL: Converte para Number e usa 0 como fallback
+                    quantity: Number(i.quantity) || 0, 
+                    minQuantity: Number(i.min_quantity) || 0, 
+                    costPrice: Number(i.cost_price) || 0, 
                     type: (i.type || 'INGREDIENT').toUpperCase() as InventoryType, 
                     image: i.image, 
                     recipe: recipeItems,
@@ -75,7 +76,7 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             });
             
             const mappedLogs = (logsRes.data || []).map((l: any) => ({
-                id: l.id, item_id: l.item_id, type: l.type, quantity: l.quantity, reason: l.reason, user_name: l.user_name, created_at: new Date(l.created_at)
+                id: l.id, item_id: l.item_id, type: l.type, quantity: Number(l.quantity) || 0, reason: l.reason, user_name: l.user_name, created_at: new Date(l.created_at)
             }));
 
             const mappedSuppliers = (suppRes.data || []).map((s: any) => ({
@@ -101,10 +102,8 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   useEffect(() => {
     if (!tenantId) return;
     
-    // Carregamento inicial
     fetchData();
 
-    // Inscrição no Realtime para tabelas de estoque
     const channel = supabase.channel(`inventory_updates:${tenantId}`)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory_items', filter: `tenant_id=eq.${tenantId}` }, fetchData)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory_logs', filter: `tenant_id=eq.${tenantId}` }, fetchData)
@@ -144,7 +143,6 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           const { error: recipeError } = await supabase.from('inventory_recipes').insert(recipes);
           if (recipeError) console.error("Erro ao salvar receita:", recipeError);
       }
-      // fetchData será chamado pelo realtime
   };
 
   const updateInventoryItem = async (item: InventoryItem) => {
@@ -153,8 +151,8 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       const payload = {
           name: item.name, 
           unit: item.unit, 
-          min_quantity: item.minQuantity,
-          cost_price: item.costPrice, 
+          min_quantity: item.minQuantity || 0,
+          cost_price: item.costPrice || 0, 
           image: item.image, 
           type: item.type,
           is_extra: item.isExtra
@@ -176,23 +174,21 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
               await supabase.from('inventory_recipes').insert(recipes);
           }
       }
-      // fetchData será chamado pelo realtime
   };
 
   const updateStock = async (itemId: string, quantity: number, operation: 'IN' | 'OUT', reason: string, userName: string = 'Sistema') => {
       if(!tenantId) return;
       const item = state.inventory.find(i => i.id === itemId);
       if (!item) return;
-      const newQty = operation === 'IN' ? item.quantity + quantity : item.quantity - quantity;
       
-      // Atualiza quantidade
+      const currentQty = Number(item.quantity) || 0;
+      const newQty = operation === 'IN' ? currentQty + quantity : currentQty - quantity;
+      
       await supabase.from('inventory_items').update({ quantity: newQty }).eq('id', itemId);
       
-      // Insere log
       await supabase.from('inventory_logs').insert({
           tenant_id: tenantId, item_id: itemId, type: operation, quantity, reason, user_name: userName
       });
-      // fetchData será chamado pelo realtime
   };
 
   const processInventoryAdjustment = async (adjustments: { itemId: string; realQty: number }[]) => {
@@ -200,7 +196,8 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       for (const adj of adjustments) {
           const item = state.inventory.find(i => i.id === adj.itemId);
           if (item) {
-              const diff = adj.realQty - item.quantity;
+              const currentQty = Number(item.quantity) || 0;
+              const diff = adj.realQty - currentQty;
               if (Math.abs(diff) > 0.0001) {
                   const type = diff > 0 ? 'IN' : 'OUT';
                   await updateStock(adj.itemId, Math.abs(diff), type, 'Ajuste de Balanço');
@@ -211,7 +208,6 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const addSupplier = async (supplier: Supplier) => {
       if(!tenantId) return;
-      
       const payload = {
           tenant_id: tenantId,
           name: supplier.name,
@@ -227,9 +223,7 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           city: supplier.city,
           state: supplier.state
       };
-
       const { error } = await supabase.from('suppliers').insert(payload);
-      
       if (error) throw error;
   };
 
@@ -239,7 +233,6 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const processPurchase = async (purchase: PurchaseEntry) => {
       if(!tenantId) return;
-
       try {
           const itemsTotal = purchase.items.reduce((acc, i) => acc + i.totalPrice, 0);
           
@@ -251,7 +244,7 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
               }
 
               const invItem = state.inventory.find(i => i.id === item.inventoryItemId);
-              const newQty = (invItem?.quantity || 0) + item.quantity;
+              const newQty = (Number(invItem?.quantity) || 0) + item.quantity;
               
               await supabase.from('inventory_items').update({ 
                   quantity: newQty,

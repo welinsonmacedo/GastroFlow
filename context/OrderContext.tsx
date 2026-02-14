@@ -35,7 +35,7 @@ interface OrderContextType {
   processPosSale: (data: any) => Promise<void>;
   processPayment: (tableId: string, amount: number, method: string) => Promise<void>;
   updateItemStatus: (orderId: string, itemId: string, status: OrderStatus) => Promise<void>;
-  cancelOrder: (orderId: string) => Promise<void>; // Nova função
+  cancelOrder: (orderId: string) => Promise<void>; 
   addTable: () => Promise<void>;
   deleteTable: (tableId: string) => Promise<void>;
   openTable: (tableId: string, customerName: string, accessCode: string) => Promise<void>;
@@ -70,10 +70,23 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       
       if (ordersRes.data) {
           const mappedOrders = ordersRes.data.map(o => ({
-              id: o.id, tableId: o.table_id, timestamp: new Date(o.created_at), isPaid: o.is_paid, status: o.status,
-              items: (o.items || []).map((i: any) => ({ id: i.id, productId: i.product_id, quantity: i.quantity, notes: i.notes, status: i.status, productName: i.product_name, productType: i.product_type, productPrice: i.product_price, productCostPrice: Number(i.product_cost_price) || 0 }))
+              id: o.id, 
+              tableId: o.table_id, 
+              timestamp: new Date(o.created_at), 
+              isPaid: o.is_paid, 
+              status: o.status,
+              items: (o.items || []).map((i: any) => ({ 
+                  id: i.id, 
+                  productId: i.product_id, 
+                  quantity: Number(i.quantity) || 0, 
+                  notes: i.notes, 
+                  status: i.status, 
+                  productName: i.product_name, 
+                  productType: i.product_type, 
+                  productPrice: Number(i.product_price) || 0, // Fallback 
+                  productCostPrice: Number(i.product_cost_price) || 0 // Fallback
+              }))
           }));
-          // Filtramos ordens canceladas no mapeamento se necessário, ou deixamos para as views
           localDispatch({ type: 'SET_ORDERS', orders: mappedOrders });
       }
 
@@ -116,7 +129,6 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const cancelOrder = async (orderId: string) => {
       if (!tenantId) return;
-      // Em vez de deletar, marcamos como cancelado para auditoria
       await supabase.from('orders').update({ status: 'CANCELLED' }).eq('id', orderId);
       await supabase.from('order_items').update({ status: 'CANCELLED' }).eq('order_id', orderId);
       fetchData();

@@ -118,10 +118,10 @@ export const AdminInventory: React.FC = () => {
                                 </td>
                                 <td className="p-4 text-center text-sm font-medium text-slate-400">{item.unit}</td>
                                 <td className={`p-4 text-right font-mono font-bold text-lg ${item.type === 'COMPOSITE' ? 'text-slate-300' : (item.quantity <= item.minQuantity ? 'text-red-600' : 'text-slate-700')}`}>
-                                    {item.type === 'COMPOSITE' ? '---' : item.quantity.toFixed(item.unit === 'UN' ? 0 : 2)}
+                                    {item.type === 'COMPOSITE' ? '---' : (item.quantity || 0).toFixed(item.unit === 'UN' ? 0 : 2)}
                                 </td>
                                 <td className="p-4 text-right">
-                                    <div className="text-sm font-black text-emerald-600">R$ {item.costPrice.toFixed(2)}</div>
+                                    <div className="text-sm font-black text-emerald-600">R$ {(item.costPrice || 0).toFixed(2)}</div>
                                     <div className="text-[9px] text-slate-400 uppercase font-bold">Custo Unit.</div>
                                 </td>
                                 <td className="p-4 text-right">

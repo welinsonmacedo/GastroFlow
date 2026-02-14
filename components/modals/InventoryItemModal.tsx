@@ -128,7 +128,7 @@ export const InventoryItemModal: React.FC<InventoryItemModalProps> = ({ isOpen, 
                       <div key={idx} className="flex justify-between items-center bg-white p-3 rounded-xl border border-purple-100 shadow-sm">
                         <div className="flex-1 min-w-0 pr-2">
                           <div className="font-bold text-slate-800 text-sm truncate">{ing?.name}</div>
-                          <div className="text-[10px] text-slate-400">Custo unitário: R$ {ing?.costPrice.toFixed(2)} / {ing?.unit}</div>
+                          <div className="text-[10px] text-slate-400">Custo unitário: R$ {(ing?.costPrice || 0).toFixed(2)} / {ing?.unit}</div>
                         </div>
                         <div className="flex items-center gap-2">
                           <input type="number" step="0.001" className="w-20 border-2 p-1 rounded-lg text-right font-bold" value={step.qty} onChange={e => {
