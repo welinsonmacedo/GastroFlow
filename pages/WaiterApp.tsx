@@ -11,7 +11,8 @@ import { WaiterProductModal, OpenTableModal, TableActionsModal } from '../compon
 import { Bell, Plus, Search, ShoppingCart, ArrowLeft, Utensils, Trash2, Clock, CheckCircle, ChevronUp, ChevronDown, Zap, RefreshCcw, Lock, List, Grid, History, AlertTriangle, PackageX, CheckCheck, Check, LayoutGrid } from 'lucide-react';
 import { Modal } from '../components/Modal';
 
-const FALLBACK_SOUND_URL = "https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3";
+// Som de "Campainha" para Garçom
+const WAITER_SOUND_URL = "https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3";
 
 export const WaiterApp: React.FC = () => {
   const { state: restState } = useRestaurant();
@@ -29,8 +30,6 @@ export const WaiterApp: React.FC = () => {
   const [orderingTableId, setOrderingTableId] = useState<string | null>(null);
   const [selectedTableForOpen, setSelectedTableForOpen] = useState<string | null>(null);
   const [selectedTableForAction, setSelectedTableForAction] = useState<string | null>(null);
-  
-  // Estado para expandir/recolher mesas na aba de pedidos
   const [expandedTables, setExpandedTables] = useState<Set<string>>(new Set());
 
   // Confirmação de Chamado
@@ -45,11 +44,54 @@ export const WaiterApp: React.FC = () => {
   const pendingCalls = orderState.serviceCalls.filter(c => c.status === 'PENDING');
   const graceMinutes = restState.businessInfo?.orderGracePeriodMinutes || 0;
 
+  // Refs para monitorar mudanças e disparar som
+  const prevCallsCount = useRef(0);
+  const prevReadyCount = useRef(0);
+  const prevNewOrdersCount = useRef(0);
+
+  // Inicializa Áudio
   useEffect(() => {
-      audioRef.current = new Audio(FALLBACK_SOUND_URL);
+      audioRef.current = new Audio(WAITER_SOUND_URL);
+      audioRef.current.volume = 1.0;
+      
       const interval = setInterval(() => setTick(t => t + 1), 10000);
       return () => clearInterval(interval);
   }, []);
+
+  // Lógica de Notificação Sonora
+  useEffect(() => {
+      if (!orderState.audioUnlocked) return;
+
+      // 1. Novos Chamados de Mesa
+      const currentCallsCount = pendingCalls.length;
+      
+      // 2. Pratos Prontos na Cozinha
+      const currentReadyCount = orderState.orders.reduce((acc, o) => 
+          acc + o.items.filter(i => i.status === 'READY').length, 0
+      );
+
+      // 3. Novos Pedidos (QR Code) - Status PENDING e ainda não pagos
+      const currentNewOrdersCount = orderState.orders.filter(o => 
+          !o.isPaid && o.status !== 'CANCELLED' && 
+          o.items.some(i => i.status === 'PENDING')
+      ).length;
+
+      // Verifica se houve AUMENTO em qualquer um dos indicadores
+      const hasNewCall = currentCallsCount > prevCallsCount.current;
+      const hasNewReady = currentReadyCount > prevReadyCount.current;
+      const hasNewOrder = currentNewOrdersCount > prevNewOrdersCount.current;
+
+      if (hasNewCall || hasNewReady || hasNewOrder) {
+          audioRef.current?.play().catch(e => console.log("Som bloqueado", e));
+          if (navigator.vibrate) navigator.vibrate(300);
+      }
+
+      // Atualiza refs
+      prevCallsCount.current = currentCallsCount;
+      prevReadyCount.current = currentReadyCount;
+      prevNewOrdersCount.current = currentNewOrdersCount;
+
+  }, [pendingCalls.length, orderState.orders, orderState.audioUnlocked]);
 
   const handleManualRefresh = () => {
       setIsRefreshing(true);
@@ -139,18 +181,15 @@ export const WaiterApp: React.FC = () => {
   // --- LÓGICA DE FILTRAGEM E AGRUPAMENTO ---
 
   // 1. Pedidos Ativos: Não Pagos, Não Cancelados, e status != DELIVERED
-  // IMPORTANTE: Filtra os ITENS. Se todos os itens de um pedido forem entregues, o pedido some daqui.
   const activeOrders = orderState.orders
       .filter(o => !o.isPaid && o.status !== 'CANCELLED')
       .map(o => ({
           ...o,
-          // Mantém APENAS itens não entregues
           items: o.items.filter(i => i.status !== 'DELIVERED' && i.status !== 'CANCELLED')
       }))
-      .filter(o => o.items.length > 0); // Se não sobrou nenhum item pendente, remove o pedido da lista ativa
+      .filter(o => o.items.length > 0);
 
   // 2. Pedidos Histórico: Itens Entregues
-  // Mostra apenas itens que JÁ FORAM entregues
   const historyOrders = orderState.orders
       .filter(o => !o.isPaid && o.status !== 'CANCELLED')
       .map(o => ({

@@ -4,9 +4,10 @@ import { useRestaurant } from '../context/RestaurantContext';
 import { useMenu } from '../context/MenuContext';
 import { useOrder } from '../context/OrderContext';
 import { OrderStatus, ProductType, OrderItem } from '../types';
-import { Clock, Check, ChefHat, CheckCircle, AlertTriangle, Volume2, Zap, Plus, Printer, RefreshCcw } from 'lucide-react';
+import { Clock, ChefHat, CheckCircle, AlertTriangle, Volume2, Zap, Plus, Printer, RefreshCcw } from 'lucide-react';
 
-const BELL_SOUND_BASE64 = "data:audio/mp3;base64,//uQRAAAAWMSLwUIYAAsYkXgoQwAEaYLWfkWgAI0wWs/ItAAAG84AA0WAgAAAAAAABZsAAAAtAAAAAAAABaAAAAAABZAAABcAAABjAAAA//uQRAAAAWMSLwUIYAAsYkXgoQwAEaYLWfkWgAI0wWs/ItAAAG84AA0WAgAAAAAAABZsAAAAtAAAAAAAABaAAAAAABZAAABcAAABjAAAA"; 
+// Som de "Ding" de cozinha (Short Bell)
+const KITCHEN_SOUND_URL = "https://assets.mixkit.co/active_storage/sfx/571/571-preview.mp3";
 
 export const KitchenDisplay: React.FC = () => {
   const { state: restState } = useRestaurant();
@@ -16,7 +17,9 @@ export const KitchenDisplay: React.FC = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [, setTick] = useState(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const prevOrdersCount = useRef(0);
+  
+  // Refs para controlar o disparo do som apenas quando AUMENTAR o número de pendentes
+  const prevPendingCount = useRef(0);
   const wakeLockRef = useRef<any>(null);
 
   const isKitchenItem = (item: OrderItem) => {
@@ -27,11 +30,13 @@ export const KitchenDisplay: React.FC = () => {
 
   const graceMinutes = restState.businessInfo?.orderGracePeriodMinutes || 0;
 
+  // Filtra pedidos ativos
   const activeOrders = orderState.orders.filter(order => {
       if (order.status === 'CANCELLED') return false;
       const now = new Date().getTime();
       const orderTime = new Date(order.timestamp).getTime();
       const diffMinutes = (now - orderTime) / 60000;
+      // Respeita o tempo de carência (se configurado) antes de mostrar na cozinha
       if (diffMinutes < graceMinutes) return false;
 
       return order.items.some(item => 
@@ -39,6 +44,11 @@ export const KitchenDisplay: React.FC = () => {
           (item.status === OrderStatus.PENDING || item.status === OrderStatus.PREPARING)
       );
   });
+
+  // Conta quantos itens estão estritamente PENDENTES (novos)
+  const currentPendingCount = activeOrders.reduce((acc, order) => {
+      return acc + order.items.filter(i => isKitchenItem(i) && i.status === OrderStatus.PENDING).length;
+  }, 0);
 
   useEffect(() => {
       const interval = setInterval(() => setTick(t => t + 1), 10000);
@@ -61,24 +71,30 @@ export const KitchenDisplay: React.FC = () => {
   };
 
   useEffect(() => {
-    audioRef.current = new Audio(BELL_SOUND_BASE64);
-    prevOrdersCount.current = activeOrders.length;
+    // Inicializa o áudio
+    audioRef.current = new Audio(KITCHEN_SOUND_URL);
+    // Define o volume (opcional)
+    audioRef.current.volume = 1.0;
   }, []);
 
+  // Lógica de Disparo do Som
   useEffect(() => {
-      if (activeOrders.length > prevOrdersCount.current && orderState.audioUnlocked) {
-          audioRef.current?.play().catch(() => {});
+      // Se o áudio estiver desbloqueado E o número de pendentes aumentou
+      if (orderState.audioUnlocked && currentPendingCount > prevPendingCount.current) {
+          audioRef.current?.play().catch(e => console.log("Áudio bloqueado pelo navegador:", e));
+          
           if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
       }
-      prevOrdersCount.current = activeOrders.length;
-  }, [activeOrders.length, orderState.audioUnlocked]);
+      // Atualiza a referência
+      prevPendingCount.current = currentPendingCount;
+  }, [currentPendingCount, orderState.audioUnlocked]);
 
   const enableAudio = () => {
       if (audioRef.current) {
           audioRef.current.play().then(() => {
               orderDispatch({ type: 'UNLOCK_AUDIO' });
               requestWakeLock();
-          });
+          }).catch(e => console.error("Erro ao ativar áudio:", e));
       } else {
           orderDispatch({ type: 'UNLOCK_AUDIO' });
           requestWakeLock();
