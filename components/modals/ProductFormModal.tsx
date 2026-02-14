@@ -8,7 +8,7 @@ import { useRestaurant } from '../../context/RestaurantContext';
 import { useInventory } from '../../context/InventoryContext';
 import { useUI } from '../../context/UIContext';
 import { Product, ProductType } from '../../types';
-import { Archive, DollarSign, Layers, CheckSquare, Square, ImageIcon } from 'lucide-react';
+import { Archive, DollarSign, Layers, CheckSquare, Square, ImageIcon, Tag } from 'lucide-react';
 
 interface ProductFormModalProps {
   isOpen: boolean;
@@ -25,6 +25,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({ isOpen, onCl
   const [selectedStockId, setSelectedStockId] = useState('');
   const [isExtra, setIsExtra] = useState(false);
   const [selectedExtraIds, setSelectedExtraIds] = useState<string[]>([]);
+  const [selectedTargetCategories, setSelectedTargetCategories] = useState<string[]>([]);
   
   // Form States
   const [name, setName] = useState('');
@@ -45,6 +46,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({ isOpen, onCl
             setSelectedStockId(productToEdit.linkedInventoryItemId || '');
             setIsExtra(productToEdit.isExtra || false);
             setSelectedExtraIds(productToEdit.linkedExtraIds || []);
+            setSelectedTargetCategories(productToEdit.targetCategories || []);
         } else {
             setName('');
             setPrice('');
@@ -54,6 +56,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({ isOpen, onCl
             setSelectedStockId('');
             setIsExtra(false);
             setSelectedExtraIds([]);
+            setSelectedTargetCategories([]);
         }
     }
   }, [isOpen, productToEdit]);
@@ -65,8 +68,17 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({ isOpen, onCl
 
   const allAvailableExtras = menuState.products.filter(p => p.isExtra && (!productToEdit || p.id !== productToEdit.id));
 
+  // Obtém todas as categorias usadas por produtos que NÃO são extras
+  const existingCategories = Array.from(new Set(menuState.products.filter(p => !p.isExtra).map(p => p.category))).sort();
+  // Se não houver nenhuma, sugere algumas padrões
+  const displayCategories = existingCategories.length > 0 ? existingCategories : ['Lanches', 'Pizzas', 'Bebidas', 'Sobremesas', 'Pratos Principais'];
+
   const toggleExtraSelection = (id: string) => {
       setSelectedExtraIds(prev => prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]);
+  };
+
+  const toggleTargetCategory = (cat: string) => {
+      setSelectedTargetCategories(prev => prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat]);
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -88,6 +100,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({ isOpen, onCl
               linkedInventoryItemId: stockItem.id, 
               isExtra: isExtra,
               linkedExtraIds: isExtra ? [] : selectedExtraIds,
+              targetCategories: isExtra ? selectedTargetCategories : [], // Salva apenas se for extra
               costPrice: stockItem.costPrice || 0,
               type: stockItem.type === 'RESALE' ? ProductType.BAR : ProductType.KITCHEN,
               isVisible: true
@@ -99,7 +112,8 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({ isOpen, onCl
                   ...productData,
                   linkedInventoryItemId: productData.linkedInventoryItemId,
                   isExtra: productData.isExtra,
-                  linkedExtraIds: productData.linkedExtraIds
+                  linkedExtraIds: productData.linkedExtraIds,
+                  targetCategories: productData.targetCategories
               } as Product);
           } else {
               await addProduct({
@@ -257,6 +271,31 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({ isOpen, onCl
                                         <option key={c} value={c}>{c}</option>
                                     ))}
                                 </select>
+                            </div>
+                        )}
+
+                        {isExtra && (
+                            <div className="bg-orange-50 p-4 rounded-xl border border-orange-200">
+                                <label className="block text-xs font-bold text-orange-800 uppercase mb-2 flex items-center gap-2">
+                                    <Tag size={12}/> Disponível nas Categorias:
+                                </label>
+                                <div className="max-h-40 overflow-y-auto space-y-1">
+                                    {displayCategories.map(cat => (
+                                        <label key={cat} className="flex items-center gap-2 p-1.5 hover:bg-orange-100 rounded cursor-pointer">
+                                            <div className={`w-4 h-4 border-2 rounded flex items-center justify-center ${selectedTargetCategories.includes(cat) ? 'bg-orange-600 border-orange-600' : 'bg-white border-orange-300'}`}>
+                                                {selectedTargetCategories.includes(cat) && <CheckSquare size={12} className="text-white"/>}
+                                            </div>
+                                            <input 
+                                                type="checkbox" 
+                                                className="hidden" 
+                                                checked={selectedTargetCategories.includes(cat)} 
+                                                onChange={() => toggleTargetCategory(cat)} 
+                                            />
+                                            <span className="text-xs font-bold text-orange-900">{cat}</span>
+                                        </label>
+                                    ))}
+                                </div>
+                                <p className="text-[9px] text-orange-700 mt-2 italic">Selecione quais tipos de prato podem ter este adicional.</p>
                             </div>
                         )}
 

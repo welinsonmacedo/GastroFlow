@@ -149,7 +149,8 @@ export interface Product {
   isVisible: boolean; 
   sortOrder: number;
   isExtra: boolean; 
-  linkedExtraIds?: string[]; 
+  linkedExtraIds?: string[];
+  targetCategories?: string[]; // Categorias onde este adicional pode aparecer
 }
 
 export interface OrderItem {

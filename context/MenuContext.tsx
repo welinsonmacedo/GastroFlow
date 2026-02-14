@@ -39,7 +39,8 @@ export const MenuProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isVisible: p.is_visible, 
         sortOrder: p.sort_order, 
         isExtra: p.is_extra || false, 
-        linkedExtraIds: p.linked_extra_ids || []
+        linkedExtraIds: p.linked_extra_ids || [],
+        targetCategories: p.target_categories || [] // Mapeia novas categorias alvo
       }));
   };
 
@@ -67,7 +68,8 @@ export const MenuProvider: React.FC<{ children: React.ReactNode }> = ({ children
           category: product.category, type: product.type, image: product.image, 
           is_visible: product.isVisible, sort_order: product.sortOrder, 
           linked_inventory_item_id: product.linkedInventoryItemId,
-          is_extra: product.isExtra, linked_extra_ids: product.linkedExtraIds
+          is_extra: product.isExtra, linked_extra_ids: product.linkedExtraIds,
+          target_categories: product.targetCategories
       }); 
       if (error) throw error;
       await fetchProducts();
@@ -78,7 +80,8 @@ export const MenuProvider: React.FC<{ children: React.ReactNode }> = ({ children
           name: product.name, price: product.price, category: product.category, 
           description: product.description, image: product.image, 
           is_visible: product.isVisible, sort_order: product.sortOrder,
-          is_extra: product.isExtra, linked_extra_ids: product.linkedExtraIds
+          is_extra: product.isExtra, linked_extra_ids: product.linkedExtraIds,
+          target_categories: product.targetCategories
       }).eq('id', product.id);
       if (error) throw error;
       await fetchProducts();
