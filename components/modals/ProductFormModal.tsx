@@ -143,12 +143,22 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({ isOpen, onCl
                             <select 
                                 className="w-full border-2 p-3 rounded-xl text-sm bg-white focus:border-blue-500 outline-none shadow-sm transition-all" 
                                 value={selectedStockId} 
-                                onChange={e => setSelectedStockId(e.target.value)}
+                                onChange={e => {
+                                    const newId = e.target.value;
+                                    setSelectedStockId(newId);
+                                    // Auto-preencher preço e nome se disponível no estoque
+                                    const stockItem = invState.inventory.find(i => i.id === newId);
+                                    if (stockItem) {
+                                        if (stockItem.salePrice > 0) setPrice(stockItem.salePrice.toString());
+                                        if (!name) setName(stockItem.name);
+                                        if (!image && stockItem.image) setImage(stockItem.image);
+                                    }
+                                }}
                                 required
                             >
                                 <option value="">Selecione do estoque...</option>
                                 {availableForMenu.map(i => (
-                                    <option key={i.id} value={i.id}>{i.name} ({i.type === 'COMPOSITE' ? 'Prato' : 'Revenda'})</option>
+                                    <option key={i.id} value={i.id}>{i.name} ({i.type === 'COMPOSITE' ? 'Prato' : 'Revenda'}) - Sugerido: R$ {i.salePrice.toFixed(2)}</option>
                                 ))}
                                 {productToEdit && !availableForMenu.find(i => i.id === productToEdit.linkedInventoryItemId) && (
                                     <option value={productToEdit.linkedInventoryItemId}>
