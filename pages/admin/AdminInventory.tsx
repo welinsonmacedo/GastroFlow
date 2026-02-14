@@ -1,9 +1,10 @@
 
 import React, { useState } from 'react';
 import { useInventory } from '../../context/InventoryContext';
+import { useUI } from '../../context/UIContext';
 import { Button } from '../../components/Button';
 import { InventoryItem } from '../../types';
-import { Archive, AlertTriangle, Plus, ArrowDown, Edit, FileText, Truck, ClipboardList, Search } from 'lucide-react';
+import { Archive, AlertTriangle, Plus, ArrowDown, Edit, FileText, Truck, ClipboardList, Search, Trash2 } from 'lucide-react';
 
 // Modais Separados
 import { InventoryItemModal } from '../../components/modals/InventoryItemModal';
@@ -14,7 +15,8 @@ import { InventoryCountModal } from '../../components/modals/InventoryCountModal
 import { InventoryLogsModal } from '../../components/modals/InventoryLogsModal';
 
 export const AdminInventory: React.FC = () => {
-  const { state: invState } = useInventory();
+  const { state: invState, deleteInventoryItem } = useInventory();
+  const { showConfirm, showAlert } = useUI();
   
   // Controle de Estado dos Modais
   const [activeModal, setActiveModal] = useState<'NONE' | 'ITEM' | 'SUPPLIER' | 'PURCHASE' | 'STOCK' | 'COUNT' | 'LOGS'>('NONE');
@@ -37,6 +39,22 @@ export const AdminInventory: React.FC = () => {
   const handleStockAdj = (itemId: string, type: 'IN' | 'OUT') => {
     setStockAdjParams({ itemId, type });
     setActiveModal('STOCK');
+  };
+
+  const handleDeleteItem = (itemId: string) => {
+      showConfirm({
+          title: "Excluir Item",
+          message: "Tem certeza? Isso removerá o item do estoque permanentemente.",
+          type: 'WARNING',
+          onConfirm: async () => {
+              try {
+                  await deleteInventoryItem(itemId);
+                  showAlert({ title: "Sucesso", message: "Item excluído.", type: 'SUCCESS' });
+              } catch (error: any) {
+                  showAlert({ title: "Erro", message: error.message || "Erro ao excluir.", type: 'ERROR' });
+              }
+          }
+      });
   };
 
   // Filtro de Itens
@@ -133,6 +151,7 @@ export const AdminInventory: React.FC = () => {
                                                 <button onClick={() => handleStockAdj(item.id, 'OUT')} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg"><ArrowDown size={18}/></button>
                                             </>
                                         )}
+                                        <button onClick={() => handleDeleteItem(item.id)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg"><Trash2 size={18}/></button>
                                     </div>
                                 </td>
                             </tr>

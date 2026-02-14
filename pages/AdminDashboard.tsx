@@ -6,7 +6,7 @@ import { Button } from '../components/Button';
 import { QRCodeGenerator } from '../components/QRCodeGenerator';
 import { ImageUploader } from '../components/ImageUploader';
 import { Product, ProductType, Role, User, InventoryItem, Expense, InventoryType, Supplier, PurchaseItemInput, PurchaseInstallment } from '../types';
-import { LayoutDashboard, Utensils, QrCode, Printer, ExternalLink, Palette, Eye, EyeOff, Save, Copy, Plus, Users, ShieldCheck, Trash2, Edit, AlertTriangle, FileBarChart, X, ArrowUp, ArrowDown, LayoutGrid, List as ListIcon, Image as ImageIcon, Calendar, TrendingUp, Search, Loader2, Menu, Activity, CheckSquare, GripVertical, Link as LinkIcon, Share2, Lock, BookOpen, Package, DollarSign, Archive, TrendingDown, RefreshCcw, Layers, ArrowLeft, Truck, FileText, ClipboardList, FileSpreadsheet, PieChart, CreditCard, Info, MapPin, Phone, User as UserIcon, ChevronDown, ChevronRight, Briefcase, Settings } from 'lucide-react';
+import { LayoutDashboard, Utensils, QrCode, Printer, ExternalLink, Palette, Eye, EyeOff, Save, Copy, Plus, Users, ShieldCheck, Trash2, Edit, AlertTriangle, FileBarChart, X, ArrowUp, ArrowDown, LayoutGrid, List as ListIcon, Image as ImageIcon, Calendar, TrendingUp, Search, Loader2, Menu, Activity, CheckSquare, GripVertical, Link as LinkIcon, Share2, Lock, BookOpen, Package, DollarSign, Archive, TrendingDown, RefreshCcw, Layers, ArrowLeft, Truck, FileText, ClipboardList, FileSpreadsheet, PieChart, CreditCard, Info, MapPin, Phone, User as UserIcon, ChevronDown, ChevronRight, Briefcase, Settings, ShoppingCart, Lightbulb } from 'lucide-react';
 import { getTenantSlug } from '../utils/tenant';
 import { supabase } from '../lib/supabase';
 import { Link } from 'react-router-dom';
@@ -20,11 +20,13 @@ import { AdminFinance } from './admin/AdminFinance';
 import { AdminAccounting } from './admin/AdminAccounting';
 import { AccountingReport } from './admin/AccountingReport'; 
 import { AdminSettings } from './admin/AdminSettings';
+import { AdminPurchaseSuggestions } from './admin/AdminPurchaseSuggestions'; // NEW
+import { AdminFinancialTips } from './admin/AdminFinancialTips'; // NEW
 
 export const AdminDashboard: React.FC = () => {
   const { state, dispatch } = useRestaurant();
   const { showAlert } = useUI();
-  const [activeTab, setActiveTab] = useState<'DASHBOARD' | 'PRODUCTS' | 'TABLES' | 'CUSTOMIZATION' | 'STAFF' | 'REPORTS' | 'ACCOUNTING' | 'OFFICIAL_REPORT' | 'INVENTORY' | 'FINANCE'>('DASHBOARD');
+  const [activeTab, setActiveTab] = useState<'DASHBOARD' | 'PRODUCTS' | 'TABLES' | 'CUSTOMIZATION' | 'STAFF' | 'REPORTS' | 'ACCOUNTING' | 'OFFICIAL_REPORT' | 'INVENTORY' | 'FINANCE' | 'PURCHASE_SUGGESTIONS' | 'FINANCIAL_TIPS'>('DASHBOARD');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Mobile toggle
   const [isSidebarHovered, setIsSidebarHovered] = useState(false); // Desktop hover
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -58,6 +60,8 @@ export const AdminDashboard: React.FC = () => {
           case 'ACCOUNTING': return <AdminAccounting />;
           case 'OFFICIAL_REPORT': return <AccountingReport />;
           case 'CUSTOMIZATION': return <AdminSettings />;
+          case 'PURCHASE_SUGGESTIONS': return <AdminPurchaseSuggestions />;
+          case 'FINANCIAL_TIPS': return <AdminFinancialTips />;
           default: return <AdminOverview />;
       }
   };
@@ -81,6 +85,8 @@ export const AdminDashboard: React.FC = () => {
           items: [
               { id: 'FINANCE', label: 'Financeiro', icon: DollarSign, visible: planLimits.allowExpenses || planLimits.allowPurchases },
               { id: 'ACCOUNTING', label: 'DRE Gerencial', icon: PieChart, visible: planLimits.allowReports },
+              { id: 'PURCHASE_SUGGESTIONS', label: 'Sugestão Compra', icon: ShoppingCart, visible: planLimits.allowInventory },
+              { id: 'FINANCIAL_TIPS', label: 'Dicas Financeiras', icon: Lightbulb, visible: planLimits.allowReports },
               { id: 'STAFF', label: 'Equipe', icon: Users, visible: planLimits.allowStaff },
           ]
       },

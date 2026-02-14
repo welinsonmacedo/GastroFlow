@@ -23,15 +23,23 @@ export const CashierDashboard: React.FC = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
   const [openRegisterAmount, setOpenRegisterAmount] = useState('');
+  
+  // Modais
   const [bleedModalOpen, setBleedModalOpen] = useState(false);
   const [closeModalOpen, setCloseModalOpen] = useState(false);
   const [voidModalOpen, setVoidModalOpen] = useState(false);
+  const [cashPaymentModalOpen, setCashPaymentModalOpen] = useState(false);
+  
   const [transactionToVoid, setTransactionToVoid] = useState<string | null>(null);
   const [voidPin, setVoidPin] = useState('');
   const [posCart, setPosCart] = useState<{ product: Product; quantity: number; notes: string }[]>([]);
   const [posSearch, setPosSearch] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [processingSale, setProcessingSale] = useState(false);
+  
+  // Estado para Troco
+  const [cashReceived, setCashReceived] = useState('');
+  const [pendingCashAction, setPendingCashAction] = useState<{ type: 'TABLE' | 'POS', total: number } | null>(null);
 
   const occupiedTables = orderState.tables.filter(t => t.status !== TableStatus.AVAILABLE);
   const selectedTable = orderState.tables.find(t => t.id === selectedTableId);
@@ -44,27 +52,67 @@ export const CashierDashboard: React.FC = () => {
       setTimeout(() => setIsRefreshing(false), 800);
   };
 
+  // --- Lógica de Pagamento ---
+
+  const initiateCashPayment = (type: 'TABLE' | 'POS', total: number) => {
+      setCashReceived('');
+      setPendingCashAction({ type, total });
+      setCashPaymentModalOpen(true);
+  };
+
+  const confirmCashPayment = async () => {
+      if (!pendingCashAction) return;
+      setCashPaymentModalOpen(false);
+      
+      if (pendingCashAction.type === 'TABLE') {
+          await finalizeTablePayment('CASH');
+      } else {
+          await finalizePosSale('CASH');
+      }
+      setPendingCashAction(null);
+  };
+
   const handlePayment = async (method: string) => {
       if (!selectedTableId || totalAmount <= 0) return;
+      
+      if (method === 'CASH') {
+          initiateCashPayment('TABLE', totalAmount);
+          return;
+      }
       
       showConfirm({
           title: "Confirmar Pagamento",
           message: `Deseja confirmar o recebimento de R$ ${totalAmount.toFixed(2)} via ${method}?`,
-          onConfirm: async () => {
-              try {
-                  await orderDispatch({ type: 'PROCESS_PAYMENT', tableId: selectedTableId, amount: totalAmount, method });
-                  setSelectedTableId(null);
-                  showAlert({ title: "Pagamento Realizado", message: "Mesa liberada com sucesso.", type: 'SUCCESS' });
-              } catch (error) {
-                  showAlert({ title: "Erro", message: "Falha ao processar pagamento.", type: 'ERROR' });
-              }
-          }
+          onConfirm: () => finalizeTablePayment(method)
       });
+  };
+
+  const finalizeTablePayment = async (method: string) => {
+      if (!selectedTableId) return;
+      try {
+          await orderDispatch({ type: 'PROCESS_PAYMENT', tableId: selectedTableId, amount: totalAmount, method });
+          setSelectedTableId(null);
+          showAlert({ title: "Pagamento Realizado", message: "Mesa liberada com sucesso.", type: 'SUCCESS' });
+      } catch (error) {
+          showAlert({ title: "Erro", message: "Falha ao processar pagamento.", type: 'ERROR' });
+      }
   };
 
   const handlePosSale = async (method: 'CASH' | 'CREDIT' | 'DEBIT' | 'PIX') => {
       if (!finState.activeCashSession) return showAlert({ title: "Caixa Fechado", message: "Abra o caixa antes de vender.", type: 'ERROR' });
       if (posCart.length === 0) return showAlert({ title: "Carrinho Vazio", message: "Adicione produtos.", type: 'WARNING' });
+      
+      const total = posCart.reduce((acc, item) => acc + (item.product.price * item.quantity), 0);
+
+      if (method === 'CASH') {
+          initiateCashPayment('POS', total);
+          return;
+      }
+
+      await finalizePosSale(method);
+  };
+
+  const finalizePosSale = async (method: string) => {
       setProcessingSale(true);
       const total = posCart.reduce((acc, item) => acc + (item.product.price * item.quantity), 0);
       try {
@@ -275,12 +323,47 @@ export const CashierDashboard: React.FC = () => {
 
           <CashBleedModal isOpen={bleedModalOpen} onClose={() => setBleedModalOpen(false)} />
           <CloseRegisterModal isOpen={closeModalOpen} onClose={() => setCloseModalOpen(false)} onSuccess={() => setActiveTab('ACTIVE')} />
+          
           <Modal isOpen={voidModalOpen} onClose={() => setVoidModalOpen(false)} title="Autorizar Cancelamento" variant="dialog" maxWidth="sm">
               <form onSubmit={async (e) => { e.preventDefault(); if (!transactionToVoid) return; try { await voidTransaction(transactionToVoid, voidPin); setVoidModalOpen(false); setVoidPin(''); showAlert({ title: "Sucesso", message: "Transação estornada!", type: 'SUCCESS' }); } catch (error: any) { showAlert({ title: "Erro", message: error.message, type: 'ERROR' }); } }} className="space-y-6">
                   <div className="bg-red-50 text-red-700 p-4 rounded-2xl text-xs font-bold border border-red-100 flex items-start gap-3"><Lock size={20} className="shrink-0"/><p>Apenas gerentes podem autorizar o estorno de vendas concluídas. Insira sua Senha Mestra abaixo.</p></div>
                   <div><label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 px-1">PIN do Administrador</label><input type="password" autoFocus className="w-full border-2 p-5 rounded-2xl focus:border-red-500 outline-none text-center font-black tracking-[0.5em] text-3xl shadow-inner bg-gray-50" placeholder="****" value={voidPin} onChange={e => setVoidPin(e.target.value)} maxLength={4} /></div>
                   <Button type="submit" className="w-full py-5 bg-red-600 hover:bg-red-700 font-black rounded-2xl text-lg shadow-xl shadow-red-600/20">ESTORNAR AGORA</Button>
               </form>
+          </Modal>
+
+          <Modal isOpen={cashPaymentModalOpen} onClose={() => { setCashPaymentModalOpen(false); setPendingCashAction(null); }} title="Recebimento em Dinheiro" variant="dialog" maxWidth="sm">
+              <div className="space-y-6">
+                  <div className="text-center">
+                      <p className="text-sm font-bold text-gray-500 uppercase">Valor Total</p>
+                      <p className="text-4xl font-black text-slate-800">R$ {pendingCashAction?.total.toFixed(2)}</p>
+                  </div>
+                  <div>
+                      <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2 px-1">Valor Recebido</label>
+                      <input 
+                          type="number" step="0.01" autoFocus
+                          className="w-full border-2 p-5 rounded-2xl focus:border-emerald-500 outline-none text-center font-black text-3xl shadow-inner bg-emerald-50/30 text-emerald-700" 
+                          placeholder="0.00" 
+                          value={cashReceived} 
+                          onChange={e => setCashReceived(e.target.value)} 
+                      />
+                  </div>
+                  
+                  {parseFloat(cashReceived) >= (pendingCashAction?.total || 0) && (
+                      <div className="bg-emerald-100 p-4 rounded-2xl text-center border border-emerald-200">
+                          <p className="text-sm font-bold text-emerald-700 uppercase">Troco a Devolver</p>
+                          <p className="text-3xl font-black text-emerald-800">R$ {(parseFloat(cashReceived) - (pendingCashAction?.total || 0)).toFixed(2)}</p>
+                      </div>
+                  )}
+
+                  <Button 
+                      onClick={confirmCashPayment} 
+                      disabled={!cashReceived || parseFloat(cashReceived) < (pendingCashAction?.total || 0)}
+                      className="w-full py-5 text-xl font-black rounded-2xl shadow-xl"
+                  >
+                      CONFIRMAR RECEBIMENTO
+                  </Button>
+              </div>
           </Modal>
       </div>
   );

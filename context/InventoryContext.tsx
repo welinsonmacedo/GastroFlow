@@ -15,6 +15,7 @@ interface InventoryContextType {
   state: InventoryState;
   addInventoryItem: (item: InventoryItem) => Promise<void>;
   updateInventoryItem: (item: InventoryItem) => Promise<void>;
+  deleteInventoryItem: (itemId: string) => Promise<void>;
   updateStock: (itemId: string, quantity: number, operation: 'IN' | 'OUT', reason: string, userName?: string) => Promise<void>;
   processInventoryAdjustment: (adjustments: { itemId: string; realQty: number }[]) => Promise<void>;
   addSupplier: (supplier: Supplier) => Promise<void>;
@@ -176,6 +177,16 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       }
   };
 
+  const deleteInventoryItem = async (itemId: string) => {
+      const { error } = await supabase.from('inventory_items').delete().eq('id', itemId);
+      if (error) {
+          if (error.code === '23503') { // Foreign Key Violation
+              throw new Error("Não é possível excluir este item pois ele está vinculado a produtos, receitas ou histórico de vendas.");
+          }
+          throw error;
+      }
+  };
+
   const updateStock = async (itemId: string, quantity: number, operation: 'IN' | 'OUT', reason: string, userName: string = 'Sistema') => {
       if(!tenantId) return;
       const item = state.inventory.find(i => i.id === itemId);
@@ -276,7 +287,7 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   };
 
   return (
-    <InventoryContext.Provider value={{ state, addInventoryItem, updateInventoryItem, updateStock, processInventoryAdjustment, addSupplier, deleteSupplier, processPurchase, fetchData }}>
+    <InventoryContext.Provider value={{ state, addInventoryItem, updateInventoryItem, deleteInventoryItem, updateStock, processInventoryAdjustment, addSupplier, deleteSupplier, processPurchase, fetchData }}>
       {children}
     </InventoryContext.Provider>
   );
