@@ -227,29 +227,19 @@ export const AdminDashboard: React.FC = () => {
             </div>
         </aside>
 
-        {/* Content Area */}
+        {/* Content Area (HEADER REMOVIDO) */}
         <div className="flex-1 flex flex-col h-full overflow-hidden relative">
-            <header className="bg-white/80 backdrop-blur-md shadow-sm border-b p-4 md:p-6 flex justify-between items-center shrink-0 print:hidden z-40 sticky top-0">
-                <div className="flex items-center gap-4">
-                    <button onClick={() => setIsSidebarOpen(true)} className="lg:hidden p-3 bg-slate-900 text-white rounded-2xl shadow-lg"><Menu size={20}/></button>
-                    <div className="hidden lg:block">
-                        <h1 className="font-black text-2xl text-slate-900 uppercase tracking-tighter">Administração</h1>
-                        <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest mt-0.5">{state.theme.restaurantName}</p>
-                    </div>
-                </div>
+            
+            {/* Botão de Menu Flutuante para Mobile (Caso contrário, impossível abrir sidebar) */}
+            <button 
+                onClick={() => setIsSidebarOpen(true)} 
+                className="lg:hidden absolute top-4 left-4 z-40 p-2 bg-slate-900 text-white rounded-xl shadow-lg border border-slate-700 hover:bg-slate-800 transition-colors"
+                title="Abrir Menu"
+            >
+                <Menu size={20}/>
+            </button>
 
-                <div className="flex items-center gap-3">
-                    <button 
-                        onClick={handleGlobalRefresh}
-                        className={`p-3.5 rounded-2xl bg-gray-100 text-blue-600 hover:bg-blue-50 transition-all shadow-sm ${isRefreshing ? 'animate-spin' : 'hover:scale-105 active:scale-95'}`}
-                        title="Sincronizar Banco de Dados"
-                    >
-                        <RefreshCcw size={22}/>
-                    </button>
-                </div>
-            </header>
-
-            <main className="flex-1 overflow-y-auto p-4 md:p-10 custom-scrollbar">
+            <main className="flex-1 overflow-y-auto p-4 md:p-10 custom-scrollbar pt-16 md:pt-10">
                 <div className="max-w-7xl mx-auto h-full animate-fade-in">
                     {renderContent()}
                 </div>
