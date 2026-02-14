@@ -47,8 +47,6 @@ export const KitchenDisplay: React.FC = () => {
 
   const handleManualRefresh = async () => {
       setIsRefreshing(true);
-      // O fetchData já é chamado automaticamente pelo useEffect do Context quando há mudanças,
-      // mas aqui forçamos uma atualização visual para feedback do usuário.
       setTimeout(() => setIsRefreshing(false), 800);
   };
 
@@ -109,7 +107,6 @@ export const KitchenDisplay: React.FC = () => {
 
   const handlePrintOrder = (order: any, tableNumber: number) => {
       const groupedItems = groupOrderItems(order.items);
-      const restaurantName = restState.theme.restaurantName;
       const date = new Date(order.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
       const printContent = `
@@ -225,29 +222,34 @@ export const KitchenDisplay: React.FC = () => {
 
               <div className="p-4 flex-1 space-y-3 overflow-y-auto custom-scrollbar">
                 {groupedItems.map(({ main, extras }) => (
-                    <div key={main.id} className={`p-4 rounded-3xl border-2 transition-all relative ${main.status === OrderStatus.PENDING ? 'bg-slate-800 border-emerald-500/20' : 'bg-blue-600/10 border-blue-500/30'}`}>
-                        <div className="flex justify-between items-start mb-2">
-                            <span className="font-black text-2xl text-white tracking-tight">{main.quantity}x {main.productName}</span>
+                    <div key={main.id} className={`p-4 rounded-3xl border-2 transition-all relative flex flex-col gap-3 ${main.status === OrderStatus.PENDING ? 'bg-slate-800 border-emerald-500/20' : 'bg-blue-600/10 border-blue-500/30'}`}>
+                        {/* Bloco Principal + Adicionais */}
+                        <div>
+                            <div className="flex justify-between items-start mb-2">
+                                <span className="font-black text-2xl text-white tracking-tight leading-none">{main.quantity}x {main.productName}</span>
+                            </div>
+                            
+                            {main.notes && (
+                                <div className="bg-yellow-500/10 border-2 border-yellow-500/30 text-yellow-500 font-black text-xs p-3 rounded-2xl flex items-start gap-2 mb-2 animate-pulse">
+                                    <AlertTriangle size={16} className="shrink-0" />
+                                    <span className="uppercase">{main.notes}</span>
+                                </div>
+                            )}
+
+                            {/* Adicionais VISUALMENTE DENTRO DO BLOCO */}
+                            {extras.length > 0 && (
+                                <div className="mt-2 space-y-1 bg-slate-900/50 p-3 rounded-xl border border-white/5">
+                                    {extras.map(e => (
+                                        <div key={e.id} className="text-emerald-400 text-sm font-bold flex items-center gap-2">
+                                            <Plus size={14} /> {e.quantity}x {e.productName}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
-                        
-                        {main.notes && (
-                            <div className="bg-yellow-500/10 border-2 border-yellow-500/30 text-yellow-500 font-black text-xs p-3 rounded-2xl flex items-start gap-2 mb-3 animate-pulse">
-                                <AlertTriangle size={16} className="shrink-0" />
-                                <span className="uppercase">{main.notes}</span>
-                            </div>
-                        )}
 
-                        {extras.length > 0 && (
-                            <div className="mb-4 space-y-1.5 pl-3 border-l-4 border-emerald-500/30">
-                                {extras.map(e => (
-                                    <div key={e.id} className="text-slate-400 text-sm font-bold flex items-center gap-2">
-                                        <Plus size={14} className="text-emerald-500" /> {e.quantity}x {e.productName}
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-
-                        <div className="flex gap-2">
+                        {/* Botões de Ação */}
+                        <div className="flex gap-2 mt-auto">
                             {main.status === OrderStatus.PENDING ? (
                                 <button onClick={() => updateGroupStatus(order.id, main, extras, OrderStatus.PREPARING)} className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-emerald-600/20 transition-all">Começar</button>
                             ) : (

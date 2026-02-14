@@ -102,12 +102,10 @@ export const WaiterApp: React.FC = () => {
   };
 
   const handleDeliverAllOrder = (order: any) => {
+      // Usa a função auxiliar para saber o que pode ser entregue
+      const foodReady = hasReadyKitchenFood(order.items);
       order.items.forEach((item: any) => {
-          // Entrega se estiver pronto ou se for item de bar pendente (que assume-se pronto para entrega)
-          const isBarItem = item.productType === ProductType.BAR;
-          const isReady = item.status === OrderStatus.READY || (isBarItem && item.status === OrderStatus.PENDING);
-          
-          if (isReady && item.status !== OrderStatus.DELIVERED) {
+          if (canDeliverItem(item, foodReady)) {
               orderDispatch({ type: 'UPDATE_ITEM_STATUS', orderId: order.id, itemId: item.id, status: OrderStatus.DELIVERED });
           }
       });
@@ -129,16 +127,21 @@ export const WaiterApp: React.FC = () => {
 
   // Helper para verificar se item pode ser entregue
   const canDeliverItem = (item: any, foodReady: boolean) => {
+      if (item.status === OrderStatus.DELIVERED || item.status === OrderStatus.CANCELLED) return false;
+
       const isBarItem = item.productType === ProductType.BAR;
-      // Item pode ser entregue se: Está PRONTO OU (É Bar e está PENDENTE - pois bar não tem KDS neste fluxo)
-      const isReadyStatus = item.status === OrderStatus.READY || (isBarItem && item.status === OrderStatus.PENDING);
       
-      const isDrinkWithFood = item.notes?.includes('[COM COMIDA]');
-      
-      // Se for bebida [COM COMIDA] e a comida NÃO estiver pronta, segura a entrega
-      if (isDrinkWithFood && !foodReady) return false;
-      
-      return isReadyStatus;
+      if (isBarItem) {
+          // Bebida 'Com Comida': Só libera se a comida estiver PRONTA
+          if (item.notes?.includes('[COM COMIDA]')) {
+              return foodReady;
+          }
+          // Bebida 'Imediata' ou sem tag: Libera assim que entra (PENDING ou READY)
+          return true; 
+      }
+
+      // Item de Cozinha: Só libera se estiver PRONTO
+      return item.status === OrderStatus.READY;
   };
 
   // Tela Inicial: Bloqueio de Áudio
@@ -393,7 +396,6 @@ export const WaiterApp: React.FC = () => {
 
                     {displayedOrders.map(order => {
                         const table = orderState.tables.find(t => t.id === order.tableId);
-                        
                         const foodReady = hasReadyKitchenFood(order.items);
                         const pendingItems = order.items.filter(i => i.status !== OrderStatus.DELIVERED && i.status !== OrderStatus.CANCELLED);
                         
@@ -429,13 +431,10 @@ export const WaiterApp: React.FC = () => {
                                 </div>
                                 <div className="space-y-2">
                                     {order.items.map(item => {
+                                        const isDeliverable = canDeliverItem(item, foodReady);
                                         const isDrinkWithFood = item.notes?.includes('[COM COMIDA]');
-                                        // Se for bebida com comida e NÃO tem comida pronta, segura.
+                                        // Visualmente destaca se está "Segurando"
                                         const shouldHold = isDrinkWithFood && !foodReady;
-                                        
-                                        // Verificar se é item de Bar (não tem KDS, então Pending = Ready to pick up)
-                                        const isBarItem = item.productType === ProductType.BAR;
-                                        const isReadyToDeliver = item.status === OrderStatus.READY || (isBarItem && item.status === OrderStatus.PENDING);
 
                                         return (
                                             <div key={item.id} className={`flex justify-between items-center text-sm p-2 rounded-xl transition-colors ${shouldHold ? 'bg-gray-50 opacity-60' : 'hover:bg-gray-50'}`}>
@@ -460,14 +459,14 @@ export const WaiterApp: React.FC = () => {
                                                     <span className={`text-[9px] font-bold px-2 py-0.5 rounded uppercase tracking-wider
                                                         ${item.status === 'READY' ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'}
                                                     `}>
-                                                        {item.status === 'PENDING' && (isBarItem ? 'Bar' : 'Fila')}
+                                                        {item.status === 'PENDING' && (item.productType === ProductType.BAR ? 'Bar' : 'Fila')}
                                                         {item.status === 'PREPARING' && 'Prep'}
                                                         {item.status === 'READY' && 'Pronto'}
                                                         {item.status === 'DELIVERED' && 'Entregue'}
                                                     </span>
 
-                                                    {/* Botão Entregar Individual - Visível se estiver pronto (ou bar pendente) e não estiver segurado */}
-                                                    {isReadyToDeliver && !showHistory && !shouldHold && (
+                                                    {/* Botão Entregar Individual - Visível se isDeliverable for true */}
+                                                    {isDeliverable && !showHistory && (
                                                         <button 
                                                             onClick={() => handleDeliverItem(order.id, item.id)}
                                                             className="bg-emerald-100 hover:bg-emerald-200 text-emerald-700 p-1.5 rounded-full transition-colors"
