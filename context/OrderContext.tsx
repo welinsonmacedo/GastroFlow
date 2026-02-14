@@ -33,7 +33,7 @@ interface OrderContextType {
   dispatch: (action: any) => void;
   placeOrder: (tableId: string, items: { productId: string; quantity: number; notes: string }[]) => Promise<void>;
   processPosSale: (data: any) => Promise<void>;
-  processPayment: (tableId: string, amount: number, method: string) => Promise<void>;
+  processPayment: (tableId: string, amount: number, method: string, cashierName?: string) => Promise<void>;
   updateItemStatus: (orderId: string, itemId: string, status: OrderStatus) => Promise<void>;
   cancelOrder: (orderId: string) => Promise<void>; 
   addTable: () => Promise<void>;
@@ -147,11 +147,19 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       fetchData();
   };
 
-  const processPayment = async (tableId: string, amount: number, method: string) => {
+  const processPayment = async (tableId: string, amount: number, method: string, cashierName: string = 'Caixa') => {
       if(!tenantId) return;
       await supabase.from('orders').update({ is_paid: true, status: 'DELIVERED' }).eq('table_id', tableId).eq('is_paid', false).neq('status', 'CANCELLED');
-      await supabase.from('restaurant_tables').update({ status: 'AVAILABLE', customer_name: null, access_code: null }).eq('id', tableId);
-      await supabase.from('transactions').insert({ tenant_id: tenantId, table_id: tableId, amount, method, items_summary: `Mesa`, cashier_name: 'Caixa' });
+      // A mesa NÃO é liberada automaticamente aqui, apenas marcada como paga. O fechamento é manual ou via botão "Fechar Mesa"
+      // await supabase.from('restaurant_tables').update({ status: 'AVAILABLE', customer_name: null, access_code: null }).eq('id', tableId);
+      await supabase.from('transactions').insert({ 
+          tenant_id: tenantId, 
+          table_id: tableId, 
+          amount, 
+          method, 
+          items_summary: `Mesa`, 
+          cashier_name: cashierName 
+      });
       fetchData();
   };
 
@@ -165,7 +173,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           case 'PLACE_ORDER': await placeOrder(action.tableId, action.items); break;
           case 'CANCEL_ORDER': await cancelOrder(action.orderId); break;
           case 'PROCESS_POS_SALE': await processPosSale(action.sale); break;
-          case 'PROCESS_PAYMENT': await processPayment(action.tableId, action.amount, action.method); break;
+          case 'PROCESS_PAYMENT': await processPayment(action.tableId, action.amount, action.method, action.cashierName); break;
           case 'UPDATE_ITEM_STATUS': await updateItemStatus(action.orderId, action.itemId, action.status); break;
           case 'ADD_TABLE': await supabase.from('restaurant_tables').insert({ tenant_id: tenantId, number: state.tables.length + 1, status: 'AVAILABLE' }); fetchData(); break;
           case 'DELETE_TABLE': await supabase.from('restaurant_tables').delete().eq('id', action.tableId); fetchData(); break;

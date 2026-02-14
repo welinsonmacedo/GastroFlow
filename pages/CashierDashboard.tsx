@@ -7,7 +7,7 @@ import { useFinance } from '../context/FinanceContext';
 import { useUI } from '../context/UIContext';
 import { TableStatus, Product } from '../types';
 import { Button } from '../components/Button';
-import { DollarSign, History, ShoppingCart, Search, Wallet, Receipt, Trash2, User, Lock, ArrowRight, XCircle, RefreshCcw, LayoutDashboard, CreditCard, Banknote, MapPin, Zap, Plus, Clock } from 'lucide-react';
+import { DollarSign, History, ShoppingCart, Search, Wallet, Receipt, Trash2, User, Lock, ArrowRight, XCircle, RefreshCcw, LayoutDashboard, CreditCard, Banknote, MapPin, Zap, Plus, Clock, Eye } from 'lucide-react';
 import { CloseRegisterModal } from '../components/modals/CloseRegisterModal';
 import { CashBleedModal } from '../components/modals/CashBleedModal';
 import { Modal } from '../components/Modal';
@@ -90,7 +90,8 @@ export const CashierDashboard: React.FC = () => {
   const finalizeTablePayment = async (method: string) => {
       if (!selectedTableId) return;
       try {
-          await orderDispatch({ type: 'PROCESS_PAYMENT', tableId: selectedTableId, amount: totalAmount, method });
+          // No caixa, o cashierName é 'Caixa'
+          await orderDispatch({ type: 'PROCESS_PAYMENT', tableId: selectedTableId, amount: totalAmount, method, cashierName: 'Caixa' });
           setSelectedTableId(null);
           showAlert({ title: "Pagamento Realizado", message: "Mesa liberada com sucesso.", type: 'SUCCESS' });
       } catch (error) {
@@ -294,7 +295,20 @@ export const CashierDashboard: React.FC = () => {
                                               <td className="p-6 text-sm font-bold text-slate-600 uppercase tracking-tight">{t.itemsSummary}</td>
                                               <td className="p-6"><span className="text-[10px] font-black bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg border border-blue-100 uppercase">{t.method}</span></td>
                                               <td className="p-6 text-right font-black text-slate-800">R$ {t.amount.toFixed(2)}</td>
-                                              <td className="p-6 text-center">{t.status !== 'CANCELLED' && <button onClick={() => { setTransactionToVoid(t.id); setVoidModalOpen(true); }} className="text-red-300 hover:text-red-500 transition-all"><XCircle size={22}/></button>} {t.status === 'CANCELLED' && <span className="text-[9px] font-black text-red-500 uppercase border border-red-200 px-2 py-1 rounded-lg">Estornado</span>}</td>
+                                              <td className="p-6 text-center">
+                                                  <div className="flex justify-center items-center gap-2">
+                                                      {t.cashierName && (
+                                                          <div className="relative group">
+                                                              <Eye size={20} className="text-gray-400 cursor-help" />
+                                                              <div className="absolute right-0 bottom-full mb-2 w-32 bg-slate-800 text-white text-[10px] font-bold p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 text-center">
+                                                                  Recebido por:<br/>{t.cashierName}
+                                                              </div>
+                                                          </div>
+                                                      )}
+                                                      {t.status !== 'CANCELLED' && <button onClick={() => { setTransactionToVoid(t.id); setVoidModalOpen(true); }} className="text-red-300 hover:text-red-500 transition-all"><XCircle size={22}/></button>} 
+                                                      {t.status === 'CANCELLED' && <span className="text-[9px] font-black text-red-500 uppercase border border-red-200 px-2 py-1 rounded-lg">Estornado</span>}
+                                                  </div>
+                                              </td>
                                           </tr>
                                       ))}
                                   </tbody>
