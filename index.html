@@ -59,7 +59,7 @@
       #root {
         height: 100%;
         width: 100%;
-        overflow: hidden; /* MUDANÇA: O root não rola mais, o container interno do App rolará */
+        overflow: hidden;
         display: flex;
         flex-direction: column;
       }
@@ -99,6 +99,7 @@
 </head>
   <body class="bg-gray-50 text-slate-900">
     <div id="root"></div>
-    <script type="module" src="./index.tsx"></script>
+    <!-- APONTANDO PARA A PASTA SRC -->
+    <script type="module" src="/src/index.tsx"></script>
   </body>
 </html>
