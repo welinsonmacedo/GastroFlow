@@ -181,7 +181,7 @@ const TenantNavigation = ({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: (
                     fixed inset-y-0 left-0 z-50 bg-slate-900 text-white shadow-2xl transition-all duration-300 ease-in-out border-r border-slate-800 overflow-hidden group
                     /* Mobile: Controlado por isOpen, largura total */
                     ${isOpen ? 'translate-x-0 w-64' : '-translate-x-full w-64'}
-                    /* Desktop: Sempre fixo no canto, largura fina que expande no hover */
+                    /* Desktop: Sempre fixo no canto, largura fina (w-4) que expande no hover (w-64) */
                     md:translate-x-0 md:w-4 md:hover:w-64
                 `}
             >
@@ -189,7 +189,7 @@ const TenantNavigation = ({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: (
                 <div className="w-64 h-full flex flex-col">
                     
                     {/* Header / Logo */}
-                    {/* No desktop, opacity-0 por padrão, opacity-100 no hover */}
+                    {/* No desktop, opacity-0 por padrão para esconder quando recolhido, opacity-100 no hover */}
                     <div className="p-6 border-b border-slate-800 flex items-center justify-between gap-3 shrink-0 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-300">
                         <div className="flex items-center gap-3">
                             <div className="bg-green-600 p-2 rounded-lg text-white shadow-lg shadow-green-500/20">
