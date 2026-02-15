@@ -29,7 +29,7 @@ import { AdminMenuAppearance } from './admin/AdminMenuAppearance';
 import { AdminPurchaseSuggestions } from './admin/AdminPurchaseSuggestions'; 
 import { AdminFinancialTips } from './admin/AdminFinancialTips'; 
 
-// --- COMPONENTE DE SIDEBAR (Agora exclusivo do Admin) ---
+// --- COMPONENTE DE SIDEBAR (Exclusivo do Admin) ---
 const AdminSidebar = ({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: (v: boolean) => void }) => {
     const location = useLocation();
     const { state: authState, logout } = useAuth();
