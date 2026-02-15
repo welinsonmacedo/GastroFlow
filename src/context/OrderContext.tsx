@@ -1,6 +1,6 @@
 
-import React, { createContext, useContext, useEffect, useState, useReducer, useCallback } from 'react';
-import { Table, Order, ServiceCall, OrderStatus, ProductType, OrderType, DeliveryInfo } from '../types';
+import React, { createContext, useContext, useEffect, useReducer, useCallback } from 'react';
+import { Table, Order, ServiceCall, OrderStatus, OrderType, DeliveryInfo } from '../types';
 import { supabase } from '../lib/supabase';
 import { useRestaurant } from './RestaurantContext';
 import { useMenu } from './MenuContext';
@@ -40,14 +40,13 @@ interface PlaceOrderParams {
         name?: string; 
         type?: string 
     }[];
-    type?: OrderType;
+    orderType?: OrderType; // Usar orderType explicitamente
     deliveryInfo?: DeliveryInfo;
 }
 
 interface OrderContextType {
   state: OrderState;
   dispatch: (action: any) => void;
-  // Assinatura atualizada para aceitar objeto ou argumentos antigos (para compatibilidade)
   placeOrder: (paramsOrTableId: PlaceOrderParams | string, itemsIfOld?: any[]) => Promise<void>;
   processPosSale: (data: any) => Promise<void>;
   processPayment: (tableId: string | undefined, amount: number, method: string, cashierName?: string, orderId?: string) => Promise<void>;
@@ -138,33 +137,38 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const placeOrder = async (paramsOrTableId: PlaceOrderParams | string, itemsIfOld?: any[]) => {
       if(!tenantId) return;
       
-      let params: PlaceOrderParams;
+      let params: any;
 
       // Compatibilidade com chamadas antigas placeOrder(tableId, items)
       if (typeof paramsOrTableId === 'string') {
           params = {
               tableId: paramsOrTableId,
               items: itemsIfOld || [],
-              type: 'DINE_IN'
+              orderType: 'DINE_IN'
           };
       } else {
           params = paramsOrTableId;
       }
 
-      const { tableId, items, type = 'DINE_IN', deliveryInfo } = params;
+      // Extrai dados com prioridade para orderType, fallback para type (se não for a action do redux)
+      const { tableId, items, deliveryInfo } = params;
+      
+      // IMPORTANTE: Se 'params' vier do dispatch, 'type' será 'PLACE_ORDER'. Ignoramos isso.
+      // Usamos 'orderType' passado explicitamente ou 'DINE_IN' como default.
+      const finalOrderType = params.orderType || (params.type !== 'PLACE_ORDER' ? params.type : 'DINE_IN') || 'DINE_IN';
 
       const { data: order } = await supabase.from('orders').insert({ 
           tenant_id: tenantId, 
           table_id: tableId || null, 
           status: 'PENDING', 
           is_paid: false,
-          order_type: type,
+          order_type: finalOrderType,
           delivery_info: deliveryInfo || null,
           customer_name: deliveryInfo?.customerName || (tableId ? undefined : 'Balcão')
       }).select().single();
 
       if (order) {
-          const dbItems = items.map(i => {
+          const dbItems = items.map((i: any) => {
               // Se tiver productId, busca info do menu. Se não (Inventory Item ou Raw), usa os dados passados.
               let product = i.productId ? menuState.products.find(p => p.id === i.productId) : null;
               

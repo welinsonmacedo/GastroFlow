@@ -12,7 +12,7 @@ import { StaffProvider } from './context/StaffContext';
 import { SaaSProvider, useSaaS } from './context/SaaSContext';
 import { UIProvider, useUI } from './context/UIContext';
 
-// Páginas (Garantindo importação de src/pages/)
+// Páginas (Garantindo importação correta)
 import { ClientApp } from './pages/ClientApp';
 import { WaiterApp } from './pages/WaiterApp';
 import { KitchenDisplay } from './pages/KitchenDisplay';
