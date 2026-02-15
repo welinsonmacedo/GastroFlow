@@ -113,7 +113,7 @@ const TenantNavigation = ({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: (
         if (link.requires === 'allowCustomization' && !planLimits.allowCustomization) return false;
 
         // Checa permissão do usuário
-        if (role === Role.ADMIN) return true;
+        if ((role as Role) === Role.ADMIN) return true;
         if (link.roles && !link.roles.includes(role)) return false;
         // Para admin links específicos, apenas ADMIN vê
         if (!link.roles && role !== Role.ADMIN) return false;
