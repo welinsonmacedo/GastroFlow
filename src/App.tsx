@@ -177,18 +177,18 @@ const TenantNavigation = ({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: (
 
             <aside 
                 className={`
-                    fixed inset-y-0 left-0 z-50 bg-slate-900 text-white shadow-2xl transition-all duration-300 ease-in-out border-r border-slate-800
+                    fixed inset-y-0 left-0 z-50 bg-slate-900 text-white shadow-2xl transition-all duration-300 ease-in-out border-r border-slate-800 overflow-hidden group
                     /* Mobile: Controlado por isOpen */
-                    w-64 transform ${isOpen ? 'translate-x-0' : '-translate-x-full'}
-                    /* Desktop: Controlado por Hover (Faixa Fina -> Expandido) */
-                    md:translate-x-0 md:w-2 md:hover:w-64 overflow-hidden group
+                    ${isOpen ? 'translate-x-0 w-64' : '-translate-x-full w-64'}
+                    /* Desktop: Sempre fixo, largura fina (3 = 12px) que expande no hover */
+                    md:translate-x-0 md:w-3 md:hover:w-64
                 `}
             >
                 {/* Wrapper interno com largura fixa para evitar quebra de texto durante a animação de largura */}
                 <div className="w-64 h-full flex flex-col">
                     {/* Header / Logo */}
-                    <div className="p-6 border-b border-slate-800 flex items-center justify-between gap-3 shrink-0">
-                        <div className="flex items-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300 md:opacity-0 md:group-hover:opacity-100">
+                    <div className="p-6 border-b border-slate-800 flex items-center justify-between gap-3 shrink-0 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-300">
+                        <div className="flex items-center gap-3">
                             <div className="bg-green-600 p-2 rounded-lg text-white shadow-lg shadow-green-500/20">
                                 {restState.theme.logoUrl ? <img src={restState.theme.logoUrl} className="h-6 w-6 object-contain" /> : <ChefHat size={24} />}
                             </div>
@@ -200,7 +200,7 @@ const TenantNavigation = ({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: (
                     </div>
 
                     {/* Navigation Links */}
-                    <nav className="flex-1 overflow-y-auto py-6 px-4 space-y-4 custom-scrollbar opacity-0 group-hover:opacity-100 transition-opacity duration-300 delay-75 md:opacity-0 md:group-hover:opacity-100">
+                    <nav className="flex-1 overflow-y-auto py-6 px-4 space-y-4 custom-scrollbar opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-300 delay-75">
                         
                         {visibleAppLinks.length > 0 && (
                             <div className="space-y-1">
@@ -212,7 +212,7 @@ const TenantNavigation = ({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: (
                                     {activeSection === 'APPS' ? <ChevronUp size={14}/> : <ChevronDown size={14}/>}
                                 </button>
                                 
-                                <div className={`space-y-1 overflow-hidden transition-all ${activeSection === 'APPS' ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
+                                <div className={`space-y-1 overflow-hidden transition-all duration-300 ${activeSection === 'APPS' ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
                                     {visibleAppLinks.map(link => <NavItem key={link.to} link={link} />)}
                                 </div>
                             </div>
@@ -228,7 +228,7 @@ const TenantNavigation = ({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: (
                                     {activeSection === 'ADMIN' ? <ChevronUp size={14}/> : <ChevronDown size={14}/>}
                                 </button>
 
-                                <div className={`space-y-1 overflow-hidden transition-all ${activeSection === 'ADMIN' ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                                <div className={`space-y-1 overflow-hidden transition-all duration-300 ${activeSection === 'ADMIN' ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0'}`}>
                                     {visibleAdminLinks.map(link => <NavItem key={link.to} link={link} />)}
                                 </div>
                             </div>
@@ -236,7 +236,7 @@ const TenantNavigation = ({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: (
                     </nav>
 
                     {/* User Profile Footer */}
-                    <div className="p-4 border-t border-slate-800 bg-slate-950/50 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 md:opacity-0 md:group-hover:opacity-100">
+                    <div className="p-4 border-t border-slate-800 bg-slate-950/50 shrink-0 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-300">
                          <div className="flex items-center gap-3 mb-4 px-2">
                             <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-green-500 border border-slate-700">
                                 <UserIcon size={20} />
@@ -282,7 +282,8 @@ const TenantApp = () => {
         <div className="h-full flex flex-row bg-gray-50 overflow-hidden relative">
             <TenantNavigation isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
             
-            <div className="flex-1 overflow-hidden relative flex flex-col w-full md:pl-2">
+            {/* Adicionado md:pl-3 para criar um pequeno espaço onde a barra fina fica, evitando que cubra o texto */}
+            <div className="flex-1 overflow-hidden relative flex flex-col w-full md:pl-3 transition-all">
                 {/* Mobile Header Toggle */}
                 <div className="md:hidden bg-white border-b p-4 flex items-center justify-between shrink-0 sticky top-0 z-30 shadow-sm">
                     <div className="flex items-center gap-2 font-bold text-slate-800">
