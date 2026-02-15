@@ -7,7 +7,7 @@ import { useFinance } from '../context/FinanceContext';
 import { useUI } from '../context/UIContext';
 import { TableStatus, InventoryItem } from '../types'; // Changed Product to InventoryItem
 import { Button } from '../components/Button';
-import { DollarSign, History, ShoppingCart, Search, Wallet, Receipt, Trash2, User, Lock, ArrowRight, XCircle, RefreshCcw, LayoutDashboard, CreditCard, Banknote, MapPin, Zap, Plus, Clock, Eye, Package } from 'lucide-react';
+import { DollarSign, History, ShoppingCart, Search, Wallet, Receipt, Trash2, User, Lock, ArrowRight, XCircle, RefreshCcw, LayoutDashboard, CreditCard, Banknote, MapPin, Zap, Plus, Clock, Eye, Package, Minus, CheckSquare, Square, X } from 'lucide-react';
 import { CloseRegisterModal } from '../components/modals/CloseRegisterModal';
 import { CashBleedModal } from '../components/modals/CashBleedModal';
 import { Modal } from '../components/Modal';
@@ -30,11 +30,18 @@ export const CashierDashboard: React.FC = () => {
   const [voidModalOpen, setVoidModalOpen] = useState(false);
   const [cashPaymentModalOpen, setCashPaymentModalOpen] = useState(false);
   
+  // Modal de Adição de Item ao PDV
+  const [itemModalOpen, setItemModalOpen] = useState(false);
+  const [selectedItemForCart, setSelectedItemForCart] = useState<InventoryItem | null>(null);
+  const [itemQty, setItemQty] = useState(1);
+  const [itemNotes, setItemNotes] = useState('');
+  const [selectedExtras, setSelectedExtras] = useState<InventoryItem[]>([]);
+
   const [transactionToVoid, setTransactionToVoid] = useState<string | null>(null);
   const [voidPin, setVoidPin] = useState('');
   
-  // Carrinho agora usa InventoryItem
-  const [posCart, setPosCart] = useState<{ item: InventoryItem; quantity: number; notes: string }[]>([]);
+  // Carrinho agora suporta Extras
+  const [posCart, setPosCart] = useState<{ item: InventoryItem; quantity: number; notes: string; extras: InventoryItem[] }[]>([]);
   const [posSearch, setPosSearch] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [processingSale, setProcessingSale] = useState(false);
@@ -101,11 +108,46 @@ export const CashierDashboard: React.FC = () => {
       }
   };
 
+  // --- Lógica do PDV (Carrinho e Modal) ---
+
+  const openItemModal = (item: InventoryItem) => {
+      setSelectedItemForCart(item);
+      setItemQty(1);
+      setItemNotes('');
+      setSelectedExtras([]);
+      setItemModalOpen(true);
+  };
+
+  const handleAddToCart = () => {
+      if (!selectedItemForCart) return;
+      
+      setPosCart([...posCart, {
+          item: selectedItemForCart,
+          quantity: itemQty,
+          notes: itemNotes,
+          extras: selectedExtras
+      }]);
+
+      setItemModalOpen(false);
+      setSelectedItemForCart(null);
+  };
+
+  const toggleExtra = (extra: InventoryItem) => {
+      if (selectedExtras.find(e => e.id === extra.id)) {
+          setSelectedExtras(selectedExtras.filter(e => e.id !== extra.id));
+      } else {
+          setSelectedExtras([...selectedExtras, extra]);
+      }
+  };
+
   const handlePosSale = async (method: 'CASH' | 'CREDIT' | 'DEBIT' | 'PIX') => {
       if (!finState.activeCashSession) return showAlert({ title: "Caixa Fechado", message: "Abra o caixa antes de vender.", type: 'ERROR' });
       if (posCart.length === 0) return showAlert({ title: "Carrinho Vazio", message: "Adicione produtos.", type: 'WARNING' });
       
-      const total = posCart.reduce((acc, cartItem) => acc + (cartItem.item.salePrice * cartItem.quantity), 0);
+      const total = posCart.reduce((acc, cartItem) => {
+          const itemTotal = cartItem.item.salePrice + cartItem.extras.reduce((sum, ex) => sum + ex.salePrice, 0);
+          return acc + (itemTotal * cartItem.quantity);
+      }, 0);
 
       if (method === 'CASH') {
           initiateCashPayment('POS', total);
@@ -117,14 +159,32 @@ export const CashierDashboard: React.FC = () => {
 
   const finalizePosSale = async (method: string) => {
       setProcessingSale(true);
-      const total = posCart.reduce((acc, cartItem) => acc + (cartItem.item.salePrice * cartItem.quantity), 0);
+      const total = posCart.reduce((acc, cartItem) => {
+          const itemTotal = cartItem.item.salePrice + cartItem.extras.reduce((sum, ex) => sum + ex.salePrice, 0);
+          return acc + (itemTotal * cartItem.quantity);
+      }, 0);
+
       try {
-          // Mapeia para o formato esperado pela API (agora com inventoryItemId)
-          const itemsPayload = posCart.map(i => ({
-              inventoryItemId: i.item.id,
-              quantity: i.quantity,
-              notes: i.notes
-          }));
+          // Mapeia para o formato esperado pela API
+          const itemsPayload: any[] = [];
+          
+          posCart.forEach(cartItem => {
+              // Item Principal
+              itemsPayload.push({
+                  inventoryItemId: cartItem.item.id,
+                  quantity: cartItem.quantity,
+                  notes: cartItem.notes
+              });
+
+              // Adicionais (Inseridos como itens separados, mas vinculados pela nota ou lógica de negócio)
+              cartItem.extras.forEach(extra => {
+                  itemsPayload.push({
+                      inventoryItemId: extra.id,
+                      quantity: cartItem.quantity, // Adicional segue a quantidade do pai
+                      notes: `[ADICIONAL] para ${cartItem.item.name}`
+                  });
+              });
+          });
 
           await orderDispatch({ 
               type: 'PROCESS_POS_SALE', 
@@ -265,26 +325,34 @@ export const CashierDashboard: React.FC = () => {
                                   <Search className="absolute left-6 top-5 text-gray-400 group-focus-within:text-blue-600 transition-colors" size={24}/>
                                   <input className="w-full pl-16 pr-6 py-5 rounded-[2rem] border-2 border-transparent bg-white shadow-xl focus:border-blue-500 outline-none transition-all font-bold" placeholder="Filtrar estoque (nome)..." value={posSearch} onChange={e => setPosSearch(e.target.value)} autoFocus />
                               </div>
-                              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 overflow-y-auto flex-1 content-start p-1 custom-scrollbar">
-                                  {/* Filtro: Usa ESTOQUE, remove INGREDIENT e filtra por nome */}
+                              <div className="overflow-y-auto flex-1 content-start p-1 custom-scrollbar space-y-2">
+                                  {/* LISTA VERTICAL DE PRODUTOS */}
+                                  {/* Filtro: Usa ESTOQUE, remove INGREDIENT, remove EXTRAS e filtra por nome */}
                                   {invState.inventory
                                     .filter(item => 
                                         item.type !== 'INGREDIENT' && 
+                                        !item.isExtra && // Esconde adicionais da lista principal
                                         item.name.toLowerCase().includes(posSearch.toLowerCase())
                                     )
                                     .map(item => (
-                                      <button key={item.id} onClick={() => setPosCart([...posCart, { item, quantity: 1, notes: '' }])} className="bg-white p-5 rounded-[2rem] shadow-sm border-2 border-transparent hover:border-blue-400 hover:shadow-xl transition-all flex flex-col items-start text-left h-44 active:scale-95 group relative overflow-hidden">
-                                          <div className="bg-blue-50 text-blue-600 p-2 rounded-xl absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity"><Plus size={18}/></div>
-                                          <div className="flex-1 w-full">
-                                              <div className="font-black text-slate-800 text-sm leading-tight mb-2 line-clamp-2 uppercase tracking-tighter">{item.name}</div>
-                                              <div className="flex gap-2">
-                                                  <div className="text-[9px] font-black text-blue-600 bg-blue-50 px-2 py-1 rounded-lg uppercase tracking-widest inline-block">{item.type === 'COMPOSITE' ? 'Prato' : 'Revenda'}</div>
-                                                  <div className={`text-[9px] font-black px-2 py-1 rounded-lg uppercase tracking-widest inline-block ${item.quantity <= item.minQuantity && item.type !== 'COMPOSITE' ? 'bg-red-50 text-red-600' : 'bg-gray-50 text-gray-500'}`}>
-                                                      {item.type === 'COMPOSITE' ? 'Receita' : `Est: ${item.quantity}`}
-                                                  </div>
+                                      <button 
+                                        key={item.id} 
+                                        onClick={() => openItemModal(item)} 
+                                        className="w-full bg-white p-4 rounded-3xl shadow-sm border border-transparent hover:border-blue-200 hover:shadow-md transition-all flex items-center gap-4 active:scale-[0.99] group"
+                                      >
+                                          <div className="bg-blue-50 text-blue-600 p-3 rounded-2xl group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                                              <Plus size={20} />
+                                          </div>
+                                          <div className="flex-1 text-left">
+                                              <div className="font-black text-slate-800 text-sm uppercase tracking-tight">{item.name}</div>
+                                              <div className="flex gap-2 mt-1">
+                                                  <span className="text-[9px] font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded-lg uppercase tracking-widest">{item.type === 'COMPOSITE' ? 'Prato' : 'Revenda'}</span>
+                                                  <span className={`text-[9px] font-black px-2 py-0.5 rounded-lg uppercase tracking-widest ${item.quantity <= item.minQuantity && item.type !== 'COMPOSITE' ? 'bg-red-50 text-red-600' : 'bg-gray-50 text-gray-500'}`}>
+                                                      {item.type === 'COMPOSITE' ? 'Ficha Técnica' : `Estoque: ${item.quantity}`}
+                                                  </span>
                                               </div>
                                           </div>
-                                          <div className="font-black text-xl text-slate-900 mt-2">R$ {item.salePrice.toFixed(2)}</div>
+                                          <div className="font-black text-lg text-slate-900">R$ {item.salePrice.toFixed(2)}</div>
                                       </button>
                                   ))}
                               </div>
@@ -293,16 +361,43 @@ export const CashierDashboard: React.FC = () => {
                               <div className="p-6 bg-slate-900 text-white shrink-0 flex items-center gap-3"><ShoppingCart size={24} className="text-blue-400"/><h3 className="font-black text-xl uppercase tracking-tighter">Venda Balcão</h3></div>
                               <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar">
                                   {posCart.map((cartItem, idx) => (
-                                      <div key={idx} className="flex justify-between items-center bg-gray-50 p-4 rounded-2xl relative group animate-fade-in">
-                                          <div className="flex-1 pr-4"><div className="text-sm font-black text-slate-800">{cartItem.item.name}</div><div className="text-[10px] font-bold text-gray-400 mt-0.5">{cartItem.quantity} x R$ {cartItem.item.salePrice.toFixed(2)}</div></div>
-                                          <div className="font-black text-slate-900 mr-4">R$ {(cartItem.quantity * cartItem.item.salePrice).toFixed(2)}</div>
-                                          <button onClick={() => setPosCart(posCart.filter((_, i) => i !== idx))} className="text-red-400 hover:text-red-600 transition-colors p-2"><Trash2 size={18}/></button>
+                                      <div key={idx} className="bg-gray-50 p-4 rounded-2xl relative group animate-fade-in border border-transparent hover:border-red-100 transition-colors">
+                                          <div className="flex justify-between items-start">
+                                              <div className="flex-1 pr-4">
+                                                  <div className="text-sm font-black text-slate-800 uppercase leading-tight">{cartItem.quantity}x {cartItem.item.name}</div>
+                                                  
+                                                  {/* Lista de Adicionais */}
+                                                  {cartItem.extras.length > 0 && (
+                                                      <div className="mt-1 pl-3 border-l-2 border-blue-200 space-y-0.5">
+                                                          {cartItem.extras.map(extra => (
+                                                              <div key={extra.id} className="text-[10px] font-bold text-blue-600 uppercase flex justify-between">
+                                                                  <span>+ {extra.name}</span>
+                                                                  <span>R$ {extra.salePrice.toFixed(2)}</span>
+                                                              </div>
+                                                          ))}
+                                                      </div>
+                                                  )}
+                                                  
+                                                  {cartItem.notes && <div className="text-[10px] text-gray-400 italic mt-1">"{cartItem.notes}"</div>}
+                                              </div>
+                                              <div className="text-right">
+                                                  <div className="font-black text-slate-900">
+                                                      R$ {((cartItem.item.salePrice + cartItem.extras.reduce((s,e)=>s+e.salePrice,0)) * cartItem.quantity).toFixed(2)}
+                                                  </div>
+                                              </div>
+                                          </div>
+                                          <button onClick={() => setPosCart(posCart.filter((_, i) => i !== idx))} className="absolute -top-2 -right-2 bg-white text-red-500 p-1.5 rounded-full shadow-md border border-red-50 opacity-0 group-hover:opacity-100 transition-all hover:scale-110"><Trash2 size={14}/></button>
                                       </div>
                                   ))}
                                   {posCart.length === 0 && <div className="h-full flex flex-col items-center justify-center text-gray-300 opacity-40 py-20"><Package size={64} strokeWidth={1} /><p className="font-black uppercase text-xs mt-2">Selecione Itens do Estoque</p></div>}
                               </div>
                               <div className="p-8 bg-white border-t space-y-6 shrink-0 safe-area-bottom">
-                                  <div className="flex justify-between items-center"><span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Total Geral</span><span className="text-4xl font-black text-blue-600">R$ {posCart.reduce((acc, cartItem) => acc + (cartItem.item.salePrice * cartItem.quantity), 0).toFixed(2)}</span></div>
+                                  <div className="flex justify-between items-center"><span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Total Geral</span><span className="text-4xl font-black text-blue-600">
+                                      R$ {posCart.reduce((acc, cartItem) => {
+                                          const itemTotal = cartItem.item.salePrice + cartItem.extras.reduce((sum, ex) => sum + ex.salePrice, 0);
+                                          return acc + (itemTotal * cartItem.quantity);
+                                      }, 0).toFixed(2)}
+                                  </span></div>
                                   <div className="grid grid-cols-2 gap-3">
                                       <button onClick={() => handlePosSale('CASH')} className="py-4 bg-emerald-600 text-white rounded-2xl font-black text-[10px] uppercase shadow-lg shadow-emerald-600/20 active:scale-95 transition-all">Dinheiro</button>
                                       <button onClick={() => handlePosSale('PIX')} className="py-4 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase shadow-lg shadow-slate-900/20 active:scale-95 transition-all">PIX</button>
@@ -409,6 +504,62 @@ export const CashierDashboard: React.FC = () => {
                   >
                       CONFIRMAR RECEBIMENTO
                   </Button>
+              </div>
+          </Modal>
+
+          {/* NOVO MODAL: Adicionar Item com Adicionais */}
+          <Modal isOpen={itemModalOpen} onClose={() => setItemModalOpen(false)} title={selectedItemForCart?.name || "Adicionar Item"} variant="dialog" maxWidth="sm">
+              <div className="space-y-6">
+                  {/* Quantidade */}
+                  <div className="flex items-center justify-between bg-gray-50 p-3 rounded-2xl">
+                      <button onClick={() => setItemQty(Math.max(1, itemQty - 1))} className="p-3 bg-white shadow-sm rounded-xl hover:bg-red-50 text-red-500 transition-colors"><Minus size={20}/></button>
+                      <span className="text-3xl font-black text-slate-800">{itemQty}</span>
+                      <button onClick={() => setItemQty(itemQty + 1)} className="p-3 bg-white shadow-sm rounded-xl hover:bg-blue-50 text-blue-500 transition-colors"><Plus size={20}/></button>
+                  </div>
+
+                  {/* Lista de Adicionais (Filtrado por isExtra) */}
+                  <div className="space-y-2">
+                      <label className="text-xs font-black text-gray-400 uppercase tracking-widest px-1">Adicionais</label>
+                      <div className="max-h-48 overflow-y-auto space-y-2 custom-scrollbar pr-1">
+                          {invState.inventory.filter(i => i.isExtra).map(extra => {
+                              const isSelected = selectedExtras.some(e => e.id === extra.id);
+                              return (
+                                  <div key={extra.id} onClick={() => toggleExtra(extra)} className={`flex items-center justify-between p-3 rounded-xl border-2 cursor-pointer transition-all ${isSelected ? 'border-blue-500 bg-blue-50' : 'border-gray-100 hover:bg-gray-50'}`}>
+                                      <div className="flex items-center gap-3">
+                                          {isSelected ? <CheckSquare size={20} className="text-blue-600"/> : <Square size={20} className="text-gray-300"/>}
+                                          <span className="text-sm font-bold text-slate-700">{extra.name}</span>
+                                      </div>
+                                      <span className="text-xs font-bold text-slate-500">+ R$ {extra.salePrice.toFixed(2)}</span>
+                                  </div>
+                              );
+                          })}
+                          {invState.inventory.filter(i => i.isExtra).length === 0 && (
+                              <p className="text-xs text-center text-gray-400 py-2">Nenhum adicional cadastrado no estoque.</p>
+                          )}
+                      </div>
+                  </div>
+
+                  {/* Observações */}
+                  <div className="space-y-1">
+                      <label className="text-xs font-black text-gray-400 uppercase tracking-widest px-1">Observações</label>
+                      <textarea 
+                          className="w-full border-2 p-3 rounded-xl text-sm focus:border-blue-500 outline-none resize-none" 
+                          rows={2} 
+                          placeholder="Ex: Sem cebola, bem passado..."
+                          value={itemNotes}
+                          onChange={e => setItemNotes(e.target.value)}
+                      />
+                  </div>
+
+                  {/* Total Estimado no Modal */}
+                  <div className="pt-4 border-t flex justify-between items-center">
+                      <div className="text-xs font-bold text-gray-500 uppercase">Subtotal</div>
+                      <div className="text-2xl font-black text-blue-600">
+                          R$ {((selectedItemForCart ? selectedItemForCart.salePrice + selectedExtras.reduce((acc, ex) => acc + ex.salePrice, 0) : 0) * itemQty).toFixed(2)}
+                      </div>
+                  </div>
+
+                  <Button onClick={handleAddToCart} className="w-full py-4 text-lg font-black rounded-2xl shadow-xl">Adicionar ao Carrinho</Button>
               </div>
           </Modal>
       </div>
