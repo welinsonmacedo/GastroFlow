@@ -11,11 +11,6 @@ import {
     ChevronDown, ChevronUp
 } from 'lucide-react';
 
-// Import Apps
-import { WaiterApp } from '../pages/WaiterApp';
-import { KitchenDisplay } from '../pages/KitchenDisplay';
-import { CashierDashboard } from '../pages/CashierDashboard';
-
 // Sub-páginas
 import { AdminOverview } from './admin/AdminOverview';
 import { AdminProducts } from './admin/AdminProducts';
@@ -45,11 +40,11 @@ const AdminSidebar = ({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: (v: b
 
     const role = authState.currentUser.role;
 
-    // 1. Módulos Operacionais (Apps) - Links apontam para /admin/... para manter a sidebar
+    // 1. Módulos Operacionais (Apps)
     const appLinks = [
-        { to: "/admin/waiter", icon: <Coffee size={20}/>, label: "Garçom", requires: null, roles: [Role.WAITER, Role.ADMIN] },
-        { to: "/admin/kitchen", icon: <Monitor size={20}/>, label: "Cozinha", requires: 'allowKds', roles: [Role.KITCHEN, Role.ADMIN] },
-        { to: "/admin/cashier", icon: <DollarSign size={20}/>, label: "Caixa", requires: 'allowCashier', roles: [Role.CASHIER, Role.ADMIN] },
+        { to: "/waiter", icon: <Coffee size={20}/>, label: "Garçom", requires: null, roles: [Role.WAITER, Role.ADMIN] },
+        { to: "/kitchen", icon: <Monitor size={20}/>, label: "Cozinha", requires: 'allowKds', roles: [Role.KITCHEN, Role.ADMIN] },
+        { to: "/cashier", icon: <DollarSign size={20}/>, label: "Caixa", requires: 'allowCashier', roles: [Role.CASHIER, Role.ADMIN] },
     ];
 
     // 2. Módulos Administrativos (Gestão)
@@ -98,7 +93,7 @@ const AdminSidebar = ({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: (v: b
     };
 
     const NavItem = ({ link }: { link: any }) => {
-        const isActive = location.pathname === link.to;
+        const isActive = location.pathname === link.to || (link.to !== '/admin' && location.pathname.startsWith(link.to) && link.to.startsWith('/admin'));
         const isDashboardActive = link.to === '/admin' && location.pathname === '/admin';
         const finalActive = link.to === '/admin' ? isDashboardActive : isActive;
 
@@ -217,45 +212,39 @@ export const AdminDashboard: React.FC = () => {
             </div>
 
             <main className="flex-1 overflow-y-auto bg-gray-50">
-                {/* Se estiver em rotas administrativas puras, adiciona padding. Se for apps (caixa/kds), remove padding para tela cheia */}
-                <div className="h-full">
+                <div className="h-full p-4 md:p-8">
                     <Routes>
                         {/* Dashboard Principal */}
-                        <Route path="/" element={<div className="p-4 md:p-8"><AdminOverview /></div>} />
+                        <Route path="/" element={<AdminOverview />} />
                         
-                        {/* Apps Operacionais dentro do Admin (Com Sidebar) - Renderizam os componentes inteiros */}
-                        <Route path="waiter" element={<WaiterApp />} />
-                        <Route path="kitchen" element={<KitchenDisplay />} />
-                        <Route path="cashier" element={<CashierDashboard />} />
-
-                        {/* Rotas Operacionais de Gestão - Com Padding */}
-                        <Route path="products" element={<div className="p-4 md:p-8"><AdminProducts /></div>} />
+                        {/* Rotas Operacionais de Gestão */}
+                        <Route path="products" element={<AdminProducts />} />
                         
                         {planLimits.allowInventory && (
                             <>
-                                <Route path="inventory" element={<div className="p-4 md:p-8"><AdminInventory /></div>} />
-                                <Route path="purchases" element={<div className="p-4 md:p-8"><AdminPurchaseSuggestions /></div>} />
+                                <Route path="inventory" element={<AdminInventory />} />
+                                <Route path="purchases" element={<AdminPurchaseSuggestions />} />
                             </>
                         )}
 
-                        {planLimits.allowTableMgmt && <Route path="tables" element={<div className="p-4 md:p-8"><AdminTables /></div>} />}
-                        {planLimits.allowStaff && <Route path="staff" element={<div className="p-4 md:p-8"><AdminStaff /></div>} />}
+                        {planLimits.allowTableMgmt && <Route path="tables" element={<AdminTables />} />}
+                        {planLimits.allowStaff && <Route path="staff" element={<AdminStaff />} />}
 
                         {/* Rotas Financeiras */}
                         {(planLimits.allowExpenses || planLimits.allowPurchases) && (
-                            <Route path="finance" element={<div className="p-4 md:p-8"><AdminFinance /></div>} />
+                            <Route path="finance" element={<AdminFinance />} />
                         )}
                         
                         {planLimits.allowReports && (
                             <>
-                                <Route path="accounting" element={<div className="p-4 md:p-8"><AdminAccounting /></div>} />
-                                <Route path="tips" element={<div className="p-4 md:p-8"><AdminFinancialTips /></div>} />
+                                <Route path="accounting" element={<AdminAccounting />} />
+                                <Route path="tips" element={<AdminFinancialTips />} />
                             </>
                         )}
 
                         {/* Rotas de Configuração */}
-                        {planLimits.allowCustomization && <Route path="appearance" element={<div className="p-4 md:p-8"><AdminMenuAppearance /></div>} />}
-                        <Route path="settings" element={<div className="p-4 md:p-8"><AdminSettings /></div>} />
+                        {planLimits.allowCustomization && <Route path="appearance" element={<AdminMenuAppearance />} />}
+                        <Route path="settings" element={<AdminSettings />} />
 
                         {/* Fallback */}
                         <Route path="*" element={<Navigate to="" replace />} />
