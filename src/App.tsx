@@ -1,5 +1,5 @@
 
-import React, { PropsWithChildren, useState } from 'react';
+import React, { PropsWithChildren, useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthProvider'; 
 import { RestaurantProvider, useRestaurant } from './context/RestaurantContext';
@@ -27,7 +27,8 @@ import { ManualPage } from './pages/ManualPage';
 import { InstallPWA } from './components/InstallPWA';
 import { 
     ChefHat, Coffee, Monitor, DollarSign, Settings, LogOut, User as UserIcon, Lock, 
-    Menu, X, LayoutDashboard, Utensils, Package, QrCode, PieChart, Users, Palette, FileText 
+    Menu, X, LayoutDashboard, Utensils, Package, QrCode, PieChart, Users, Palette, FileText,
+    ChevronDown, ChevronUp, Circle
 } from 'lucide-react';
 import { Role } from './types';
 import { getTenantSlug } from './utils/tenant';
@@ -75,11 +76,22 @@ const TenantNavigation = ({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: (
     const { showConfirm } = useUI();
     const { planLimits } = restState;
     
+    // Estado único para controlar qual seção está aberta (exclusividade)
+    const [activeSection, setActiveSection] = useState<'APPS' | 'ADMIN' | null>('APPS');
+
+    // Efeito para abrir automaticamente o grupo correto baseado na URL
+    useEffect(() => {
+        if (location.pathname.startsWith('/admin')) {
+            setActiveSection('ADMIN');
+        } else if (['/waiter', '/kitchen', '/cashier'].some(path => location.pathname.startsWith(path))) {
+            setActiveSection('APPS');
+        }
+    }, [location.pathname]);
+    
     if (location.pathname.startsWith('/client') || location.pathname === '/login' || location.pathname === '/manual') return null;
     if (!authState.currentUser) return null;
 
     const role = authState.currentUser.role;
-    const isMobile = window.innerWidth < 768; // Simple check
 
     // 1. Módulos Operacionais (Apps)
     const appLinks = [
@@ -93,7 +105,7 @@ const TenantNavigation = ({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: (
         { to: "/admin", icon: <LayoutDashboard size={20}/>, label: "Visão Geral", requires: null },
         { to: "/admin/products", icon: <Utensils size={20}/>, label: "Cardápio", requires: null },
         { to: "/admin/inventory", icon: <Package size={20}/>, label: "Estoque", requires: 'allowInventory' },
-        { to: "/admin/finance", icon: <DollarSign size={20}/>, label: "Financeiro", requires: 'allowExpenses' }, // Or Purchases
+        { to: "/admin/finance", icon: <DollarSign size={20}/>, label: "Financeiro", requires: 'allowExpenses' }, 
         { to: "/admin/tables", icon: <QrCode size={20}/>, label: "Mesas & QR", requires: 'allowTableMgmt' },
         { to: "/admin/staff", icon: <Users size={20}/>, label: "Equipe", requires: 'allowStaff' },
         { to: "/admin/accounting", icon: <PieChart size={20}/>, label: "DRE & Relatórios", requires: 'allowReports' },
@@ -135,9 +147,7 @@ const TenantNavigation = ({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: (
     };
 
     const NavItem = ({ link }: { link: any }) => {
-        // Verifica se a rota é exatamente igual OU se é uma sub-rota (para admin)
         const isActive = location.pathname === link.to || (link.to !== '/admin' && location.pathname.startsWith(link.to));
-        // Caso especial para Dashboard (/admin exato)
         const isDashboardActive = link.to === '/admin' && location.pathname === '/admin';
         const finalActive = link.to === '/admin' ? isDashboardActive : isActive;
 
@@ -155,60 +165,94 @@ const TenantNavigation = ({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: (
         );
     };
 
+    // Toggle para garantir exclusividade
+    const toggleSection = (section: 'APPS' | 'ADMIN') => {
+        setActiveSection(prev => prev === section ? null : section);
+    };
+
     return (
         <>
             {/* Mobile Overlay */}
             {isOpen && <div className="fixed inset-0 bg-black/50 z-40 md:hidden backdrop-blur-sm" onClick={() => setIsOpen(false)}></div>}
 
-            <aside className={`fixed md:relative top-0 left-0 h-full w-64 bg-slate-900 text-white border-r border-slate-800 shadow-xl z-50 transition-transform duration-300 ease-in-out flex flex-col shrink-0 ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
-                {/* Header / Logo */}
-                <div className="p-6 border-b border-slate-800 flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                        <div className="bg-green-600 p-2 rounded-lg text-white shadow-lg shadow-green-500/20">
-                            {restState.theme.logoUrl ? <img src={restState.theme.logoUrl} className="h-6 w-6 object-contain" /> : <ChefHat size={24} />}
+            <aside 
+                className={`
+                    fixed inset-y-0 left-0 z-50 bg-slate-900 text-white shadow-2xl transition-all duration-300 ease-in-out border-r border-slate-800
+                    /* Mobile: Controlado por isOpen */
+                    w-64 transform ${isOpen ? 'translate-x-0' : '-translate-x-full'}
+                    /* Desktop: Controlado por Hover (Faixa Fina -> Expandido) */
+                    md:translate-x-0 md:w-2 md:hover:w-64 overflow-hidden group
+                `}
+            >
+                {/* Wrapper interno com largura fixa para evitar quebra de texto durante a animação de largura */}
+                <div className="w-64 h-full flex flex-col">
+                    {/* Header / Logo */}
+                    <div className="p-6 border-b border-slate-800 flex items-center justify-between gap-3 shrink-0">
+                        <div className="flex items-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300 md:opacity-0 md:group-hover:opacity-100">
+                            <div className="bg-green-600 p-2 rounded-lg text-white shadow-lg shadow-green-500/20">
+                                {restState.theme.logoUrl ? <img src={restState.theme.logoUrl} className="h-6 w-6 object-contain" /> : <ChefHat size={24} />}
+                            </div>
+                            <div className="font-black text-lg tracking-tight truncate leading-none w-32">
+                                {restState.theme.restaurantName}
+                            </div>
                         </div>
-                        <div className="font-black text-lg tracking-tight truncate leading-none w-32">
-                            {restState.theme.restaurantName}
-                        </div>
+                        <button onClick={() => setIsOpen(false)} className="md:hidden text-slate-400 hover:text-white"><X size={20}/></button>
                     </div>
-                    <button onClick={() => setIsOpen(false)} className="md:hidden text-slate-400 hover:text-white"><X size={20}/></button>
-                </div>
 
-                {/* Navigation Links */}
-                <nav className="flex-1 overflow-y-auto py-6 px-4 space-y-6 custom-scrollbar">
-                    
-                    {visibleAppLinks.length > 0 && (
-                        <div className="space-y-1">
-                            <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest px-2 mb-2">Operação</p>
-                            {visibleAppLinks.map(link => <NavItem key={link.to} link={link} />)}
-                        </div>
-                    )}
+                    {/* Navigation Links */}
+                    <nav className="flex-1 overflow-y-auto py-6 px-4 space-y-4 custom-scrollbar opacity-0 group-hover:opacity-100 transition-opacity duration-300 delay-75 md:opacity-0 md:group-hover:opacity-100">
+                        
+                        {visibleAppLinks.length > 0 && (
+                            <div className="space-y-1">
+                                <button 
+                                    onClick={() => toggleSection('APPS')}
+                                    className="w-full flex items-center justify-between px-2 mb-2 text-[10px] font-black text-slate-500 uppercase tracking-widest hover:text-slate-300 transition-colors"
+                                >
+                                    <span>Operação</span>
+                                    {activeSection === 'APPS' ? <ChevronUp size={14}/> : <ChevronDown size={14}/>}
+                                </button>
+                                
+                                <div className={`space-y-1 overflow-hidden transition-all ${activeSection === 'APPS' ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
+                                    {visibleAppLinks.map(link => <NavItem key={link.to} link={link} />)}
+                                </div>
+                            </div>
+                        )}
 
-                    {visibleAdminLinks.length > 0 && (
-                        <div className="space-y-1">
-                            <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest px-2 mb-2">Gestão</p>
-                            {visibleAdminLinks.map(link => <NavItem key={link.to} link={link} />)}
-                        </div>
-                    )}
-                </nav>
+                        {visibleAdminLinks.length > 0 && (
+                            <div className="space-y-1 pt-2 border-t border-slate-800">
+                                <button 
+                                    onClick={() => toggleSection('ADMIN')}
+                                    className="w-full flex items-center justify-between px-2 mb-2 mt-4 text-[10px] font-black text-slate-500 uppercase tracking-widest hover:text-slate-300 transition-colors"
+                                >
+                                    <span>Gestão</span>
+                                    {activeSection === 'ADMIN' ? <ChevronUp size={14}/> : <ChevronDown size={14}/>}
+                                </button>
 
-                {/* User Profile Footer */}
-                <div className="p-4 border-t border-slate-800 bg-slate-950/50">
-                     <div className="flex items-center gap-3 mb-4 px-2">
-                        <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-green-500 border border-slate-700">
-                            <UserIcon size={20} />
-                        </div>
-                        <div className="overflow-hidden">
-                            <p className="text-sm font-bold text-white truncate">{authState.currentUser?.name}</p>
-                            <p className="text-xs text-slate-500 truncate capitalize">{authState.currentUser?.role?.toLowerCase()}</p>
-                        </div>
-                     </div>
-                     <button 
-                        onClick={handleLogoutClick} 
-                        className="w-full flex items-center justify-center gap-2 text-red-400 hover:text-white hover:bg-red-500/10 py-2 rounded-lg transition-colors text-xs font-bold uppercase tracking-wider"
-                     >
-                        <LogOut size={16} /> Sair do Sistema
-                     </button>
+                                <div className={`space-y-1 overflow-hidden transition-all ${activeSection === 'ADMIN' ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                                    {visibleAdminLinks.map(link => <NavItem key={link.to} link={link} />)}
+                                </div>
+                            </div>
+                        )}
+                    </nav>
+
+                    {/* User Profile Footer */}
+                    <div className="p-4 border-t border-slate-800 bg-slate-950/50 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 md:opacity-0 md:group-hover:opacity-100">
+                         <div className="flex items-center gap-3 mb-4 px-2">
+                            <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-green-500 border border-slate-700">
+                                <UserIcon size={20} />
+                            </div>
+                            <div className="overflow-hidden">
+                                <p className="text-sm font-bold text-white truncate">{authState.currentUser?.name}</p>
+                                <p className="text-xs text-slate-500 truncate capitalize">{authState.currentUser?.role?.toLowerCase()}</p>
+                            </div>
+                         </div>
+                         <button 
+                            onClick={handleLogoutClick} 
+                            className="w-full flex items-center justify-center gap-2 text-red-400 hover:text-white hover:bg-red-500/10 py-2 rounded-lg transition-colors text-xs font-bold uppercase tracking-wider"
+                         >
+                            <LogOut size={16} /> Sair do Sistema
+                         </button>
+                    </div>
                 </div>
             </aside>
         </>
@@ -238,7 +282,7 @@ const TenantApp = () => {
         <div className="h-full flex flex-row bg-gray-50 overflow-hidden relative">
             <TenantNavigation isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
             
-            <div className="flex-1 overflow-hidden relative flex flex-col w-full">
+            <div className="flex-1 overflow-hidden relative flex flex-col w-full md:pl-2">
                 {/* Mobile Header Toggle */}
                 <div className="md:hidden bg-white border-b p-4 flex items-center justify-between shrink-0 sticky top-0 z-30 shadow-sm">
                     <div className="flex items-center gap-2 font-bold text-slate-800">
