@@ -5,9 +5,10 @@ import { useInventory } from '../context/InventoryContext';
 import { useOrder } from '../context/OrderContext';
 import { useFinance } from '../context/FinanceContext';
 import { useUI } from '../context/UIContext';
+import { useAuth } from '../context/AuthProvider'; // Import Auth
 import { TableStatus, InventoryItem } from '../types'; 
 import { Button } from '../components/Button';
-import { DollarSign, History, ShoppingCart, Search, Wallet, Receipt, Trash2, User, Lock, ArrowRight, XCircle, RefreshCcw, LayoutDashboard, CreditCard, Banknote, MapPin, Zap, Plus, Clock, Eye, Package, Minus, CheckSquare, Square, X, ChevronRight, AlertTriangle } from 'lucide-react';
+import { DollarSign, History, ShoppingCart, Search, Wallet, Receipt, Trash2, User, Lock, ArrowRight, XCircle, RefreshCcw, LayoutDashboard, CreditCard, Banknote, MapPin, Zap, Plus, Clock, Eye, Package, Minus, CheckSquare, Square, X, ChevronRight, AlertTriangle, LogOut } from 'lucide-react';
 import { CloseRegisterModal } from '../components/modals/CloseRegisterModal';
 import { CashBleedModal } from '../components/modals/CashBleedModal';
 import { Modal } from '../components/Modal';
@@ -18,8 +19,9 @@ export const CashierDashboard: React.FC = () => {
   const { state: orderState, dispatch: orderDispatch } = useOrder();
   const { state: finState, openRegister, refreshTransactions, voidTransaction } = useFinance();
   const { showAlert, showConfirm } = useUI();
+  const { logout } = useAuth(); // Hook Logout
   
-  const [activeTab, setActiveTab] = useState<'ACTIVE' | 'HISTORY' | 'PDV' | 'MANAGE'>('PDV'); // Inicia no PDV para agilidade
+  const [activeTab, setActiveTab] = useState<'ACTIVE' | 'HISTORY' | 'PDV' | 'MANAGE'>('PDV');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
   const [openRegisterAmount, setOpenRegisterAmount] = useState('');
@@ -61,6 +63,16 @@ export const CashierDashboard: React.FC = () => {
       setTimeout(() => setIsRefreshing(false), 800);
   };
 
+  const handleLogout = () => {
+      showConfirm({
+          title: "Sair do Caixa?",
+          message: "Isso fará logout do sistema. O caixa continuará aberto.",
+          type: 'WARNING',
+          confirmText: "Sair",
+          onConfirm: logout
+      });
+  };
+
   // --- Lógica de Pagamento ---
 
   const initiateCashPayment = (type: 'TABLE' | 'POS', total: number) => {
@@ -99,7 +111,6 @@ export const CashierDashboard: React.FC = () => {
   const finalizeTablePayment = async (method: string) => {
       if (!selectedTableId) return;
       try {
-          // No caixa, o cashierName é 'Caixa'
           await orderDispatch({ type: 'PROCESS_PAYMENT', tableId: selectedTableId, amount: totalAmount, method, cashierName: 'Caixa' });
           setSelectedTableId(null);
           showAlert({ title: "Pagamento Realizado", message: "Mesa liberada com sucesso.", type: 'SUCCESS' });
@@ -165,22 +176,19 @@ export const CashierDashboard: React.FC = () => {
       }, 0);
 
       try {
-          // Mapeia para o formato esperado pela API
           const itemsPayload: any[] = [];
           
           posCart.forEach(cartItem => {
-              // Item Principal
               itemsPayload.push({
                   inventoryItemId: cartItem.item.id,
                   quantity: cartItem.quantity,
                   notes: cartItem.notes
               });
 
-              // Adicionais (Inseridos como itens separados, mas vinculados pela nota ou lógica de negócio)
               cartItem.extras.forEach(extra => {
                   itemsPayload.push({
                       inventoryItemId: extra.id,
-                      quantity: cartItem.quantity, // Adicional segue a quantidade do pai
+                      quantity: cartItem.quantity,
                       notes: `[ADICIONAL] para ${cartItem.item.name}`
                   });
               });
@@ -204,11 +212,15 @@ export const CashierDashboard: React.FC = () => {
       } finally { setProcessingSale(false); }
   };
 
-  // TELA DE ABERTURA DE CAIXA
   if (!finState.activeCashSession) {
       return (
           <div className="h-full flex items-center justify-center bg-slate-950 p-4">
-              <div className="bg-white p-10 rounded-[3rem] shadow-2xl text-center max-w-md w-full border border-white/10">
+              <div className="bg-white p-10 rounded-[3rem] shadow-2xl text-center max-w-md w-full border border-white/10 relative">
+                  {/* Logout na tela de bloqueio */}
+                  <button onClick={handleLogout} className="absolute top-6 right-6 text-gray-400 hover:text-red-500 transition-colors">
+                      <LogOut size={24} />
+                  </button>
+
                   <div className="bg-blue-50 p-6 rounded-full w-24 h-24 flex items-center justify-center mx-auto mb-8 shadow-inner">
                       <Lock size={48} className="text-blue-600" />
                   </div>
@@ -241,14 +253,24 @@ export const CashierDashboard: React.FC = () => {
           {/* Sincronização Manual FAB (Mobile Only) */}
           <button onClick={handleManualRefresh} className={`md:hidden fixed bottom-24 right-6 z-50 bg-white text-blue-600 p-4 rounded-2xl shadow-2xl border border-gray-100 transition-all active:scale-90 ${isRefreshing ? 'animate-spin' : ''}`}><RefreshCcw size={24}/></button>
 
-          <aside className="w-full md:w-28 bg-white md:bg-slate-950 flex md:flex-col items-center justify-around md:justify-start py-4 px-2 md:px-0 gap-2 md:gap-6 fixed md:relative bottom-0 md:h-full z-40 shrink-0 border-t md:border-t-0 md:border-r border-gray-100 shadow-[0_-10px_30px_rgba(0,0,0,0.05)] md:shadow-none">
-              <div className="hidden md:block mb-6 pt-4">
-                  <div className="bg-blue-600 p-3 rounded-2xl shadow-lg shadow-blue-600/40"><DollarSign className="text-white" size={28}/></div>
+          <aside className="w-full md:w-28 bg-white md:bg-slate-950 flex md:flex-col items-center justify-between py-4 px-2 md:px-0 gap-2 fixed md:relative bottom-0 md:h-full z-40 shrink-0 border-t md:border-t-0 md:border-r border-gray-100 shadow-[0_-10px_30px_rgba(0,0,0,0.05)] md:shadow-none">
+              <div className="flex-1 w-full flex md:flex-col justify-around md:justify-start gap-2 md:gap-6">
+                  <div className="hidden md:block mb-6 pt-2 w-full flex justify-center">
+                      <div className="bg-blue-600 p-3 rounded-2xl shadow-lg shadow-blue-600/40"><DollarSign className="text-white" size={28}/></div>
+                  </div>
+                  <NavButton tab="PDV" icon={ShoppingCart} label="Balcão" />
+                  <NavButton tab="ACTIVE" icon={Receipt} label="Mesas" />
+                  <NavButton tab="HISTORY" icon={History} label="Extrato" />
+                  <NavButton tab="MANAGE" icon={Wallet} label="Turno" />
               </div>
-              <NavButton tab="PDV" icon={ShoppingCart} label="Balcão" />
-              <NavButton tab="ACTIVE" icon={Receipt} label="Mesas" />
-              <NavButton tab="HISTORY" icon={History} label="Extrato" />
-              <NavButton tab="MANAGE" icon={Wallet} label="Turno" />
+              
+              {/* Logout Button */}
+              <div className="hidden md:flex w-full justify-center pb-4">
+                  <button onClick={handleLogout} className="flex flex-col items-center gap-1 p-3 rounded-2xl text-red-400 hover:bg-red-500/10 hover:text-red-500 transition-all group" title="Sair do Sistema">
+                      <LogOut size={24} />
+                      <span className="text-[9px] font-black uppercase tracking-widest">Sair</span>
+                  </button>
+              </div>
           </aside>
 
           <div className="flex-1 flex flex-col h-full overflow-hidden pb-20 md:pb-0">
@@ -268,6 +290,7 @@ export const CashierDashboard: React.FC = () => {
                           <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
                           <span className="text-[10px] font-black text-emerald-700 uppercase tracking-widest">Caixa Aberto</span>
                       </div>
+                      <button onClick={handleLogout} className="md:hidden p-2 text-red-500 bg-red-50 rounded-xl ml-2"><LogOut size={20}/></button>
                   </div>
               </header>
 
