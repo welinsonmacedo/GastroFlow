@@ -4,7 +4,7 @@ import { useRestaurant } from '../context/RestaurantContext';
 import { useMenu } from '../context/MenuContext';
 import { useOrder } from '../context/OrderContext';
 import { OrderStatus, ProductType, OrderItem } from '../types';
-import { Clock, ChefHat, CheckCircle, AlertTriangle, Volume2, Zap, Plus, Printer, RefreshCcw, Bike, Phone, MessageCircle } from 'lucide-react';
+import { Clock, ChefHat, CheckCircle, AlertTriangle, Volume2, Zap, Plus, Printer, RefreshCcw, Bike, Phone, MessageCircle, ArrowRight } from 'lucide-react';
 
 // Som de "Ding" de cozinha (Short Bell)
 const KITCHEN_SOUND_URL = "https://assets.mixkit.co/active_storage/sfx/571/571-preview.mp3";
@@ -17,8 +17,6 @@ export const KitchenDisplay: React.FC = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [, setTick] = useState(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  
-  // Refs para controlar o disparo do som apenas quando AUMENTAR o número de pendentes
   const prevPendingCount = useRef(0);
   const wakeLockRef = useRef<any>(null);
 
@@ -30,25 +28,20 @@ export const KitchenDisplay: React.FC = () => {
 
   const graceMinutes = restState.businessInfo?.orderGracePeriodMinutes || 0;
 
-  // Filtra pedidos ativos (Mesa e Delivery)
+  // Filtra pedidos ativos
   const activeOrders = orderState.orders.filter(order => {
       if (order.status === 'CANCELLED') return false;
-      
       const now = new Date().getTime();
       const orderTime = new Date(order.timestamp).getTime();
       const diffMinutes = (now - orderTime) / 60000;
-      
-      // Respeita o tempo de carência (apenas para Mesa, Delivery geralmente é imediato no KDS)
       if (order.type === 'DINE_IN' && diffMinutes < graceMinutes) return false;
 
-      // Mostra se tem itens pendentes na cozinha
       return order.items.some(item => 
           isKitchenItem(item) && 
           (item.status === OrderStatus.PENDING || item.status === OrderStatus.PREPARING)
       );
   });
 
-  // Conta quantos itens estão estritamente PENDENTES (novos)
   const currentPendingCount = activeOrders.reduce((acc, order) => {
       return acc + order.items.filter(i => isKitchenItem(i) && i.status === OrderStatus.PENDING).length;
   }, 0);
@@ -65,12 +58,8 @@ export const KitchenDisplay: React.FC = () => {
 
   const requestWakeLock = async () => {
     try {
-      if ('wakeLock' in navigator) {
-        wakeLockRef.current = await (navigator as any).wakeLock.request('screen');
-      }
-    } catch (err) {
-      console.error('Erro Wake Lock:', err);
-    }
+      if ('wakeLock' in navigator) { wakeLockRef.current = await (navigator as any).wakeLock.request('screen'); }
+    } catch (err) { console.error('Erro Wake Lock:', err); }
   };
 
   useEffect(() => {
@@ -168,16 +157,6 @@ export const KitchenDisplay: React.FC = () => {
       if (printWindow) { printWindow.document.write(printContent); printWindow.document.close(); }
   };
 
-  // Helper para ícones de plataforma
-  const getPlatformIcon = (platform: string) => {
-      switch(platform) {
-          case 'IFOOD': return <span className="text-red-500 font-black">iFood</span>;
-          case 'WHATSAPP': return <MessageCircle size={20} className="text-green-500"/>;
-          case 'UBER': return <span className="text-green-900 font-black">Uber</span>;
-          default: return <Phone size={20} className="text-blue-400"/>;
-      }
-  };
-
   if (!orderState.audioUnlocked) {
       return (
           <div className="h-full bg-slate-900 flex items-center justify-center p-4">
@@ -234,12 +213,14 @@ export const KitchenDisplay: React.FC = () => {
           const isLate = elapsedMinutes > 20;
           const groupedItems = groupOrderItems(order.items);
           const isDelivery = order.type === 'DELIVERY';
+          const isPDV = order.type === 'PDV';
+          const goesToCashier = isDelivery || isPDV;
           
           return (
-            <div key={order.id} className={`min-w-[340px] max-w-[340px] bg-slate-900 rounded-[2rem] overflow-hidden border-2 flex flex-col shadow-2xl transition-all h-full ${isLate ? 'border-red-500 ring-4 ring-red-500/10' : (isDelivery ? 'border-orange-500' : 'border-white/5')}`}>
+            <div key={order.id} className={`min-w-[340px] max-w-[340px] bg-slate-900 rounded-[2rem] overflow-hidden border-2 flex flex-col shadow-2xl transition-all h-full ${isLate ? 'border-red-500 ring-4 ring-red-500/10' : (isDelivery ? 'border-orange-500' : (isPDV ? 'border-purple-500' : 'border-white/5'))}`}>
               
-              {/* Header do Card (Diferente para Delivery) */}
-              <div className={`p-5 flex justify-between items-center shrink-0 ${isLate ? 'bg-red-600' : (isDelivery ? 'bg-orange-600' : 'bg-slate-800')}`}>
+              {/* Header do Card */}
+              <div className={`p-5 flex justify-between items-center shrink-0 ${isLate ? 'bg-red-600' : (isDelivery ? 'bg-orange-600' : (isPDV ? 'bg-purple-600' : 'bg-slate-800'))}`}>
                 <div className="overflow-hidden">
                     {isDelivery ? (
                         <>
@@ -248,6 +229,13 @@ export const KitchenDisplay: React.FC = () => {
                                 <span className="font-black text-xl tracking-tighter uppercase truncate">{order.deliveryInfo?.platform || 'DELIVERY'}</span>
                             </div>
                             <div className="text-[10px] font-bold opacity-80 uppercase tracking-widest truncate">{order.deliveryInfo?.customerName || 'Cliente'}</div>
+                        </>
+                    ) : isPDV ? (
+                        <>
+                            <div className="flex items-center gap-2 mb-1">
+                                <span className="font-black text-xl tracking-tighter uppercase truncate">BALCÃO</span>
+                            </div>
+                            <div className="text-[10px] font-bold opacity-80 uppercase tracking-widest truncate">{order.deliveryInfo?.customerName || 'Retirada'}</div>
                         </>
                     ) : (
                         <>
@@ -293,7 +281,9 @@ export const KitchenDisplay: React.FC = () => {
                             {main.status === OrderStatus.PENDING ? (
                                 <button onClick={() => updateGroupStatus(order.id, main, extras, OrderStatus.PREPARING)} className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-emerald-600/20 transition-all">Começar</button>
                             ) : (
-                                <button onClick={() => updateGroupStatus(order.id, main, extras, OrderStatus.READY)} className="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-blue-600/20 transition-all flex items-center justify-center gap-2"><CheckCircle size={18}/> Pronto!</button>
+                                <button onClick={() => updateGroupStatus(order.id, main, extras, OrderStatus.READY)} className="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-blue-600/20 transition-all flex items-center justify-center gap-2">
+                                    {goesToCashier ? <span className="flex items-center gap-2"><ArrowRight size={18}/> Enviar ao Caixa</span> : <span className="flex items-center gap-2"><CheckCircle size={18}/> Pronto!</span>}
+                                </button>
                             )}
                         </div>
                     </div>
