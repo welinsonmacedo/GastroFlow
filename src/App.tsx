@@ -2,30 +2,30 @@
 import React, { PropsWithChildren, useState, useEffect } from 'react';
 // @ts-ignore
 import { BrowserRouter, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from '../context/AuthProvider'; 
-import { RestaurantProvider, useRestaurant } from '../context/RestaurantContext';
-import { InventoryProvider } from '../context/InventoryContext'; 
-import { FinanceProvider } from '../context/FinanceContext'; 
-import { MenuProvider } from '../context/MenuContext'; 
-import { OrderProvider } from '../context/OrderContext'; 
-import { StaffProvider } from '../context/StaffContext'; 
-import { SaaSProvider, useSaaS } from '../context/SaaSContext';
-import { UIProvider, useUI } from '../context/UIContext';
-import { ClientApp } from '../pages/ClientApp';
-import { WaiterApp } from '../pages/WaiterApp';
-import { KitchenDisplay } from '../pages/KitchenDisplay';
-import { CashierDashboard } from '../pages/CashierDashboard';
-import { AdminDashboard } from '../pages/AdminDashboard';
-import { SuperAdminDashboard } from '../pages/SuperAdminDashboard';
-import { LandingPage } from '../pages/LandingPage';
-import { Login } from '../pages/Login';
-import { SaaSLogin } from '../pages/SaaSLogin';
-import { RegisterRestaurant } from '../pages/RegisterRestaurant';
-import { OwnerLogin } from '../pages/OwnerLogin';
-import { PrivacyPolicy } from '../pages/PrivacyPolicy';
-import { TermsOfService } from '../pages/TermsOfService';
-import { ManualPage } from '../pages/ManualPage';
-import { InstallPWA } from '../components/InstallPWA';
+import { AuthProvider, useAuth } from './context/AuthProvider'; 
+import { RestaurantProvider, useRestaurant } from './context/RestaurantContext';
+import { InventoryProvider } from './context/InventoryContext'; 
+import { FinanceProvider } from './context/FinanceContext'; 
+import { MenuProvider } from './context/MenuContext'; 
+import { OrderProvider } from './context/OrderContext'; 
+import { StaffProvider } from './context/StaffContext'; 
+import { SaaSProvider, useSaaS } from './context/SaaSContext';
+import { UIProvider, useUI } from './context/UIContext';
+import { ClientApp } from './pages/ClientApp';
+import { WaiterApp } from './pages/WaiterApp';
+import { KitchenDisplay } from './pages/KitchenDisplay';
+import { CashierDashboard } from './pages/CashierDashboard';
+import { AdminDashboard } from './pages/AdminDashboard';
+import { SuperAdminDashboard } from './pages/SuperAdminDashboard';
+import { LandingPage } from './pages/LandingPage';
+import { Login } from './pages/Login';
+import { SaaSLogin } from './pages/SaaSLogin';
+import { RegisterRestaurant } from './pages/RegisterRestaurant';
+import { OwnerLogin } from './pages/OwnerLogin';
+import { PrivacyPolicy } from './pages/PrivacyPolicy';
+import { TermsOfService } from './pages/TermsOfService';
+import { ManualPage } from './pages/ManualPage';
+import { InstallPWA } from './components/InstallPWA';
 import { 
     ChefHat, Coffee, Monitor, DollarSign, Settings, LogOut, User as UserIcon, Lock, 
     Menu, X, LayoutDashboard, Utensils, Package, QrCode, PieChart, Users, Palette, FileText,
@@ -90,7 +90,8 @@ const TenantNavigation = ({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: (
         }
     }, [location.pathname]);
     
-    if (location.pathname.startsWith('/client') || location.pathname === '/login' || location.pathname === '/manual') return null;
+    // AJUSTE AQUI: Adicionado '/cashier' para ocultar a sidebar nesta rota
+    if (location.pathname.startsWith('/client') || location.pathname === '/login' || location.pathname === '/manual' || location.pathname === '/cashier') return null;
     if (!authState.currentUser) return null;
 
     const role = authState.currentUser.role;
@@ -248,6 +249,7 @@ const TenantNavigation = ({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: (
 const TenantApp = () => {
     const { state } = useRestaurant();
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+    const location = useLocation();
 
     if (state.isLoading) return <div className="h-screen flex items-center justify-center">Carregando sistema...</div>;
     
@@ -269,16 +271,18 @@ const TenantApp = () => {
             <TenantNavigation isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
             
             <div className="flex-1 overflow-hidden relative flex flex-col w-full">
-                {/* Mobile Header Toggle */}
-                <div className="md:hidden bg-white border-b p-4 flex items-center justify-between shrink-0 sticky top-0 z-30 shadow-sm">
-                    <div className="flex items-center gap-2 font-bold text-slate-800">
-                        {state.theme.logoUrl && <img src={state.theme.logoUrl} className="h-6 w-6 object-contain" />}
-                        <span>{state.theme.restaurantName}</span>
+                {/* Mobile Header Toggle - AJUSTE AQUI: Oculta se for Cashier também */}
+                {location.pathname !== '/cashier' && (
+                    <div className="md:hidden bg-white border-b p-4 flex items-center justify-between shrink-0 sticky top-0 z-30 shadow-sm">
+                        <div className="flex items-center gap-2 font-bold text-slate-800">
+                            {state.theme.logoUrl && <img src={state.theme.logoUrl} className="h-6 w-6 object-contain" />}
+                            <span>{state.theme.restaurantName}</span>
+                        </div>
+                        <button onClick={() => setIsSidebarOpen(true)} className="p-2 bg-slate-100 rounded-lg text-slate-600">
+                            <Menu size={24} />
+                        </button>
                     </div>
-                    <button onClick={() => setIsSidebarOpen(true)} className="p-2 bg-slate-100 rounded-lg text-slate-600">
-                        <Menu size={24} />
-                    </button>
-                </div>
+                )}
 
                 <div className="flex-1 overflow-y-auto">
                     <Routes>
