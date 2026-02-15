@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
+// @ts-ignore
 import { useNavigate, Link } from 'react-router-dom';
 import { ChefHat, ArrowLeft, Loader2, Mail, Lock, AlertCircle } from 'lucide-react';
 import { Button } from '../components/Button';

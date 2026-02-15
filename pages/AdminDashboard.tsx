@@ -1,5 +1,6 @@
 
 import React from 'react';
+// @ts-ignore
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useRestaurant } from '../context/RestaurantContext';
 

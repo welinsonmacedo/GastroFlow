@@ -23,7 +23,6 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({ isOpen, onCl
   const [selectedStockId, setSelectedStockId] = useState('');
   const [description, setDescription] = useState('');
 
-  // Reset form when opening
   useEffect(() => {
     if (isOpen) {
         if (productToEdit) {
@@ -39,19 +38,17 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({ isOpen, onCl
   const availableForMenu = invState.inventory.filter(i => 
       (i.type === 'RESALE' || i.type === 'COMPOSITE') && 
       !menuState.products.some(p => p.linkedInventoryItemId === i.id && (!productToEdit || p.id !== productToEdit.id)) &&
-      !i.isExtra // Filtra fora os extras
+      !i.isExtra 
   );
 
   const handleSave = async (e: React.FormEvent) => {
       e.preventDefault();
       
-      // Validação de Estoque
       const stockItem = invState.inventory.find(i => i.id === selectedStockId);
       if (!selectedStockId || !stockItem) {
           return showAlert({ title: "Erro", message: "É obrigatório selecionar um item do estoque.", type: 'ERROR' });
       }
 
-      // Valida se o item de estoque possui categoria
       if (!stockItem.category) {
           return showAlert({ 
               title: "Item sem Categoria", 
@@ -61,12 +58,11 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({ isOpen, onCl
       }
 
       try {
-          // Copia dados do estoque para o produto do menu, mas mantém a descrição personalizada
           const productData = {
               name: stockItem.name,
               price: stockItem.salePrice, 
               category: stockItem.category, 
-              description: description, // Usa a descrição digitada no modal
+              description: description, // Usa a descrição digitada
               image: stockItem.image || '',
               linkedInventoryItemId: stockItem.id, 
               isExtra: false, 
@@ -81,7 +77,6 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({ isOpen, onCl
               await updateProduct({ 
                   ...productToEdit, 
                   ...productData,
-                  // Preserva campos que não devem ser sobrescritos pelo estoque se já existirem no produto editado (como extras vinculados)
                   linkedExtraIds: productToEdit.linkedExtraIds || [],
               } as Product);
           } else {
@@ -126,7 +121,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({ isOpen, onCl
                     value={selectedStockId} 
                     onChange={e => setSelectedStockId(e.target.value)}
                     required
-                    disabled={!!productToEdit} // Não permite mudar o link se estiver editando
+                    disabled={!!productToEdit} 
                 >
                     <option value="">Selecione...</option>
                     {availableForMenu.map(i => (
@@ -156,7 +151,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({ isOpen, onCl
                         <textarea
                             className="w-full border-2 p-3 rounded-xl text-sm bg-white focus:border-blue-500 outline-none shadow-sm transition-all resize-none"
                             rows={3}
-                            placeholder="Descreva o prato de forma apetitosa (ex: Acompanha arroz, feijão e salada...)"
+                            placeholder="Descreva o prato de forma apetitosa..."
                             value={description}
                             onChange={e => setDescription(e.target.value)}
                         />

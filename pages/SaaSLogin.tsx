@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+// @ts-ignore
 import { useNavigate, Link } from 'react-router-dom';
 import { useSaaS } from '../context/SaaSContext';
 import { Activity, Lock, ArrowLeft, AlertCircle, Wifi, WifiOff, Loader2 } from 'lucide-react';

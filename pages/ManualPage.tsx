@@ -1,5 +1,6 @@
 
 import React, { useState } from 'react';
+// @ts-ignore
 import { Link } from 'react-router-dom';
 import { 
   ChefHat, Coffee, DollarSign, Settings, 

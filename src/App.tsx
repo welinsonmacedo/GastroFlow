@@ -1,7 +1,7 @@
 
-import React, { PropsWithChildren, useState, useEffect } from 'react';
+import React, { PropsWithChildren } from 'react';
 // @ts-ignore
-import { BrowserRouter, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthProvider'; 
 import { RestaurantProvider, useRestaurant } from './context/RestaurantContext';
 import { InventoryProvider } from './context/InventoryContext'; 
@@ -11,11 +11,13 @@ import { OrderProvider } from './context/OrderContext';
 import { StaffProvider } from './context/StaffContext'; 
 import { SaaSProvider, useSaaS } from './context/SaaSContext';
 import { UIProvider, useUI } from './context/UIContext';
+
+// Pages
 import { ClientApp } from './pages/ClientApp';
 import { WaiterApp } from './pages/WaiterApp';
 import { KitchenDisplay } from './pages/KitchenDisplay';
 import { CashierDashboard } from './pages/CashierDashboard';
-import { AdminDashboard } from './pages/AdminDashboard';
+import { AdminDashboard } from './pages/AdminDashboard'; // O Shell do Admin
 import { SuperAdminDashboard } from './pages/SuperAdminDashboard';
 import { LandingPage } from './pages/LandingPage';
 import { Login } from './pages/Login';
@@ -25,6 +27,7 @@ import { OwnerLogin } from './pages/OwnerLogin';
 import { PrivacyPolicy } from './pages/PrivacyPolicy';
 import { TermsOfService } from './pages/TermsOfService';
 import { ManualPage } from './pages/ManualPage';
+
 import { InstallPWA } from './components/InstallPWA';
 import { Lock } from 'lucide-react';
 import { Role } from './types';
@@ -92,14 +95,16 @@ const TenantApp = () => {
                         <Route path="/" element={<Navigate to={`/login${window.location.search}`} replace />} />
                         <Route path="/login" element={<Login />} />
                         <Route path="/manual" element={<ManualPage />} />
+                        
+                        {/* App do Cliente (Cardápio) */}
                         <Route path="/client/table/:tableId" element={<ClientApp />} />
                         
-                        {/* ROTAS OPERACIONAIS - SEM SIDEBAR (Acessadas diretamente) */}
+                        {/* Apps Operacionais */}
                         <Route path="/waiter" element={<ProtectedRestaurantRoute allowedRoles={[Role.WAITER, Role.ADMIN]} requiredRoute="/waiter"><WaiterApp /></ProtectedRestaurantRoute>} />
                         <Route path="/kitchen" element={<ProtectedRestaurantRoute allowedRoles={[Role.KITCHEN, Role.ADMIN]} requiredRoute="/kitchen" requiredFeature="allowKds"><KitchenDisplay /></ProtectedRestaurantRoute>} />
                         <Route path="/cashier" element={<ProtectedRestaurantRoute allowedRoles={[Role.CASHIER, Role.ADMIN]} requiredRoute="/cashier" requiredFeature="allowCashier"><CashierDashboard /></ProtectedRestaurantRoute>} />
                         
-                        {/* ROTA ADMIN - COM SIDEBAR (AdminDashboard contém o layout com sidebar) */}
+                        {/* Painel Administrativo (Contém sub-rotas internas) */}
                         <Route path="/admin/*" element={<ProtectedRestaurantRoute allowedRoles={[Role.ADMIN]} requiredRoute="/admin"><AdminDashboard /></ProtectedRestaurantRoute>} />
                         
                         <Route path="*" element={<Navigate to={`/login${window.location.search}`} replace />} />

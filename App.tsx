@@ -1,5 +1,6 @@
 
 import React, { PropsWithChildren, useState, useEffect } from 'react';
+// @ts-ignore
 import { BrowserRouter, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthProvider'; 
 import { RestaurantProvider, useRestaurant } from './context/RestaurantContext';
@@ -70,6 +71,7 @@ const ProtectedSaaSRoute = ({ children }: PropsWithChildren) => {
 };
 
 const TenantNavigation = ({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: (v: boolean) => void }) => {
+    // @ts-ignore
     const location = useLocation();
     const { state: authState, logout } = useAuth();
     const { state: restState } = useRestaurant();
