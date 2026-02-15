@@ -22,12 +22,16 @@ export const AdminMenuAppearance: React.FC = () => {
 
   // --- COMPONENTE DE PREVIEW (CELULAR) ---
   const MobilePreview = () => {
-      const realProducts = menuState.products.filter(p => p.isVisible).slice(0, 5);
+      // Filtra visíveis E remove Adicionais (Extras)
+      const realProducts = menuState.products.filter(p => p.isVisible && !p.isExtra).slice(0, 5);
+      
       const hasProducts = realProducts.length > 0;
       const displayProducts = hasProducts ? realProducts : [1, 2, 3].map((_, i) => ({
           id: `mock-${i}`, name: 'Produto Exemplo', description: 'Descrição do item aparecerá aqui...', price: 25.00, image: `https://images.unsplash.com/photo-1546069901-ba9599a7e63c?ixlib=rb-1.2.1&auto=format&fit=crop&w=200&q=80`
       }));
-      const categories = hasProducts ? Array.from(new Set(menuState.products.map(p => p.category))).slice(0, 3) : ['Lanches', 'Bebidas', 'Sobremesas'];
+      
+      // Categorias baseadas nos produtos filtrados
+      const categories = hasProducts ? Array.from(new Set(realProducts.map(p => p.category))).slice(0, 3) : ['Lanches', 'Bebidas', 'Sobremesas'];
 
       return (
           <div className="relative mx-auto border-gray-900 bg-gray-900 border-[14px] rounded-[2.5rem] h-[600px] w-[300px] shadow-2xl overflow-hidden flex flex-col transform transition-transform hover:scale-[1.02] duration-300">
