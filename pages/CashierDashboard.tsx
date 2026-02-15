@@ -525,9 +525,8 @@ export const CashierDashboard: React.FC = () => {
                           </div>
                       </div>
                   )}
-              </main>
-          </div>
-
+          </main>
+          
           <CashBleedModal isOpen={bleedModalOpen} onClose={() => setBleedModalOpen(false)} />
           <CloseRegisterModal isOpen={closeModalOpen} onClose={() => setCloseModalOpen(false)} onSuccess={() => setActiveTab('ACTIVE')} />
           
