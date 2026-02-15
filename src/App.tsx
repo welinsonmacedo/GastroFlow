@@ -87,6 +87,11 @@ const TenantApp = () => {
     return (
         <div className="h-full flex flex-col bg-gray-50 overflow-hidden relative">
             <div className="flex-1 overflow-hidden relative flex flex-col w-full">
+                {/* 
+                    REMOVIDO: TenantNavigation (Sidebar Global)
+                    A sidebar foi movida para dentro do AdminDashboard para não aparecer
+                    nas telas operacionais (Garçom/Cozinha/Caixa) quando acessadas diretamente.
+                */}
                 <div className="flex-1 overflow-y-auto">
                     <Routes>
                         <Route path="/" element={<Navigate to={`/login${window.location.search}`} replace />} />
@@ -95,16 +100,16 @@ const TenantApp = () => {
                         <Route path="/client/table/:tableId" element={<ClientApp />} />
                         
                         {/* 
-                            ROTAS OPERACIONAIS DIRETAS (SEM SIDEBAR)
-                            Garçons, Cozinheiros e Caixas acessam aqui diretamente se não forem admins.
+                            ROTAS OPERACIONAIS - SEM SIDEBAR
+                            Acessadas diretamente por funcionários (ex: tablet na cozinha, celular do garçom)
                         */}
                         <Route path="/waiter" element={<ProtectedRestaurantRoute allowedRoles={[Role.WAITER, Role.ADMIN]} requiredRoute="/waiter"><WaiterApp /></ProtectedRestaurantRoute>} />
                         <Route path="/kitchen" element={<ProtectedRestaurantRoute allowedRoles={[Role.KITCHEN, Role.ADMIN]} requiredRoute="/kitchen" requiredFeature="allowKds"><KitchenDisplay /></ProtectedRestaurantRoute>} />
                         <Route path="/cashier" element={<ProtectedRestaurantRoute allowedRoles={[Role.CASHIER, Role.ADMIN]} requiredRoute="/cashier" requiredFeature="allowCashier"><CashierDashboard /></ProtectedRestaurantRoute>} />
                         
                         {/* 
-                            ROTA ADMIN (COM SIDEBAR)
-                            O AdminDashboard agora contém o layout com a sidebar.
+                            ROTA ADMIN - COM SIDEBAR
+                            O componente AdminDashboard agora contém o layout completo com a Sidebar.
                         */}
                         <Route path="/admin/*" element={<ProtectedRestaurantRoute allowedRoles={[Role.ADMIN]} requiredRoute="/admin"><AdminDashboard /></ProtectedRestaurantRoute>} />
                         
