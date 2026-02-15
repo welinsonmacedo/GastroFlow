@@ -38,7 +38,7 @@ export interface DeliveryInfo {
     address: string;
     platform: DeliveryPlatform;
     deliveryFee?: number;
-    changeFor?: number; // Troco para
+    changeFor?: number; 
 }
 
 // --- SaaS Types ---
@@ -187,8 +187,8 @@ export interface Order {
   timestamp: Date;
   isPaid: boolean;
   status: string;
-  type: OrderType; // DINE_IN, DELIVERY, PDV
-  deliveryInfo?: DeliveryInfo; // Dados opcionais se for Delivery
+  type?: OrderType; // Agora opcional/existente
+  deliveryInfo?: DeliveryInfo; // Dados do delivery
 }
 
 export interface Table {

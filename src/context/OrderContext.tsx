@@ -28,9 +28,18 @@ const orderReducer = (state: OrderState, action: OrderAction): OrderState => {
     }
 };
 
+// Interface flexível para criação de pedidos
 interface PlaceOrderParams {
-    tableId?: string; // Opcional se for Delivery
-    items: { productId?: string; inventoryItemId?: string; quantity: number; notes: string; salePrice?: number; name?: string; type?: string }[];
+    tableId?: string; 
+    items: { 
+        productId?: string; 
+        inventoryItemId?: string; 
+        quantity: number; 
+        notes: string; 
+        salePrice?: number; 
+        name?: string; 
+        type?: string 
+    }[];
     type?: OrderType;
     deliveryInfo?: DeliveryInfo;
 }
@@ -38,7 +47,8 @@ interface PlaceOrderParams {
 interface OrderContextType {
   state: OrderState;
   dispatch: (action: any) => void;
-  placeOrder: (params: PlaceOrderParams) => Promise<void>;
+  // Assinatura atualizada para aceitar objeto ou argumentos antigos (para compatibilidade)
+  placeOrder: (paramsOrTableId: PlaceOrderParams | string, itemsIfOld?: any[]) => Promise<void>;
   processPosSale: (data: any) => Promise<void>;
   processPayment: (tableId: string | undefined, amount: number, method: string, cashierName?: string, orderId?: string) => Promise<void>;
   updateItemStatus: (orderId: string, itemId: string, status: OrderStatus) => Promise<void>;
@@ -63,7 +73,6 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       tables: [], orders: [], serviceCalls: [], audioUnlocked: false
   });
 
-  // Função central de busca de dados
   const fetchData = useCallback(async () => {
       if (!tenantId) return;
       const yesterday = new Date(); yesterday.setHours(yesterday.getHours() - 24);
@@ -108,16 +117,11 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   }, [tenantId]);
 
-  // CONFIGURAÇÃO DO REALTIME
   useEffect(() => {
       if (!tenantId) return;
-
-      // Carrega dados iniciais
       fetchData();
       
-      const handleRealtimeUpdate = (payload: any) => {
-          fetchData(); // Recarrega tudo ao receber qualquer sinal
-      };
+      const handleRealtimeUpdate = () => fetchData();
 
       const channel = supabase.channel(`restaurant_room:${tenantId}`)
           .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `tenant_id=eq.${tenantId}` }, handleRealtimeUpdate)
@@ -131,10 +135,24 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // --- ACTIONS ---
 
-  const placeOrder = async ({ tableId, items, type = 'DINE_IN', deliveryInfo }: PlaceOrderParams) => {
+  const placeOrder = async (paramsOrTableId: PlaceOrderParams | string, itemsIfOld?: any[]) => {
       if(!tenantId) return;
       
-      // Cria o pedido header
+      let params: PlaceOrderParams;
+
+      // Compatibilidade com chamadas antigas placeOrder(tableId, items)
+      if (typeof paramsOrTableId === 'string') {
+          params = {
+              tableId: paramsOrTableId,
+              items: itemsIfOld || [],
+              type: 'DINE_IN'
+          };
+      } else {
+          params = paramsOrTableId;
+      }
+
+      const { tableId, items, type = 'DINE_IN', deliveryInfo } = params;
+
       const { data: order } = await supabase.from('orders').insert({ 
           tenant_id: tenantId, 
           table_id: tableId || null, 
@@ -147,7 +165,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
       if (order) {
           const dbItems = items.map(i => {
-              // Se tiver productId, busca info do menu. Se não (Inventory Item), usa os dados passados.
+              // Se tiver productId, busca info do menu. Se não (Inventory Item ou Raw), usa os dados passados.
               let product = i.productId ? menuState.products.find(p => p.id === i.productId) : null;
               
               return {
@@ -178,10 +196,9 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const processPosSale = async (data: any) => {
       if(!tenantId) return;
-      // Normaliza para o formato esperado pela RPC (que aceita inventoryItemId)
       const enrichedItems = data.items.map((i: any) => ({
-          inventoryItemId: i.inventoryItemId, // Para venda direta do estoque
-          productId: i.productId, // Para venda de produto (se houver)
+          inventoryItemId: i.inventoryItemId,
+          productId: i.productId, 
           quantity: i.quantity,
           notes: i.notes
       }));
@@ -196,12 +213,9 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const processPayment = async (tableId: string | undefined, amount: number, method: string, cashierName: string = 'Caixa', orderId?: string) => {
       if(!tenantId) return;
       
-      // Se for mesa, atualiza todos os pedidos da mesa
       if (tableId) {
           await supabase.from('orders').update({ is_paid: true, status: 'DELIVERED' }).eq('table_id', tableId).eq('is_paid', false).neq('status', 'CANCELLED');
-      } 
-      // Se for Delivery (orderId específico), atualiza apenas ele
-      else if (orderId) {
+      } else if (orderId) {
           await supabase.from('orders').update({ is_paid: true, status: 'DELIVERED' }).eq('id', orderId);
           await supabase.from('order_items').update({ status: 'DELIVERED' }).eq('order_id', orderId);
       }
@@ -225,7 +239,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const dispatch = async (action: any) => {
       switch (action.type) {
-          case 'PLACE_ORDER': await placeOrder({ tableId: action.tableId, items: action.items, type: action.orderType || 'DINE_IN', deliveryInfo: action.deliveryInfo }); break;
+          case 'PLACE_ORDER': await placeOrder(action); break;
           case 'CANCEL_ORDER': await cancelOrder(action.orderId); break;
           case 'PROCESS_POS_SALE': await processPosSale(action.sale); break;
           case 'PROCESS_PAYMENT': await processPayment(action.tableId, action.amount, action.method, action.cashierName, action.orderId); break;
