@@ -572,7 +572,9 @@ export const ClientApp: React.FC = () => {
                                         <button onClick={() => setModalQuantity(modalQuantity + 1)} className="p-4 bg-gray-100 rounded-2xl hover:bg-emerald-50 hover:text-emerald-600 transition-colors"><Plus size={24}/></button>
                                     </div>
                                 </div>
-                                {selectedProduct.linkedExtraIds && selectedProduct.linkedExtraIds.length > 0 && (
+                                
+                                {/* REGRAS DE NEGÓCIO: Bebidas não mostram adicionais, e adicionais apenas se houver vinculados */}
+                                {!isDrinkProduct(selectedProduct) && selectedProduct.linkedExtraIds && selectedProduct.linkedExtraIds.length > 0 && (
                                     <div className="border-t border-b border-gray-100 py-6 space-y-3">
                                         <label className="block text-xs font-black text-gray-400 uppercase tracking-wider flex items-center gap-1"><Plus size={12} className="text-green-500"/> Adicionais</label>
                                         <div className="space-y-2">

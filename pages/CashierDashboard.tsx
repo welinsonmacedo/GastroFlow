@@ -517,11 +517,17 @@ export const CashierDashboard: React.FC = () => {
                       <button onClick={() => setItemQty(itemQty + 1)} className="p-3 bg-white shadow-sm rounded-xl hover:bg-blue-50 text-blue-500 transition-colors"><Plus size={20}/></button>
                   </div>
 
-                  {/* Lista de Adicionais (Filtrado por isExtra) */}
+                  {/* Lista de Adicionais (Filtrado por isExtra E Categoria Alvo) */}
                   <div className="space-y-2">
-                      <label className="text-xs font-black text-gray-400 uppercase tracking-widest px-1">Adicionais</label>
+                      <label className="text-xs font-black text-gray-400 uppercase tracking-widest px-1">Adicionais Disponíveis</label>
                       <div className="max-h-48 overflow-y-auto space-y-2 custom-scrollbar pr-1">
-                          {invState.inventory.filter(i => i.isExtra).map(extra => {
+                          {invState.inventory
+                            .filter(i => 
+                                i.isExtra && 
+                                selectedItemForCart?.category && 
+                                i.targetCategories?.includes(selectedItemForCart.category)
+                            )
+                            .map(extra => {
                               const isSelected = selectedExtras.some(e => e.id === extra.id);
                               return (
                                   <div key={extra.id} onClick={() => toggleExtra(extra)} className={`flex items-center justify-between p-3 rounded-xl border-2 cursor-pointer transition-all ${isSelected ? 'border-blue-500 bg-blue-50' : 'border-gray-100 hover:bg-gray-50'}`}>
@@ -533,8 +539,8 @@ export const CashierDashboard: React.FC = () => {
                                   </div>
                               );
                           })}
-                          {invState.inventory.filter(i => i.isExtra).length === 0 && (
-                              <p className="text-xs text-center text-gray-400 py-2">Nenhum adicional cadastrado no estoque.</p>
+                          {invState.inventory.filter(i => i.isExtra && selectedItemForCart?.category && i.targetCategories?.includes(selectedItemForCart.category)).length === 0 && (
+                              <p className="text-xs text-center text-gray-400 py-2">Nenhum adicional disponível para esta categoria.</p>
                           )}
                       </div>
                   </div>
