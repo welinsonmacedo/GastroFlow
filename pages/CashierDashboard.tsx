@@ -1,25 +1,27 @@
 
 import React, { useState } from 'react';
 import { useRestaurant } from '../context/RestaurantContext';
-import { useInventory } from '../context/InventoryContext'; // Changed to useInventory
+import { useInventory } from '../context/InventoryContext'; 
 import { useOrder } from '../context/OrderContext';
 import { useFinance } from '../context/FinanceContext';
 import { useUI } from '../context/UIContext';
-import { TableStatus, InventoryItem } from '../types'; // Changed Product to InventoryItem
+import { useAuth } from '../context/AuthProvider';
+import { TableStatus, InventoryItem } from '../types'; 
 import { Button } from '../components/Button';
-import { DollarSign, History, ShoppingCart, Search, Wallet, Receipt, Trash2, User, Lock, ArrowRight, XCircle, RefreshCcw, LayoutDashboard, CreditCard, Banknote, MapPin, Zap, Plus, Clock, Eye, Package, Minus, CheckSquare, Square, X } from 'lucide-react';
+import { DollarSign, History, ShoppingCart, Search, Wallet, Receipt, Trash2, User, Lock, XCircle, RefreshCcw, LayoutDashboard, CreditCard, Banknote, Zap, Plus, Clock, Eye, Package, Minus, CheckSquare, Square, AlertTriangle, LogOut, LayoutGrid } from 'lucide-react';
 import { CloseRegisterModal } from '../components/modals/CloseRegisterModal';
 import { CashBleedModal } from '../components/modals/CashBleedModal';
 import { Modal } from '../components/Modal';
 
 export const CashierDashboard: React.FC = () => {
   const { state: restState } = useRestaurant();
-  const { state: invState } = useInventory(); // Using Inventory Context
+  const { state: invState } = useInventory(); 
   const { state: orderState, dispatch: orderDispatch } = useOrder();
   const { state: finState, openRegister, refreshTransactions, voidTransaction } = useFinance();
   const { showAlert, showConfirm } = useUI();
+  const { logout, state: authState } = useAuth();
   
-  const [activeTab, setActiveTab] = useState<'ACTIVE' | 'HISTORY' | 'PDV' | 'MANAGE'>('ACTIVE');
+  const [activeTab, setActiveTab] = useState<'ACTIVE' | 'HISTORY' | 'PDV' | 'MANAGE'>('PDV');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
   const [openRegisterAmount, setOpenRegisterAmount] = useState('');
@@ -61,6 +63,16 @@ export const CashierDashboard: React.FC = () => {
       setTimeout(() => setIsRefreshing(false), 800);
   };
 
+  const handleLogout = () => {
+      showConfirm({
+          title: "Sair do Caixa?",
+          message: "Isso fará logout do sistema. O caixa continuará aberto.",
+          type: 'WARNING',
+          confirmText: "Sair",
+          onConfirm: logout
+      });
+  };
+
   // --- Lógica de Pagamento ---
 
   const initiateCashPayment = (type: 'TABLE' | 'POS', total: number) => {
@@ -99,7 +111,6 @@ export const CashierDashboard: React.FC = () => {
   const finalizeTablePayment = async (method: string) => {
       if (!selectedTableId) return;
       try {
-          // No caixa, o cashierName é 'Caixa'
           await orderDispatch({ type: 'PROCESS_PAYMENT', tableId: selectedTableId, amount: totalAmount, method, cashierName: 'Caixa' });
           setSelectedTableId(null);
           showAlert({ title: "Pagamento Realizado", message: "Mesa liberada com sucesso.", type: 'SUCCESS' });
@@ -165,22 +176,19 @@ export const CashierDashboard: React.FC = () => {
       }, 0);
 
       try {
-          // Mapeia para o formato esperado pela API
           const itemsPayload: any[] = [];
           
           posCart.forEach(cartItem => {
-              // Item Principal
               itemsPayload.push({
                   inventoryItemId: cartItem.item.id,
                   quantity: cartItem.quantity,
                   notes: cartItem.notes
               });
 
-              // Adicionais (Inseridos como itens separados, mas vinculados pela nota ou lógica de negócio)
               cartItem.extras.forEach(extra => {
                   itemsPayload.push({
                       inventoryItemId: extra.id,
-                      quantity: cartItem.quantity, // Adicional segue a quantidade do pai
+                      quantity: cartItem.quantity,
                       notes: `[ADICIONAL] para ${cartItem.item.name}`
                   });
               });
@@ -204,10 +212,28 @@ export const CashierDashboard: React.FC = () => {
       } finally { setProcessingSale(false); }
   };
 
+  const handleVoidSubmit = async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!transactionToVoid) return;
+      try {
+          await voidTransaction(transactionToVoid, voidPin);
+          setVoidModalOpen(false);
+          setVoidPin('');
+          showAlert({ title: "Sucesso", message: "Transação estornada!", type: 'SUCCESS' });
+      } catch (error: any) {
+          showAlert({ title: "Erro", message: error.message, type: 'ERROR' });
+      }
+  };
+
   if (!finState.activeCashSession) {
       return (
           <div className="h-full flex items-center justify-center bg-slate-950 p-4">
-              <div className="bg-white p-10 rounded-[3rem] shadow-2xl text-center max-w-md w-full border border-white/10">
+              <div className="bg-white p-10 rounded-[3rem] shadow-2xl text-center max-w-md w-full border border-white/10 relative">
+                  {/* Logout na tela de bloqueio */}
+                  <button onClick={handleLogout} className="absolute top-6 right-6 text-gray-400 hover:text-red-500 transition-colors">
+                      <LogOut size={24} />
+                  </button>
+
                   <div className="bg-blue-50 p-6 rounded-full w-24 h-24 flex items-center justify-center mx-auto mb-8 shadow-inner">
                       <Lock size={48} className="text-blue-600" />
                   </div>
@@ -228,65 +254,71 @@ export const CashierDashboard: React.FC = () => {
       );
   }
 
-  const NavButton = ({ tab, icon: Icon, label }: any) => (
-      <button onClick={() => setActiveTab(tab)} className={`flex-1 md:flex-none md:w-full p-4 rounded-2xl transition-all flex flex-col items-center gap-1 group ${activeTab === tab ? 'bg-blue-600 text-white shadow-xl shadow-blue-600/30' : 'text-slate-500 hover:bg-slate-100 md:hover:bg-slate-800 md:text-slate-400'}`}>
-          <Icon size={24} strokeWidth={activeTab === tab ? 3 : 2} />
-          <span className="text-[9px] font-black uppercase tracking-widest">{label}</span>
+  const NavTab = ({ tab, icon: Icon, label }: any) => (
+      <button 
+        onClick={() => setActiveTab(tab)} 
+        className={`px-6 py-2 rounded-xl flex items-center gap-2 transition-all font-bold text-sm border-2 ${activeTab === tab ? 'bg-slate-900 text-white border-slate-900 shadow-lg' : 'bg-white text-gray-500 border-transparent hover:bg-gray-100'}`}
+      >
+          <Icon size={18} />
+          <span className="hidden md:inline">{label}</span>
       </button>
   );
 
   return (
-      <div className="h-full bg-gray-50 flex flex-col md:flex-row overflow-hidden font-sans">
-          {/* Sincronização Manual FAB (Mobile Only) */}
-          <button onClick={handleManualRefresh} className={`md:hidden fixed bottom-24 right-6 z-50 bg-white text-blue-600 p-4 rounded-2xl shadow-2xl border border-gray-100 transition-all active:scale-90 ${isRefreshing ? 'animate-spin' : ''}`}><RefreshCcw size={24}/></button>
-
-          <aside className="w-full md:w-28 bg-white md:bg-slate-950 flex md:flex-col items-center justify-around md:justify-start py-4 px-2 md:px-0 gap-2 md:gap-6 fixed md:relative bottom-0 md:h-full z-40 shrink-0 border-t md:border-t-0 md:border-r border-gray-100 shadow-[0_-10px_30px_rgba(0,0,0,0.05)] md:shadow-none">
-              <div className="hidden md:block mb-6 pt-4">
-                  <div className="bg-blue-600 p-3 rounded-2xl shadow-lg shadow-blue-600/40"><DollarSign className="text-white" size={28}/></div>
+      <div className="h-full bg-gray-100 flex flex-col overflow-hidden font-sans">
+          
+          {/* HEADER DE NAVEGAÇÃO SUPERIOR (Substitui Sidebar) */}
+          <header className="bg-white border-b px-6 py-4 flex flex-col md:flex-row justify-between items-center gap-4 shrink-0 z-30">
+              <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-start">
+                  <div className="flex items-center gap-2">
+                      <div className="bg-blue-600 p-2 rounded-xl text-white"><DollarSign size={20}/></div>
+                      <h1 className="font-black text-lg text-slate-800 uppercase tracking-tight hidden sm:block">Frente de Caixa</h1>
+                  </div>
+                  <div className="flex items-center gap-2 md:ml-4">
+                      <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+                      <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Caixa Aberto</span>
+                  </div>
               </div>
-              <NavButton tab="ACTIVE" icon={Receipt} label="Mesas" />
-              <NavButton tab="PDV" icon={ShoppingCart} label="Balcão" />
-              <NavButton tab="HISTORY" icon={History} label="Extrato" />
-              <NavButton tab="MANAGE" icon={Wallet} label="Turno" />
-          </aside>
 
-          <div className="flex-1 flex flex-col h-full overflow-hidden pb-20 md:pb-0">
-              <header className="bg-white/80 backdrop-blur-md border-b p-4 md:p-6 flex justify-between items-center shrink-0 z-30">
-                  <div className="flex items-center gap-3">
-                      <div className="bg-slate-900 text-white p-2.5 rounded-2xl"><LayoutDashboard size={20}/></div>
-                      <h2 className="text-xl font-black uppercase tracking-tighter text-slate-800">
-                          {activeTab === 'ACTIVE' && 'Gestão de Mesas'}
-                          {activeTab === 'PDV' && 'Ponto de Venda'}
-                          {activeTab === 'HISTORY' && 'Extrato de Vendas'}
-                          {activeTab === 'MANAGE' && 'Gestão do Turno'}
-                      </h2>
-                  </div>
-                  <div className="flex items-center gap-3">
-                      <button onClick={handleManualRefresh} className={`hidden md:flex p-3 rounded-2xl bg-gray-50 text-blue-600 hover:bg-gray-100 transition-all ${isRefreshing ? 'animate-spin' : ''}`}><RefreshCcw size={20}/></button>
-                      <div className="bg-emerald-500 text-white px-4 py-2 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-emerald-500/20">Caixa Aberto</div>
-                  </div>
-              </header>
+              {/* Barra de Abas Centralizada */}
+              <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-2xl overflow-x-auto max-w-full">
+                  <NavTab tab="PDV" icon={ShoppingCart} label="Balcão" />
+                  <NavTab tab="ACTIVE" icon={Receipt} label="Mesas" />
+                  <NavTab tab="HISTORY" icon={History} label="Extrato" />
+                  <NavTab tab="MANAGE" icon={Wallet} label="Turno" />
+              </div>
 
-              <main className="flex-1 p-4 md:p-8 overflow-hidden">
+              <div className="flex items-center gap-2">
+                  <button onClick={handleManualRefresh} className={`p-3 rounded-xl bg-gray-50 text-blue-600 hover:bg-blue-50 transition-all ${isRefreshing ? 'animate-spin' : ''}`} title="Sincronizar">
+                      <RefreshCcw size={20}/>
+                  </button>
+                  <button onClick={handleLogout} className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 rounded-xl font-bold hover:bg-red-100 transition-colors text-xs uppercase tracking-wider">
+                      <LogOut size={16}/> <span className="hidden sm:inline">Sair</span>
+                  </button>
+              </div>
+          </header>
+
+          <main className="flex-1 p-3 md:p-6 overflow-hidden">
+                  {/* VIEW: MESAS ATIVAS */}
                   {activeTab === 'ACTIVE' && (
                       <div className="flex flex-col lg:flex-row gap-6 h-full overflow-hidden">
-                          <div className="lg:w-1/3 flex flex-col h-full bg-white rounded-[2.5rem] shadow-xl border border-gray-100 overflow-hidden">
+                          <div className="lg:w-1/3 flex flex-col h-full bg-white rounded-[2rem] shadow-xl border border-gray-100 overflow-hidden">
                               <div className="p-6 bg-slate-50 border-b flex items-center justify-between"><h3 className="font-black uppercase tracking-tight text-slate-700">Ocupação Atual</h3><span className="bg-blue-600 text-white text-[10px] font-black px-2 py-1 rounded-lg">{occupiedTables.length} Mesas</span></div>
                               <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
                                   {occupiedTables.map(t => (
-                                      <button key={t.id} onClick={() => setSelectedTableId(t.id)} className={`w-full p-5 rounded-3xl border-2 text-left transition-all flex justify-between items-center group ${selectedTableId === t.id ? 'border-blue-600 bg-blue-50/50 shadow-lg shadow-blue-600/5' : 'border-transparent bg-gray-50 hover:bg-white hover:border-gray-200'}`}>
-                                          <div>
+                                      <button key={t.id} onClick={() => setSelectedTableId(t.id)} className={`w-full p-5 rounded-3xl border-2 text-left transition-all flex justify-between items-center group relative overflow-hidden ${selectedTableId === t.id ? 'border-blue-600 bg-blue-50/50 shadow-lg shadow-blue-600/5' : 'border-transparent bg-gray-50 hover:bg-white hover:border-gray-200'}`}>
+                                          <div className="relative z-10">
                                               <div className={`font-black text-2xl tracking-tighter ${selectedTableId === t.id ? 'text-blue-600' : 'text-slate-800'}`}>Mesa {t.number}</div>
                                               <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1 mt-1"><User size={12}/> {t.customerName}</div>
                                           </div>
-                                          {t.status === 'WAITING_PAYMENT' && <div className="bg-orange-500 text-white p-2 rounded-xl animate-pulse"><Receipt size={20}/></div>}
+                                          {t.status === 'WAITING_PAYMENT' && <div className="bg-orange-500 text-white p-2 rounded-xl animate-pulse relative z-10"><Receipt size={20}/></div>}
                                       </button>
                                   ))}
-                                  {occupiedTables.length === 0 && <div className="h-full flex flex-col items-center justify-center text-gray-300 opacity-50 py-20"><DollarSign size={48} className="mb-2"/><p className="font-bold uppercase text-xs">Salão Vazio</p></div>}
+                                  {occupiedTables.length === 0 && <div className="h-full flex flex-col items-center justify-center text-gray-300 opacity-50 py-20"><LayoutGrid size={48} className="mb-2"/><p className="font-bold uppercase text-xs">Salão Vazio</p></div>}
                               </div>
                           </div>
 
-                          <div className="lg:w-2/3 flex flex-col h-full bg-white rounded-[2.5rem] shadow-2xl border border-gray-100 overflow-hidden animate-fade-in">
+                          <div className="lg:w-2/3 flex flex-col h-full bg-white rounded-[2rem] shadow-2xl border border-gray-100 overflow-hidden animate-fade-in">
                               {selectedTable ? (
                                   <div className="flex flex-col h-full">
                                       <div className="p-8 bg-slate-900 text-white flex justify-between items-center shrink-0">
@@ -304,11 +336,11 @@ export const CashierDashboard: React.FC = () => {
                                               ))}</tbody>
                                           </table>
                                       </div>
-                                      <div className="p-8 bg-gray-50 border-t grid grid-cols-2 lg:grid-cols-4 gap-4 shrink-0">
-                                          <button onClick={() => handlePayment('CASH')} className="flex flex-col items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white p-5 rounded-[2rem] font-black shadow-xl shadow-emerald-600/20 transition-all hover:scale-105 active:scale-95"><Banknote size={24}/><span className="text-[10px] uppercase tracking-widest">Dinheiro</span></button>
-                                          <button onClick={() => handlePayment('PIX')} className="flex flex-col items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white p-5 rounded-[2rem] font-black shadow-xl shadow-slate-900/20 transition-all hover:scale-105 active:scale-95"><Zap size={24}/><span className="text-[10px] uppercase tracking-widest">Pix</span></button>
-                                          <button onClick={() => handlePayment('DEBIT')} className="flex flex-col items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white p-5 rounded-[2rem] font-black shadow-xl shadow-blue-600/20 transition-all hover:scale-105 active:scale-95"><CreditCard size={24}/><span className="text-[10px] uppercase tracking-widest">Débito</span></button>
-                                          <button onClick={() => handlePayment('CREDIT')} className="flex flex-col items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white p-5 rounded-[2rem] font-black shadow-xl shadow-indigo-600/20 transition-all hover:scale-105 active:scale-95"><CreditCard size={24}/><span className="text-[10px] uppercase tracking-widest">Crédito</span></button>
+                                      <div className="p-6 bg-gray-50 border-t grid grid-cols-2 lg:grid-cols-4 gap-3 shrink-0">
+                                          <button onClick={() => handlePayment('CASH')} className="flex flex-col items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white p-4 rounded-2xl font-black shadow-lg shadow-emerald-600/20 transition-all hover:scale-[1.02] active:scale-95"><Banknote size={20}/><span className="text-[10px] uppercase tracking-widest">Dinheiro</span></button>
+                                          <button onClick={() => handlePayment('PIX')} className="flex flex-col items-center gap-2 bg-slate-800 hover:bg-slate-700 text-white p-4 rounded-2xl font-black shadow-lg shadow-slate-900/20 transition-all hover:scale-[1.02] active:scale-95"><Zap size={20}/><span className="text-[10px] uppercase tracking-widest">Pix</span></button>
+                                          <button onClick={() => handlePayment('DEBIT')} className="flex flex-col items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white p-4 rounded-2xl font-black shadow-lg shadow-blue-600/20 transition-all hover:scale-[1.02] active:scale-95"><CreditCard size={20}/><span className="text-[10px] uppercase tracking-widest">Débito</span></button>
+                                          <button onClick={() => handlePayment('CREDIT')} className="flex flex-col items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white p-4 rounded-2xl font-black shadow-lg shadow-indigo-600/20 transition-all hover:scale-[1.02] active:scale-95"><CreditCard size={20}/><span className="text-[10px] uppercase tracking-widest">Crédito</span></button>
                                       </div>
                                   </div>
                               ) : (
@@ -318,107 +350,140 @@ export const CashierDashboard: React.FC = () => {
                       </div>
                   )}
 
+                  {/* VIEW: PDV (BALCÃO) */}
                   {activeTab === 'PDV' && (
-                      <div className="flex flex-col lg:flex-row gap-6 h-full overflow-hidden">
-                          <div className="lg:w-2/3 flex flex-col gap-6 h-full overflow-hidden animate-fade-in">
+                      <div className="flex flex-col lg:flex-row gap-4 h-full overflow-hidden">
+                          {/* Coluna da Esquerda: Busca e Grid de Produtos */}
+                          <div className="lg:w-2/3 flex flex-col gap-4 h-full overflow-hidden animate-fade-in">
                               <div className="relative shrink-0 group">
-                                  <Search className="absolute left-6 top-5 text-gray-400 group-focus-within:text-blue-600 transition-colors" size={24}/>
-                                  <input className="w-full pl-16 pr-6 py-5 rounded-[2rem] border-2 border-transparent bg-white shadow-xl focus:border-blue-500 outline-none transition-all font-bold" placeholder="Filtrar estoque (nome)..." value={posSearch} onChange={e => setPosSearch(e.target.value)} autoFocus />
+                                  <Search className="absolute left-6 top-5 text-gray-400 group-focus-within:text-blue-600 transition-colors" size={22}/>
+                                  <input 
+                                    className="w-full pl-14 pr-6 py-4 rounded-2xl border-2 border-transparent bg-white shadow-sm focus:shadow-lg focus:border-blue-500 outline-none transition-all font-bold text-lg" 
+                                    placeholder="Buscar produto..." 
+                                    value={posSearch} 
+                                    onChange={e => setPosSearch(e.target.value)} 
+                                    autoFocus 
+                                  />
                               </div>
-                              <div className="overflow-y-auto flex-1 content-start p-1 custom-scrollbar space-y-2">
-                                  {/* LISTA VERTICAL DE PRODUTOS */}
-                                  {/* Filtro: Usa ESTOQUE, remove INGREDIENT, remove EXTRAS e filtra por nome */}
-                                  {invState.inventory
-                                    .filter(item => 
-                                        item.type !== 'INGREDIENT' && 
-                                        !item.isExtra && // Esconde adicionais da lista principal
-                                        item.name.toLowerCase().includes(posSearch.toLowerCase())
-                                    )
-                                    .map(item => (
-                                      <button 
-                                        key={item.id} 
-                                        onClick={() => openItemModal(item)} 
-                                        className="w-full bg-white p-4 rounded-3xl shadow-sm border border-transparent hover:border-blue-200 hover:shadow-md transition-all flex items-center gap-4 active:scale-[0.99] group"
-                                      >
-                                          <div className="bg-blue-50 text-blue-600 p-3 rounded-2xl group-hover:bg-blue-600 group-hover:text-white transition-colors">
-                                              <Plus size={20} />
-                                          </div>
-                                          <div className="flex-1 text-left">
-                                              <div className="font-black text-slate-800 text-sm uppercase tracking-tight">{item.name}</div>
-                                              <div className="flex gap-2 mt-1">
-                                                  <span className="text-[9px] font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded-lg uppercase tracking-widest">{item.type === 'COMPOSITE' ? 'Prato' : 'Revenda'}</span>
-                                                  <span className={`text-[9px] font-black px-2 py-0.5 rounded-lg uppercase tracking-widest ${item.quantity <= item.minQuantity && item.type !== 'COMPOSITE' ? 'bg-red-50 text-red-600' : 'bg-gray-50 text-gray-500'}`}>
-                                                      {item.type === 'COMPOSITE' ? 'Ficha Técnica' : `Estoque: ${item.quantity}`}
+                              <div className="overflow-y-auto flex-1 content-start p-1 custom-scrollbar">
+                                  {/* GRID DE PRODUTOS */}
+                                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 pb-20">
+                                      {invState.inventory
+                                        .filter(item => 
+                                            item.type !== 'INGREDIENT' && 
+                                            !item.isExtra && 
+                                            item.name.toLowerCase().includes(posSearch.toLowerCase())
+                                        )
+                                        .map(item => (
+                                          <button 
+                                            key={item.id} 
+                                            onClick={() => openItemModal(item)} 
+                                            className="bg-white p-4 rounded-3xl shadow-sm border border-transparent hover:border-blue-300 hover:shadow-lg transition-all active:scale-95 flex flex-col justify-between h-36 group relative overflow-hidden"
+                                          >
+                                              <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-100 transition-opacity">
+                                                  <Plus size={20} className="text-blue-600"/>
+                                              </div>
+                                              <div className="text-left w-full">
+                                                  <div className="font-black text-slate-800 text-sm leading-tight line-clamp-2">{item.name}</div>
+                                                  <span className={`text-[9px] font-black uppercase tracking-widest mt-1 inline-block px-1.5 py-0.5 rounded ${item.type === 'COMPOSITE' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
+                                                      {item.type === 'COMPOSITE' ? 'Prato' : 'Revenda'}
                                                   </span>
                                               </div>
-                                          </div>
-                                          <div className="font-black text-lg text-slate-900">R$ {item.salePrice.toFixed(2)}</div>
-                                      </button>
-                                  ))}
-                              </div>
-                          </div>
-                          <div className="lg:w-1/3 bg-white rounded-[2.5rem] shadow-2xl border border-gray-100 flex flex-col h-full overflow-hidden animate-fade-in">
-                              <div className="p-6 bg-slate-900 text-white shrink-0 flex items-center gap-3"><ShoppingCart size={24} className="text-blue-400"/><h3 className="font-black text-xl uppercase tracking-tighter">Venda Balcão</h3></div>
-                              <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar">
-                                  {posCart.map((cartItem, idx) => (
-                                      <div key={idx} className="bg-gray-50 p-4 rounded-2xl relative group animate-fade-in border border-transparent hover:border-red-100 transition-colors">
-                                          <div className="flex justify-between items-start">
-                                              <div className="flex-1 pr-4">
-                                                  <div className="text-sm font-black text-slate-800 uppercase leading-tight">{cartItem.quantity}x {cartItem.item.name}</div>
-                                                  
-                                                  {/* Lista de Adicionais */}
-                                                  {cartItem.extras.length > 0 && (
-                                                      <div className="mt-1 pl-3 border-l-2 border-blue-200 space-y-0.5">
-                                                          {cartItem.extras.map(extra => (
-                                                              <div key={extra.id} className="text-[10px] font-bold text-blue-600 uppercase flex justify-between">
-                                                                  <span>+ {extra.name}</span>
-                                                                  <span>R$ {extra.salePrice.toFixed(2)}</span>
-                                                              </div>
-                                                          ))}
+                                              <div className="flex justify-between items-end w-full">
+                                                  <div className="font-black text-lg text-slate-900">R$ {item.salePrice.toFixed(2)}</div>
+                                                  {item.type !== 'COMPOSITE' && item.quantity <= item.minQuantity && (
+                                                      <div className="text-[10px] font-bold text-red-500 bg-red-50 px-2 py-1 rounded flex items-center gap-1">
+                                                          <AlertTriangle size={10} /> {item.quantity}
                                                       </div>
                                                   )}
-                                                  
-                                                  {cartItem.notes && <div className="text-[10px] text-gray-400 italic mt-1">"{cartItem.notes}"</div>}
                                               </div>
-                                              <div className="text-right">
-                                                  <div className="font-black text-slate-900">
-                                                      R$ {((cartItem.item.salePrice + cartItem.extras.reduce((s,e)=>s+e.salePrice,0)) * cartItem.quantity).toFixed(2)}
-                                                  </div>
-                                              </div>
+                                          </button>
+                                      ))}
+                                  </div>
+                              </div>
+                          </div>
+
+                          {/* Coluna da Direita: Carrinho e Checkout */}
+                          <div className="lg:w-1/3 bg-white rounded-[2rem] shadow-2xl border border-gray-200 flex flex-col h-full overflow-hidden animate-fade-in relative z-20">
+                              <div className="p-5 bg-slate-900 text-white shrink-0 flex items-center justify-between">
+                                  <div className="flex items-center gap-3">
+                                      <div className="bg-slate-800 p-2 rounded-xl"><ShoppingCart size={20} className="text-blue-400"/></div>
+                                      <div>
+                                          <h3 className="font-black text-lg uppercase tracking-tighter leading-none">Carrinho</h3>
+                                          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{posCart.length} Itens</p>
+                                      </div>
+                                  </div>
+                                  <button onClick={() => setPosCart([])} className="text-xs font-bold text-red-400 hover:text-white transition-colors bg-slate-800 px-3 py-1.5 rounded-lg">Limpar</button>
+                              </div>
+
+                              <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar bg-gray-50">
+                                  {posCart.map((cartItem, idx) => (
+                                      <div key={idx} className="bg-white p-3 rounded-2xl relative group border border-gray-100 shadow-sm flex gap-3 items-center">
+                                          <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center font-black text-slate-500 text-sm">
+                                              {cartItem.quantity}x
                                           </div>
-                                          <button onClick={() => setPosCart(posCart.filter((_, i) => i !== idx))} className="absolute -top-2 -right-2 bg-white text-red-500 p-1.5 rounded-full shadow-md border border-red-50 opacity-0 group-hover:opacity-100 transition-all hover:scale-110"><Trash2 size={14}/></button>
+                                          <div className="flex-1 min-w-0">
+                                              <div className="text-sm font-bold text-slate-800 uppercase truncate leading-tight">{cartItem.item.name}</div>
+                                              <div className="text-xs font-black text-blue-600">R$ {((cartItem.item.salePrice + cartItem.extras.reduce((s,e)=>s+e.salePrice,0)) * cartItem.quantity).toFixed(2)}</div>
+                                              {cartItem.extras.length > 0 && (
+                                                  <div className="flex flex-wrap gap-1 mt-1">
+                                                      {cartItem.extras.map(e => <span key={e.id} className="text-[9px] bg-orange-50 text-orange-700 px-1.5 rounded border border-orange-100 font-bold">+ {e.name}</span>)}
+                                                  </div>
+                                              )}
+                                          </div>
+                                          <button onClick={() => setPosCart(posCart.filter((_, i) => i !== idx))} className="text-red-300 hover:text-red-500 p-2 hover:bg-red-50 rounded-xl transition-all"><Trash2 size={16}/></button>
                                       </div>
                                   ))}
-                                  {posCart.length === 0 && <div className="h-full flex flex-col items-center justify-center text-gray-300 opacity-40 py-20"><Package size={64} strokeWidth={1} /><p className="font-black uppercase text-xs mt-2">Selecione Itens do Estoque</p></div>}
+                                  {posCart.length === 0 && (
+                                      <div className="h-full flex flex-col items-center justify-center text-gray-300 opacity-60 space-y-2">
+                                          <Package size={48} strokeWidth={1.5} />
+                                          <p className="font-bold uppercase text-xs">Caixa Livre</p>
+                                      </div>
+                                  )}
                               </div>
-                              <div className="p-8 bg-white border-t space-y-6 shrink-0 safe-area-bottom">
-                                  <div className="flex justify-between items-center"><span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Total Geral</span><span className="text-4xl font-black text-blue-600">
-                                      R$ {posCart.reduce((acc, cartItem) => {
-                                          const itemTotal = cartItem.item.salePrice + cartItem.extras.reduce((sum, ex) => sum + ex.salePrice, 0);
-                                          return acc + (itemTotal * cartItem.quantity);
-                                      }, 0).toFixed(2)}
-                                  </span></div>
-                                  <div className="grid grid-cols-2 gap-3">
-                                      <button onClick={() => handlePosSale('CASH')} className="py-4 bg-emerald-600 text-white rounded-2xl font-black text-[10px] uppercase shadow-lg shadow-emerald-600/20 active:scale-95 transition-all">Dinheiro</button>
-                                      <button onClick={() => handlePosSale('PIX')} className="py-4 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase shadow-lg shadow-slate-900/20 active:scale-95 transition-all">PIX</button>
-                                      <button onClick={() => handlePosSale('DEBIT')} className="py-4 bg-blue-600 text-white rounded-2xl font-black text-[10px] uppercase shadow-lg shadow-blue-600/20 active:scale-95 transition-all">Débito</button>
-                                      <button onClick={() => handlePosSale('CREDIT')} className="py-4 bg-indigo-600 text-white rounded-2xl font-black text-[10px] uppercase shadow-lg shadow-indigo-600/20 active:scale-95 transition-all">Crédito</button>
+
+                              <div className="p-5 bg-white border-t border-gray-100 shrink-0 shadow-[0_-5px_20px_rgba(0,0,0,0.05)] z-20">
+                                  <div className="flex justify-between items-end mb-4">
+                                      <span className="text-xs font-black text-gray-400 uppercase tracking-widest mb-1">Total a Pagar</span>
+                                      <span className="text-4xl font-black text-slate-800 tracking-tighter leading-none">
+                                          R$ {posCart.reduce((acc, cartItem) => {
+                                              const itemTotal = cartItem.item.salePrice + cartItem.extras.reduce((sum, ex) => sum + ex.salePrice, 0);
+                                              return acc + (itemTotal * cartItem.quantity);
+                                          }, 0).toFixed(2)}
+                                      </span>
+                                  </div>
+                                  <input 
+                                      className="w-full bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-sm font-bold mb-4 outline-none focus:border-blue-500 focus:bg-white transition-all"
+                                      placeholder="Nome do Cliente (Opcional)"
+                                      value={customerName}
+                                      onChange={e => setCustomerName(e.target.value)}
+                                  />
+                                  <div className="grid grid-cols-2 gap-2">
+                                      <button onClick={() => handlePosSale('CASH')} className="py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl font-black text-sm uppercase shadow-lg shadow-emerald-600/20 active:scale-95 transition-all flex flex-col items-center justify-center gap-1">
+                                          <Banknote size={20} /> Dinheiro
+                                      </button>
+                                      <button onClick={() => handlePosSale('PIX')} className="py-4 bg-slate-800 hover:bg-slate-700 text-white rounded-2xl font-black text-sm uppercase shadow-lg shadow-slate-900/20 active:scale-95 transition-all flex flex-col items-center justify-center gap-1">
+                                          <Zap size={20} /> PIX
+                                      </button>
+                                      <button onClick={() => handlePosSale('DEBIT')} className="py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-black text-[10px] uppercase shadow-md shadow-blue-600/20 active:scale-95 transition-all">Débito</button>
+                                      <button onClick={() => handlePosSale('CREDIT')} className="py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl font-black text-[10px] uppercase shadow-md shadow-indigo-600/20 active:scale-95 transition-all">Crédito</button>
                                   </div>
                               </div>
                           </div>
                       </div>
                   )}
 
+                  {/* VIEW: EXTRATO */}
                   {activeTab === 'HISTORY' && (
-                      <div className="bg-white rounded-[2.5rem] shadow-xl border border-gray-100 overflow-hidden h-full flex flex-col animate-fade-in">
+                      <div className="bg-white rounded-[2rem] shadow-xl border border-gray-100 overflow-hidden h-full flex flex-col animate-fade-in">
                           <div className="p-6 border-b bg-gray-50 flex justify-between items-center shrink-0"><h3 className="font-black text-slate-800 uppercase tracking-tighter text-xl">Extrato Diário</h3><Button size="sm" variant="outline" onClick={refreshTransactions} className="rounded-xl flex items-center gap-2"><RefreshCcw size={14} className={isRefreshing ? 'animate-spin' : ''}/> Sincronizar</Button></div>
                           <div className="flex-1 overflow-auto custom-scrollbar">
                               <table className="w-full text-left">
-                                  <thead className="bg-gray-50 text-[10px] font-black text-gray-400 uppercase tracking-widest sticky top-0 z-10"><tr className="border-b"><th className="p-6">Data / Hora</th><th className="p-6">Detalhes</th><th className="p-6">Método</th><th className="p-6 text-right">Valor Final</th><th className="p-6 text-center">Auditoria</th></tr></thead>
+                                  <thead className="bg-gray-50 text-[10px] font-black text-gray-400 uppercase tracking-widest sticky top-0 z-10"><tr className="border-b"><th className="p-6">Hora</th><th className="p-6">Detalhes</th><th className="p-6">Método</th><th className="p-6 text-right">Valor</th><th className="p-6 text-center">Ações</th></tr></thead>
                                   <tbody className="divide-y divide-gray-50">
                                       {finState.transactions.map(t => (
                                           <tr key={t.id} className={`hover:bg-gray-50/50 transition-colors ${t.status === 'CANCELLED' ? 'opacity-40 grayscale' : ''}`}>
-                                              <td className="p-6"><div className="font-black text-slate-700">{t.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div><div className="text-[10px] font-bold text-gray-400">{t.timestamp.toLocaleDateString()}</div></td>
+                                              <td className="p-6"><div className="font-black text-slate-700">{t.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div></td>
                                               <td className="p-6 text-sm font-bold text-slate-600 uppercase tracking-tight">{t.itemsSummary}</td>
                                               <td className="p-6"><span className="text-[10px] font-black bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg border border-blue-100 uppercase">{t.method}</span></td>
                                               <td className="p-6 text-right font-black text-slate-800">R$ {t.amount.toFixed(2)}</td>
@@ -428,7 +493,7 @@ export const CashierDashboard: React.FC = () => {
                                                           <div className="relative group">
                                                               <Eye size={20} className="text-gray-400 cursor-help" />
                                                               <div className="absolute right-0 bottom-full mb-2 w-32 bg-slate-800 text-white text-[10px] font-bold p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 text-center">
-                                                                  Recebido por:<br/>{t.cashierName}
+                                                                  Op: {t.cashierName}
                                                               </div>
                                                           </div>
                                                       )}
@@ -444,6 +509,7 @@ export const CashierDashboard: React.FC = () => {
                       </div>
                   )}
 
+                  {/* VIEW: GESTÃO DE TURNO */}
                   {activeTab === 'MANAGE' && (
                       <div className="max-w-4xl mx-auto space-y-8 overflow-y-auto h-full pb-10 custom-scrollbar animate-fade-in">
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -466,7 +532,7 @@ export const CashierDashboard: React.FC = () => {
           <CloseRegisterModal isOpen={closeModalOpen} onClose={() => setCloseModalOpen(false)} onSuccess={() => setActiveTab('ACTIVE')} />
           
           <Modal isOpen={voidModalOpen} onClose={() => setVoidModalOpen(false)} title="Autorizar Cancelamento" variant="dialog" maxWidth="sm">
-              <form onSubmit={async (e) => { e.preventDefault(); if (!transactionToVoid) return; try { await voidTransaction(transactionToVoid, voidPin); setVoidModalOpen(false); setVoidPin(''); showAlert({ title: "Sucesso", message: "Transação estornada!", type: 'SUCCESS' }); } catch (error: any) { showAlert({ title: "Erro", message: error.message, type: 'ERROR' }); } }} className="space-y-6">
+              <form onSubmit={handleVoidSubmit} className="space-y-6">
                   <div className="bg-red-50 text-red-700 p-4 rounded-2xl text-xs font-bold border border-red-100 flex items-start gap-3"><Lock size={20} className="shrink-0"/><p>Apenas gerentes podem autorizar o estorno de vendas concluídas. Insira sua Senha Mestra abaixo.</p></div>
                   <div><label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 px-1">PIN do Administrador</label><input type="password" autoFocus className="w-full border-2 p-5 rounded-2xl focus:border-red-500 outline-none text-center font-black tracking-[0.5em] text-3xl shadow-inner bg-gray-50" placeholder="****" value={voidPin} onChange={e => setVoidPin(e.target.value)} maxLength={4} /></div>
                   <Button type="submit" className="w-full py-5 bg-red-600 hover:bg-red-700 font-black rounded-2xl text-lg shadow-xl shadow-red-600/20">ESTORNAR AGORA</Button>
@@ -517,7 +583,7 @@ export const CashierDashboard: React.FC = () => {
                       <button onClick={() => setItemQty(itemQty + 1)} className="p-3 bg-white shadow-sm rounded-xl hover:bg-blue-50 text-blue-500 transition-colors"><Plus size={20}/></button>
                   </div>
 
-                  {/* Lista de Adicionais (Filtrado por isExtra E Categoria Alvo) */}
+                  {/* Lista de Adicionais */}
                   <div className="space-y-2">
                       <label className="text-xs font-black text-gray-400 uppercase tracking-widest px-1">Adicionais Disponíveis</label>
                       <div className="max-h-48 overflow-y-auto space-y-2 custom-scrollbar pr-1">
@@ -525,7 +591,7 @@ export const CashierDashboard: React.FC = () => {
                             .filter(i => 
                                 i.isExtra && 
                                 selectedItemForCart?.category && 
-                                i.targetCategories?.includes(selectedItemForCart.category)
+                                (i.targetCategories || []).includes(selectedItemForCart.category || '')
                             )
                             .map(extra => {
                               const isSelected = selectedExtras.some(e => e.id === extra.id);
@@ -539,7 +605,7 @@ export const CashierDashboard: React.FC = () => {
                                   </div>
                               );
                           })}
-                          {invState.inventory.filter(i => i.isExtra && selectedItemForCart?.category && i.targetCategories?.includes(selectedItemForCart.category)).length === 0 && (
+                          {invState.inventory.filter(i => i.isExtra && selectedItemForCart?.category && (i.targetCategories || []).includes(selectedItemForCart.category || '')).length === 0 && (
                               <p className="text-xs text-center text-gray-400 py-2">Nenhum adicional disponível para esta categoria.</p>
                           )}
                       </div>

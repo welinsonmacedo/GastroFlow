@@ -5,10 +5,10 @@ import { useInventory } from '../context/InventoryContext';
 import { useOrder } from '../context/OrderContext';
 import { useFinance } from '../context/FinanceContext';
 import { useUI } from '../context/UIContext';
-import { useAuth } from '../context/AuthProvider'; // Import Auth
+import { useAuth } from '../context/AuthProvider';
 import { TableStatus, InventoryItem } from '../types'; 
 import { Button } from '../components/Button';
-import { DollarSign, History, ShoppingCart, Search, Wallet, Receipt, Trash2, User, Lock, ArrowRight, XCircle, RefreshCcw, LayoutDashboard, CreditCard, Banknote, MapPin, Zap, Plus, Clock, Eye, Package, Minus, CheckSquare, Square, X, ChevronRight, AlertTriangle, LogOut } from 'lucide-react';
+import { DollarSign, History, ShoppingCart, Search, Wallet, Receipt, Trash2, User, Lock, XCircle, RefreshCcw, LayoutDashboard, CreditCard, Banknote, Zap, Plus, Clock, Eye, Package, Minus, CheckSquare, Square, AlertTriangle, LogOut, LayoutGrid } from 'lucide-react';
 import { CloseRegisterModal } from '../components/modals/CloseRegisterModal';
 import { CashBleedModal } from '../components/modals/CashBleedModal';
 import { Modal } from '../components/Modal';
@@ -19,7 +19,7 @@ export const CashierDashboard: React.FC = () => {
   const { state: orderState, dispatch: orderDispatch } = useOrder();
   const { state: finState, openRegister, refreshTransactions, voidTransaction } = useFinance();
   const { showAlert, showConfirm } = useUI();
-  const { logout } = useAuth(); // Hook Logout
+  const { logout, state: authState } = useAuth();
   
   const [activeTab, setActiveTab] = useState<'ACTIVE' | 'HISTORY' | 'PDV' | 'MANAGE'>('PDV');
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -212,6 +212,19 @@ export const CashierDashboard: React.FC = () => {
       } finally { setProcessingSale(false); }
   };
 
+  const handleVoidSubmit = async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!transactionToVoid) return;
+      try {
+          await voidTransaction(transactionToVoid, voidPin);
+          setVoidModalOpen(false);
+          setVoidPin('');
+          showAlert({ title: "Sucesso", message: "Transação estornada!", type: 'SUCCESS' });
+      } catch (error: any) {
+          showAlert({ title: "Erro", message: error.message, type: 'ERROR' });
+      }
+  };
+
   if (!finState.activeCashSession) {
       return (
           <div className="h-full flex items-center justify-center bg-slate-950 p-4">
@@ -241,60 +254,51 @@ export const CashierDashboard: React.FC = () => {
       );
   }
 
-  const NavButton = ({ tab, icon: Icon, label }: any) => (
-      <button onClick={() => setActiveTab(tab)} className={`flex-1 md:flex-none md:w-full p-4 rounded-2xl transition-all flex flex-col items-center gap-1 group ${activeTab === tab ? 'bg-blue-600 text-white shadow-xl shadow-blue-600/30 ring-2 ring-blue-600 ring-offset-2' : 'text-slate-500 hover:bg-slate-100 md:hover:bg-slate-800 md:text-slate-400'}`}>
-          <Icon size={24} strokeWidth={activeTab === tab ? 3 : 2} />
-          <span className="text-[9px] font-black uppercase tracking-widest">{label}</span>
+  const NavTab = ({ tab, icon: Icon, label }: any) => (
+      <button 
+        onClick={() => setActiveTab(tab)} 
+        className={`px-6 py-2 rounded-xl flex items-center gap-2 transition-all font-bold text-sm border-2 ${activeTab === tab ? 'bg-slate-900 text-white border-slate-900 shadow-lg' : 'bg-white text-gray-500 border-transparent hover:bg-gray-100'}`}
+      >
+          <Icon size={18} />
+          <span className="hidden md:inline">{label}</span>
       </button>
   );
 
   return (
-      <div className="h-full bg-gray-100 flex flex-col md:flex-row overflow-hidden font-sans">
-          {/* Sincronização Manual FAB (Mobile Only) */}
-          <button onClick={handleManualRefresh} className={`md:hidden fixed bottom-24 right-6 z-50 bg-white text-blue-600 p-4 rounded-2xl shadow-2xl border border-gray-100 transition-all active:scale-90 ${isRefreshing ? 'animate-spin' : ''}`}><RefreshCcw size={24}/></button>
-
-          <aside className="w-full md:w-28 bg-white md:bg-slate-950 flex md:flex-col items-center justify-between py-4 px-2 md:px-0 gap-2 fixed md:relative bottom-0 md:h-full z-40 shrink-0 border-t md:border-t-0 md:border-r border-gray-100 shadow-[0_-10px_30px_rgba(0,0,0,0.05)] md:shadow-none">
-              <div className="flex-1 w-full flex md:flex-col justify-around md:justify-start gap-2 md:gap-6">
-                  <div className="hidden md:block mb-6 pt-2 w-full flex justify-center">
-                      <div className="bg-blue-600 p-3 rounded-2xl shadow-lg shadow-blue-600/40"><DollarSign className="text-white" size={28}/></div>
+      <div className="h-full bg-gray-100 flex flex-col overflow-hidden font-sans">
+          
+          {/* HEADER DE NAVEGAÇÃO SUPERIOR (Substitui Sidebar) */}
+          <header className="bg-white border-b px-6 py-4 flex flex-col md:flex-row justify-between items-center gap-4 shrink-0 z-30">
+              <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-start">
+                  <div className="flex items-center gap-2">
+                      <div className="bg-blue-600 p-2 rounded-xl text-white"><DollarSign size={20}/></div>
+                      <h1 className="font-black text-lg text-slate-800 uppercase tracking-tight hidden sm:block">Frente de Caixa</h1>
                   </div>
-                  <NavButton tab="PDV" icon={ShoppingCart} label="Balcão" />
-                  <NavButton tab="ACTIVE" icon={Receipt} label="Mesas" />
-                  <NavButton tab="HISTORY" icon={History} label="Extrato" />
-                  <NavButton tab="MANAGE" icon={Wallet} label="Turno" />
+                  <div className="flex items-center gap-2 md:ml-4">
+                      <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+                      <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Caixa Aberto</span>
+                  </div>
               </div>
-              
-              {/* Logout Button */}
-              <div className="hidden md:flex w-full justify-center pb-4">
-                  <button onClick={handleLogout} className="flex flex-col items-center gap-1 p-3 rounded-2xl text-red-400 hover:bg-red-500/10 hover:text-red-500 transition-all group" title="Sair do Sistema">
-                      <LogOut size={24} />
-                      <span className="text-[9px] font-black uppercase tracking-widest">Sair</span>
+
+              {/* Barra de Abas Centralizada */}
+              <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-2xl overflow-x-auto max-w-full">
+                  <NavTab tab="PDV" icon={ShoppingCart} label="Balcão" />
+                  <NavTab tab="ACTIVE" icon={Receipt} label="Mesas" />
+                  <NavTab tab="HISTORY" icon={History} label="Extrato" />
+                  <NavTab tab="MANAGE" icon={Wallet} label="Turno" />
+              </div>
+
+              <div className="flex items-center gap-2">
+                  <button onClick={handleManualRefresh} className={`p-3 rounded-xl bg-gray-50 text-blue-600 hover:bg-blue-50 transition-all ${isRefreshing ? 'animate-spin' : ''}`} title="Sincronizar">
+                      <RefreshCcw size={20}/>
+                  </button>
+                  <button onClick={handleLogout} className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 rounded-xl font-bold hover:bg-red-100 transition-colors text-xs uppercase tracking-wider">
+                      <LogOut size={16}/> <span className="hidden sm:inline">Sair</span>
                   </button>
               </div>
-          </aside>
+          </header>
 
-          <div className="flex-1 flex flex-col h-full overflow-hidden pb-20 md:pb-0">
-              <header className="bg-white/80 backdrop-blur-md border-b p-4 flex justify-between items-center shrink-0 z-30">
-                  <div className="flex items-center gap-3">
-                      <div className="bg-slate-900 text-white p-2.5 rounded-2xl"><LayoutDashboard size={20}/></div>
-                      <h2 className="text-xl font-black uppercase tracking-tighter text-slate-800 hidden sm:block">
-                          {activeTab === 'ACTIVE' && 'Gestão de Mesas'}
-                          {activeTab === 'PDV' && 'Ponto de Venda'}
-                          {activeTab === 'HISTORY' && 'Extrato de Vendas'}
-                          {activeTab === 'MANAGE' && 'Gestão do Turno'}
-                      </h2>
-                  </div>
-                  <div className="flex items-center gap-3">
-                      <button onClick={handleManualRefresh} className={`hidden md:flex p-3 rounded-2xl bg-gray-50 text-blue-600 hover:bg-gray-100 transition-all ${isRefreshing ? 'animate-spin' : ''}`}><RefreshCcw size={20}/></button>
-                      <div className="flex items-center gap-2 bg-emerald-100 px-4 py-2 rounded-2xl border border-emerald-200">
-                          <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
-                          <span className="text-[10px] font-black text-emerald-700 uppercase tracking-widest">Caixa Aberto</span>
-                      </div>
-                      <button onClick={handleLogout} className="md:hidden p-2 text-red-500 bg-red-50 rounded-xl ml-2"><LogOut size={20}/></button>
-                  </div>
-              </header>
-
-              <main className="flex-1 p-3 md:p-6 overflow-hidden">
+          <main className="flex-1 p-3 md:p-6 overflow-hidden">
                   {/* VIEW: MESAS ATIVAS */}
                   {activeTab === 'ACTIVE' && (
                       <div className="flex flex-col lg:flex-row gap-6 h-full overflow-hidden">
@@ -310,7 +314,7 @@ export const CashierDashboard: React.FC = () => {
                                           {t.status === 'WAITING_PAYMENT' && <div className="bg-orange-500 text-white p-2 rounded-xl animate-pulse relative z-10"><Receipt size={20}/></div>}
                                       </button>
                                   ))}
-                                  {occupiedTables.length === 0 && <div className="h-full flex flex-col items-center justify-center text-gray-300 opacity-50 py-20"><DollarSign size={48} className="mb-2"/><p className="font-bold uppercase text-xs">Salão Vazio</p></div>}
+                                  {occupiedTables.length === 0 && <div className="h-full flex flex-col items-center justify-center text-gray-300 opacity-50 py-20"><LayoutGrid size={48} className="mb-2"/><p className="font-bold uppercase text-xs">Salão Vazio</p></div>}
                               </div>
                           </div>
 
@@ -528,7 +532,7 @@ export const CashierDashboard: React.FC = () => {
           <CloseRegisterModal isOpen={closeModalOpen} onClose={() => setCloseModalOpen(false)} onSuccess={() => setActiveTab('ACTIVE')} />
           
           <Modal isOpen={voidModalOpen} onClose={() => setVoidModalOpen(false)} title="Autorizar Cancelamento" variant="dialog" maxWidth="sm">
-              <form onSubmit={async (e) => { e.preventDefault(); if (!transactionToVoid) return; try { await voidTransaction(transactionToVoid, voidPin); setVoidModalOpen(false); setVoidPin(''); showAlert({ title: "Sucesso", message: "Transação estornada!", type: 'SUCCESS' }); } catch (error: any) { showAlert({ title: "Erro", message: error.message, type: 'ERROR' }); } }} className="space-y-6">
+              <form onSubmit={handleVoidSubmit} className="space-y-6">
                   <div className="bg-red-50 text-red-700 p-4 rounded-2xl text-xs font-bold border border-red-100 flex items-start gap-3"><Lock size={20} className="shrink-0"/><p>Apenas gerentes podem autorizar o estorno de vendas concluídas. Insira sua Senha Mestra abaixo.</p></div>
                   <div><label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 px-1">PIN do Administrador</label><input type="password" autoFocus className="w-full border-2 p-5 rounded-2xl focus:border-red-500 outline-none text-center font-black tracking-[0.5em] text-3xl shadow-inner bg-gray-50" placeholder="****" value={voidPin} onChange={e => setVoidPin(e.target.value)} maxLength={4} /></div>
                   <Button type="submit" className="w-full py-5 bg-red-600 hover:bg-red-700 font-black rounded-2xl text-lg shadow-xl shadow-red-600/20">ESTORNAR AGORA</Button>
@@ -579,7 +583,7 @@ export const CashierDashboard: React.FC = () => {
                       <button onClick={() => setItemQty(itemQty + 1)} className="p-3 bg-white shadow-sm rounded-xl hover:bg-blue-50 text-blue-500 transition-colors"><Plus size={20}/></button>
                   </div>
 
-                  {/* Lista de Adicionais (Filtrado por isExtra E Categoria Alvo) */}
+                  {/* Lista de Adicionais */}
                   <div className="space-y-2">
                       <label className="text-xs font-black text-gray-400 uppercase tracking-widest px-1">Adicionais Disponíveis</label>
                       <div className="max-h-48 overflow-y-auto space-y-2 custom-scrollbar pr-1">
@@ -587,7 +591,7 @@ export const CashierDashboard: React.FC = () => {
                             .filter(i => 
                                 i.isExtra && 
                                 selectedItemForCart?.category && 
-                                i.targetCategories?.includes(selectedItemForCart.category)
+                                (i.targetCategories || []).includes(selectedItemForCart.category || '')
                             )
                             .map(extra => {
                               const isSelected = selectedExtras.some(e => e.id === extra.id);
@@ -601,7 +605,7 @@ export const CashierDashboard: React.FC = () => {
                                   </div>
                               );
                           })}
-                          {invState.inventory.filter(i => i.isExtra && selectedItemForCart?.category && i.targetCategories?.includes(selectedItemForCart.category)).length === 0 && (
+                          {invState.inventory.filter(i => i.isExtra && selectedItemForCart?.category && (i.targetCategories || []).includes(selectedItemForCart.category || '')).length === 0 && (
                               <p className="text-xs text-center text-gray-400 py-2">Nenhum adicional disponível para esta categoria.</p>
                           )}
                       </div>

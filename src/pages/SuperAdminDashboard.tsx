@@ -26,7 +26,7 @@ export const SuperAdminDashboard: React.FC = () => {
 
   // Contract Generator State
   const [selectedContractTenantId, setSelectedContractTenantId] = useState('');
-  const [isEditingContract, setIsEditingContract] = useState(false); // Novo estado para controle de edição
+  const [isEditingContract, setIsEditingContract] = useState(false); 
 
   // Settings State
   const [settingsForm, setSettingsForm] = useState({ name: state.adminName || '', email: state.adminEmail || '', password: '' });

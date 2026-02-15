@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthProvider'; // Use AuthProvider
 import { useRestaurant } from '../context/RestaurantContext';
+// @ts-ignore
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { ChefHat, Lock, Loader2, Mail, AlertCircle, UserPlus, ArrowLeft, BookOpen } from 'lucide-react';
 import { Role } from '../types';

@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
+// @ts-ignore
 import { useParams } from 'react-router-dom';
 import { useRestaurant } from '../context/RestaurantContext';
 import { useMenu } from '../context/MenuContext';
