@@ -183,7 +183,6 @@ export const CashierDashboard: React.FC = () => {
   };
 
   // --- Lógica de Pagamento PDV/Mesa --- (Mantida)
-  
   const handlePayment = async (method: string) => {
       if (!selectedTableId || totalAmount <= 0) return;
       
