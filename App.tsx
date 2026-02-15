@@ -1,5 +1,5 @@
 
-import React, { PropsWithChildren, useState } from 'react';
+import React, { PropsWithChildren, useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthProvider'; 
 import { RestaurantProvider, useRestaurant } from './context/RestaurantContext';
@@ -27,7 +27,8 @@ import { ManualPage } from './pages/ManualPage';
 import { InstallPWA } from './components/InstallPWA';
 import { 
     ChefHat, Coffee, Monitor, DollarSign, Settings, LogOut, User as UserIcon, Lock, 
-    Menu, X, LayoutDashboard, Utensils, Package, QrCode, PieChart, Users, Palette, FileText 
+    Menu, X, LayoutDashboard, Utensils, Package, QrCode, PieChart, Users, Palette, FileText,
+    ChevronDown, ChevronUp, Circle
 } from 'lucide-react';
 import { Role } from './types';
 import { getTenantSlug } from './utils/tenant';
@@ -75,11 +76,23 @@ const TenantNavigation = ({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: (
     const { showConfirm } = useUI();
     const { planLimits } = restState;
     
+    // Estado para controlar os dropdowns
+    const [isAppsOpen, setIsAppsOpen] = useState(true);
+    const [isAdminOpen, setIsAdminOpen] = useState(true);
+
+    // Efeito para abrir automaticamente o grupo correto baseado na URL
+    useEffect(() => {
+        if (location.pathname.startsWith('/admin')) {
+            setIsAdminOpen(true);
+        } else if (['/waiter', '/kitchen', '/cashier'].some(path => location.pathname.startsWith(path))) {
+            setIsAppsOpen(true);
+        }
+    }, [location.pathname]);
+    
     if (location.pathname.startsWith('/client') || location.pathname === '/login' || location.pathname === '/manual') return null;
     if (!authState.currentUser) return null;
 
     const role = authState.currentUser.role;
-    const isMobile = window.innerWidth < 768; // Simple check
 
     // 1. Módulos Operacionais (Apps)
     const appLinks = [
@@ -93,7 +106,7 @@ const TenantNavigation = ({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: (
         { to: "/admin", icon: <LayoutDashboard size={20}/>, label: "Visão Geral", requires: null },
         { to: "/admin/products", icon: <Utensils size={20}/>, label: "Cardápio", requires: null },
         { to: "/admin/inventory", icon: <Package size={20}/>, label: "Estoque", requires: 'allowInventory' },
-        { to: "/admin/finance", icon: <DollarSign size={20}/>, label: "Financeiro", requires: 'allowExpenses' }, // Or Purchases
+        { to: "/admin/finance", icon: <DollarSign size={20}/>, label: "Financeiro", requires: 'allowExpenses' }, 
         { to: "/admin/tables", icon: <QrCode size={20}/>, label: "Mesas & QR", requires: 'allowTableMgmt' },
         { to: "/admin/staff", icon: <Users size={20}/>, label: "Equipe", requires: 'allowStaff' },
         { to: "/admin/accounting", icon: <PieChart size={20}/>, label: "DRE & Relatórios", requires: 'allowReports' },
@@ -113,7 +126,7 @@ const TenantNavigation = ({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: (
         if (link.requires === 'allowCustomization' && !planLimits.allowCustomization) return false;
 
         // Checa permissão do usuário
-        if (role === Role.ADMIN) return true;
+        if ((role as Role) === Role.ADMIN) return true;
         if (link.roles && !link.roles.includes(role)) return false;
         // Para admin links específicos, apenas ADMIN vê
         if (!link.roles && role !== Role.ADMIN) return false;
@@ -135,9 +148,7 @@ const TenantNavigation = ({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: (
     };
 
     const NavItem = ({ link }: { link: any }) => {
-        // Verifica se a rota é exatamente igual OU se é uma sub-rota (para admin)
         const isActive = location.pathname === link.to || (link.to !== '/admin' && location.pathname.startsWith(link.to));
-        // Caso especial para Dashboard (/admin exato)
         const isDashboardActive = link.to === '/admin' && location.pathname === '/admin';
         const finalActive = link.to === '/admin' ? isDashboardActive : isActive;
 
@@ -175,19 +186,37 @@ const TenantNavigation = ({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: (
                 </div>
 
                 {/* Navigation Links */}
-                <nav className="flex-1 overflow-y-auto py-6 px-4 space-y-6 custom-scrollbar">
+                <nav className="flex-1 overflow-y-auto py-6 px-4 space-y-4 custom-scrollbar">
                     
                     {visibleAppLinks.length > 0 && (
                         <div className="space-y-1">
-                            <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest px-2 mb-2">Operação</p>
-                            {visibleAppLinks.map(link => <NavItem key={link.to} link={link} />)}
+                            <button 
+                                onClick={() => setIsAppsOpen(!isAppsOpen)}
+                                className="w-full flex items-center justify-between px-2 mb-2 text-[10px] font-black text-slate-500 uppercase tracking-widest hover:text-slate-300 transition-colors"
+                            >
+                                <span>Operação</span>
+                                {isAppsOpen ? <ChevronUp size={14}/> : <ChevronDown size={14}/>}
+                            </button>
+                            
+                            <div className={`space-y-1 overflow-hidden transition-all ${isAppsOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
+                                {visibleAppLinks.map(link => <NavItem key={link.to} link={link} />)}
+                            </div>
                         </div>
                     )}
 
                     {visibleAdminLinks.length > 0 && (
-                        <div className="space-y-1">
-                            <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest px-2 mb-2">Gestão</p>
-                            {visibleAdminLinks.map(link => <NavItem key={link.to} link={link} />)}
+                        <div className="space-y-1 pt-2 border-t border-slate-800">
+                            <button 
+                                onClick={() => setIsAdminOpen(!isAdminOpen)}
+                                className="w-full flex items-center justify-between px-2 mb-2 mt-4 text-[10px] font-black text-slate-500 uppercase tracking-widest hover:text-slate-300 transition-colors"
+                            >
+                                <span>Gestão</span>
+                                {isAdminOpen ? <ChevronUp size={14}/> : <ChevronDown size={14}/>}
+                            </button>
+
+                            <div className={`space-y-1 overflow-hidden transition-all ${isAdminOpen ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                                {visibleAdminLinks.map(link => <NavItem key={link.to} link={link} />)}
+                            </div>
                         </div>
                     )}
                 </nav>
