@@ -19,7 +19,7 @@ export const CashierDashboard: React.FC = () => {
   const { state: finState, openRegister, refreshTransactions, voidTransaction } = useFinance();
   const { showAlert, showConfirm } = useUI();
   
-  const [activeTab, setActiveTab] = useState<'ACTIVE' | 'HISTORY' | 'PDV' | 'MANAGE'>('PDV'); // Padrão PDV para agilidade
+  const [activeTab, setActiveTab] = useState<'ACTIVE' | 'HISTORY' | 'PDV' | 'MANAGE'>('PDV'); // Inicia no PDV para agilidade
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
   const [openRegisterAmount, setOpenRegisterAmount] = useState('');
@@ -204,6 +204,7 @@ export const CashierDashboard: React.FC = () => {
       } finally { setProcessingSale(false); }
   };
 
+  // TELA DE ABERTURA DE CAIXA
   if (!finState.activeCashSession) {
       return (
           <div className="h-full flex items-center justify-center bg-slate-950 p-4">
@@ -271,6 +272,7 @@ export const CashierDashboard: React.FC = () => {
               </header>
 
               <main className="flex-1 p-3 md:p-6 overflow-hidden">
+                  {/* VIEW: MESAS ATIVAS */}
                   {activeTab === 'ACTIVE' && (
                       <div className="flex flex-col lg:flex-row gap-6 h-full overflow-hidden">
                           <div className="lg:w-1/3 flex flex-col h-full bg-white rounded-[2rem] shadow-xl border border-gray-100 overflow-hidden">
@@ -321,6 +323,7 @@ export const CashierDashboard: React.FC = () => {
                       </div>
                   )}
 
+                  {/* VIEW: PDV (BALCÃO) */}
                   {activeTab === 'PDV' && (
                       <div className="flex flex-col lg:flex-row gap-4 h-full overflow-hidden">
                           {/* Coluna da Esquerda: Busca e Grid de Produtos */}
@@ -443,6 +446,7 @@ export const CashierDashboard: React.FC = () => {
                       </div>
                   )}
 
+                  {/* VIEW: EXTRATO */}
                   {activeTab === 'HISTORY' && (
                       <div className="bg-white rounded-[2rem] shadow-xl border border-gray-100 overflow-hidden h-full flex flex-col animate-fade-in">
                           <div className="p-6 border-b bg-gray-50 flex justify-between items-center shrink-0"><h3 className="font-black text-slate-800 uppercase tracking-tighter text-xl">Extrato Diário</h3><Button size="sm" variant="outline" onClick={refreshTransactions} className="rounded-xl flex items-center gap-2"><RefreshCcw size={14} className={isRefreshing ? 'animate-spin' : ''}/> Sincronizar</Button></div>
@@ -478,6 +482,7 @@ export const CashierDashboard: React.FC = () => {
                       </div>
                   )}
 
+                  {/* VIEW: GESTÃO DE TURNO */}
                   {activeTab === 'MANAGE' && (
                       <div className="max-w-4xl mx-auto space-y-8 overflow-y-auto h-full pb-10 custom-scrollbar animate-fade-in">
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
