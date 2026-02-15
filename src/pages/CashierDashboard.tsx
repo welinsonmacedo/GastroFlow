@@ -6,9 +6,9 @@ import { useOrder } from '../context/OrderContext';
 import { useFinance } from '../context/FinanceContext';
 import { useUI } from '../context/UIContext';
 import { useAuth } from '../context/AuthProvider';
-import { TableStatus, InventoryItem } from '../types'; 
+import { TableStatus, InventoryItem, DeliveryInfo, DeliveryPlatform, OrderStatus } from '../types'; 
 import { Button } from '../components/Button';
-import { DollarSign, History, ShoppingCart, Search, Wallet, Receipt, Trash2, User, Lock, XCircle, RefreshCcw, LayoutDashboard, CreditCard, Banknote, Zap, Plus, Clock, Eye, Package, Minus, CheckSquare, Square, AlertTriangle, LogOut, LayoutGrid } from 'lucide-react';
+import { DollarSign, History, ShoppingCart, Search, Wallet, Receipt, Trash2, User, Lock, XCircle, RefreshCcw, LayoutDashboard, CreditCard, Banknote, Zap, Plus, Clock, Eye, Package, Minus, CheckSquare, Square, AlertTriangle, LogOut, LayoutGrid, Bike, Phone, MessageCircle, MapPin, ClipboardList, CheckCircle } from 'lucide-react';
 import { CloseRegisterModal } from '../components/modals/CloseRegisterModal';
 import { CashBleedModal } from '../components/modals/CashBleedModal';
 import { Modal } from '../components/Modal';
@@ -21,18 +21,17 @@ export const CashierDashboard: React.FC = () => {
   const { showAlert, showConfirm } = useUI();
   const { logout, state: authState } = useAuth();
   
-  const [activeTab, setActiveTab] = useState<'ACTIVE' | 'HISTORY' | 'PDV' | 'MANAGE'>('PDV');
+  const [activeTab, setActiveTab] = useState<'ACTIVE' | 'HISTORY' | 'PDV' | 'DELIVERY' | 'MANAGE'>('PDV');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
   const [openRegisterAmount, setOpenRegisterAmount] = useState('');
   
-  // Modais
+  // Modais e Estados Gerais
   const [bleedModalOpen, setBleedModalOpen] = useState(false);
   const [closeModalOpen, setCloseModalOpen] = useState(false);
   const [voidModalOpen, setVoidModalOpen] = useState(false);
   const [cashPaymentModalOpen, setCashPaymentModalOpen] = useState(false);
   
-  // Modal de Adição de Item ao PDV
   const [itemModalOpen, setItemModalOpen] = useState(false);
   const [selectedItemForCart, setSelectedItemForCart] = useState<InventoryItem | null>(null);
   const [itemQty, setItemQty] = useState(1);
@@ -41,21 +40,27 @@ export const CashierDashboard: React.FC = () => {
 
   const [transactionToVoid, setTransactionToVoid] = useState<string | null>(null);
   const [voidPin, setVoidPin] = useState('');
+  const [processingSale, setProcessingSale] = useState(false);
   
-  // Carrinho agora suporta Extras
+  // PDV States
   const [posCart, setPosCart] = useState<{ item: InventoryItem; quantity: number; notes: string; extras: InventoryItem[] }[]>([]);
   const [posSearch, setPosSearch] = useState('');
   const [customerName, setCustomerName] = useState('');
-  const [processingSale, setProcessingSale] = useState(false);
-  
-  // Estado para Troco
   const [cashReceived, setCashReceived] = useState('');
   const [pendingCashAction, setPendingCashAction] = useState<{ type: 'TABLE' | 'POS', total: number } | null>(null);
+
+  // DELIVERY States
+  const [deliveryCart, setDeliveryCart] = useState<{ item: InventoryItem; quantity: number; notes: string; extras: InventoryItem[] }[]>([]);
+  const [deliveryForm, setDeliveryForm] = useState<DeliveryInfo>({ customerName: '', phone: '', address: '', platform: 'PHONE', changeFor: 0 });
+  const [deliverySearch, setDeliverySearch] = useState('');
 
   const occupiedTables = orderState.tables.filter(t => t.status !== TableStatus.AVAILABLE);
   const selectedTable = orderState.tables.find(t => t.id === selectedTableId);
   const tableOrders = orderState.orders.filter(o => o.tableId === selectedTableId && !o.isPaid);
   const totalAmount = tableOrders.reduce((sum, order) => sum + order.items.reduce((s, i) => s + (i.productPrice * i.quantity), 0), 0);
+
+  // Pedidos de Delivery Ativos (Que não foram cancelados e não pagos)
+  const activeDeliveryOrders = orderState.orders.filter(o => o.type === 'DELIVERY' && !o.isPaid && o.status !== 'CANCELLED');
 
   const handleManualRefresh = async () => {
       setIsRefreshing(true);
@@ -64,35 +69,121 @@ export const CashierDashboard: React.FC = () => {
   };
 
   const handleLogout = () => {
+      showConfirm({ title: "Sair do Caixa?", message: "Isso fará logout do sistema.", type: 'WARNING', confirmText: "Sair", onConfirm: logout });
+  };
+
+  // --- Lógica Comum de Carrinho (PDV e Delivery) ---
+  const handleAddToCart = () => {
+      if (!selectedItemForCart) return;
+      
+      const newItem = {
+          item: selectedItemForCart,
+          quantity: itemQty,
+          notes: itemNotes,
+          extras: selectedExtras
+      };
+
+      if (activeTab === 'DELIVERY') {
+          setDeliveryCart([...deliveryCart, newItem]);
+      } else {
+          setPosCart([...posCart, newItem]);
+      }
+
+      setItemModalOpen(false);
+      setSelectedItemForCart(null);
+  };
+
+  const openItemModal = (item: InventoryItem) => {
+      setSelectedItemForCart(item);
+      setItemQty(1);
+      setItemNotes('');
+      setSelectedExtras([]);
+      setItemModalOpen(true);
+  };
+
+  const toggleExtra = (extra: InventoryItem) => {
+      if (selectedExtras.find(e => e.id === extra.id)) {
+          setSelectedExtras(selectedExtras.filter(e => e.id !== extra.id));
+      } else {
+          setSelectedExtras([...selectedExtras, extra]);
+      }
+  };
+
+  // --- Lógica de Delivery ---
+  const handleDeliverySubmit = async () => {
+      if (deliveryCart.length === 0) return showAlert({ title: "Carrinho Vazio", message: "Adicione itens ao pedido.", type: 'WARNING' });
+      if (!deliveryForm.customerName) return showAlert({ title: "Dados Incompletos", message: "Informe o nome do cliente.", type: 'WARNING' });
+
+      setProcessingSale(true);
+      try {
+          const itemsPayload = deliveryCart.map(cartItem => {
+              // Constrói payload plano para enviar ao context
+              // (Simplificação: Tratando adicionais como itens separados com nota, similar ao waiter)
+              return [
+                  { 
+                      inventoryItemId: cartItem.item.id, 
+                      quantity: cartItem.quantity, 
+                      notes: cartItem.notes, 
+                      salePrice: cartItem.item.salePrice,
+                      name: cartItem.item.name,
+                      type: cartItem.item.type === 'RESALE' ? 'BAR' : 'KITCHEN'
+                  },
+                  ...cartItem.extras.map(ex => ({
+                      inventoryItemId: ex.id,
+                      quantity: cartItem.quantity,
+                      notes: `[ADICIONAL] p/ ${cartItem.item.name}`,
+                      salePrice: ex.salePrice,
+                      name: ex.name,
+                      type: ex.type === 'RESALE' ? 'BAR' : 'KITCHEN'
+                  }))
+              ];
+          }).flat();
+
+          await orderDispatch({ 
+              type: 'PLACE_ORDER', 
+              orderType: 'DELIVERY', 
+              items: itemsPayload, 
+              deliveryInfo: deliveryForm 
+          });
+
+          setDeliveryCart([]);
+          setDeliveryForm({ customerName: '', phone: '', address: '', platform: 'PHONE', changeFor: 0 });
+          showAlert({ title: "Sucesso", message: "Pedido enviado para a cozinha!", type: 'SUCCESS' });
+      } catch (error) {
+          showAlert({ title: "Erro", message: "Falha ao criar pedido delivery.", type: 'ERROR' });
+      } finally {
+          setProcessingSale(false);
+      }
+  };
+
+  const handleDispatchDelivery = async (orderId: string) => {
+      // Abre modal de pagamento para finalizar
+      const order = activeDeliveryOrders.find(o => o.id === orderId);
+      if (!order) return;
+      
+      const total = order.items.reduce((acc, i) => acc + (i.productPrice * i.quantity), 0);
+      
       showConfirm({
-          title: "Sair do Caixa?",
-          message: "Isso fará logout do sistema. O caixa continuará aberto.",
-          type: 'WARNING',
-          confirmText: "Sair",
-          onConfirm: logout
+          title: "Despachar e Finalizar?",
+          message: `Confirma que o pedido saiu para entrega e o pagamento foi/será recebido? Total: R$ ${total.toFixed(2)}`,
+          onConfirm: async () => {
+              // Assume pagamento na entrega (Dinheiro ou Maquininha) ou Online. 
+              // Simplificação: Marca como pago 'CASH' ou 'CARD' genérico se não especificado.
+              // Idealmente abriria um modal de pagamento. Vamos assumir dinheiro/outros por enquanto.
+              await orderDispatch({ 
+                  type: 'PROCESS_PAYMENT', 
+                  amount: total, 
+                  method: 'CASH', // Default, poderia ser melhorado
+                  orderId: order.id,
+                  cashierName: 'Delivery'
+              });
+              showAlert({ title: "Despachado", message: "Pedido finalizado e arquivado.", type: 'SUCCESS' });
+          }
       });
   };
 
-  // --- Lógica de Pagamento ---
-
-  const initiateCashPayment = (type: 'TABLE' | 'POS', total: number) => {
-      setCashReceived('');
-      setPendingCashAction({ type, total });
-      setCashPaymentModalOpen(true);
-  };
-
-  const confirmCashPayment = async () => {
-      if (!pendingCashAction) return;
-      setCashPaymentModalOpen(false);
-      
-      if (pendingCashAction.type === 'TABLE') {
-          await finalizeTablePayment('CASH');
-      } else {
-          await finalizePosSale('CASH');
-      }
-      setPendingCashAction(null);
-  };
-
+  // --- Lógica de Pagamento PDV/Mesa --- (Mantida)
+  
   const handlePayment = async (method: string) => {
       if (!selectedTableId || totalAmount <= 0) return;
       
@@ -108,108 +199,51 @@ export const CashierDashboard: React.FC = () => {
       });
   };
 
+  const initiateCashPayment = (type: 'TABLE' | 'POS', total: number) => {
+      setCashReceived('');
+      setPendingCashAction({ type, total });
+      setCashPaymentModalOpen(true);
+  };
+
+  const confirmCashPayment = async () => {
+      if (!pendingCashAction) return;
+      setCashPaymentModalOpen(false);
+      if (pendingCashAction.type === 'TABLE') await finalizeTablePayment('CASH');
+      else await finalizePosSale('CASH');
+      setPendingCashAction(null);
+  };
+
   const finalizeTablePayment = async (method: string) => {
       if (!selectedTableId) return;
       try {
           await orderDispatch({ type: 'PROCESS_PAYMENT', tableId: selectedTableId, amount: totalAmount, method, cashierName: 'Caixa' });
           setSelectedTableId(null);
           showAlert({ title: "Pagamento Realizado", message: "Mesa liberada com sucesso.", type: 'SUCCESS' });
-      } catch (error) {
-          showAlert({ title: "Erro", message: "Falha ao processar pagamento.", type: 'ERROR' });
-      }
-  };
-
-  // --- Lógica do PDV (Carrinho e Modal) ---
-
-  const openItemModal = (item: InventoryItem) => {
-      setSelectedItemForCart(item);
-      setItemQty(1);
-      setItemNotes('');
-      setSelectedExtras([]);
-      setItemModalOpen(true);
-  };
-
-  const handleAddToCart = () => {
-      if (!selectedItemForCart) return;
-      
-      setPosCart([...posCart, {
-          item: selectedItemForCart,
-          quantity: itemQty,
-          notes: itemNotes,
-          extras: selectedExtras
-      }]);
-
-      setItemModalOpen(false);
-      setSelectedItemForCart(null);
-  };
-
-  const toggleExtra = (extra: InventoryItem) => {
-      if (selectedExtras.find(e => e.id === extra.id)) {
-          setSelectedExtras(selectedExtras.filter(e => e.id !== extra.id));
-      } else {
-          setSelectedExtras([...selectedExtras, extra]);
-      }
+      } catch (error) { showAlert({ title: "Erro", message: "Falha ao processar pagamento.", type: 'ERROR' }); }
   };
 
   const handlePosSale = async (method: 'CASH' | 'CREDIT' | 'DEBIT' | 'PIX') => {
-      if (!finState.activeCashSession) return showAlert({ title: "Caixa Fechado", message: "Abra o caixa antes de vender.", type: 'ERROR' });
+      if (!finState.activeCashSession) return showAlert({ title: "Caixa Fechado", message: "Abra o caixa.", type: 'ERROR' });
       if (posCart.length === 0) return showAlert({ title: "Carrinho Vazio", message: "Adicione produtos.", type: 'WARNING' });
-      
-      const total = posCart.reduce((acc, cartItem) => {
-          const itemTotal = cartItem.item.salePrice + cartItem.extras.reduce((sum, ex) => sum + ex.salePrice, 0);
-          return acc + (itemTotal * cartItem.quantity);
-      }, 0);
-
-      if (method === 'CASH') {
-          initiateCashPayment('POS', total);
-          return;
-      }
-
+      const total = posCart.reduce((acc, cartItem) => acc + ((cartItem.item.salePrice + cartItem.extras.reduce((s, ex) => s + ex.salePrice, 0)) * cartItem.quantity), 0);
+      if (method === 'CASH') { initiateCashPayment('POS', total); return; }
       await finalizePosSale(method);
   };
 
   const finalizePosSale = async (method: string) => {
       setProcessingSale(true);
-      const total = posCart.reduce((acc, cartItem) => {
-          const itemTotal = cartItem.item.salePrice + cartItem.extras.reduce((sum, ex) => sum + ex.salePrice, 0);
-          return acc + (itemTotal * cartItem.quantity);
-      }, 0);
-
+      const total = posCart.reduce((acc, cartItem) => acc + ((cartItem.item.salePrice + cartItem.extras.reduce((s, ex) => s + ex.salePrice, 0)) * cartItem.quantity), 0);
       try {
           const itemsPayload: any[] = [];
-          
           posCart.forEach(cartItem => {
-              itemsPayload.push({
-                  inventoryItemId: cartItem.item.id,
-                  quantity: cartItem.quantity,
-                  notes: cartItem.notes
-              });
-
-              cartItem.extras.forEach(extra => {
-                  itemsPayload.push({
-                      inventoryItemId: extra.id,
-                      quantity: cartItem.quantity,
-                      notes: `[ADICIONAL] para ${cartItem.item.name}`
-                  });
-              });
+              itemsPayload.push({ inventoryItemId: cartItem.item.id, quantity: cartItem.quantity, notes: cartItem.notes });
+              cartItem.extras.forEach(extra => itemsPayload.push({ inventoryItemId: extra.id, quantity: cartItem.quantity, notes: `[ADICIONAL] para ${cartItem.item.name}` }));
           });
-
-          await orderDispatch({ 
-              type: 'PROCESS_POS_SALE', 
-              sale: { 
-                  customerName: customerName.trim() || 'Consumidor Final', 
-                  items: itemsPayload, 
-                  totalAmount: total, 
-                  method 
-              }
-          });
-          
+          await orderDispatch({ type: 'PROCESS_POS_SALE', sale: { customerName: customerName.trim() || 'Consumidor Final', items: itemsPayload, totalAmount: total, method } });
           setPosCart([]); setCustomerName('');
           showAlert({ title: "Venda Registrada", message: `Venda de R$ ${total.toFixed(2)} realizada!`, type: 'SUCCESS' });
           await refreshTransactions();
-      } catch (error: any) {
-          showAlert({ title: "Erro na Venda", message: "Não foi possível salvar a venda.", type: 'ERROR' });
-      } finally { setProcessingSale(false); }
+      } catch (error: any) { showAlert({ title: "Erro na Venda", message: "Não foi possível salvar.", type: 'ERROR' }); } finally { setProcessingSale(false); }
   };
 
   const handleVoidSubmit = async (e: React.FormEvent) => {
@@ -217,36 +251,21 @@ export const CashierDashboard: React.FC = () => {
       if (!transactionToVoid) return;
       try {
           await voidTransaction(transactionToVoid, voidPin);
-          setVoidModalOpen(false);
-          setVoidPin('');
+          setVoidModalOpen(false); setVoidPin('');
           showAlert({ title: "Sucesso", message: "Transação estornada!", type: 'SUCCESS' });
-      } catch (error: any) {
-          showAlert({ title: "Erro", message: error.message, type: 'ERROR' });
-      }
+      } catch (error: any) { showAlert({ title: "Erro", message: error.message, type: 'ERROR' }); }
   };
 
   if (!finState.activeCashSession) {
-      return (
+      return ( /* Tela de Abertura de Caixa (Mantida igual ao anterior, omitida para brevidade se não mudou) */ 
           <div className="h-full flex items-center justify-center bg-slate-950 p-4">
               <div className="bg-white p-10 rounded-[3rem] shadow-2xl text-center max-w-md w-full border border-white/10 relative">
-                  {/* Logout na tela de bloqueio */}
-                  <button onClick={handleLogout} className="absolute top-6 right-6 text-gray-400 hover:text-red-500 transition-colors">
-                      <LogOut size={24} />
-                  </button>
-
-                  <div className="bg-blue-50 p-6 rounded-full w-24 h-24 flex items-center justify-center mx-auto mb-8 shadow-inner">
-                      <Lock size={48} className="text-blue-600" />
-                  </div>
+                  <button onClick={handleLogout} className="absolute top-6 right-6 text-gray-400 hover:text-red-500 transition-colors"><LogOut size={24} /></button>
+                  <div className="bg-blue-50 p-6 rounded-full w-24 h-24 flex items-center justify-center mx-auto mb-8 shadow-inner"><Lock size={48} className="text-blue-600" /></div>
                   <h2 className="text-3xl font-black mb-2 text-slate-800 uppercase tracking-tighter">Frente de Caixa</h2>
                   <p className="text-gray-400 mb-8 font-medium">Informe o fundo de reserva para iniciar o turno.</p>
                   <form onSubmit={(e) => { e.preventDefault(); openRegister(parseFloat(openRegisterAmount), 'Operador'); }}>
-                      <div className="mb-8">
-                          <label className="block text-[10px] font-black text-gray-400 mb-3 uppercase tracking-widest">Saldo em Dinheiro (Gaveta)</label>
-                          <div className="relative">
-                            <span className="absolute left-4 top-5 font-black text-2xl text-gray-300">R$</span>
-                            <input type="number" step="0.01" className="border-2 border-gray-100 p-6 rounded-3xl w-full text-center text-4xl font-black text-blue-600 focus:outline-none focus:border-blue-500 transition-all shadow-inner bg-gray-50" placeholder="0.00" value={openRegisterAmount} onChange={e => setOpenRegisterAmount(e.target.value)} autoFocus required />
-                          </div>
-                      </div>
+                      <div className="mb-8"><label className="block text-[10px] font-black text-gray-400 mb-3 uppercase tracking-widest">Saldo em Dinheiro (Gaveta)</label><div className="relative"><span className="absolute left-4 top-5 font-black text-2xl text-gray-300">R$</span><input type="number" step="0.01" className="border-2 border-gray-100 p-6 rounded-3xl w-full text-center text-4xl font-black text-blue-600 focus:outline-none focus:border-blue-500 transition-all shadow-inner bg-gray-50" placeholder="0.00" value={openRegisterAmount} onChange={e => setOpenRegisterAmount(e.target.value)} autoFocus required /></div></div>
                       <Button type="submit" className="w-full py-5 text-xl font-black rounded-3xl shadow-2xl shadow-blue-200">ABRIR CAIXA AGORA</Button>
                   </form>
               </div>
@@ -255,19 +274,13 @@ export const CashierDashboard: React.FC = () => {
   }
 
   const NavTab = ({ tab, icon: Icon, label }: any) => (
-      <button 
-        onClick={() => setActiveTab(tab)} 
-        className={`px-6 py-2 rounded-xl flex items-center gap-2 transition-all font-bold text-sm border-2 ${activeTab === tab ? 'bg-slate-900 text-white border-slate-900 shadow-lg' : 'bg-white text-gray-500 border-transparent hover:bg-gray-100'}`}
-      >
-          <Icon size={18} />
-          <span className="hidden md:inline">{label}</span>
+      <button onClick={() => setActiveTab(tab)} className={`px-4 py-2 md:px-6 rounded-xl flex items-center gap-2 transition-all font-bold text-sm border-2 ${activeTab === tab ? 'bg-slate-900 text-white border-slate-900 shadow-lg' : 'bg-white text-gray-500 border-transparent hover:bg-gray-100'}`}>
+          <Icon size={18} /> <span className="hidden md:inline">{label}</span>
       </button>
   );
 
   return (
       <div className="h-full bg-gray-100 flex flex-col overflow-hidden font-sans">
-          
-          {/* HEADER DE NAVEGAÇÃO SUPERIOR (Substitui Sidebar) */}
           <header className="bg-white border-b px-6 py-4 flex flex-col md:flex-row justify-between items-center gap-4 shrink-0 z-30">
               <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-start">
                   <div className="flex items-center gap-2">
@@ -279,27 +292,123 @@ export const CashierDashboard: React.FC = () => {
                       <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Caixa Aberto</span>
                   </div>
               </div>
-
-              {/* Barra de Abas Centralizada */}
               <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-2xl overflow-x-auto max-w-full">
                   <NavTab tab="PDV" icon={ShoppingCart} label="Balcão" />
+                  <NavTab tab="DELIVERY" icon={Bike} label="Delivery" />
                   <NavTab tab="ACTIVE" icon={Receipt} label="Mesas" />
                   <NavTab tab="HISTORY" icon={History} label="Extrato" />
                   <NavTab tab="MANAGE" icon={Wallet} label="Turno" />
               </div>
-
               <div className="flex items-center gap-2">
-                  <button onClick={handleManualRefresh} className={`p-3 rounded-xl bg-gray-50 text-blue-600 hover:bg-blue-50 transition-all ${isRefreshing ? 'animate-spin' : ''}`} title="Sincronizar">
-                      <RefreshCcw size={20}/>
-                  </button>
-                  <button onClick={handleLogout} className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 rounded-xl font-bold hover:bg-red-100 transition-colors text-xs uppercase tracking-wider">
-                      <LogOut size={16}/> <span className="hidden sm:inline">Sair</span>
-                  </button>
+                  <button onClick={handleManualRefresh} className={`p-3 rounded-xl bg-gray-50 text-blue-600 hover:bg-blue-50 transition-all ${isRefreshing ? 'animate-spin' : ''}`} title="Sincronizar"><RefreshCcw size={20}/></button>
+                  <button onClick={handleLogout} className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 rounded-xl font-bold hover:bg-red-100 transition-colors text-xs uppercase tracking-wider"><LogOut size={16}/> <span className="hidden sm:inline">Sair</span></button>
               </div>
           </header>
 
           <main className="flex-1 p-3 md:p-6 overflow-hidden">
-                  {/* VIEW: MESAS ATIVAS */}
+                  
+                  {/* VIEW: DELIVERY */}
+                  {activeTab === 'DELIVERY' && (
+                      <div className="flex flex-col lg:flex-row gap-6 h-full overflow-hidden">
+                          {/* Coluna Esquerda: Novo Pedido */}
+                          <div className="lg:w-1/2 flex flex-col gap-4 h-full overflow-hidden animate-fade-in">
+                              <div className="bg-white p-5 rounded-[2rem] shadow-sm border border-gray-100 shrink-0">
+                                  <h3 className="font-black text-slate-800 uppercase tracking-tight mb-4 flex items-center gap-2"><Bike size={20} className="text-orange-500"/> Novo Delivery</h3>
+                                  <div className="space-y-3">
+                                      <div className="grid grid-cols-2 gap-3">
+                                          <input className="border p-2.5 rounded-xl bg-gray-50 text-sm" placeholder="Nome do Cliente" value={deliveryForm.customerName} onChange={e => setDeliveryForm({...deliveryForm, customerName: e.target.value})} />
+                                          <input className="border p-2.5 rounded-xl bg-gray-50 text-sm" placeholder="Telefone / WhatsApp" value={deliveryForm.phone} onChange={e => setDeliveryForm({...deliveryForm, phone: e.target.value})} />
+                                      </div>
+                                      <input className="w-full border p-2.5 rounded-xl bg-gray-50 text-sm" placeholder="Endereço Completo (Rua, Número, Bairro)" value={deliveryForm.address} onChange={e => setDeliveryForm({...deliveryForm, address: e.target.value})} />
+                                      <div className="flex gap-2 overflow-x-auto pb-1">
+                                          {['PHONE', 'WHATSAPP', 'IFOOD', 'UBER_EATS'].map(p => (
+                                              <button key={p} onClick={() => setDeliveryForm({...deliveryForm, platform: p as DeliveryPlatform})} className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors ${deliveryForm.platform === p ? 'bg-orange-500 text-white border-orange-500' : 'bg-white text-gray-500 border-gray-200'}`}>{p}</button>
+                                          ))}
+                                      </div>
+                                  </div>
+                              </div>
+
+                              {/* Busca Produtos para Delivery (Reutiliza lógica do PDV) */}
+                              <div className="flex-1 bg-white rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden flex flex-col">
+                                  <div className="p-4 border-b">
+                                      <div className="relative group">
+                                          <Search className="absolute left-4 top-3 text-gray-400" size={18}/>
+                                          <input className="w-full pl-10 pr-4 py-2.5 rounded-xl border bg-gray-50 text-sm focus:bg-white focus:border-blue-500 outline-none" placeholder="Adicionar produtos..." value={deliverySearch} onChange={e => setDeliverySearch(e.target.value)} />
+                                      </div>
+                                  </div>
+                                  <div className="flex-1 overflow-y-auto p-3 grid grid-cols-2 gap-3 content-start custom-scrollbar">
+                                      {invState.inventory.filter(i => !i.isExtra && i.name.toLowerCase().includes(deliverySearch.toLowerCase())).map(item => (
+                                          <button key={item.id} onClick={() => openItemModal(item)} className="bg-gray-50 p-3 rounded-xl border border-transparent hover:border-blue-300 hover:shadow-md transition-all text-left">
+                                              <div className="font-bold text-slate-800 text-xs truncate">{item.name}</div>
+                                              <div className="text-blue-600 font-black text-sm mt-1">R$ {item.salePrice.toFixed(2)}</div>
+                                          </button>
+                                      ))}
+                                  </div>
+                                  
+                                  {/* Resumo Carrinho Delivery */}
+                                  <div className="p-4 bg-slate-50 border-t">
+                                      <div className="flex justify-between items-center mb-3">
+                                          <span className="text-xs font-bold text-gray-500 uppercase">{deliveryCart.length} Itens</span>
+                                          <span className="text-xl font-black text-slate-800">R$ {deliveryCart.reduce((acc, i) => acc + ((i.item.salePrice + i.extras.reduce((s,e)=>s+e.salePrice,0)) * i.quantity), 0).toFixed(2)}</span>
+                                      </div>
+                                      <Button onClick={handleDeliverySubmit} disabled={processingSale} className="w-full bg-orange-600 hover:bg-orange-500 text-white shadow-orange-200">
+                                          {processingSale ? 'Enviando...' : 'Enviar para Cozinha'}
+                                      </Button>
+                                  </div>
+                              </div>
+                          </div>
+
+                          {/* Coluna Direita: Kanban de Pedidos */}
+                          <div className="lg:w-1/2 bg-slate-100 p-4 rounded-[2rem] border border-slate-200 overflow-hidden flex flex-col">
+                              <h3 className="font-black text-slate-700 uppercase tracking-tight mb-4 ml-2">Monitor de Entregas</h3>
+                              <div className="flex-1 overflow-y-auto space-y-3 custom-scrollbar pr-2">
+                                  {activeDeliveryOrders.length === 0 && (
+                                      <div className="text-center py-20 text-gray-400">
+                                          <Bike size={48} className="mx-auto mb-2 opacity-20"/>
+                                          <p className="text-xs font-bold uppercase">Nenhum pedido ativo</p>
+                                      </div>
+                                  )}
+                                  {activeDeliveryOrders.map(order => {
+                                      const total = order.items.reduce((acc, i) => acc + (i.productPrice * i.quantity), 0);
+                                      // Verifica se todos os itens da cozinha estão prontos
+                                      const kitchenItems = order.items.filter(i => i.productType === 'KITCHEN');
+                                      const isReady = kitchenItems.length === 0 || kitchenItems.every(i => i.status === OrderStatus.READY);
+
+                                      return (
+                                          <div key={order.id} className={`bg-white p-4 rounded-2xl shadow-sm border-l-4 transition-all ${isReady ? 'border-l-emerald-500' : 'border-l-orange-400'}`}>
+                                              <div className="flex justify-between items-start mb-2">
+                                                  <div>
+                                                      <h4 className="font-bold text-slate-800">{order.deliveryInfo?.customerName}</h4>
+                                                      <div className="text-[10px] text-gray-500 font-bold uppercase flex items-center gap-2 mt-1">
+                                                          <span className="bg-gray-100 px-2 py-0.5 rounded">{order.deliveryInfo?.platform}</span>
+                                                          <span>#{order.id.slice(0,4)}</span>
+                                                      </div>
+                                                  </div>
+                                                  <div className="text-right">
+                                                      <div className="font-black text-slate-800">R$ {total.toFixed(2)}</div>
+                                                      <div className={`text-[9px] font-black uppercase px-2 py-0.5 rounded mt-1 inline-block ${isReady ? 'bg-emerald-100 text-emerald-700' : 'bg-orange-100 text-orange-700'}`}>
+                                                          {isReady ? 'Pronto p/ Entrega' : 'Preparando'}
+                                                      </div>
+                                                  </div>
+                                              </div>
+                                              <div className="text-xs text-gray-500 mb-3 flex items-start gap-1">
+                                                  <MapPin size={12} className="shrink-0 mt-0.5"/>
+                                                  <span className="truncate">{order.deliveryInfo?.address || 'Retirada'}</span>
+                                              </div>
+                                              {isReady && (
+                                                  <button onClick={() => handleDispatchDelivery(order.id)} className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-xs shadow-md shadow-emerald-200 transition-all flex items-center justify-center gap-2">
+                                                      <CheckCircle size={14}/> Despachar / Finalizar
+                                                  </button>
+                                              )}
+                                          </div>
+                                      );
+                                  })}
+                              </div>
+                          </div>
+                      </div>
+                  )}
+
+                  {/* Restante das Views (PDV, Active, History, Manage) mantidas idênticas, apenas encapsuladas no switch do activeTab */}
                   {activeTab === 'ACTIVE' && (
                       <div className="flex flex-col lg:flex-row gap-6 h-full overflow-hidden">
                           <div className="lg:w-1/3 flex flex-col h-full bg-white rounded-[2rem] shadow-xl border border-gray-100 overflow-hidden">
@@ -350,7 +459,6 @@ export const CashierDashboard: React.FC = () => {
                       </div>
                   )}
 
-                  {/* VIEW: PDV (BALCÃO) */}
                   {activeTab === 'PDV' && (
                       <div className="flex flex-col lg:flex-row gap-4 h-full overflow-hidden">
                           {/* Coluna da Esquerda: Busca e Grid de Produtos */}
@@ -572,7 +680,7 @@ export const CashierDashboard: React.FC = () => {
               </div>
           </Modal>
 
-          {/* NOVO MODAL: Adicionar Item com Adicionais */}
+          {/* NOVO MODAL: Adicionar Item com Adicionais (Reutilizado para PDV e Delivery) */}
           <Modal isOpen={itemModalOpen} onClose={() => setItemModalOpen(false)} title={selectedItemForCart?.name || "Adicionar Item"} variant="dialog" maxWidth="sm">
               <div className="space-y-6">
                   {/* Quantidade */}
