@@ -77,6 +77,7 @@ const TenantNavigation = ({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: (
     const { planLimits } = restState;
     
     // Estado único para controlar qual seção está aberta (exclusividade)
+    // Valores: 'APPS', 'ADMIN' ou null (nenhum aberto)
     const [activeSection, setActiveSection] = useState<'APPS' | 'ADMIN' | null>('APPS');
 
     // Efeito para abrir automaticamente o grupo correto baseado na URL
@@ -165,7 +166,7 @@ const TenantNavigation = ({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: (
         );
     };
 
-    // Toggle para garantir exclusividade
+    // Toggle para garantir exclusividade (Acordeão)
     const toggleSection = (section: 'APPS' | 'ADMIN') => {
         setActiveSection(prev => prev === section ? null : section);
     };
@@ -178,15 +179,17 @@ const TenantNavigation = ({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: (
             <aside 
                 className={`
                     fixed inset-y-0 left-0 z-50 bg-slate-900 text-white shadow-2xl transition-all duration-300 ease-in-out border-r border-slate-800 overflow-hidden group
-                    /* Mobile: Controlado por isOpen */
+                    /* Mobile: Controlado por isOpen, largura total */
                     ${isOpen ? 'translate-x-0 w-64' : '-translate-x-full w-64'}
-                    /* Desktop: Sempre fixo, largura fina (3 = 12px) que expande no hover */
-                    md:translate-x-0 md:w-3 md:hover:w-64
+                    /* Desktop: Sempre fixo no canto, largura fina que expande no hover */
+                    md:translate-x-0 md:w-4 md:hover:w-64
                 `}
             >
                 {/* Wrapper interno com largura fixa para evitar quebra de texto durante a animação de largura */}
                 <div className="w-64 h-full flex flex-col">
+                    
                     {/* Header / Logo */}
+                    {/* No desktop, opacity-0 por padrão, opacity-100 no hover */}
                     <div className="p-6 border-b border-slate-800 flex items-center justify-between gap-3 shrink-0 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-300">
                         <div className="flex items-center gap-3">
                             <div className="bg-green-600 p-2 rounded-lg text-white shadow-lg shadow-green-500/20">
@@ -282,8 +285,8 @@ const TenantApp = () => {
         <div className="h-full flex flex-row bg-gray-50 overflow-hidden relative">
             <TenantNavigation isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
             
-            {/* Adicionado md:pl-3 para criar um pequeno espaço onde a barra fina fica, evitando que cubra o texto */}
-            <div className="flex-1 overflow-hidden relative flex flex-col w-full md:pl-3 transition-all">
+            {/* Adicionado md:pl-4 para criar um espaço onde a barra fina (w-4) fica, evitando que cubra o texto */}
+            <div className="flex-1 overflow-hidden relative flex flex-col w-full md:pl-4 transition-all">
                 {/* Mobile Header Toggle */}
                 <div className="md:hidden bg-white border-b p-4 flex items-center justify-between shrink-0 sticky top-0 z-30 shadow-sm">
                     <div className="flex items-center gap-2 font-bold text-slate-800">
