@@ -89,7 +89,10 @@ const TenantNavigation = ({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: (
         }
     }, [location.pathname]);
     
-    if (location.pathname.startsWith('/client') || location.pathname === '/login' || location.pathname === '/manual') return null;
+    // Lista de rotas onde a Sidebar NÃO deve aparecer
+    const hideSidebarRoutes = ['/client', '/login', '/manual', '/waiter', '/kitchen', '/cashier'];
+    if (hideSidebarRoutes.some(route => location.pathname.startsWith(route))) return null;
+
     if (!authState.currentUser) return null;
 
     const role = authState.currentUser.role;
@@ -264,6 +267,7 @@ const TenantNavigation = ({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: (
 
 const TenantApp = () => {
     const { state } = useRestaurant();
+    const location = useLocation();
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
     if (state.isLoading) return <div className="h-screen flex items-center justify-center">Carregando sistema...</div>;
@@ -281,22 +285,33 @@ const TenantApp = () => {
         return <div className="h-screen flex items-center justify-center">Restaurante não encontrado.</div>;
     }
 
+    // Rotas onde o Sidebar deve ser oculto
+    const hideSidebarRoutes = ['/client', '/login', '/manual', '/waiter', '/kitchen', '/cashier'];
+    const isSidebarHidden = hideSidebarRoutes.some(route => location.pathname.startsWith(route));
+
     return (
         <div className="h-full flex flex-row bg-gray-50 overflow-hidden relative">
             <TenantNavigation isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
             
-            {/* Adicionado md:pl-4 para criar um espaço onde a barra fina (w-4) fica, evitando que cubra o texto */}
-            <div className="flex-1 overflow-hidden relative flex flex-col w-full md:pl-4 transition-all">
-                {/* Mobile Header Toggle */}
-                <div className="md:hidden bg-white border-b p-4 flex items-center justify-between shrink-0 sticky top-0 z-30 shadow-sm">
-                    <div className="flex items-center gap-2 font-bold text-slate-800">
-                        {state.theme.logoUrl && <img src={state.theme.logoUrl} className="h-6 w-6 object-contain" />}
-                        <span>{state.theme.restaurantName}</span>
+            {/* 
+               Ajuste de layout condicional:
+               Se a sidebar estiver oculta (Garçom/Cozinha/Caixa), removemos o padding-left (md:pl-4) 
+               para que o conteúdo ocupe a tela toda sem espaço em branco.
+            */}
+            <div className={`flex-1 overflow-hidden relative flex flex-col w-full transition-all ${!isSidebarHidden ? 'md:pl-4' : ''}`}>
+                
+                {/* Mobile Header Toggle - Só aparece se a sidebar NÃO estiver oculta */}
+                {!isSidebarHidden && (
+                    <div className="md:hidden bg-white border-b p-4 flex items-center justify-between shrink-0 sticky top-0 z-30 shadow-sm">
+                        <div className="flex items-center gap-2 font-bold text-slate-800">
+                            {state.theme.logoUrl && <img src={state.theme.logoUrl} className="h-6 w-6 object-contain" />}
+                            <span>{state.theme.restaurantName}</span>
+                        </div>
+                        <button onClick={() => setIsSidebarOpen(true)} className="p-2 bg-slate-100 rounded-lg text-slate-600">
+                            <Menu size={24} />
+                        </button>
                     </div>
-                    <button onClick={() => setIsSidebarOpen(true)} className="p-2 bg-slate-100 rounded-lg text-slate-600">
-                        <Menu size={24} />
-                    </button>
-                </div>
+                )}
 
                 <div className="flex-1 overflow-y-auto">
                     <Routes>
