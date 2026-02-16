@@ -161,8 +161,8 @@ export const AdminAccounting: React.FC = () => {
           
           setData({
               grossRevenue: grossRev, 
-              saloonSales: dineInTotal, // Atualizado para usar lógica de order_type
-              posSales: pdvTotal + deliveryTotal, // PDV + Delivery somados para linha simplificada do DRE
+              saloonSales: dineInTotal, 
+              posSales: pdvTotal + deliveryTotal, 
               taxes, cardFees: calculatedCardFees, netRevenue,
               cmv: cmvTotal, grossProfit, operatingExpenses: opExpenses,
               expensesByCategory: expByCat, ebitda, financialExpenses: finExpenses,
@@ -230,10 +230,9 @@ export const AdminAccounting: React.FC = () => {
                 </div>
             </div>
 
-            {/* Painel de Configuração Modular (Mantido Igual, ocultado para brevidade) */}
+            {/* Painel de Configuração Modular */}
             {showConfig && (
                 <div className="bg-white p-6 rounded-2xl shadow-lg border border-blue-100 animate-fade-in grid grid-cols-1 md:grid-cols-3 gap-8">
-                    {/* ... Configs de Taxas e Visibilidade ... */}
                     <div>
                         <h4 className="text-xs font-black text-blue-600 uppercase tracking-widest mb-3 flex items-center gap-2"><Settings size={14}/> Dados Gerais</h4>
                         <div className="space-y-4">
