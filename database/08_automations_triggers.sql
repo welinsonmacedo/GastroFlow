@@ -13,6 +13,7 @@ DECLARE
     v_linked_item_id UUID;
     v_item_type TEXT;
     r_recipe RECORD;
+    v_qty_deduct NUMERIC;
 BEGIN
     -- Determina qual item de estoque baixar
     -- Prioridade 1: Venda direta do estoque (PDV)
@@ -43,16 +44,28 @@ BEGIN
             FROM inventory_recipes 
             WHERE parent_item_id = v_linked_item_id
         LOOP
+            v_qty_deduct := r_recipe.quantity * NEW.quantity;
+
             -- Baixa o estoque do INGREDIENTE. Permite ficar negativo.
             UPDATE inventory_items
-            SET quantity = quantity - (r_recipe.quantity * NEW.quantity)
+            SET quantity = quantity - v_qty_deduct
             WHERE id = r_recipe.ingredient_item_id;
+
+            -- GERA LOG DE SAÍDA (SALE) PARA O INGREDIENTE
+            INSERT INTO inventory_logs (tenant_id, item_id, type, quantity, reason, user_name, created_at)
+            VALUES (NEW.tenant_id, r_recipe.ingredient_item_id, 'SALE', v_qty_deduct, 'Venda: ' || NEW.product_name, 'Sistema', NOW());
         END LOOP;
     ELSE
+        v_qty_deduct := NEW.quantity;
+
         -- Se for Revenda/Simples, baixa o item direto. Permite ficar negativo.
         UPDATE inventory_items
-        SET quantity = quantity - NEW.quantity
+        SET quantity = quantity - v_qty_deduct
         WHERE id = v_linked_item_id;
+
+        -- GERA LOG DE SAÍDA (SALE) PARA O ITEM
+        INSERT INTO inventory_logs (tenant_id, item_id, type, quantity, reason, user_name, created_at)
+        VALUES (NEW.tenant_id, v_linked_item_id, 'SALE', v_qty_deduct, 'Venda: ' || NEW.product_name, 'Sistema', NOW());
     END IF;
 
     RETURN NEW;
@@ -99,8 +112,8 @@ DECLARE
     v_cost_price NUMERIC;
 BEGIN
     -- 1. Criar Pedido (Já marcado como Pago/Entregue)
-    INSERT INTO orders (tenant_id, status, is_paid, customer_name)
-    VALUES (p_tenant_id, 'DELIVERED', true, p_customer_name)
+    INSERT INTO orders (tenant_id, status, is_paid, customer_name, order_type)
+    VALUES (p_tenant_id, 'DELIVERED', true, p_customer_name, 'PDV')
     RETURNING id INTO v_order_id;
 
     -- 2. Loop nos itens do JSON
@@ -179,6 +192,6 @@ ALTER PUBLICATION supabase_realtime ADD TABLE
     order_items, 
     restaurant_tables, 
     service_calls, 
-    transactions,
+    transactions, 
     inventory_items,
     staff;

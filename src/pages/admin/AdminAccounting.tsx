@@ -31,7 +31,7 @@ export const AdminAccounting: React.FC = () => {
       cmv: true,
       expenses: true,
       financial: true,
-      operational: true // Nova seção
+      operational: true
   });
 
   const [data, setData] = useState<any>({
@@ -39,7 +39,6 @@ export const AdminAccounting: React.FC = () => {
       taxes: 0, cardFees: 0, netRevenue: 0,
       cmv: 0, grossProfit: 0, operatingExpenses: 0, expensesByCategory: {},
       ebitda: 0, financialExpenses: 0, netIncome: 0, hasData: false,
-      // Novos dados analíticos
       channelAnalysis: { dineIn: 0, delivery: 0, pdv: 0 },
       staffPerformance: []
   });
@@ -52,16 +51,20 @@ export const AdminAccounting: React.FC = () => {
           const start = dateStart + ' 00:00:00';
           const end = dateEnd + ' 23:59:59';
 
-          // 1. Buscar Transações (Receita Bruta) com JOIN em ORDERS para saber o tipo
+          // 1. Buscar Transações (Receita Bruta)
+          // Tenta fazer o JOIN com orders. Se a relação não existir, vai trazer orders como null, mas não deve quebrar.
           const { data: transRes, error: transErr } = await supabase
             .from('transactions')
-            .select('*, orders(order_type)') // Busca o tipo do pedido vinculado
+            .select('*, orders(order_type)') 
             .eq('tenant_id', state.tenantId)
             .gte('created_at', start)
             .lte('created_at', end)
             .neq('status', 'CANCELLED');
 
-          if (transErr) throw transErr;
+          if (transErr) {
+              console.error("Erro transações:", transErr);
+              // Não lança erro fatal para tentar mostrar o que for possível
+          }
 
           // 2. Buscar Itens de Pedidos Vendidos para CMV
           const { data: itemsRes, error: itemsErr } = await supabase
@@ -73,7 +76,7 @@ export const AdminAccounting: React.FC = () => {
             .gte('orders.created_at', start)
             .lte('orders.created_at', end);
 
-          if (itemsErr) throw itemsErr;
+          if (itemsErr) console.error("Erro CMV:", itemsErr);
 
           // 3. Buscar Despesas
           let expensesQuery = supabase
@@ -88,23 +91,22 @@ export const AdminAccounting: React.FC = () => {
           }
 
           const { data: expsRes, error: expsErr } = await expensesQuery;
-          if (expsErr) throw expsErr;
+          if (expsErr) console.error("Erro Despesas:", expsErr);
 
           // --- Cálculos Financeiros ---
           let grossRev = 0;
           let calculatedCardFees = 0;
           
-          // Analíticos
           let dineInTotal = 0;
           let deliveryTotal = 0;
           let pdvTotal = 0;
           const staffMap: Record<string, { count: number, total: number }> = {};
 
-          transRes?.forEach((t: any) => {
+          (transRes || []).forEach((t: any) => {
               const amt = Number(t.amount) || 0;
               grossRev += amt;
               
-              // Taxas
+              // Taxas Estimadas
               let rate = 0;
               if (t.method === 'CREDIT') rate = config.fees.credit;
               else if (t.method === 'DEBIT') rate = config.fees.debit;
@@ -112,18 +114,28 @@ export const AdminAccounting: React.FC = () => {
               else if (t.method === 'MEAL_VOUCHER') rate = config.fees.voucher;
               calculatedCardFees += amt * (rate / 100);
 
-              // Análise de Canal (Baseado no tipo do pedido ou inferência)
-              const orderType = t.orders?.order_type;
+              // Análise de Canal
+              // Tenta pegar o tipo do pedido via Join. Se for array (às vezes acontece), pega o primeiro.
+              let orderType = 'DINE_IN';
+              if (t.orders) {
+                  if (Array.isArray(t.orders)) {
+                      orderType = t.orders[0]?.order_type || 'DINE_IN';
+                  } else {
+                      orderType = t.orders.order_type || 'DINE_IN';
+                  }
+              } else if (t.items_summary?.toLowerCase().includes('balcão')) {
+                  orderType = 'PDV';
+              }
+
               if (orderType === 'DELIVERY') {
                   deliveryTotal += amt;
-              } else if (orderType === 'PDV' || (!orderType && t.items_summary?.includes('Balcão'))) {
+              } else if (orderType === 'PDV') {
                   pdvTotal += amt;
               } else {
-                  // DINE_IN ou Default (Mesas/QR)
                   dineInTotal += amt;
               }
 
-              // Performance da Equipe (Quem fechou a conta)
+              // Performance da Equipe
               const cashier = t.cashier_name || 'Sistema/QR';
               if (!staffMap[cashier]) staffMap[cashier] = { count: 0, total: 0 };
               staffMap[cashier].count += 1;
@@ -136,7 +148,7 @@ export const AdminAccounting: React.FC = () => {
               .sort((a, b) => b.total - a.total);
 
           let cmvTotal = 0;
-          itemsRes?.forEach((item: any) => {
+          (itemsRes || []).forEach((item: any) => {
               const qty = Number(item.quantity) || 0;
               const cost = Number(item.product_cost_price) || 0;
               cmvTotal += (qty * cost);
@@ -148,10 +160,12 @@ export const AdminAccounting: React.FC = () => {
 
           let opExpenses = 0, finExpenses = 0;
           const expByCat: any = {};
-          expsRes?.forEach((e: any) => {
+          
+          (expsRes || []).forEach((e: any) => {
               const amt = Number(e.amount) || 0;
-              if (['Impostos', 'Taxas Bancárias'].includes(e.category)) finExpenses += amt;
-              else {
+              if (['Impostos', 'Taxas Bancárias'].includes(e.category)) {
+                  finExpenses += amt;
+              } else {
                   opExpenses += amt;
                   expByCat[e.category] = (expByCat[e.category] || 0) + amt;
               }
@@ -167,22 +181,24 @@ export const AdminAccounting: React.FC = () => {
               cmv: cmvTotal, grossProfit, operatingExpenses: opExpenses,
               expensesByCategory: expByCat, ebitda, financialExpenses: finExpenses,
               netIncome: ebitda - finExpenses,
-              hasData: grossRev > 0 || opExpenses > 0,
-              // Dados Novos
+              hasData: grossRev > 0 || opExpenses > 0 || (expsRes && expsRes.length > 0),
               channelAnalysis: { dineIn: dineInTotal, delivery: deliveryTotal, pdv: pdvTotal },
               staffPerformance: staffRanking
           });
 
       } catch (error: any) {
           console.error("DRE Fetch Error:", error);
-          showAlert({ title: "Erro no DRE", message: "Falha ao compilar dados.", type: 'ERROR' });
+          showAlert({ title: "Erro no DRE", message: "Falha ao compilar dados: " + error.message, type: 'ERROR' });
       } finally {
           setLoading(false);
       }
   }, [state.tenantId, dateStart, dateEnd, config, showAlert]);
 
-  useEffect(() => { if (state.tenantId) fetchDRE(); }, [state.tenantId, fetchDRE]);
+  useEffect(() => { 
+      if (state.tenantId) fetchDRE(); 
+  }, [state.tenantId, fetchDRE]);
 
+  // Cálculos de Porcentagem Seguros (Evita divisão por zero)
   const cmvPerc = data.netRevenue > 0 ? (data.cmv / data.netRevenue) * 100 : 0;
   const marginPerc = data.netRevenue > 0 ? (data.grossProfit / data.netRevenue) * 100 : 0;
   const profitPerc = data.grossRevenue > 0 ? (data.netIncome / data.grossRevenue) * 100 : 0;
@@ -258,7 +274,7 @@ export const AdminAccounting: React.FC = () => {
             )}
         </div>
 
-        {data.hasData && (
+        {data.hasData ? (
             <>
                 {/* Cards de Métricas */}
                 {visibility.charts && (
@@ -368,7 +384,7 @@ export const AdminAccounting: React.FC = () => {
                                                         <span>R$ {data.channelAnalysis.dineIn.toFixed(2)}</span>
                                                     </div>
                                                     <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
-                                                        <div className="h-full bg-blue-500" style={{ width: `${(data.channelAnalysis.dineIn / data.grossRevenue) * 100}%` }}></div>
+                                                        <div className="h-full bg-blue-500" style={{ width: `${(data.channelAnalysis.dineIn / (data.grossRevenue || 1)) * 100}%` }}></div>
                                                     </div>
                                                 </div>
                                                 <div>
@@ -377,7 +393,7 @@ export const AdminAccounting: React.FC = () => {
                                                         <span>R$ {data.channelAnalysis.delivery.toFixed(2)}</span>
                                                     </div>
                                                     <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
-                                                        <div className="h-full bg-orange-500" style={{ width: `${(data.channelAnalysis.delivery / data.grossRevenue) * 100}%` }}></div>
+                                                        <div className="h-full bg-orange-500" style={{ width: `${(data.channelAnalysis.delivery / (data.grossRevenue || 1)) * 100}%` }}></div>
                                                     </div>
                                                 </div>
                                                 <div>
@@ -386,7 +402,7 @@ export const AdminAccounting: React.FC = () => {
                                                         <span>R$ {data.channelAnalysis.pdv.toFixed(2)}</span>
                                                     </div>
                                                     <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
-                                                        <div className="h-full bg-purple-500" style={{ width: `${(data.channelAnalysis.pdv / data.grossRevenue) * 100}%` }}></div>
+                                                        <div className="h-full bg-purple-500" style={{ width: `${(data.channelAnalysis.pdv / (data.grossRevenue || 1)) * 100}%` }}></div>
                                                     </div>
                                                 </div>
                                             </div>
@@ -431,6 +447,13 @@ export const AdminAccounting: React.FC = () => {
                     </div>
                 </div>
             </>
+        ) : (
+            <div className="flex flex-col items-center justify-center p-20 text-center text-slate-400">
+                <PieChart size={64} className="mb-4 opacity-20"/>
+                <h3 className="text-lg font-bold text-slate-600">Sem dados para exibir</h3>
+                <p className="max-w-xs text-sm mt-2">Nenhuma transação, venda ou despesa encontrada no período selecionado.</p>
+                <Button onClick={fetchDRE} variant="outline" className="mt-6">Tentar Novamente</Button>
+            </div>
         )}
     </div>
   );

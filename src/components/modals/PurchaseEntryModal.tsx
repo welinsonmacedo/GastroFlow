@@ -5,7 +5,7 @@ import { Button } from '../Button';
 import { useInventory } from '../../context/InventoryContext';
 import { useUI } from '../../context/UIContext';
 import { PurchaseItemInput } from '../../types';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Calculator } from 'lucide-react';
 
 interface PurchaseEntryModalProps {
   isOpen: boolean;
@@ -17,8 +17,12 @@ export const PurchaseEntryModal: React.FC<PurchaseEntryModalProps> = ({ isOpen, 
   const { showAlert } = useUI();
 
   const [form, setForm] = useState({
-    supplierId: '', invoiceNumber: '', date: new Date().toISOString().split('T')[0],
-    items: [] as PurchaseItemInput[], taxAmount: 0, distributeTax: true
+    supplierId: '', 
+    invoiceNumber: '', 
+    date: new Date().toISOString().split('T')[0],
+    items: [] as PurchaseItemInput[], 
+    taxAmount: 0, 
+    distributeTax: true
   });
   const [tempItem, setTempItem] = useState({ itemId: '', quantity: 1, unitPrice: 0 });
 
@@ -53,6 +57,9 @@ export const PurchaseEntryModal: React.FC<PurchaseEntryModalProps> = ({ isOpen, 
       showAlert({ title: "Erro", message: "Erro ao processar nota.", type: 'ERROR' });
     }
   };
+
+  const calculateSubtotal = () => form.items.reduce((acc, i) => acc + i.totalPrice, 0);
+  const calculateTotal = () => calculateSubtotal() + (parseFloat(form.taxAmount.toString()) || 0);
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Lançamento de Nota Fiscal" variant="page">
@@ -97,28 +104,77 @@ export const PurchaseEntryModal: React.FC<PurchaseEntryModalProps> = ({ isOpen, 
           <Button onClick={handleAddItem} variant="secondary" className="mt-4"><Plus size={16} /> Adicionar Item</Button>
         </div>
 
-        <table className="w-full text-left text-sm">
-          <thead className="bg-slate-900 text-white"><tr><th className="p-3">Item</th><th className="p-3 text-right">Qtd</th><th className="p-3 text-right">Preço Un.</th><th className="p-3 text-right">Total</th><th className="p-3 text-center">Ações</th></tr></thead>
-          <tbody className="divide-y">{form.items.map((it, idx) => (
-            <tr key={idx} className="hover:bg-slate-50">
-              <td className="p-3 font-bold">{state.inventory.find(i => i.id === it.inventoryItemId)?.name}</td>
-              <td className="p-3 text-right font-mono">{it.quantity}</td>
-              <td className="p-3 text-right font-mono">R$ {it.unitPrice.toFixed(2)}</td>
-              <td className="p-3 text-right font-black text-blue-600">R$ {it.totalPrice.toFixed(2)}</td>
-              <td className="p-3 text-center"><button onClick={() => setForm({ ...form, items: form.items.filter((_, i) => i !== idx) })} className="text-red-400 p-1"><Trash2 size={16} /></button></td>
-            </tr>
-          ))}</tbody>
-        </table>
+        <div className="overflow-hidden rounded-xl border border-slate-200">
+            <table className="w-full text-left text-sm">
+            <thead className="bg-slate-900 text-white"><tr><th className="p-3">Item</th><th className="p-3 text-right">Qtd</th><th className="p-3 text-right">Preço Un.</th><th className="p-3 text-right">Total</th><th className="p-3 text-center">Ações</th></tr></thead>
+            <tbody className="divide-y">{form.items.map((it, idx) => (
+                <tr key={idx} className="hover:bg-slate-50">
+                <td className="p-3 font-bold">{state.inventory.find(i => i.id === it.inventoryItemId)?.name}</td>
+                <td className="p-3 text-right font-mono">{it.quantity}</td>
+                <td className="p-3 text-right font-mono">R$ {it.unitPrice.toFixed(2)}</td>
+                <td className="p-3 text-right font-black text-blue-600">R$ {it.totalPrice.toFixed(2)}</td>
+                <td className="p-3 text-center"><button onClick={() => setForm({ ...form, items: form.items.filter((_, i) => i !== idx) })} className="text-red-400 p-1"><Trash2 size={16} /></button></td>
+                </tr>
+            ))}</tbody>
+            </table>
+        </div>
 
-        <div className="flex flex-col md:flex-row justify-between items-end border-t pt-6 gap-6">
-          <div className="bg-blue-50 p-6 rounded-2xl border border-blue-100 w-full md:w-80">
-            <div className="flex justify-between items-center text-sm mb-2"><span className="text-blue-600 font-bold">Total Produtos:</span><span className="font-bold">R$ {form.items.reduce((acc, i) => acc + i.totalPrice, 0).toFixed(2)}</span></div>
-            <div className="flex justify-between items-center text-xl font-black text-blue-800 pt-2 border-t border-blue-200"><span>TOTAL NOTA:</span><span>R$ {form.items.reduce((acc, i) => acc + i.totalPrice, 0).toFixed(2)}</span></div>
+        {/* ÁREA DE IMPOSTOS E TOTAIS */}
+        <div className="flex flex-col md:flex-row justify-between items-start border-t pt-6 gap-6">
+          
+          <div className="w-full md:w-1/2 bg-gray-50 p-4 rounded-xl border border-gray-200">
+            <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-2"><Calculator size={14}/> Custos Adicionais</h4>
+            <div className="flex flex-col gap-4">
+                <div>
+                    <label className="block text-xs font-bold text-gray-600 mb-1">Impostos / Frete / Outros (R$)</label>
+                    <input 
+                        type="number" 
+                        step="0.01" 
+                        className="w-full border-2 p-2 rounded-lg font-bold text-slate-700 bg-white focus:border-blue-500 outline-none"
+                        value={form.taxAmount}
+                        onChange={e => setForm({...form, taxAmount: parseFloat(e.target.value) || 0})}
+                    />
+                </div>
+                <div className="flex items-center gap-3 bg-white p-2 rounded-lg border border-gray-200">
+                    <input 
+                        type="checkbox" 
+                        id="distributeTax"
+                        checked={form.distributeTax} 
+                        onChange={e => setForm({...form, distributeTax: e.target.checked})}
+                        className="w-5 h-5 text-blue-600 rounded cursor-pointer"
+                    />
+                    <label htmlFor="distributeTax" className="text-xs font-bold text-gray-600 cursor-pointer select-none">
+                        Distribuir no custo unitário dos itens?
+                    </label>
+                </div>
+                <p className="text-[10px] text-gray-400 leading-tight">
+                    Se marcado, o valor dos impostos será dividido proporcionalmente entre os itens para calcular o custo real de estoque.
+                </p>
+            </div>
           </div>
-          <div className="flex gap-4 w-full md:w-auto">
-            <Button variant="secondary" onClick={onClose} className="flex-1 px-8 py-4">Cancelar</Button>
-            <Button onClick={handleSubmit} className="flex-1 px-8 py-4 shadow-xl">Confirmar Lançamento</Button>
+
+          <div className="w-full md:w-80 space-y-4">
+             <div className="bg-blue-50 p-6 rounded-2xl border border-blue-100">
+                <div className="flex justify-between items-center text-sm mb-2 text-blue-800 opacity-80">
+                    <span className="font-bold">Subtotal Itens:</span>
+                    <span>R$ {calculateSubtotal().toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between items-center text-sm mb-2 text-blue-800 opacity-80">
+                    <span className="font-bold">Impostos/Extras:</span>
+                    <span>R$ {Number(form.taxAmount).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between items-center text-xl font-black text-blue-800 pt-3 border-t border-blue-200 mt-2">
+                    <span>TOTAL NOTA:</span>
+                    <span>R$ {calculateTotal().toFixed(2)}</span>
+                </div>
+            </div>
+            
+            <div className="flex gap-3">
+                <Button variant="secondary" onClick={onClose} className="flex-1 py-3 text-sm">Cancelar</Button>
+                <Button onClick={handleSubmit} className="flex-1 py-3 text-sm shadow-xl">Confirmar</Button>
+            </div>
           </div>
+
         </div>
       </div>
     </Modal>
