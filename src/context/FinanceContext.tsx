@@ -42,65 +42,116 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const fetchData = useCallback(async () => {
       if (!tenantId) return;
       
-      const [transRes, expRes, sessionRes] = await Promise.all([
-          supabase.from('transactions').select('*').eq('tenant_id', tenantId).order('created_at', { ascending: false }).limit(200),
-          supabase.from('expenses').select('*').eq('tenant_id', tenantId).order('due_date', { ascending: true }),
-          supabase.from('cash_sessions').select('*').eq('tenant_id', tenantId).eq('status', 'OPEN').maybeSingle()
-      ]);
+      try {
+          const [transRes, expRes, sessionRes] = await Promise.all([
+              supabase.from('transactions').select('*').eq('tenant_id', tenantId).order('created_at', { ascending: false }).limit(200),
+              supabase.from('expenses').select('*').eq('tenant_id', tenantId).order('due_date', { ascending: true }),
+              supabase.from('cash_sessions').select('*').eq('tenant_id', tenantId).eq('status', 'OPEN').maybeSingle()
+          ]);
 
-      const mappedTransactions = (transRes.data || []).map((t: any) => ({
-          id: t.id, 
-          tableId: t.table_id || '', 
-          tableNumber: t.table_number || 0, 
-          amount: t.amount,
-          method: t.method, 
-          timestamp: new Date(t.created_at), 
-          itemsSummary: t.items_summary || '', 
-          cashierName: t.cashier_name || '',
-          status: t.status || 'COMPLETED'
-      }));
+          const mappedTransactions = (transRes.data || []).map((t: any) => ({
+              id: t.id, 
+              tableId: t.table_id || '', 
+              tableNumber: t.table_number || 0, 
+              amount: t.amount,
+              method: t.method, 
+              timestamp: new Date(t.created_at), 
+              itemsSummary: t.items_summary || '', 
+              cashierName: t.cashier_name || '',
+              status: t.status || 'COMPLETED'
+          }));
 
-      const mappedExpenses = (expRes.data || []).map((e: any) => ({
-          id: e.id, description: e.description, amount: e.amount, category: e.category, dueDate: new Date(e.due_date),
-          paidDate: e.paid_date ? new Date(e.paid_date) : undefined, isPaid: e.is_paid, supplierId: e.supplier_id,
-          isRecurring: e.is_recurring, paymentMethod: e.payment_method
-      }));
+          const mappedExpenses = (expRes.data || []).map((e: any) => ({
+              id: e.id, description: e.description, amount: e.amount, category: e.category, dueDate: new Date(e.due_date),
+              paidDate: e.paid_date ? new Date(e.paid_date) : undefined, isPaid: e.is_paid, supplierId: e.supplier_id,
+              isRecurring: e.is_recurring, paymentMethod: e.payment_method
+          }));
 
-      let activeSession = null;
-      let movements: CashMovement[] = [];
+          let activeSession = null;
+          let movements: CashMovement[] = [];
 
-      if (sessionRes.data) {
-          activeSession = {
-              id: sessionRes.data.id, openedAt: new Date(sessionRes.data.opened_at),
-              initialAmount: sessionRes.data.initial_amount, status: sessionRes.data.status, operatorName: sessionRes.data.operator_name
-          };
-          const { data: moveData } = await supabase.from('cash_movements').select('*').eq('session_id', activeSession.id);
-          if (moveData) {
-              movements = moveData.map((m: any) => ({
-                  id: m.id, sessionId: m.session_id, type: m.type, amount: m.amount, reason: m.reason, timestamp: new Date(m.created_at), userName: m.user_name
-              }));
+          if (sessionRes.data) {
+              activeSession = {
+                  id: sessionRes.data.id, 
+                  openedAt: new Date(sessionRes.data.opened_at),
+                  initialAmount: sessionRes.data.initial_amount, 
+                  status: sessionRes.data.status, 
+                  operatorName: sessionRes.data.operator_name
+              };
+              
+              const { data: moveData } = await supabase.from('cash_movements').select('*').eq('session_id', activeSession.id);
+              if (moveData) {
+                  movements = moveData.map((m: any) => ({
+                      id: m.id, sessionId: m.session_id, type: m.type, amount: m.amount, reason: m.reason, timestamp: new Date(m.created_at), userName: m.user_name
+                  }));
+              }
           }
-      }
 
-      setState({ transactions: mappedTransactions, expenses: mappedExpenses, activeCashSession: activeSession, cashMovements: movements });
+          setState(prev => ({ 
+              ...prev, 
+              transactions: mappedTransactions, 
+              expenses: mappedExpenses, 
+              activeCashSession: activeSession, 
+              cashMovements: movements 
+          }));
+      } catch (e) {
+          console.error("Erro no fetchData do FinanceContext:", e);
+      }
   }, [tenantId]);
 
   useEffect(() => {
-      fetchData();
       if (!tenantId) return;
+      fetchData();
+
       const channel = supabase.channel(`finance_ctx:${tenantId}`)
+          // Escuta Transactions, Expenses e CashMovements e recarrega dados
           .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions', filter: `tenant_id=eq.${tenantId}` }, fetchData)
           .on('postgres_changes', { event: '*', schema: 'public', table: 'expenses', filter: `tenant_id=eq.${tenantId}` }, fetchData)
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'cash_sessions', filter: `tenant_id=eq.${tenantId}` }, fetchData)
           .on('postgres_changes', { event: '*', schema: 'public', table: 'cash_movements', filter: `tenant_id=eq.${tenantId}` }, fetchData)
+          
+          // Tratamento Inteligente para Cash Sessions (Evita Race Condition no Open/Close)
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'cash_sessions', filter: `tenant_id=eq.${tenantId}` }, (payload) => {
+              if (payload.eventType === 'INSERT') {
+                  const newSession = payload.new;
+                  if (newSession.status === 'OPEN') {
+                      setState(prev => ({
+                          ...prev,
+                          activeCashSession: {
+                              id: newSession.id,
+                              openedAt: new Date(newSession.opened_at),
+                              initialAmount: newSession.initial_amount,
+                              status: 'OPEN',
+                              operatorName: newSession.operator_name
+                          }
+                      }));
+                  }
+              } else if (payload.eventType === 'UPDATE') {
+                  const updatedSession = payload.new;
+                  if (updatedSession.status === 'CLOSED') {
+                      setState(prev => ({ ...prev, activeCashSession: null }));
+                  } else if (updatedSession.status === 'OPEN') {
+                       // Caso raríssimo de update em sessão aberta (ex: correção de valor inicial)
+                       setState(prev => ({
+                          ...prev,
+                          activeCashSession: {
+                              id: updatedSession.id,
+                              openedAt: new Date(updatedSession.opened_at),
+                              initialAmount: updatedSession.initial_amount,
+                              status: 'OPEN',
+                              operatorName: updatedSession.operator_name
+                          }
+                      }));
+                  }
+              }
+          })
           .subscribe();
+
       return () => { supabase.removeChannel(channel); };
   }, [tenantId, fetchData]);
 
   const openRegister = async (initialAmount: number, operatorName: string) => {
       if(!tenantId) throw new Error("Restaurante não identificado");
       
-      // Usa .select().single() para garantir que pegamos o objeto criado
       const { data, error } = await supabase.from('cash_sessions').insert({ 
           tenant_id: tenantId, 
           initial_amount: initialAmount, 
@@ -113,7 +164,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
           throw new Error(error.message);
       }
       
-      // Atualização Otimista/Imediata do Estado
+      // Atualiza estado local imediatamente para feedback visual instantâneo
       if (data) {
           setState(prev => ({
               ...prev,
@@ -125,9 +176,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
                   operatorName: data.operator_name
               }
           }));
-      } else {
-          // Fallback se não vier dados (raro com .select())
-          await fetchData();
       }
   };
 
@@ -144,8 +192,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
           throw new Error(error.message);
       }
       
+      // Limpa estado local imediatamente
       setState(prev => ({ ...prev, activeCashSession: null }));
-      await fetchData();
   };
 
   const bleedRegister = async (amount: number, reason: string, userName: string) => {
@@ -161,6 +209,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       });
 
       if(error) throw error;
+      // Fetch data será chamado pelo Realtime, mas podemos forçar para garantir
       await fetchData();
   };
 
@@ -192,7 +241,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       });
       
       if (error) throw error;
-      await fetchData();
   };
 
   const updateExpense = async (expense: Expense) => {
@@ -222,7 +270,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       }).eq('id', expense.id);
       
       if (error) throw error;
-      await fetchData();
   };
 
   const payExpense = async (expenseId: string) => {
@@ -232,13 +279,11 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       }).eq('id', expenseId);
       
       if (error) throw error;
-      await fetchData();
   };
 
   const deleteExpense = async (expenseId: string) => {
       const { error } = await supabase.from('expenses').delete().eq('id', expenseId);
       if (error) throw error;
-      await fetchData();
   };
 
   const voidTransaction = async (transactionId: string, adminPin: string) => {
