@@ -8,7 +8,7 @@ import { useUI } from '../context/UIContext';
 import { useAuth } from '../context/AuthProvider';
 import { TableStatus, InventoryItem, DeliveryInfo, DeliveryPlatform, OrderStatus } from '../types'; 
 import { Button } from '../components/Button';
-import { DollarSign, History, ShoppingCart, Search, Wallet, Receipt, Trash2, User, Lock, XCircle, RefreshCcw, LayoutDashboard, CreditCard, Banknote, Zap, Plus, Clock, Eye, Package, Minus, CheckSquare, Square, AlertTriangle, LogOut, LayoutGrid, Bike, Phone, MessageCircle, MapPin, ClipboardList, CheckCircle } from 'lucide-react';
+import { DollarSign, History, ShoppingCart, Search, Wallet, Receipt, Trash2, User, Lock, XCircle, RefreshCcw, LayoutDashboard, CreditCard, Banknote, Zap, Plus, Clock, Eye, Package, Minus, CheckSquare, Square, AlertTriangle, LogOut, LayoutGrid, Bike, Phone, MessageCircle, MapPin, ClipboardList, CheckCircle, Loader2 } from 'lucide-react';
 import { CloseRegisterModal } from '../components/modals/CloseRegisterModal';
 import { CashBleedModal } from '../components/modals/CashBleedModal';
 import { Modal } from '../components/Modal';
@@ -24,7 +24,10 @@ export const CashierDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'ACTIVE' | 'HISTORY' | 'PDV' | 'DELIVERY' | 'MANAGE'>('PDV');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
+  
+  // Estado para abertura de caixa
   const [openRegisterAmount, setOpenRegisterAmount] = useState('');
+  const [openingLoading, setOpeningLoading] = useState(false);
   
   // Modais e Estados Gerais
   const [bleedModalOpen, setBleedModalOpen] = useState(false);
@@ -59,7 +62,6 @@ export const CashierDashboard: React.FC = () => {
   const tableOrders = orderState.orders.filter(o => o.tableId === selectedTableId && !o.isPaid);
   const totalAmount = tableOrders.reduce((sum, order) => sum + order.items.reduce((s, i) => s + (i.productPrice * i.quantity), 0), 0);
 
-  // Pedidos de Delivery Ativos (Que não foram cancelados e não pagos)
   const activeDeliveryOrders = orderState.orders.filter(o => o.type === 'DELIVERY' && !o.isPaid && o.status !== 'CANCELLED');
 
   const handleManualRefresh = async () => {
@@ -70,6 +72,29 @@ export const CashierDashboard: React.FC = () => {
 
   const handleLogout = () => {
       showConfirm({ title: "Sair do Caixa?", message: "Isso fará logout do sistema.", type: 'WARNING', confirmText: "Sair", onConfirm: logout });
+  };
+
+  // --- FUNÇÃO DE ABERTURA DE CAIXA ---
+  const handleOpenRegister = async (e: React.FormEvent) => {
+      e.preventDefault();
+      const amount = parseFloat(openRegisterAmount);
+      
+      if (isNaN(amount) || amount < 0) {
+          return showAlert({ title: "Valor Inválido", message: "Informe um valor inicial válido (pode ser 0).", type: 'WARNING' });
+      }
+
+      setOpeningLoading(true);
+      try {
+          const operator = authState.currentUser?.name || 'Operador';
+          await openRegister(amount, operator);
+          // Sucesso - o componente irá renderizar a dashboard pois activeCashSession mudará
+          setOpenRegisterAmount('');
+      } catch (error: any) {
+          console.error(error);
+          showAlert({ title: "Erro ao Abrir", message: error.message || "Não foi possível abrir o caixa.", type: 'ERROR' });
+      } finally {
+          setOpeningLoading(false);
+      }
   };
 
   // --- Lógica Comum de Carrinho (PDV e Delivery) ---
@@ -139,7 +164,7 @@ export const CashierDashboard: React.FC = () => {
 
           await orderDispatch({ 
               type: 'PLACE_ORDER', 
-              orderType: 'DELIVERY', // IMPORTANT: This triggers the OrderType logic in OrderContext
+              orderType: 'DELIVERY', 
               items: itemsPayload, 
               deliveryInfo: deliveryForm 
           });
@@ -157,7 +182,6 @@ export const CashierDashboard: React.FC = () => {
   const handleDispatchDelivery = async (orderId: string) => {
       const order = activeDeliveryOrders.find(o => o.id === orderId);
       if (!order) return;
-      
       const total = order.items.reduce((acc, i) => acc + (i.productPrice * i.quantity), 0);
       
       showConfirm({
@@ -167,7 +191,7 @@ export const CashierDashboard: React.FC = () => {
               await orderDispatch({ 
                   type: 'PROCESS_PAYMENT', 
                   amount: total, 
-                  method: 'CASH', // Default, assumindo dinheiro/externo
+                  method: 'CASH', // Default
                   orderId: order.id,
                   cashierName: 'Delivery'
               });
@@ -249,17 +273,37 @@ export const CashierDashboard: React.FC = () => {
       } catch (error: any) { showAlert({ title: "Erro", message: error.message, type: 'ERROR' }); }
   };
 
+  // TELA DE CAIXA FECHADO
   if (!finState.activeCashSession) {
       return (
-          <div className="h-full flex items-center justify-center bg-slate-950 p-4">
+          <div className="h-full flex items-center justify-center bg-slate-950 p-4 font-sans">
               <div className="bg-white p-10 rounded-[3rem] shadow-2xl text-center max-w-md w-full border border-white/10 relative">
                   <button onClick={handleLogout} className="absolute top-6 right-6 text-gray-400 hover:text-red-500 transition-colors"><LogOut size={24} /></button>
                   <div className="bg-blue-50 p-6 rounded-full w-24 h-24 flex items-center justify-center mx-auto mb-8 shadow-inner"><Lock size={48} className="text-blue-600" /></div>
                   <h2 className="text-3xl font-black mb-2 text-slate-800 uppercase tracking-tighter">Frente de Caixa</h2>
                   <p className="text-gray-400 mb-8 font-medium">Informe o fundo de reserva para iniciar o turno.</p>
-                  <form onSubmit={(e) => { e.preventDefault(); openRegister(parseFloat(openRegisterAmount), 'Operador'); }}>
-                      <div className="mb-8"><label className="block text-[10px] font-black text-gray-400 mb-3 uppercase tracking-widest">Saldo em Dinheiro (Gaveta)</label><div className="relative"><span className="absolute left-4 top-5 font-black text-2xl text-gray-300">R$</span><input type="number" step="0.01" className="border-2 border-gray-100 p-6 rounded-3xl w-full text-center text-4xl font-black text-blue-600 focus:outline-none focus:border-blue-500 transition-all shadow-inner bg-gray-50" placeholder="0.00" value={openRegisterAmount} onChange={e => setOpenRegisterAmount(e.target.value)} autoFocus required /></div></div>
-                      <Button type="submit" className="w-full py-5 text-xl font-black rounded-3xl shadow-2xl shadow-blue-200">ABRIR CAIXA AGORA</Button>
+                  
+                  <form onSubmit={handleOpenRegister}>
+                      <div className="mb-8">
+                          <label className="block text-[10px] font-black text-gray-400 mb-3 uppercase tracking-widest">Saldo em Dinheiro (Gaveta)</label>
+                          <div className="relative">
+                              <span className="absolute left-4 top-5 font-black text-2xl text-gray-300">R$</span>
+                              <input 
+                                  type="number" 
+                                  step="0.01" 
+                                  className="border-2 border-gray-100 p-6 rounded-3xl w-full text-center text-4xl font-black text-blue-600 focus:outline-none focus:border-blue-500 transition-all shadow-inner bg-gray-50" 
+                                  placeholder="0.00" 
+                                  value={openRegisterAmount} 
+                                  onChange={e => setOpenRegisterAmount(e.target.value)} 
+                                  autoFocus 
+                                  required 
+                                  disabled={openingLoading}
+                              />
+                          </div>
+                      </div>
+                      <Button type="submit" disabled={openingLoading} className="w-full py-5 text-xl font-black rounded-3xl shadow-2xl shadow-blue-200">
+                          {openingLoading ? <Loader2 className="animate-spin" /> : 'ABRIR CAIXA AGORA'}
+                      </Button>
                   </form>
               </div>
           </div>
@@ -321,7 +365,7 @@ export const CashierDashboard: React.FC = () => {
                                   </div>
                               </div>
 
-                              {/* Busca Produtos para Delivery (Reutiliza lógica do PDV) */}
+                              {/* Busca Produtos para Delivery */}
                               <div className="flex-1 bg-white rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden flex flex-col">
                                   <div className="p-4 border-b">
                                       <div className="relative group">
@@ -675,12 +719,14 @@ export const CashierDashboard: React.FC = () => {
 
           <Modal isOpen={itemModalOpen} onClose={() => setItemModalOpen(false)} title={selectedItemForCart?.name || "Adicionar Item"} variant="dialog" maxWidth="sm">
               <div className="space-y-6">
+                  {/* Quantidade */}
                   <div className="flex items-center justify-between bg-gray-50 p-3 rounded-2xl">
                       <button onClick={() => setItemQty(Math.max(1, itemQty - 1))} className="p-3 bg-white shadow-sm rounded-xl hover:bg-red-50 text-red-500 transition-colors"><Minus size={20}/></button>
                       <span className="text-3xl font-black text-slate-800">{itemQty}</span>
                       <button onClick={() => setItemQty(itemQty + 1)} className="p-3 bg-white shadow-sm rounded-xl hover:bg-blue-50 text-blue-500 transition-colors"><Plus size={20}/></button>
                   </div>
 
+                  {/* Lista de Adicionais */}
                   <div className="space-y-2">
                       <label className="text-xs font-black text-gray-400 uppercase tracking-widest px-1">Adicionais Disponíveis</label>
                       <div className="max-h-48 overflow-y-auto space-y-2 custom-scrollbar pr-1">
@@ -708,6 +754,7 @@ export const CashierDashboard: React.FC = () => {
                       </div>
                   </div>
 
+                  {/* Observações */}
                   <div className="space-y-1">
                       <label className="text-xs font-black text-gray-400 uppercase tracking-widest px-1">Observações</label>
                       <textarea 
