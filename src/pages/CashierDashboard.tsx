@@ -715,6 +715,7 @@ export const CashierDashboard: React.FC = () => {
               </div>
           </Modal>
 
+          {/* NOVO MODAL: Adicionar Item com Adicionais */}
           <Modal isOpen={itemModalOpen} onClose={() => setItemModalOpen(false)} title={selectedItemForCart?.name || "Adicionar Item"} variant="dialog" maxWidth="sm">
               <div className="space-y-6">
                   {/* Quantidade */}
@@ -764,6 +765,7 @@ export const CashierDashboard: React.FC = () => {
                       />
                   </div>
 
+                  {/* Total Estimado no Modal */}
                   <div className="pt-4 border-t flex justify-between items-center">
                       <div className="text-xs font-bold text-gray-500 uppercase">Subtotal</div>
                       <div className="text-2xl font-black text-blue-600">
