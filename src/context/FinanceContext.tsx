@@ -4,7 +4,7 @@ import { Transaction, CashSession, CashMovement, Expense } from '../types';
 import { supabase } from '../lib/supabase';
 import { useRestaurant } from './RestaurantContext';
 import { useUI } from './UIContext';
-import { useAuth } from './AuthProvider'; // Importando Auth
+import { useAuth } from './AuthProvider';
 
 interface FinanceState {
   transactions: Transaction[];
@@ -30,7 +30,7 @@ const FinanceContext = createContext<FinanceContextType | undefined>(undefined);
 
 export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { state: restaurantState } = useRestaurant();
-  const { state: authState } = useAuth(); // Acesso ao usuário logado
+  const { state: authState } = useAuth();
   const { tenantId } = restaurantState;
   const { showAlert } = useUI();
 
@@ -41,91 +41,110 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     cashMovements: []
   });
 
-  const fetchData = useCallback(async () => {
-      if (!tenantId || !authState.currentUser) return;
+  // 1. Busca APENAS Transações e Despesas (Não afeta o status do caixa)
+  const fetchFinancialData = useCallback(async () => {
+      if (!tenantId) return;
       
-      try {
-          const currentOperatorName = authState.currentUser.name;
+      const [transRes, expRes] = await Promise.all([
+          supabase.from('transactions').select('*').eq('tenant_id', tenantId).order('created_at', { ascending: false }).limit(200),
+          supabase.from('expenses').select('*').eq('tenant_id', tenantId).order('due_date', { ascending: true }),
+      ]);
 
-          // Busca dados gerais e a sessão ESPECÍFICA do usuário logado
-          const [transRes, expRes, sessionRes] = await Promise.all([
-              supabase.from('transactions').select('*').eq('tenant_id', tenantId).order('created_at', { ascending: false }).limit(200),
-              supabase.from('expenses').select('*').eq('tenant_id', tenantId).order('due_date', { ascending: true }),
-              supabase.from('cash_sessions')
-                .select('*')
-                .eq('tenant_id', tenantId)
-                .eq('status', 'OPEN')
-                .eq('operator_name', currentOperatorName) // FILTRO CRUCIAL: Caixa por usuário
-                .maybeSingle()
-          ]);
+      const mappedTransactions = (transRes.data || []).map((t: any) => ({
+          id: t.id, 
+          tableId: t.table_id || '', 
+          tableNumber: t.table_number || 0, 
+          amount: t.amount,
+          method: t.method, 
+          timestamp: new Date(t.created_at), 
+          itemsSummary: t.items_summary || '', 
+          cashierName: t.cashier_name || '',
+          status: t.status || 'COMPLETED'
+      }));
 
-          const mappedTransactions = (transRes.data || []).map((t: any) => ({
-              id: t.id, 
-              tableId: t.table_id || '', 
-              tableNumber: t.table_number || 0, 
-              amount: t.amount,
-              method: t.method, 
-              timestamp: new Date(t.created_at), 
-              itemsSummary: t.items_summary || '', 
-              cashierName: t.cashier_name || '',
-              status: t.status || 'COMPLETED'
-          }));
+      const mappedExpenses = (expRes.data || []).map((e: any) => ({
+          id: e.id, description: e.description, amount: e.amount, category: e.category, dueDate: new Date(e.due_date),
+          paidDate: e.paid_date ? new Date(e.paid_date) : undefined, isPaid: e.is_paid, supplierId: e.supplier_id,
+          isRecurring: e.is_recurring, paymentMethod: e.payment_method
+      }));
 
-          const mappedExpenses = (expRes.data || []).map((e: any) => ({
-              id: e.id, description: e.description, amount: e.amount, category: e.category, dueDate: new Date(e.due_date),
-              paidDate: e.paid_date ? new Date(e.paid_date) : undefined, isPaid: e.is_paid, supplierId: e.supplier_id,
-              isRecurring: e.is_recurring, paymentMethod: e.payment_method
-          }));
+      setState(prev => ({ 
+          ...prev, 
+          transactions: mappedTransactions, 
+          expenses: mappedExpenses
+      }));
+  }, [tenantId]);
 
-          let activeSession = null;
-          let movements: CashMovement[] = [];
-
-          if (sessionRes.data) {
-              activeSession = {
-                  id: sessionRes.data.id, 
-                  openedAt: new Date(sessionRes.data.opened_at),
-                  initialAmount: sessionRes.data.initial_amount, 
-                  status: sessionRes.data.status, 
-                  operatorName: sessionRes.data.operator_name
-              };
-              
-              const { data: moveData } = await supabase.from('cash_movements').select('*').eq('session_id', activeSession.id);
-              if (moveData) {
-                  movements = moveData.map((m: any) => ({
-                      id: m.id, sessionId: m.session_id, type: m.type, amount: m.amount, reason: m.reason, timestamp: new Date(m.created_at), userName: m.user_name
-                  }));
-              }
-          }
-
-          setState(prev => ({ 
-              ...prev, 
-              transactions: mappedTransactions, 
-              expenses: mappedExpenses, 
-              activeCashSession: activeSession, 
-              cashMovements: movements 
-          }));
-      } catch (e) {
-          console.error("Erro no fetchData do FinanceContext:", e);
-      }
-  }, [tenantId, authState.currentUser]); // Re-executa se o usuário mudar
-
-  useEffect(() => {
+  // 2. Busca APENAS a Sessão do Usuário (Rodado na inicialização ou login)
+  const fetchSessionData = useCallback(async () => {
       if (!tenantId || !authState.currentUser) return;
-      fetchData();
 
       const currentOperatorName = authState.currentUser.name;
 
+      const { data: sessionData } = await supabase.from('cash_sessions')
+          .select('*')
+          .eq('tenant_id', tenantId)
+          .eq('status', 'OPEN')
+          .eq('operator_name', currentOperatorName)
+          .maybeSingle();
+
+      if (sessionData) {
+          const activeSession = {
+              id: sessionData.id, 
+              openedAt: new Date(sessionData.opened_at),
+              initialAmount: sessionData.initial_amount, 
+              status: sessionData.status, 
+              operatorName: sessionData.operator_name
+          };
+
+          const { data: moveData } = await supabase.from('cash_movements').select('*').eq('session_id', activeSession.id);
+          const movements = (moveData || []).map((m: any) => ({
+              id: m.id, sessionId: m.session_id, type: m.type, amount: m.amount, reason: m.reason, timestamp: new Date(m.created_at), userName: m.user_name
+          }));
+
+          setState(prev => ({ ...prev, activeCashSession: activeSession, cashMovements: movements }));
+      } else {
+          // Se não achar sessão aberta, garante que o estado reflita isso
+          setState(prev => ({ ...prev, activeCashSession: null, cashMovements: [] }));
+      }
+  }, [tenantId, authState.currentUser]);
+
+  // Efeito Inicial: Carrega tudo
+  useEffect(() => {
+      if (!tenantId || !authState.currentUser) return;
+      fetchFinancialData();
+      fetchSessionData();
+  }, [tenantId, authState.currentUser, fetchFinancialData, fetchSessionData]);
+
+  // Efeito Realtime: Segregado para evitar fechar o caixa acidentalmente
+  useEffect(() => {
+      if (!tenantId || !authState.currentUser) return;
+      const currentOperatorName = authState.currentUser.name;
+
       const channel = supabase.channel(`finance_ctx:${tenantId}`)
-          // Escuta Transactions, Expenses e CashMovements e recarrega dados
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions', filter: `tenant_id=eq.${tenantId}` }, fetchData)
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'expenses', filter: `tenant_id=eq.${tenantId}` }, fetchData)
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'cash_movements', filter: `tenant_id=eq.${tenantId}` }, fetchData)
+          // A. Transações e Despesas: Atualizam apenas as listas, SEM TOCAR NA SESSÃO
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions', filter: `tenant_id=eq.${tenantId}` }, fetchFinancialData)
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'expenses', filter: `tenant_id=eq.${tenantId}` }, fetchFinancialData)
           
-          // Tratamento Inteligente para Cash Sessions (Escopado por Usuário)
+          // B. Movimentações: Atualizam apenas se houver sessão ativa
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'cash_movements', filter: `tenant_id=eq.${tenantId}` }, async () => {
+               // Recarrega movimentos da sessão atual se existir
+               if (state.activeCashSession) {
+                   const { data: moveData } = await supabase.from('cash_movements').select('*').eq('session_id', state.activeCashSession.id);
+                   if (moveData) {
+                       const movements = moveData.map((m: any) => ({
+                           id: m.id, sessionId: m.session_id, type: m.type, amount: m.amount, reason: m.reason, timestamp: new Date(m.created_at), userName: m.user_name
+                       }));
+                       setState(prev => ({ ...prev, cashMovements: movements }));
+                   }
+               }
+          })
+          
+          // C. Sessões: Lógica específica para abrir/fechar via evento
           .on('postgres_changes', { event: '*', schema: 'public', table: 'cash_sessions', filter: `tenant_id=eq.${tenantId}` }, (payload) => {
-              
-              // Só atualiza o estado local se a sessão alterada pertencer ao usuário logado
               const sessionOwner = payload.new?.operator_name || payload.old?.operator_name;
+              
+              // Importante: Só reage se a sessão for deste usuário
               if (sessionOwner !== currentOperatorName) return;
 
               if (payload.eventType === 'INSERT') {
@@ -139,31 +158,21 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
                               initialAmount: newSession.initial_amount,
                               status: 'OPEN',
                               operatorName: newSession.operator_name
-                          }
+                          },
+                          cashMovements: []
                       }));
                   }
               } else if (payload.eventType === 'UPDATE') {
                   const updatedSession = payload.new;
                   if (updatedSession.status === 'CLOSED') {
-                      setState(prev => ({ ...prev, activeCashSession: null }));
-                  } else if (updatedSession.status === 'OPEN') {
-                       setState(prev => ({
-                          ...prev,
-                          activeCashSession: {
-                              id: updatedSession.id,
-                              openedAt: new Date(updatedSession.opened_at),
-                              initialAmount: updatedSession.initial_amount,
-                              status: 'OPEN',
-                              operatorName: updatedSession.operator_name
-                          }
-                      }));
+                      setState(prev => ({ ...prev, activeCashSession: null, cashMovements: [] }));
                   }
               }
           })
           .subscribe();
 
       return () => { supabase.removeChannel(channel); };
-  }, [tenantId, fetchData, authState.currentUser]);
+  }, [tenantId, authState.currentUser, fetchFinancialData, state.activeCashSession]);
 
   const openRegister = async (initialAmount: number, operatorName: string) => {
       if(!tenantId) throw new Error("Restaurante não identificado");
@@ -180,7 +189,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
           throw new Error(error.message);
       }
       
-      // Atualiza estado local imediatamente
+      // Atualização Otimista
       if (data) {
           setState(prev => ({
               ...prev,
@@ -190,7 +199,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
                   initialAmount: data.initial_amount,
                   status: 'OPEN',
                   operatorName: data.operator_name
-              }
+              },
+              cashMovements: []
           }));
       }
   };
@@ -208,8 +218,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
           throw new Error(error.message);
       }
       
-      // Limpa estado local imediatamente
-      setState(prev => ({ ...prev, activeCashSession: null }));
+      // Limpeza imediata local
+      setState(prev => ({ ...prev, activeCashSession: null, cashMovements: [] }));
   };
 
   const bleedRegister = async (amount: number, reason: string, userName: string) => {
@@ -225,7 +235,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       });
 
       if(error) throw error;
-      await fetchData();
+      // Fetch data não necessário pois o realtime captura
   };
 
   const addExpense = async (expense: Expense) => {
@@ -364,11 +374,11 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
           await supabase.from('order_items').update({ status: 'CANCELLED' }).eq('order_id', transaction.order_id);
       }
       
-      await fetchData();
+      await fetchFinancialData();
   };
 
   return (
-    <FinanceContext.Provider value={{ state, openRegister, closeRegister, bleedRegister, addExpense, updateExpense, payExpense, deleteExpense, voidTransaction, refreshTransactions: fetchData }}>
+    <FinanceContext.Provider value={{ state, openRegister, closeRegister, bleedRegister, addExpense, updateExpense, payExpense, deleteExpense, voidTransaction, refreshTransactions: fetchFinancialData }}>
       {children}
     </FinanceContext.Provider>
   );
