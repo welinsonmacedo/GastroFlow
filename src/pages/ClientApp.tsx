@@ -50,7 +50,12 @@ const OrderGraceTimer: React.FC<{ order: Order; graceMinutes: number; onCancel: 
                         <p className="text-2xl font-black font-mono leading-none mt-1">{mins}:{secs.toString().padStart(2, '0')}</p>
                     </div>
                 </div>
-                <button onClick={() => onCancel(order.id)} className="bg-white text-blue-600 px-5 py-2.5 rounded-2xl text-xs font-black uppercase shadow-lg active:scale-95 transition-all">Cancelar</button>
+                <button 
+                    onClick={() => onCancel(order.id)} 
+                    className="bg-white text-blue-600 px-5 py-2.5 rounded-2xl text-xs font-black uppercase shadow-lg active:scale-95 transition-all"
+                >
+                    Cancelar
+                </button>
             </div>
         </div>
     );
@@ -122,13 +127,21 @@ export const ClientApp: React.FC = () => {
 
     const handleAddToCart = () => {
         if (!selectedProduct) return;
+        
         let finalNote = modalNotes;
         if (isDrinkProduct(selectedProduct)) {
             const timingText = drinkTiming === 'IMMEDIATE' ? '[IMEDIATA]' : '[COM COMIDA]';
             finalNote = timingText; 
         }
-        const chosenExtras = selectedExtraIds.map(id => menuState.products.find(p => p.id === id)).filter(Boolean) as Product[];
-        setCart(prev => [...prev, { product: selectedProduct, quantity: modalQuantity, notes: finalNote.trim(), extras: chosenExtras }]);
+
+        const chosenExtras = selectedExtraIds
+            .map(id => menuState.products.find(p => p.id === id))
+            .filter(Boolean) as Product[];
+
+        setCart(prev => [
+            ...prev, 
+            { product: selectedProduct, quantity: modalQuantity, notes: finalNote.trim(), extras: chosenExtras }
+        ]);
         setSelectedProduct(null);
     };
 
@@ -170,9 +183,15 @@ export const ClientApp: React.FC = () => {
         <div className="h-full overflow-y-auto pb-32 font-sans" style={{ backgroundColor: theme.backgroundColor, color: theme.fontColor }}>
             <header className="bg-white/70 backdrop-blur-xl shadow-sm sticky top-0 z-40 border-b border-white/20">
                 <div className="flex justify-between items-center p-4 max-w-2xl mx-auto">
-                    <div>{view !== 'MENU' ? (<button onClick={() => setView('MENU')} className="flex items-center gap-3 text-slate-800 font-black uppercase tracking-tighter text-sm bg-gray-100/50 px-4 py-2 rounded-2xl active:scale-95 transition-all"><ArrowLeft size={20} /> Voltar</button>) : (<div className="flex items-center gap-3"><div className="bg-white p-1 rounded-2xl shadow-md border border-gray-100 shrink-0">{theme.logoUrl ? <img src={theme.logoUrl} className="h-10 w-10 object-contain rounded-xl" /> : <ChefHat size={32} style={{ color: theme.primaryColor }} />}</div><div><h1 className="font-black text-xl leading-none uppercase tracking-tighter text-slate-800">{theme.restaurantName}</h1><p className="text-[10px] text-emerald-500 font-black uppercase tracking-widest mt-1">MESA #{table.number}</p></div></div>)}</div>
+                    <div>
+                        {view !== 'MENU' ? (
+                            <button onClick={() => setView('MENU')} className="flex items-center gap-3 text-slate-800 font-black uppercase tracking-tighter text-sm bg-gray-100/50 px-4 py-2 rounded-2xl active:scale-95 transition-all"><ArrowLeft size={20} /> Voltar</button>
+                        ) : (
+                            <div className="flex items-center gap-3"><div className="bg-white p-1 rounded-2xl shadow-md border border-gray-100 shrink-0">{theme.logoUrl ? <img src={theme.logoUrl} className="h-10 w-10 object-contain rounded-xl" /> : <ChefHat size={32} style={{ color: theme.primaryColor }} />}</div><div><h1 className="font-black text-xl leading-none uppercase tracking-tighter text-slate-800">{theme.restaurantName}</h1><p className="text-[10px] text-emerald-500 font-black uppercase tracking-widest mt-1">MESA #{table.number}</p></div></div>
+                        )}
+                    </div>
                     <div className="flex gap-2">
-                        <button onClick={() => setView('STATUS')} className={`p-3 rounded-2xl transition-all ${view === 'STATUS' ? 'bg-blue-600 text-white shadow-lg' : 'bg-gray-100 text-slate-600 hover:bg-gray-200'}`} title="Meus Pedidos"><Clock size={20} /></button>
+                        <button onClick={() => setView('STATUS')} className={`p-3 rounded-2xl transition-all ${view === 'STATUS' ? 'bg-blue-600 text-white shadow-lg' : 'bg-gray-100 text-slate-600 hover:bg-gray-200'}`}><Clock size={20} /></button>
                         <button onClick={() => setView('BILL')} className="p-3 rounded-2xl bg-gray-100 text-slate-600 hover:bg-gray-200 active:scale-90 transition-all"><Receipt size={20} /></button>
                         <button onClick={() => setView('CART')} className="relative p-3 rounded-2xl bg-slate-900 text-white shadow-xl shadow-slate-900/20 active:scale-90 transition-all"><ShoppingCart size={20} />{cart.length > 0 && (<span className="absolute -top-1 -right-1 bg-emerald-500 text-white text-[10px] rounded-full w-6 h-6 flex items-center justify-center font-black border-4 border-white shadow-md">{cart.length}</span>)}</button>
                     </div>
@@ -187,6 +206,7 @@ export const ClientApp: React.FC = () => {
                             const items = menuState.products.filter(p => p.isVisible && !p.isExtra && p.category === category && p.name.toLowerCase().includes(searchQuery.toLowerCase()));
                             if (items.length === 0) return null;
                             const isGrid = theme.viewMode === 'GRID';
+                            
                             return (
                                 <div key={category} className="space-y-6 animate-fade-in">
                                     <div className="flex items-center gap-4"><h2 className="text-2xl font-black uppercase tracking-tighter text-slate-800 whitespace-nowrap">{category}</h2><span className="h-[2px] flex-1 bg-gray-100 rounded-full"></span></div>

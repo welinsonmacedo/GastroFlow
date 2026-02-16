@@ -62,7 +62,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({ isOpen, onCl
               name: stockItem.name,
               price: stockItem.salePrice, 
               category: stockItem.category, 
-              description: description,
+              description: description, // Usa a descrição digitada
               image: stockItem.image || '',
               linkedInventoryItemId: stockItem.id, 
               isExtra: false, 
