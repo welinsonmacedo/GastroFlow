@@ -77,15 +77,18 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   // 2. Busca APENAS a Sessão do Usuário (Rodado na inicialização ou login)
   const fetchSessionData = useCallback(async () => {
-      if (!tenantId || !authState.currentUser) return;
+      if (!tenantId) return;
 
-      const currentOperatorName = authState.currentUser.name;
-
+      // CORREÇÃO DE LÓGICA:
+      // Busca QUALQUER sessão aberta para este restaurante.
+      // Removemos o filtro .eq('operator_name', ...) para evitar que o caixa feche 
+      // se o nome do usuário mudar ou se a sessão for recarregada.
       const { data: sessionData } = await supabase.from('cash_sessions')
           .select('*')
           .eq('tenant_id', tenantId)
           .eq('status', 'OPEN')
-          .eq('operator_name', currentOperatorName)
+          .order('opened_at', { ascending: false }) // Pega o mais recente aberto
+          .limit(1)
           .maybeSingle();
 
       if (sessionData) {
@@ -107,19 +110,18 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
           // Se não achar sessão aberta, garante que o estado reflita isso
           setState(prev => ({ ...prev, activeCashSession: null, cashMovements: [] }));
       }
-  }, [tenantId, authState.currentUser]);
+  }, [tenantId]);
 
   // Efeito Inicial: Carrega tudo
   useEffect(() => {
-      if (!tenantId || !authState.currentUser) return;
+      if (!tenantId) return;
       fetchFinancialData();
       fetchSessionData();
-  }, [tenantId, authState.currentUser, fetchFinancialData, fetchSessionData]);
+  }, [tenantId, fetchFinancialData, fetchSessionData]);
 
   // Efeito Realtime: Segregado para evitar fechar o caixa acidentalmente
   useEffect(() => {
-      if (!tenantId || !authState.currentUser) return;
-      const currentOperatorName = authState.currentUser.name;
+      if (!tenantId) return;
 
       const channel = supabase.channel(`finance_ctx:${tenantId}`)
           // A. Transações e Despesas: Atualizam apenas as listas, SEM TOCAR NA SESSÃO
@@ -142,11 +144,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
           
           // C. Sessões: Lógica específica para abrir/fechar via evento
           .on('postgres_changes', { event: '*', schema: 'public', table: 'cash_sessions', filter: `tenant_id=eq.${tenantId}` }, (payload) => {
-              const sessionOwner = payload.new?.operator_name || payload.old?.operator_name;
+              // CORREÇÃO: Removemos a checagem de owner. Se alguém abrir/fechar o caixa, reflete para todos.
               
-              // Importante: Só reage se a sessão for deste usuário
-              if (sessionOwner !== currentOperatorName) return;
-
               if (payload.eventType === 'INSERT') {
                   const newSession = payload.new;
                   if (newSession.status === 'OPEN') {
@@ -172,7 +171,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
           .subscribe();
 
       return () => { supabase.removeChannel(channel); };
-  }, [tenantId, authState.currentUser, fetchFinancialData, state.activeCashSession]);
+  }, [tenantId, fetchFinancialData, state.activeCashSession]);
 
   const openRegister = async (initialAmount: number, operatorName: string) => {
       if(!tenantId) throw new Error("Restaurante não identificado");

@@ -50,7 +50,7 @@ interface OrderContextType {
   // Assinatura atualizada para aceitar objeto de parametros
   placeOrder: (params: PlaceOrderParams) => Promise<void>;
   processPosSale: (data: any) => Promise<void>;
-  processPayment: (tableId: string | undefined, amount: number, method: string, cashierName?: string, orderId?: string) => Promise<void>;
+  processPayment: (tableId: string | undefined, amount: number, method: string, cashierName?: string, orderId?: string, specificOrderIds?: string[]) => Promise<void>;
   updateItemStatus: (orderId: string, itemId: string, status: OrderStatus) => Promise<void>;
   cancelOrder: (orderId: string) => Promise<void>; 
   addTable: () => Promise<void>;
@@ -205,13 +205,21 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       fetchData();
   };
 
-  const processPayment = async (tableId: string | undefined, amount: number, method: string, cashierName: string = 'Caixa', orderId?: string) => {
+  // ATUALIZAÇÃO: Suporte a partial payments (specificOrderIds)
+  const processPayment = async (tableId: string | undefined, amount: number, method: string, cashierName: string = 'Caixa', orderId?: string, specificOrderIds?: string[]) => {
       if(!tenantId) return;
       
       if (tableId) {
-          await supabase.from('orders').update({ is_paid: true, status: 'DELIVERED' }).eq('table_id', tableId).eq('is_paid', false).neq('status', 'CANCELLED');
+          // Se tiver IDs específicos, paga só eles. Senão paga tudo da mesa.
+          let query = supabase.from('orders').update({ is_paid: true, status: 'DELIVERED' }).eq('table_id', tableId).eq('is_paid', false).neq('status', 'CANCELLED');
+          
+          if (specificOrderIds && specificOrderIds.length > 0) {
+              query = query.in('id', specificOrderIds);
+          }
+          
+          await query;
       } else if (orderId) {
-          // Para Delivery/PDV que não tem mesa
+          // Para Delivery/PDV que não tem mesa (Pagamento de pedido único)
           await supabase.from('orders').update({ is_paid: true, status: 'DELIVERED' }).eq('id', orderId);
           await supabase.from('order_items').update({ status: 'DELIVERED' }).eq('order_id', orderId);
       }
@@ -219,10 +227,10 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       await supabase.from('transactions').insert({ 
           tenant_id: tenantId, 
           table_id: tableId || null, 
-          order_id: orderId || null,
+          order_id: orderId || (specificOrderIds && specificOrderIds.length === 1 ? specificOrderIds[0] : null),
           amount, 
           method, 
-          items_summary: tableId ? `Mesa` : `Delivery/Pedido #${orderId?.slice(0,4)}`, 
+          items_summary: specificOrderIds && specificOrderIds.length > 0 ? `Parcial Mesa (x${specificOrderIds.length})` : (tableId ? `Mesa Completa` : `Delivery/Pedido #${orderId?.slice(0,4)}`), 
           cashier_name: cashierName 
       });
       fetchData();
@@ -236,12 +244,12 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const dispatch = async (action: any) => {
       switch (action.type) {
           case 'PLACE_ORDER': 
-              // A action agora é passada inteira, permitindo que deliveryInfo e orderType passem
               await placeOrder(action); 
               break;
           case 'CANCEL_ORDER': await cancelOrder(action.orderId); break;
           case 'PROCESS_POS_SALE': await processPosSale(action.sale); break;
-          case 'PROCESS_PAYMENT': await processPayment(action.tableId, action.amount, action.method, action.cashierName, action.orderId); break;
+          // Passa os specificOrderIds se existirem
+          case 'PROCESS_PAYMENT': await processPayment(action.tableId, action.amount, action.method, action.cashierName, action.orderId, action.specificOrderIds); break;
           case 'UPDATE_ITEM_STATUS': await updateItemStatus(action.orderId, action.itemId, action.status); break;
           case 'ADD_TABLE': await supabase.from('restaurant_tables').insert({ tenant_id: tenantId, number: state.tables.length + 1, status: 'AVAILABLE' }); fetchData(); break;
           case 'DELETE_TABLE': await supabase.from('restaurant_tables').delete().eq('id', action.tableId); fetchData(); break;

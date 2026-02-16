@@ -1,12 +1,12 @@
-
 import React, { useState, useEffect } from 'react';
 import { Modal } from '../Modal';
+import { Button } from '../Button';
 import { useOrder } from '../../context/OrderContext';
 import { useMenu } from '../../context/MenuContext';
 import { useAuth } from '../../context/AuthProvider';
 import { useUI } from '../../context/UIContext';
 import { Product, Order, OrderStatus } from '../../types';
-import { Utensils, Trash2, X, Minus, Plus, CheckSquare, Square, AlertCircle, DollarSign, CreditCard, Banknote, Zap } from 'lucide-react';
+import { Utensils, Trash2, X, Minus, Plus, CheckSquare, Square, AlertCircle, DollarSign, CreditCard, Banknote, Zap, Split, CheckCircle2 } from 'lucide-react';
 
 // --- Open Table Modal ---
 export const OpenTableModal: React.FC<{ isOpen: boolean, onClose: () => void, tableId: string | null }> = ({ isOpen, onClose, tableId }) => {
@@ -30,7 +30,7 @@ export const OpenTableModal: React.FC<{ isOpen: boolean, onClose: () => void, ta
                     onChange={e => setCustomerName(e.target.value)}
                     autoFocus 
                 />
-                <button onClick={handleOpen} className="w-full py-4 font-bold bg-blue-600 text-white rounded-xl shadow-lg hover:bg-blue-700 transition-all">INICIAR ATENDIMENTO</button>
+                <Button onClick={handleOpen} className="w-full py-4 font-bold bg-blue-600 text-white rounded-xl shadow-lg hover:bg-blue-700 transition-all">INICIAR ATENDIMENTO</Button>
             </div>
         </Modal>
     );
@@ -52,10 +52,32 @@ export const TableActionsModal: React.FC<TableActionsModalProps> = ({ isOpen, on
     const table = state.tables.find(t => t.id === tableId);
 
     const [paymentMode, setPaymentMode] = useState(false);
+    const [splitMode, setSplitMode] = useState(false);
+    const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
     const [cashReceived, setCashReceived] = useState('');
 
-    // Cálculos
-    const totalAmount = orders.reduce((sum, order) => 
+    // Resetar estado interno ao abrir
+    useEffect(() => {
+        if(isOpen) {
+            setPaymentMode(false);
+            setSplitMode(false);
+            setSelectedOrderIds([]);
+            setCashReceived('');
+        }
+    }, [isOpen]);
+
+    // Calcular Total
+    // Se splitMode estiver ativo e houver seleção, calcula só os selecionados.
+    // Caso contrário, calcula tudo.
+    const ordersToCalculate = (splitMode && selectedOrderIds.length > 0) 
+        ? orders.filter(o => selectedOrderIds.includes(o.id))
+        : orders;
+
+    const totalAmount = ordersToCalculate.reduce((sum, order) => 
+        sum + order.items.reduce((s, i) => s + (i.productPrice * i.quantity), 0), 0
+    );
+
+    const totalTableAmount = orders.reduce((sum, order) => 
         sum + order.items.reduce((s, i) => s + (i.productPrice * i.quantity), 0), 0
     );
 
@@ -67,6 +89,14 @@ export const TableActionsModal: React.FC<TableActionsModalProps> = ({ isOpen, on
         o.items.some(i => i.status !== OrderStatus.DELIVERED && i.status !== OrderStatus.CANCELLED)
     );
 
+    const toggleOrderSelection = (orderId: string) => {
+        setSelectedOrderIds(prev => 
+            prev.includes(orderId) 
+                ? prev.filter(id => id !== orderId) 
+                : [...prev, orderId]
+        );
+    };
+
     const handlePayment = async (method: string) => {
         if (!tableId) return;
         
@@ -76,32 +106,37 @@ export const TableActionsModal: React.FC<TableActionsModalProps> = ({ isOpen, on
                 tableId, 
                 amount: totalAmount, 
                 method, 
-                cashierName: `Garçom ${authState.currentUser?.name || ''}` 
+                cashierName: `Garçom ${authState.currentUser?.name || ''}`,
+                specificOrderIds: (splitMode && selectedOrderIds.length > 0) ? selectedOrderIds : undefined
             });
-            showAlert({ title: "Sucesso", message: "Pagamento registrado! A mesa pode ser fechada.", type: 'SUCCESS' });
+            showAlert({ title: "Sucesso", message: "Pagamento registrado!", type: 'SUCCESS' });
             setPaymentMode(false);
+            setSplitMode(false);
+            setSelectedOrderIds([]);
             setCashReceived('');
+            // Se pagou tudo, pode fechar automaticamente o modal ou esperar update
+            if (totalAmount >= totalTableAmount) {
+                 // onOrder(); // ou onClose
+            }
         } catch (error) {
             showAlert({ title: "Erro", message: "Falha ao processar pagamento.", type: 'ERROR' });
         }
     };
 
-    // Resetar estado interno ao abrir
-    useEffect(() => {
-        if(isOpen) {
-            setPaymentMode(false);
-            setCashReceived('');
-        }
-    }, [isOpen]);
-
     if (paymentMode) {
         return (
-            <Modal isOpen={isOpen} onClose={() => setPaymentMode(false)} title={`Pagamento Mesa ${table?.number}`} variant="dialog" maxWidth="sm">
+            <Modal isOpen={isOpen} onClose={() => setPaymentMode(false)} title={`Pagamento ${splitMode ? '(Parcial)' : ''}`} variant="dialog" maxWidth="sm">
                 <div className="space-y-6">
                     <div className="text-center bg-gray-50 p-4 rounded-2xl border border-gray-200">
-                        <p className="text-xs font-bold text-gray-500 uppercase mb-1">Total a Pagar</p>
+                        <p className="text-xs font-bold text-gray-500 uppercase mb-1">{splitMode ? 'Total Selecionado' : 'Total da Mesa'}</p>
                         <p className="text-4xl font-black text-slate-800">R$ {totalAmount.toFixed(2)}</p>
                     </div>
+
+                    {splitMode && (
+                        <div className="text-xs text-center text-orange-600 font-bold bg-orange-50 p-2 rounded-lg">
+                            Pagando {selectedOrderIds.length} pedidos de {orders.length}
+                        </div>
+                    )}
 
                     <div className="space-y-3">
                         <div className="space-y-2">
@@ -149,59 +184,121 @@ export const TableActionsModal: React.FC<TableActionsModalProps> = ({ isOpen, on
     return (
         <Modal isOpen={isOpen} onClose={onClose} title={`Mesa ${table?.number}`} variant="dialog" maxWidth="sm">
             <div className="p-1 space-y-4">
-                {table?.accessCode && (
+                {table?.accessCode && !splitMode && (
                     <div className="bg-gray-100 p-3 rounded-xl text-center">
                         <span className="text-xs font-bold text-gray-500 uppercase block mb-1">Código de Acesso</span>
                         <span className="text-3xl font-black text-slate-800 tracking-widest">{table.accessCode}</span>
                     </div>
                 )}
 
-                <div className="flex justify-between items-center bg-gray-50 p-3 rounded-xl border border-gray-200">
-                    <span className="text-sm font-bold text-gray-600">Total Consumido</span>
-                    <span className="text-xl font-black text-slate-800">R$ {totalAmount.toFixed(2)}</span>
+                {/* VISUALIZAÇÃO DE PEDIDOS COM SELEÇÃO */}
+                <div className="max-h-60 overflow-y-auto custom-scrollbar border rounded-xl border-gray-100 bg-white">
+                     {orders.length === 0 && <div className="p-4 text-center text-gray-400 text-xs">Nenhum pedido lançado.</div>}
+                     {orders.map(order => {
+                         const orderTotal = order.items.reduce((s, i) => s + (i.productPrice * i.quantity), 0);
+                         const isSelected = selectedOrderIds.includes(order.id);
+                         const orderTime = new Date(order.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+
+                         return (
+                             <div 
+                                key={order.id} 
+                                onClick={() => splitMode && toggleOrderSelection(order.id)}
+                                className={`p-3 border-b last:border-0 transition-colors ${splitMode ? 'cursor-pointer hover:bg-blue-50' : ''} ${isSelected ? 'bg-blue-50' : ''}`}
+                             >
+                                 <div className="flex items-center justify-between mb-1">
+                                     <div className="flex items-center gap-2">
+                                         {splitMode && (
+                                             <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${isSelected ? 'bg-blue-600 border-blue-600 text-white' : 'border-gray-300 bg-white'}`}>
+                                                 {isSelected && <CheckSquare size={14}/>}
+                                             </div>
+                                         )}
+                                         <span className="font-bold text-slate-700 text-sm">Pedido #{order.id.slice(0,4)}</span>
+                                         <span className="text-[10px] text-gray-400">{orderTime}</span>
+                                     </div>
+                                     <span className="font-black text-slate-800 text-sm">R$ {orderTotal.toFixed(2)}</span>
+                                 </div>
+                                 <div className="text-[10px] text-gray-500 pl-7">
+                                     {order.items.map(i => `${i.quantity}x ${i.productName}`).join(', ')}
+                                 </div>
+                             </div>
+                         )
+                     })}
                 </div>
 
-                <button onClick={onOrder} className="w-full py-5 bg-blue-600 text-white font-black rounded-2xl flex items-center justify-center gap-3 shadow-xl shadow-blue-200 hover:scale-[1.02] active:scale-95 transition-all">
-                    <Utensils size={24} /> LANÇAR PEDIDO
-                </button>
+                {/* Resumo e Botões */}
+                {!splitMode ? (
+                    <>
+                        <div className="flex justify-between items-center bg-gray-50 p-3 rounded-xl border border-gray-200">
+                            <span className="text-sm font-bold text-gray-600">Total Consumido</span>
+                            <span className="text-xl font-black text-slate-800">R$ {totalTableAmount.toFixed(2)}</span>
+                        </div>
 
-                {!isPaid && totalAmount > 0 && (
-                    <button onClick={() => setPaymentMode(true)} className="w-full py-5 bg-emerald-600 text-white font-black rounded-2xl flex items-center justify-center gap-3 shadow-xl shadow-emerald-200 hover:scale-[1.02] active:scale-95 transition-all">
-                        <DollarSign size={24} /> RECEBER PAGAMENTO
-                    </button>
-                )}
-                
-                {/* Lógica de Bloqueio de Fechamento */}
-                {hasPendingItems ? (
-                    <div className="w-full py-4 bg-orange-50 text-orange-600 font-bold rounded-2xl flex flex-col items-center justify-center gap-1 border-2 border-orange-100 text-center px-4">
-                        <AlertCircle size={20} />
-                        <span className="text-xs uppercase tracking-wide">Impossível Fechar</span>
-                        <span className="text-[10px] font-normal">Existem pedidos pendentes na cozinha.</span>
-                    </div>
-                ) : (!isPaid && totalAmount > 0) ? (
-                    <div className="w-full py-4 bg-red-50 text-red-600 font-bold rounded-2xl flex flex-col items-center justify-center gap-1 border-2 border-red-100 text-center px-4">
-                        <DollarSign size={20} />
-                        <span className="text-xs uppercase tracking-wide">Aguardando Pagamento</span>
-                        <span className="text-[10px] font-normal">Receba o valor antes de liberar a mesa.</span>
-                    </div>
+                        <button onClick={onOrder} className="w-full py-4 bg-blue-600 text-white font-black rounded-2xl flex items-center justify-center gap-3 shadow-xl shadow-blue-200 hover:scale-[1.02] active:scale-95 transition-all">
+                            <Utensils size={20} /> LANÇAR PEDIDO
+                        </button>
+
+                        {!isPaid && totalTableAmount > 0 && (
+                            <div className="grid grid-cols-2 gap-2">
+                                <button onClick={() => setSplitMode(true)} className="py-4 bg-white border-2 border-orange-200 text-orange-600 font-black rounded-2xl flex flex-col items-center justify-center gap-1 hover:bg-orange-50 transition-all text-xs uppercase tracking-wide">
+                                    <Split size={20} /> Separar Pedidos
+                                </button>
+                                <button onClick={() => setPaymentMode(true)} className="py-4 bg-emerald-600 text-white font-black rounded-2xl flex flex-col items-center justify-center gap-1 shadow-xl shadow-emerald-200 hover:bg-emerald-500 transition-all text-xs uppercase tracking-wide">
+                                    <DollarSign size={20} /> Pagar Tudo
+                                </button>
+                            </div>
+                        )}
+                        
+                        {/* Lógica de Bloqueio de Fechamento */}
+                        {hasPendingItems ? (
+                            <div className="w-full py-4 bg-orange-50 text-orange-600 font-bold rounded-2xl flex flex-col items-center justify-center gap-1 border-2 border-orange-100 text-center px-4">
+                                <AlertCircle size={20} />
+                                <span className="text-xs uppercase tracking-wide">Impossível Fechar</span>
+                                <span className="text-[10px] font-normal">Existem pedidos pendentes na cozinha.</span>
+                            </div>
+                        ) : (!isPaid && totalTableAmount > 0) ? (
+                            <div className="w-full py-4 bg-red-50 text-red-600 font-bold rounded-2xl flex flex-col items-center justify-center gap-1 border-2 border-red-100 text-center px-4">
+                                <DollarSign size={20} />
+                                <span className="text-xs uppercase tracking-wide">Aguardando Pagamento</span>
+                                <span className="text-[10px] font-normal">Receba o valor antes de liberar a mesa.</span>
+                            </div>
+                        ) : (
+                            <button 
+                                onClick={() => { 
+                                    if (totalTableAmount > 0 && !isPaid) return; // Segurança extra
+                                    dispatch({ type: 'CLOSE_TABLE', tableId }); 
+                                    onClose(); 
+                                }} 
+                                className="w-full py-5 bg-slate-800 text-white font-black rounded-2xl flex items-center justify-center gap-3 hover:bg-slate-900 transition-all"
+                            >
+                                <Trash2 size={24} /> {totalTableAmount === 0 ? 'CANCELAR / FECHAR MESA' : 'LIBERAR MESA'}
+                            </button>
+                        )}
+                    </>
                 ) : (
-                    <button 
-                        onClick={() => { 
-                            if (totalAmount > 0 && !isPaid) return; // Segurança extra
-                            dispatch({ type: 'CLOSE_TABLE', tableId }); 
-                            onClose(); 
-                        }} 
-                        className="w-full py-5 bg-slate-800 text-white font-black rounded-2xl flex items-center justify-center gap-3 hover:bg-slate-900 transition-all"
-                    >
-                        <Trash2 size={24} /> {totalAmount === 0 ? 'CANCELAR / FECHAR MESA' : 'LIBERAR MESA'}
-                    </button>
+                    // MODO DE SELEÇÃO (SPLIT)
+                    <>
+                        <div className="flex justify-between items-center bg-blue-50 p-3 rounded-xl border border-blue-200">
+                            <span className="text-sm font-bold text-blue-800">Selecionado ({selectedOrderIds.length})</span>
+                            <span className="text-xl font-black text-blue-800">R$ {totalAmount.toFixed(2)}</span>
+                        </div>
+                        <div className="flex gap-2">
+                             <button onClick={() => setSplitMode(false)} className="flex-1 py-4 bg-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-300">Cancelar</button>
+                             <button 
+                                onClick={() => setPaymentMode(true)} 
+                                disabled={selectedOrderIds.length === 0}
+                                className="flex-1 py-4 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                             >
+                                <CheckCircle2 size={18} /> Pagar Seleção
+                             </button>
+                        </div>
+                    </>
                 )}
             </div>
         </Modal>
     );
 };
 
-// --- Waiter Product Modal ---
+// --- Waiter Product Modal (Unchanged) ---
 interface WaiterProductModalProps {
     isOpen: boolean;
     onClose: () => void;
@@ -293,7 +390,7 @@ export const WaiterProductModal: React.FC<WaiterProductModalProps> = ({ isOpen, 
                     </div>
                 </div>
                 <div className="p-4 border-t bg-gray-50">
-                    <button onClick={handleConfirm} className="w-full py-4 text-lg font-black shadow-lg bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all">Confirmar R$ {calculateTotal().toFixed(2)}</button>
+                    <Button onClick={handleConfirm} className="w-full py-4 text-lg font-black shadow-lg">Confirmar R$ {calculateTotal().toFixed(2)}</Button>
                 </div>
             </div>
         </div>
