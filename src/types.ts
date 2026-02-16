@@ -41,7 +41,6 @@ export interface DeliveryInfo {
     changeFor?: number; 
 }
 
-// --- SaaS Types ---
 export type PlanType = 'FREE' | 'PRO' | 'ENTERPRISE';
 
 export interface PlanLimits {
@@ -89,7 +88,7 @@ export interface RestaurantBusinessInfo {
     instagram?: string;
     website?: string;
     orderGracePeriodMinutes?: number;
-    adminPin?: string; // Senha Mestra para cancelamentos
+    adminPin?: string;
 }
 
 export interface RestaurantTenant {
@@ -132,13 +131,13 @@ export interface InventoryItem {
     quantity: number;
     minQuantity: number;
     costPrice: number;
-    salePrice: number; // Novo campo para venda direta no PDV
-    category?: string; // Nova categoria vinda do estoque
+    salePrice: number;
+    category?: string;
     type: InventoryType;
     image?: string;
     recipe?: InventoryRecipeItem[];
     isExtra: boolean; 
-    targetCategories?: string[]; // Categorias onde este adicional aparece
+    targetCategories?: string[];
 }
 
 export interface InventoryLog {
@@ -165,7 +164,7 @@ export interface Product {
   sortOrder: number;
   isExtra: boolean; 
   linkedExtraIds?: string[];
-  targetCategories?: string[]; // Categorias onde este adicional pode aparecer
+  targetCategories?: string[];
 }
 
 export interface OrderItem {
@@ -187,8 +186,8 @@ export interface Order {
   timestamp: Date;
   isPaid: boolean;
   status: string;
-  type?: OrderType; // Agora opcional/existente
-  deliveryInfo?: DeliveryInfo; // Dados do delivery
+  type?: OrderType;
+  deliveryInfo?: DeliveryInfo;
 }
 
 export interface Table {
