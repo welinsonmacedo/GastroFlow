@@ -1,6 +1,6 @@
 
-import React, { createContext, useContext, useEffect, useState, useReducer, useCallback } from 'react';
-import { Table, Order, ServiceCall, OrderStatus, ProductType, OrderType, DeliveryInfo } from '../types';
+import React, { createContext, useContext, useEffect, useReducer, useCallback } from 'react';
+import { Table, Order, ServiceCall, OrderStatus, OrderType, DeliveryInfo } from '../types';
 import { supabase } from '../lib/supabase';
 import { useRestaurant } from './RestaurantContext';
 import { useMenu } from './MenuContext';
@@ -40,14 +40,14 @@ interface PlaceOrderParams {
         name?: string; 
         type?: string 
     }[];
-    type?: OrderType;
+    orderType?: OrderType; // Usar orderType explicitamente para evitar conflito com action.type
     deliveryInfo?: DeliveryInfo;
+    type?: string; // Legado/Conflito (Ignorar se orderType existir)
 }
 
 interface OrderContextType {
   state: OrderState;
   dispatch: (action: any) => void;
-  // Assinatura atualizada para aceitar objeto ou argumentos antigos (para compatibilidade)
   placeOrder: (paramsOrTableId: PlaceOrderParams | string, itemsIfOld?: any[]) => Promise<void>;
   processPosSale: (data: any) => Promise<void>;
   processPayment: (tableId: string | undefined, amount: number, method: string, cashierName?: string, orderId?: string) => Promise<void>;
@@ -145,20 +145,34 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           params = {
               tableId: paramsOrTableId,
               items: itemsIfOld || [],
-              type: 'DINE_IN'
+              orderType: 'DINE_IN'
           };
       } else {
           params = paramsOrTableId;
       }
 
-      const { tableId, items, type = 'DINE_IN', deliveryInfo } = params;
+      const { tableId, items, deliveryInfo } = params;
+      
+      // Lógica de fallback para determinar o tipo do pedido
+      // Se vier do dispatch, params.type será 'PLACE_ORDER', o que é incorreto para o banco.
+      // Devemos usar params.orderType se existir, senão 'DINE_IN'.
+      let finalOrderType = params.orderType;
+      
+      if (!finalOrderType) {
+          // Se não tem orderType explícito, verifica se 'type' é válido (não é a action do reducer)
+          if (params.type && params.type !== 'PLACE_ORDER') {
+              finalOrderType = params.type as OrderType;
+          } else {
+              finalOrderType = 'DINE_IN';
+          }
+      }
 
       const { data: order } = await supabase.from('orders').insert({ 
           tenant_id: tenantId, 
           table_id: tableId || null, 
           status: 'PENDING', 
           is_paid: false,
-          order_type: type,
+          order_type: finalOrderType,
           delivery_info: deliveryInfo || null,
           customer_name: deliveryInfo?.customerName || (tableId ? undefined : 'Balcão')
       }).select().single();

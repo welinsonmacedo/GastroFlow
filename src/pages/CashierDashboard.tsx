@@ -117,8 +117,6 @@ export const CashierDashboard: React.FC = () => {
       setProcessingSale(true);
       try {
           const itemsPayload = deliveryCart.map(cartItem => {
-              // Constrói payload plano para enviar ao context
-              // (Simplificação: Tratando adicionais como itens separados com nota, similar ao waiter)
               return [
                   { 
                       inventoryItemId: cartItem.item.id, 
@@ -141,7 +139,7 @@ export const CashierDashboard: React.FC = () => {
 
           await orderDispatch({ 
               type: 'PLACE_ORDER', 
-              orderType: 'DELIVERY', 
+              orderType: 'DELIVERY', // IMPORTANT: This triggers the OrderType logic in OrderContext
               items: itemsPayload, 
               deliveryInfo: deliveryForm 
           });
@@ -157,7 +155,6 @@ export const CashierDashboard: React.FC = () => {
   };
 
   const handleDispatchDelivery = async (orderId: string) => {
-      // Abre modal de pagamento para finalizar
       const order = activeDeliveryOrders.find(o => o.id === orderId);
       if (!order) return;
       
@@ -167,13 +164,10 @@ export const CashierDashboard: React.FC = () => {
           title: "Despachar e Finalizar?",
           message: `Confirma que o pedido saiu para entrega e o pagamento foi/será recebido? Total: R$ ${total.toFixed(2)}`,
           onConfirm: async () => {
-              // Assume pagamento na entrega (Dinheiro ou Maquininha) ou Online. 
-              // Simplificação: Marca como pago 'CASH' ou 'CARD' genérico se não especificado.
-              // Idealmente abriria um modal de pagamento. Vamos assumir dinheiro/outros por enquanto.
               await orderDispatch({ 
                   type: 'PROCESS_PAYMENT', 
                   amount: total, 
-                  method: 'CASH', // Default, poderia ser melhorado
+                  method: 'CASH', // Default, assumindo dinheiro/externo
                   orderId: order.id,
                   cashierName: 'Delivery'
               });
@@ -182,7 +176,7 @@ export const CashierDashboard: React.FC = () => {
       });
   };
 
-  // --- Lógica de Pagamento PDV/Mesa --- (Mantida)
+  // --- Lógica de Pagamento PDV/Mesa ---
   const handlePayment = async (method: string) => {
       if (!selectedTableId || totalAmount <= 0) return;
       
@@ -256,7 +250,7 @@ export const CashierDashboard: React.FC = () => {
   };
 
   if (!finState.activeCashSession) {
-      return ( /* Tela de Abertura de Caixa (Mantida igual ao anterior, omitida para brevidade se não mudou) */ 
+      return (
           <div className="h-full flex items-center justify-center bg-slate-950 p-4">
               <div className="bg-white p-10 rounded-[3rem] shadow-2xl text-center max-w-md w-full border border-white/10 relative">
                   <button onClick={handleLogout} className="absolute top-6 right-6 text-gray-400 hover:text-red-500 transition-colors"><LogOut size={24} /></button>
@@ -679,17 +673,14 @@ export const CashierDashboard: React.FC = () => {
               </div>
           </Modal>
 
-          {/* NOVO MODAL: Adicionar Item com Adicionais (Reutilizado para PDV e Delivery) */}
           <Modal isOpen={itemModalOpen} onClose={() => setItemModalOpen(false)} title={selectedItemForCart?.name || "Adicionar Item"} variant="dialog" maxWidth="sm">
               <div className="space-y-6">
-                  {/* Quantidade */}
                   <div className="flex items-center justify-between bg-gray-50 p-3 rounded-2xl">
                       <button onClick={() => setItemQty(Math.max(1, itemQty - 1))} className="p-3 bg-white shadow-sm rounded-xl hover:bg-red-50 text-red-500 transition-colors"><Minus size={20}/></button>
                       <span className="text-3xl font-black text-slate-800">{itemQty}</span>
                       <button onClick={() => setItemQty(itemQty + 1)} className="p-3 bg-white shadow-sm rounded-xl hover:bg-blue-50 text-blue-500 transition-colors"><Plus size={20}/></button>
                   </div>
 
-                  {/* Lista de Adicionais */}
                   <div className="space-y-2">
                       <label className="text-xs font-black text-gray-400 uppercase tracking-widest px-1">Adicionais Disponíveis</label>
                       <div className="max-h-48 overflow-y-auto space-y-2 custom-scrollbar pr-1">
@@ -717,7 +708,6 @@ export const CashierDashboard: React.FC = () => {
                       </div>
                   </div>
 
-                  {/* Observações */}
                   <div className="space-y-1">
                       <label className="text-xs font-black text-gray-400 uppercase tracking-widest px-1">Observações</label>
                       <textarea 
@@ -729,7 +719,6 @@ export const CashierDashboard: React.FC = () => {
                       />
                   </div>
 
-                  {/* Total Estimado no Modal */}
                   <div className="pt-4 border-t flex justify-between items-center">
                       <div className="text-xs font-bold text-gray-500 uppercase">Subtotal</div>
                       <div className="text-2xl font-black text-blue-600">
