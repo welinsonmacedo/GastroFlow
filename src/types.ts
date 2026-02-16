@@ -30,15 +30,33 @@ export enum OrderStatus {
 
 export type OrderType = 'DINE_IN' | 'DELIVERY' | 'PDV';
 
-export type DeliveryPlatform = 'PHONE' | 'WHATSAPP' | 'IFOOD' | 'UBER_EATS' | 'RAPPI' | 'OTHER';
+export type DeliveryPlatform = 'PHONE' | 'WHATSAPP' | 'IFOOD' | 'UBER_EATS' | 'RAPPI' | 'OTHER' | 'OWN_FLEET';
+
+export interface DeliveryMethodConfig {
+    id: string;
+    name: string; // ex: "Motoboy Próprio", "iFood"
+    type: 'OWN' | 'APP' | 'PICKUP';
+    feeType: 'FIXED' | 'PERCENTAGE';
+    feeValue: number;
+    feeBehavior: 'ADD_TO_TOTAL' | 'DEDUCT_FROM_NET' | 'NONE'; 
+    // ADD_TO_TOTAL: Taxa de Entrega cobrada do cliente.
+    // DEDUCT_FROM_NET: Taxa de comissão do App (não aparece pro cliente, mas desconta no financeiro).
+    // NONE: Sem taxa (ex: Retirada).
+    estimatedTimeMin?: number;
+    estimatedTimeMax?: number;
+    isActive: boolean;
+}
 
 export interface DeliveryInfo {
     customerName: string;
     phone: string;
     address: string;
-    platform: DeliveryPlatform;
-    deliveryFee?: number;
-    changeFor?: number; 
+    methodId: string; // ID do DeliveryMethodConfig
+    platform: string; // Nome legado ou display name
+    deliveryFee: number; // Valor cobrado do cliente
+    changeFor?: number; // Troco para X
+    paymentMethod?: 'CASH' | 'CARD_MACHINE' | 'ONLINE'; // Máquina, Dinheiro ou Pago no App
+    paymentStatus?: 'PENDING' | 'PAID';
 }
 
 export type PlanType = 'FREE' | 'PRO' | 'ENTERPRISE';
@@ -89,6 +107,7 @@ export interface RestaurantBusinessInfo {
     website?: string;
     orderGracePeriodMinutes?: number;
     adminPin?: string;
+    deliverySettings?: DeliveryMethodConfig[]; // Novas configurações
 }
 
 export interface RestaurantTenant {

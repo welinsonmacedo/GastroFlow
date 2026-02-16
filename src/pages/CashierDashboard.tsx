@@ -1,14 +1,14 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRestaurant } from '../context/RestaurantContext';
 import { useInventory } from '../context/InventoryContext'; 
 import { useOrder } from '../context/OrderContext';
 import { useFinance } from '../context/FinanceContext';
 import { useUI } from '../context/UIContext';
 import { useAuth } from '../context/AuthProvider';
-import { TableStatus, InventoryItem, DeliveryInfo, DeliveryPlatform, OrderStatus } from '../types'; 
+import { TableStatus, InventoryItem, DeliveryInfo, DeliveryPlatform, OrderStatus, DeliveryMethodConfig } from '../types'; 
 import { Button } from '../components/Button';
-import { DollarSign, History, ShoppingCart, Search, Wallet, Receipt, Trash2, User, Lock, XCircle, RefreshCcw, LayoutDashboard, CreditCard, Banknote, Zap, Plus, Clock, Eye, Package, Minus, CheckSquare, Square, AlertTriangle, LogOut, LayoutGrid, Bike, Phone, MessageCircle, MapPin, ClipboardList, CheckCircle, Loader2 } from 'lucide-react';
+import { DollarSign, History, ShoppingCart, Search, Wallet, Receipt, Trash2, User, Lock, XCircle, RefreshCcw, LayoutDashboard, CreditCard, Banknote, Zap, Plus, Clock, Eye, Package, Minus, CheckSquare, Square, AlertTriangle, LogOut, LayoutGrid, Bike, Phone, MessageCircle, MapPin, ClipboardList, CheckCircle, Loader2, Printer } from 'lucide-react';
 import { CloseRegisterModal } from '../components/modals/CloseRegisterModal';
 import { CashBleedModal } from '../components/modals/CashBleedModal';
 import { Modal } from '../components/Modal';
@@ -54,8 +54,12 @@ export const CashierDashboard: React.FC = () => {
 
   // DELIVERY States
   const [deliveryCart, setDeliveryCart] = useState<{ item: InventoryItem; quantity: number; notes: string; extras: InventoryItem[] }[]>([]);
-  const [deliveryForm, setDeliveryForm] = useState<DeliveryInfo>({ customerName: '', phone: '', address: '', platform: 'PHONE', changeFor: 0 });
+  const [deliveryForm, setDeliveryForm] = useState<DeliveryInfo>({ 
+      customerName: '', phone: '', address: '', platform: 'PHONE', methodId: '', deliveryFee: 0, changeFor: 0, paymentMethod: 'CASH', paymentStatus: 'PENDING' 
+  });
   const [deliverySearch, setDeliverySearch] = useState('');
+  
+  const deliveryMethods = restState.businessInfo?.deliverySettings?.filter(m => m.isActive) || [];
 
   const occupiedTables = orderState.tables.filter(t => t.status !== TableStatus.AVAILABLE);
   const selectedTable = orderState.tables.find(t => t.id === selectedTableId);
@@ -134,9 +138,35 @@ export const CashierDashboard: React.FC = () => {
   };
 
   // --- Lógica de Delivery ---
+  
+  const calculateDeliveryTotal = () => {
+      const subtotal = deliveryCart.reduce((acc, i) => acc + ((i.item.salePrice + i.extras.reduce((s,e)=>s+e.salePrice,0)) * i.quantity), 0);
+      return subtotal + (deliveryForm.deliveryFee || 0);
+  };
+
+  const selectDeliveryMethod = (method: DeliveryMethodConfig) => {
+      // Calcula taxa baseada na config
+      let fee = 0;
+      if (method.feeBehavior === 'ADD_TO_TOTAL') {
+          if (method.feeType === 'FIXED') fee = method.feeValue;
+          // Se for porcentagem, calcula sobre o subtotal (precisa recalcular se o carrinho mudar)
+          // Para simplificar aqui, assumimos fixo ou calculo no momento da seleção.
+          // Idealmente, usar useEffect para recalcular se o carrinho mudar.
+      }
+      
+      // Update form
+      setDeliveryForm(prev => ({
+          ...prev,
+          methodId: method.id,
+          platform: method.name,
+          deliveryFee: fee
+      }));
+  };
+
   const handleDeliverySubmit = async () => {
       if (deliveryCart.length === 0) return showAlert({ title: "Carrinho Vazio", message: "Adicione itens ao pedido.", type: 'WARNING' });
       if (!deliveryForm.customerName) return showAlert({ title: "Dados Incompletos", message: "Informe o nome do cliente.", type: 'WARNING' });
+      if (!deliveryForm.methodId) return showAlert({ title: "Método de Entrega", message: "Selecione como será a entrega.", type: 'WARNING' });
 
       setProcessingSale(true);
       try {
@@ -168,8 +198,13 @@ export const CashierDashboard: React.FC = () => {
               deliveryInfo: deliveryForm 
           });
 
+          // Se estiver marcado como PAGO, processa o pagamento automaticamente?
+          // Regra de negócio: Normalmente delivery PAGO ONLINE já entra como pago.
+          // Se for "Pagar na Entrega", o pagamento só é processado no retorno do motoboy.
+          // Aqui vamos manter como está (cria pedido), o pagamento é processado no despacho ou retorno.
+
           setDeliveryCart([]);
-          setDeliveryForm({ customerName: '', phone: '', address: '', platform: 'PHONE', changeFor: 0 });
+          setDeliveryForm({ customerName: '', phone: '', address: '', platform: 'PHONE', methodId: '', deliveryFee: 0, changeFor: 0, paymentMethod: 'CASH', paymentStatus: 'PENDING' });
           showAlert({ title: "Sucesso", message: "Pedido enviado para a cozinha!", type: 'SUCCESS' });
       } catch (error) {
           showAlert({ title: "Erro", message: "Falha ao criar pedido delivery.", type: 'ERROR' });
@@ -181,7 +216,7 @@ export const CashierDashboard: React.FC = () => {
   const handleDispatchDelivery = async (orderId: string) => {
       const order = activeDeliveryOrders.find(o => o.id === orderId);
       if (!order) return;
-      const total = order.items.reduce((acc, i) => acc + (i.productPrice * i.quantity), 0);
+      const total = order.items.reduce((acc, i) => acc + (i.productPrice * i.quantity), 0) + (order.deliveryInfo?.deliveryFee || 0);
       
       showConfirm({
           title: "Despachar e Finalizar?",
@@ -190,12 +225,88 @@ export const CashierDashboard: React.FC = () => {
               await orderDispatch({ 
                   type: 'PROCESS_PAYMENT', 
                   amount: total, 
-                  method: 'CASH', // Default, assumindo dinheiro
+                  method: 'CASH', // Assumindo dinheiro se não especificado, idealmente viria do deliveryInfo
                   orderId: order.id,
                   cashierName: 'Delivery'
               });
               showAlert({ title: "Despachado", message: "Pedido finalizado e arquivado.", type: 'SUCCESS' });
           }
+      });
+  };
+
+  const printDeliveryTicket = (orderData: { customer: DeliveryInfo, items: any[], subtotal: number, total: number }) => {
+      const { customer, items, subtotal, total } = orderData;
+      const date = new Date().toLocaleString();
+      
+      const printContent = `
+        <html>
+        <head>
+            <style>
+                body { font-family: 'Courier New', monospace; width: 80mm; margin: 0; padding: 5px; font-size: 12px; color: #000; }
+                .header { text-align: center; border-bottom: 1px dashed #000; padding-bottom: 5px; margin-bottom: 5px; }
+                .title { font-size: 16px; font-weight: bold; }
+                .info { margin-bottom: 5px; }
+                .items-table { width: 100%; border-collapse: collapse; margin-bottom: 5px; }
+                .items-table th { text-align: left; border-bottom: 1px solid #000; }
+                .items-table td { padding: 2px 0; }
+                .totals { text-align: right; border-top: 1px dashed #000; padding-top: 5px; }
+                .total-line { font-size: 14px; font-weight: bold; }
+                .payment-info { border: 1px solid #000; padding: 5px; margin-top: 5px; text-align: center; font-weight: bold; }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <div class="title">${restState.theme.restaurantName}</div>
+                <div>DELIVERY / ENTREGA</div>
+                <div>${date}</div>
+            </div>
+            <div class="info">
+                <strong>Cliente:</strong> ${customer.customerName}<br/>
+                <strong>Tel:</strong> ${customer.phone}<br/>
+                <strong>Endereço:</strong> ${customer.address || 'Retirada'}<br/>
+                <strong>Plataforma:</strong> ${customer.platform}
+            </div>
+            <table class="items-table">
+                <thead><tr><th>Qtd</th><th>Item</th><th>Vl.Total</th></tr></thead>
+                <tbody>
+                    ${items.map(i => `
+                        <tr>
+                            <td>${i.quantity}x</td>
+                            <td>${i.item.name} ${i.extras.length > 0 ? '(+Adic)' : ''}</td>
+                            <td style="text-align:right">R$ ${( (i.item.salePrice + i.extras.reduce((s:any,e:any)=>s+e.salePrice,0)) * i.quantity ).toFixed(2)}</td>
+                        </tr>
+                        ${i.notes ? `<tr><td colspan="3" style="font-size:10px; font-style:italic">Obs: ${i.notes}</td></tr>` : ''}
+                    `).join('')}
+                </tbody>
+            </table>
+            <div class="totals">
+                <div>Subtotal: R$ ${subtotal.toFixed(2)}</div>
+                <div>Taxa Entrega: R$ ${(customer.deliveryFee || 0).toFixed(2)}</div>
+                <div class="total-line">TOTAL: R$ ${total.toFixed(2)}</div>
+            </div>
+            <div class="payment-info">
+                Forma Pagto: ${customer.paymentMethod === 'CASH' ? 'DINHEIRO' : (customer.paymentMethod === 'ONLINE' ? 'PAGO ONLINE' : 'CARTÃO NA ENTREGA')}<br/>
+                ${customer.paymentMethod === 'CASH' && customer.changeFor ? `Troco p/ R$ ${customer.changeFor.toFixed(2)} -> R$ ${(customer.changeFor - total).toFixed(2)}` : ''}
+                ${customer.paymentStatus === 'PAID' ? '(JÁ PAGO)' : '(COBRAR NA ENTREGA)'}
+            </div>
+            <script>window.print(); window.close();</script>
+        </body>
+        </html>
+      `;
+      const win = window.open('', '', 'width=400,height=600');
+      if(win) {
+          win.document.write(printContent);
+          win.document.close();
+      }
+  };
+
+  const handlePrintCurrentDelivery = () => {
+      const subtotal = deliveryCart.reduce((acc, i) => acc + ((i.item.salePrice + i.extras.reduce((s,e)=>s+e.salePrice,0)) * i.quantity), 0);
+      printDeliveryTicket({
+          customer: deliveryForm,
+          items: deliveryCart,
+          subtotal,
+          total: subtotal + (deliveryForm.deliveryFee || 0)
       });
   };
 
@@ -348,7 +459,7 @@ export const CashierDashboard: React.FC = () => {
                       <div className="flex flex-col lg:flex-row gap-6 h-full overflow-hidden">
                           {/* Coluna Esquerda: Novo Pedido */}
                           <div className="lg:w-1/2 flex flex-col gap-4 h-full overflow-hidden animate-fade-in">
-                              <div className="bg-white p-5 rounded-[2rem] shadow-sm border border-gray-100 shrink-0">
+                              <div className="bg-white p-5 rounded-[2rem] shadow-sm border border-gray-100 shrink-0 overflow-y-auto custom-scrollbar">
                                   <h3 className="font-black text-slate-800 uppercase tracking-tight mb-4 flex items-center gap-2"><Bike size={20} className="text-orange-500"/> Novo Delivery</h3>
                                   <div className="space-y-3">
                                       <div className="grid grid-cols-2 gap-3">
@@ -356,10 +467,51 @@ export const CashierDashboard: React.FC = () => {
                                           <input className="border p-2.5 rounded-xl bg-gray-50 text-sm" placeholder="Telefone / WhatsApp" value={deliveryForm.phone} onChange={e => setDeliveryForm({...deliveryForm, phone: e.target.value})} />
                                       </div>
                                       <input className="w-full border p-2.5 rounded-xl bg-gray-50 text-sm" placeholder="Endereço Completo (Rua, Número, Bairro)" value={deliveryForm.address} onChange={e => setDeliveryForm({...deliveryForm, address: e.target.value})} />
-                                      <div className="flex gap-2 overflow-x-auto pb-1">
-                                          {['PHONE', 'WHATSAPP', 'IFOOD', 'UBER_EATS'].map(p => (
-                                              <button key={p} onClick={() => setDeliveryForm({...deliveryForm, platform: p as DeliveryPlatform})} className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors ${deliveryForm.platform === p ? 'bg-orange-500 text-white border-orange-500' : 'bg-white text-gray-500 border-gray-200'}`}>{p}</button>
-                                          ))}
+                                      
+                                      {/* Métodos de Entrega Dinâmicos */}
+                                      <div>
+                                          <label className="text-[10px] font-bold text-gray-400 uppercase">Método de Entrega</label>
+                                          <div className="flex gap-2 overflow-x-auto pb-1 mt-1">
+                                              {deliveryMethods.map(m => (
+                                                  <button 
+                                                    key={m.id} 
+                                                    onClick={() => selectDeliveryMethod(m)} 
+                                                    className={`px-3 py-2 rounded-xl text-xs font-bold border transition-all flex items-center gap-2 whitespace-nowrap ${deliveryForm.methodId === m.id ? 'bg-orange-500 text-white border-orange-500 shadow-md' : 'bg-white text-gray-500 border-gray-200'}`}
+                                                  >
+                                                      {m.name}
+                                                  </button>
+                                              ))}
+                                              {deliveryMethods.length === 0 && <span className="text-xs text-red-400 italic">Configure métodos em Admin.</span>}
+                                          </div>
+                                      </div>
+
+                                      {/* Taxas e Pagamento */}
+                                      <div className="grid grid-cols-2 gap-3 bg-gray-50 p-3 rounded-xl border border-gray-100">
+                                          <div>
+                                              <label className="text-[10px] font-bold text-gray-400 uppercase">Taxa de Entrega</label>
+                                              <input type="number" className="w-full border p-2 rounded-lg text-sm" value={deliveryForm.deliveryFee} onChange={e => setDeliveryForm({...deliveryForm, deliveryFee: parseFloat(e.target.value)})} />
+                                          </div>
+                                          <div>
+                                              <label className="text-[10px] font-bold text-gray-400 uppercase">Forma Pagto</label>
+                                              <select className="w-full border p-2 rounded-lg text-sm bg-white" value={deliveryForm.paymentMethod} onChange={e => setDeliveryForm({...deliveryForm, paymentMethod: e.target.value as any})}>
+                                                  <option value="CASH">Dinheiro</option>
+                                                  <option value="CARD_MACHINE">Maquininha</option>
+                                                  <option value="ONLINE">Pago Online / App</option>
+                                              </select>
+                                          </div>
+                                          <div>
+                                              <label className="text-[10px] font-bold text-gray-400 uppercase">Status Pagto</label>
+                                              <select className="w-full border p-2 rounded-lg text-sm bg-white" value={deliveryForm.paymentStatus} onChange={e => setDeliveryForm({...deliveryForm, paymentStatus: e.target.value as any})}>
+                                                  <option value="PENDING">Cobrar na Entrega</option>
+                                                  <option value="PAID">Já Pago</option>
+                                              </select>
+                                          </div>
+                                          {deliveryForm.paymentMethod === 'CASH' && (
+                                              <div>
+                                                  <label className="text-[10px] font-bold text-gray-400 uppercase">Troco Para</label>
+                                                  <input type="number" className="w-full border p-2 rounded-lg text-sm" placeholder="R$ 0,00" value={deliveryForm.changeFor || ''} onChange={e => setDeliveryForm({...deliveryForm, changeFor: parseFloat(e.target.value)})} />
+                                              </div>
+                                          )}
                                       </div>
                                   </div>
                               </div>
@@ -390,11 +542,14 @@ export const CashierDashboard: React.FC = () => {
                                   <div className="p-4 bg-slate-50 border-t">
                                       <div className="flex justify-between items-center mb-3">
                                           <span className="text-xs font-bold text-gray-500 uppercase">{deliveryCart.length} Itens</span>
-                                          <span className="text-xl font-black text-slate-800">R$ {deliveryCart.reduce((acc, i) => acc + ((i.item.salePrice + i.extras.reduce((s,e)=>s+e.salePrice,0)) * i.quantity), 0).toFixed(2)}</span>
+                                          <span className="text-xl font-black text-slate-800">R$ {calculateDeliveryTotal().toFixed(2)}</span>
                                       </div>
-                                      <Button onClick={handleDeliverySubmit} disabled={processingSale} className="w-full bg-orange-600 hover:bg-orange-500 text-white shadow-orange-200">
-                                          {processingSale ? 'Enviando...' : 'Enviar para Cozinha'}
-                                      </Button>
+                                      <div className="flex gap-2">
+                                          <Button variant="secondary" onClick={handlePrintCurrentDelivery} disabled={deliveryCart.length === 0} className="w-14 bg-white border border-gray-200" title="Imprimir Conferência"><Printer size={18}/></Button>
+                                          <Button onClick={handleDeliverySubmit} disabled={processingSale} className="flex-1 bg-orange-600 hover:bg-orange-500 text-white shadow-orange-200">
+                                              {processingSale ? 'Enviando...' : 'Enviar para Cozinha'}
+                                          </Button>
+                                      </div>
                                   </div>
                               </div>
                           </div>
