@@ -373,7 +373,12 @@ export const CashierDashboard: React.FC = () => {
                                       </div>
                                   </div>
                                   <div className="flex-1 overflow-y-auto p-3 grid grid-cols-2 gap-3 content-start custom-scrollbar">
-                                      {invState.inventory.filter(i => !i.isExtra && i.name.toLowerCase().includes(deliverySearch.toLowerCase())).map(item => (
+                                      {/* FILTRO: Não mostrar INGREDIENT e nem Extras soltos */}
+                                      {invState.inventory.filter(i => 
+                                          !i.isExtra && 
+                                          i.type !== 'INGREDIENT' && 
+                                          i.name.toLowerCase().includes(deliverySearch.toLowerCase())
+                                      ).map(item => (
                                           <button key={item.id} onClick={() => openItemModal(item)} className="bg-gray-50 p-3 rounded-xl border border-transparent hover:border-blue-300 hover:shadow-md transition-all text-left">
                                               <div className="font-bold text-slate-800 text-xs truncate">{item.name}</div>
                                               <div className="text-blue-600 font-black text-sm mt-1">R$ {item.salePrice.toFixed(2)}</div>
