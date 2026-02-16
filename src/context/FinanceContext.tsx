@@ -100,19 +100,35 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const openRegister = async (initialAmount: number, operatorName: string) => {
       if(!tenantId) throw new Error("Restaurante não identificado");
       
-      const { error } = await supabase.from('cash_sessions').insert({ 
+      // Usa .select().single() para garantir que pegamos o objeto criado
+      const { data, error } = await supabase.from('cash_sessions').insert({ 
           tenant_id: tenantId, 
           initial_amount: initialAmount, 
           status: 'OPEN', 
           operator_name: operatorName 
-      });
+      }).select().single();
 
       if (error) {
           console.error("Erro ao abrir caixa:", error);
-          throw new Error(error.message); // Propaga erro para a UI
+          throw new Error(error.message);
       }
       
-      await fetchData();
+      // Atualização Otimista/Imediata do Estado
+      if (data) {
+          setState(prev => ({
+              ...prev,
+              activeCashSession: {
+                  id: data.id,
+                  openedAt: new Date(data.opened_at),
+                  initialAmount: data.initial_amount,
+                  status: 'OPEN',
+                  operatorName: data.operator_name
+              }
+          }));
+      } else {
+          // Fallback se não vier dados (raro com .select())
+          await fetchData();
+      }
   };
 
   const closeRegister = async (finalAmount: number) => {
@@ -128,6 +144,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
           throw new Error(error.message);
       }
       
+      setState(prev => ({ ...prev, activeCashSession: null }));
       await fetchData();
   };
 
