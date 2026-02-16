@@ -14,7 +14,6 @@ export const AdminTables: React.FC = () => {
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const getTableUrl = (tableId: string) => {
-      // Garante que o slug esteja presente para não quebrar o link
       const slug = state.tenantSlug || ''; 
       return `${window.location.origin}/client/table/${tableId}?restaurant=${slug}`;
   };
