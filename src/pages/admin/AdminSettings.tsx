@@ -72,7 +72,8 @@ export const AdminSettings: React.FC = () => {
       setIsDeliveryModalOpen(true);
   };
 
-  const handleSaveDeliveryMethod = () => {
+  // Alteração: Salva diretamente no banco ao confirmar o modal
+  const handleSaveDeliveryMethod = async () => {
       if (!methodForm.name) return showAlert({title: "Nome Obrigatório", message: "Informe um nome para o método.", type: "WARNING"});
       
       let updatedSettings = [...(businessForm.deliverySettings || [])];
@@ -83,17 +84,29 @@ export const AdminSettings: React.FC = () => {
           updatedSettings.push(methodForm);
       }
 
-      setBusinessForm(prev => ({ ...prev, deliverySettings: updatedSettings }));
+      // Atualiza estado local
+      const newInfo = { ...businessForm, deliverySettings: updatedSettings };
+      setBusinessForm(newInfo);
+      
+      // Salva no banco imediatamente
+      await dispatch({ type: 'UPDATE_BUSINESS_INFO', info: newInfo });
+      
       setIsDeliveryModalOpen(false);
+      showAlert({ title: "Salvo", message: "Método de entrega atualizado e disponível no caixa.", type: 'SUCCESS' });
   };
 
+  // Alteração: Salva diretamente no banco ao excluir
   const handleDeleteDeliveryMethod = (id: string) => {
       showConfirm({
           title: "Excluir Método",
           message: "Tem certeza? Isso impedirá novos pedidos com este método.",
-          onConfirm: () => {
+          onConfirm: async () => {
               const updated = (businessForm.deliverySettings || []).filter(m => m.id !== id);
-              setBusinessForm(prev => ({ ...prev, deliverySettings: updated }));
+              const newInfo = { ...businessForm, deliverySettings: updated };
+              
+              setBusinessForm(newInfo);
+              await dispatch({ type: 'UPDATE_BUSINESS_INFO', info: newInfo });
+              showAlert({ title: "Excluído", message: "Método removido.", type: 'SUCCESS' });
           }
       });
   };
