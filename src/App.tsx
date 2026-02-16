@@ -1,5 +1,5 @@
 
-import React, { PropsWithChildren } from 'react';
+import React, { PropsWithChildren, useState } from 'react';
 // @ts-ignore
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthProvider'; 
@@ -10,14 +10,14 @@ import { MenuProvider } from './context/MenuContext';
 import { OrderProvider } from './context/OrderContext'; 
 import { StaffProvider } from './context/StaffContext'; 
 import { SaaSProvider, useSaaS } from './context/SaaSContext';
-import { UIProvider, useUI } from './context/UIContext';
+import { UIProvider } from './context/UIContext';
 
 // Pages
 import { ClientApp } from './pages/ClientApp';
 import { WaiterApp } from './pages/WaiterApp';
 import { KitchenDisplay } from './pages/KitchenDisplay';
 import { CashierDashboard } from './pages/CashierDashboard';
-import { AdminDashboard } from './pages/AdminDashboard'; // O Shell do Admin
+import { AdminDashboard } from './pages/AdminDashboard'; // O Shell do Admin que contém sub-rotas
 import { SuperAdminDashboard } from './pages/SuperAdminDashboard';
 import { LandingPage } from './pages/LandingPage';
 import { Login } from './pages/Login';
@@ -43,7 +43,7 @@ const ProtectedRestaurantRoute = ({ children, allowedRoles, requiredRoute, requi
     const { state: authState, checkPermission } = useAuth();
     const { state: restState } = useRestaurant();
     
-    if (authState.isLoading || restState.isLoading) return <div className="p-10 text-center">Carregando...</div>;
+    if (authState.isLoading || restState.isLoading) return <div className="h-screen flex items-center justify-center font-bold text-gray-500">Carregando...</div>;
 
     if (!authState.isAuthenticated || !authState.currentUser) {
         return <Navigate to={`/login${window.location.search}`} replace />;
@@ -51,12 +51,24 @@ const ProtectedRestaurantRoute = ({ children, allowedRoles, requiredRoute, requi
 
     if (requiredFeature && restState.planLimits) {
         if (!restState.planLimits[requiredFeature]) {
-            return <div className="p-10 text-center text-orange-500 font-bold">Funcionalidade Bloqueada pelo Plano</div>;
+            return (
+                <div className="h-screen flex flex-col items-center justify-center p-10 text-center">
+                    <Lock size={48} className="text-orange-500 mb-4" />
+                    <h2 className="text-xl font-bold text-gray-800">Funcionalidade Indisponível</h2>
+                    <p className="text-gray-500 mt-2">Seu plano atual não inclui acesso a este módulo.</p>
+                </div>
+            );
         }
     }
 
     if (allowedRoles && !checkPermission(allowedRoles)) {
-         return <div className="p-10 text-center text-red-500">Acesso Negado.</div>;
+         return (
+            <div className="h-screen flex flex-col items-center justify-center p-10 text-center">
+                <Lock size={48} className="text-red-500 mb-4" />
+                <h2 className="text-xl font-bold text-gray-800">Acesso Negado</h2>
+                <p className="text-gray-500 mt-2">Você não tem permissão para acessar esta área.</p>
+            </div>
+         );
     }
     return <>{children}</>;
 };
@@ -79,12 +91,13 @@ const TenantApp = () => {
             <div className="h-screen flex flex-col items-center justify-center bg-gray-50 p-6 text-center">
                 <div className="bg-red-100 p-6 rounded-full mb-6 text-red-600 shadow-xl border border-red-200"><Lock size={64} /></div>
                 <h1 className="text-3xl font-bold text-gray-800 mb-2">Acesso Temporariamente Suspenso</h1>
+                <p className="text-gray-500">Entre em contato com o suporte para regularizar.</p>
             </div>
         );
     }
 
     if (!state.isValidTenant) {
-        return <div className="h-screen flex items-center justify-center">Restaurante não encontrado.</div>;
+        return <div className="h-screen flex items-center justify-center text-gray-500">Restaurante não encontrado. Verifique o link.</div>;
     }
 
     return (
@@ -104,7 +117,7 @@ const TenantApp = () => {
                         <Route path="/kitchen" element={<ProtectedRestaurantRoute allowedRoles={[Role.KITCHEN, Role.ADMIN]} requiredRoute="/kitchen" requiredFeature="allowKds"><KitchenDisplay /></ProtectedRestaurantRoute>} />
                         <Route path="/cashier" element={<ProtectedRestaurantRoute allowedRoles={[Role.CASHIER, Role.ADMIN]} requiredRoute="/cashier" requiredFeature="allowCashier"><CashierDashboard /></ProtectedRestaurantRoute>} />
                         
-                        {/* Painel Administrativo (Contém sub-rotas internas) */}
+                        {/* Painel Administrativo (Contém sub-rotas internas como /products, /inventory, etc.) */}
                         <Route path="/admin/*" element={<ProtectedRestaurantRoute allowedRoles={[Role.ADMIN]} requiredRoute="/admin"><AdminDashboard /></ProtectedRestaurantRoute>} />
                         
                         <Route path="*" element={<Navigate to={`/login${window.location.search}`} replace />} />

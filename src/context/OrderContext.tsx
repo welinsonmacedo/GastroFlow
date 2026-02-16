@@ -28,7 +28,7 @@ const orderReducer = (state: OrderState, action: OrderAction): OrderState => {
     }
 };
 
-// Interface flexível para criação de pedidos
+// Nova interface flexível para suportar todos os cenários (Mesa, Delivery, Balcão)
 interface PlaceOrderParams {
     tableId?: string; 
     items: { 
@@ -40,15 +40,15 @@ interface PlaceOrderParams {
         name?: string; 
         type?: string 
     }[];
-    orderType?: OrderType; // Usar orderType explicitamente para evitar conflito com action.type
+    orderType?: OrderType; 
     deliveryInfo?: DeliveryInfo;
-    type?: string; // Legado/Conflito (Ignorar se orderType existir)
 }
 
 interface OrderContextType {
   state: OrderState;
   dispatch: (action: any) => void;
-  placeOrder: (paramsOrTableId: PlaceOrderParams | string, itemsIfOld?: any[]) => Promise<void>;
+  // Assinatura atualizada para aceitar objeto de parametros
+  placeOrder: (params: PlaceOrderParams) => Promise<void>;
   processPosSale: (data: any) => Promise<void>;
   processPayment: (tableId: string | undefined, amount: number, method: string, cashierName?: string, orderId?: string) => Promise<void>;
   updateItemStatus: (orderId: string, itemId: string, status: OrderStatus) => Promise<void>;
@@ -80,6 +80,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       try {
           const [tablesRes, ordersRes, callsRes] = await Promise.all([
               supabase.from('restaurant_tables').select('*').eq('tenant_id', tenantId).order('number'),
+              // Traz o order_type e delivery_info do banco
               supabase.from('orders').select(`*, items:order_items (*)`).eq('tenant_id', tenantId).gte('created_at', yesterday.toISOString()),
               supabase.from('service_calls').select('*').eq('tenant_id', tenantId).eq('status', 'PENDING'),
           ]);
@@ -93,6 +94,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                   timestamp: new Date(o.created_at), 
                   isPaid: o.is_paid, 
                   status: o.status,
+                  // Mapeamento crucial para o Dashboard funcionar
                   type: o.order_type || 'DINE_IN',
                   deliveryInfo: o.delivery_info,
                   items: (o.items || []).map((i: any) => ({ 
@@ -135,36 +137,15 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // --- ACTIONS ---
 
-  const placeOrder = async (paramsOrTableId: PlaceOrderParams | string, itemsIfOld?: any[]) => {
+  const placeOrder = async (params: PlaceOrderParams) => {
       if(!tenantId) return;
       
-      let params: PlaceOrderParams;
-
-      // Compatibilidade com chamadas antigas placeOrder(tableId, items)
-      if (typeof paramsOrTableId === 'string') {
-          params = {
-              tableId: paramsOrTableId,
-              items: itemsIfOld || [],
-              orderType: 'DINE_IN'
-          };
-      } else {
-          params = paramsOrTableId;
-      }
-
       const { tableId, items, deliveryInfo } = params;
       
-      // Lógica de fallback para determinar o tipo do pedido
-      // Se vier do dispatch, params.type será 'PLACE_ORDER', o que é incorreto para o banco.
-      // Devemos usar params.orderType se existir, senão 'DINE_IN'.
+      // Lógica de fallback: Se tiver mesa, é DINE_IN, senão é o que vier (DELIVERY/PDV) ou PDV por padrão
       let finalOrderType = params.orderType;
-      
       if (!finalOrderType) {
-          // Se não tem orderType explícito, verifica se 'type' é válido (não é a action do reducer)
-          if (params.type && params.type !== 'PLACE_ORDER') {
-              finalOrderType = params.type as OrderType;
-          } else {
-              finalOrderType = 'DINE_IN';
-          }
+          finalOrderType = tableId ? 'DINE_IN' : 'PDV'; 
       }
 
       const { data: order } = await supabase.from('orders').insert({ 
@@ -178,8 +159,8 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }).select().single();
 
       if (order) {
-          const dbItems = items.map(i => {
-              // Se tiver productId, busca info do menu. Se não (Inventory Item ou Raw), usa os dados passados.
+          const dbItems = items.map((i: any) => {
+              // Tenta achar o produto no menu para pegar custo/preço atualizado
               let product = i.productId ? menuState.products.find(p => p.id === i.productId) : null;
               
               return {
@@ -230,6 +211,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (tableId) {
           await supabase.from('orders').update({ is_paid: true, status: 'DELIVERED' }).eq('table_id', tableId).eq('is_paid', false).neq('status', 'CANCELLED');
       } else if (orderId) {
+          // Para Delivery/PDV que não tem mesa
           await supabase.from('orders').update({ is_paid: true, status: 'DELIVERED' }).eq('id', orderId);
           await supabase.from('order_items').update({ status: 'DELIVERED' }).eq('order_id', orderId);
       }
@@ -253,7 +235,10 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const dispatch = async (action: any) => {
       switch (action.type) {
-          case 'PLACE_ORDER': await placeOrder(action); break;
+          case 'PLACE_ORDER': 
+              // A action agora é passada inteira, permitindo que deliveryInfo e orderType passem
+              await placeOrder(action); 
+              break;
           case 'CANCEL_ORDER': await cancelOrder(action.orderId); break;
           case 'PROCESS_POS_SALE': await processPosSale(action.sale); break;
           case 'PROCESS_PAYMENT': await processPayment(action.tableId, action.amount, action.method, action.cashierName, action.orderId); break;

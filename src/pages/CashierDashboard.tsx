@@ -87,11 +87,10 @@ export const CashierDashboard: React.FC = () => {
       try {
           const operator = authState.currentUser?.name || 'Operador';
           await openRegister(amount, operator);
-          // Sucesso - o componente irá renderizar a dashboard pois activeCashSession mudará
           setOpenRegisterAmount('');
       } catch (error: any) {
           console.error(error);
-          showAlert({ title: "Erro ao Abrir", message: error.message || "Não foi possível abrir o caixa.", type: 'ERROR' });
+          showAlert({ title: "Erro ao Abrir", message: error.message || "Falha ao abrir caixa. Verifique permissões.", type: 'ERROR' });
       } finally {
           setOpeningLoading(false);
       }
@@ -191,7 +190,7 @@ export const CashierDashboard: React.FC = () => {
               await orderDispatch({ 
                   type: 'PROCESS_PAYMENT', 
                   amount: total, 
-                  method: 'CASH', // Default
+                  method: 'CASH', // Default, assumindo dinheiro
                   orderId: order.id,
                   cashierName: 'Delivery'
               });
@@ -407,7 +406,6 @@ export const CashierDashboard: React.FC = () => {
                                   )}
                                   {activeDeliveryOrders.map(order => {
                                       const total = order.items.reduce((acc, i) => acc + (i.productPrice * i.quantity), 0);
-                                      // Verifica se todos os itens da cozinha estão prontos
                                       const kitchenItems = order.items.filter(i => i.productType === 'KITCHEN');
                                       const isReady = kitchenItems.length === 0 || kitchenItems.every(i => i.status === OrderStatus.READY);
 

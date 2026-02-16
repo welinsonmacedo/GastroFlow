@@ -98,7 +98,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   }, [tenantId, fetchData]);
 
   const openRegister = async (initialAmount: number, operatorName: string) => {
-      if(!tenantId) throw new Error("Restaurante não identificado (Tenant ID ausente)");
+      if(!tenantId) throw new Error("Restaurante não identificado");
       
       const { error } = await supabase.from('cash_sessions').insert({ 
           tenant_id: tenantId, 
@@ -109,7 +109,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
       if (error) {
           console.error("Erro ao abrir caixa:", error);
-          throw new Error(`Falha ao abrir caixa: ${error.message}`);
+          throw new Error(error.message); // Propaga erro para a UI
       }
       
       await fetchData();
@@ -125,7 +125,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       
       if(error) {
           console.error("Erro ao fechar caixa:", error);
-          throw new Error(`Falha ao fechar caixa: ${error.message}`);
+          throw new Error(error.message);
       }
       
       await fetchData();
