@@ -86,6 +86,14 @@ export const ClientApp: React.FC = () => {
     const graceMinutes = state.businessInfo?.orderGracePeriodMinutes || 0;
     const tableOrders = orderState.orders.filter(o => o.tableId === tableId && !o.isPaid && o.status !== 'CANCELLED');
 
+    // Helpers
+    const isDrinkProduct = (product: Product) => {
+        return product.category === 'Bebidas' || product.type === 'BAR' || product.category.toLowerCase().includes('bebida');
+    };
+
+    // Verifica se existe comida no carrinho (qualquer item que não seja bebida)
+    const hasFoodInCart = cart.some(item => !isDrinkProduct(item.product));
+
     useEffect(() => {
         if (selectedProduct) {
             setModalQuantity(1);
@@ -121,15 +129,13 @@ export const ClientApp: React.FC = () => {
         showAlert({ title: "Garçom Chamado", message: "Sua solicitação foi enviada. Logo alguém virá lhe atender.", type: 'SUCCESS' });
     };
 
-    const isDrinkProduct = (product: Product) => {
-        return product.category === 'Bebidas' || product.type === 'BAR' || product.category.toLowerCase().includes('bebida');
-    };
-
     const handleAddToCart = () => {
         if (!selectedProduct) return;
         
         let finalNote = modalNotes;
-        if (isDrinkProduct(selectedProduct)) {
+        
+        // Lógica específica para bebidas: Só pergunta timing se tiver comida no carrinho
+        if (isDrinkProduct(selectedProduct) && hasFoodInCart) {
             const timingText = drinkTiming === 'IMMEDIATE' ? '[IMEDIATA]' : '[COM COMIDA]';
             finalNote = timingText; 
         }
@@ -340,7 +346,7 @@ export const ClientApp: React.FC = () => {
                                     </div>
                                 )}
                                 
-                                {isDrinkProduct(selectedProduct) ? (
+                                {isDrinkProduct(selectedProduct) && hasFoodInCart ? (
                                     <div className="space-y-2">
                                         <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Quando Servir?</label>
                                         <div className="flex gap-3">
