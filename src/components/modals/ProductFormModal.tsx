@@ -7,7 +7,7 @@ import { useRestaurant } from '../../context/RestaurantContext';
 import { useInventory } from '../../context/InventoryContext';
 import { useUI } from '../../context/UIContext';
 import { Product, ProductType, InventoryItem } from '../../types';
-import { Archive, FileText, DollarSign, Package, Sparkles, Loader2 } from 'lucide-react';
+import { Archive, FileText, DollarSign, Sparkles, Loader2 } from 'lucide-react';
 import { generateProductDescription } from '../../services/geminiService';
 
 interface ProductFormModalProps {
