@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { useRestaurant } from '../context/RestaurantContext';
 import { useAuth } from '../context/AuthProvider';
 import { SystemModule } from '../types';
-import { ChefHat, Coffee, Truck, ShoppingBag, ArrowRight, LogOut, Grid, Briefcase, Settings } from 'lucide-react';
+import { ChefHat, Coffee, Truck, ShoppingBag, ArrowRight, LogOut, Grid, Briefcase, Settings, DollarSign } from 'lucide-react';
 import { Button } from '../components/Button';
 
 const ModuleCard = ({ 
@@ -48,7 +48,7 @@ export const ModuleSelector: React.FC = () => {
     const { logout, state: authState } = useAuth();
     const navigate = useNavigate();
 
-    const allowed = state.allowedModules || ['RESTAURANT', 'MANAGER', 'CONFIG'];
+    const allowed = state.allowedModules || ['RESTAURANT', 'MANAGER', 'CONFIG', 'FINANCE'];
     const tenantName = state.theme.restaurantName;
 
     const handleSelect = (module: SystemModule) => {
@@ -58,6 +58,8 @@ export const ModuleSelector: React.FC = () => {
             navigate('/waiter'); // Vai direto para operação (Garçom/Mesas)
         } else if (module === 'MANAGER') {
             navigate('/admin'); // Vai para o painel administrativo (Backoffice)
+        } else if (module === 'FINANCE') {
+            navigate('/finance'); // Novo painel financeiro
         } else if (module === 'CONFIG') {
             navigate('/settings'); // Vai para configurações
         } else {
@@ -115,10 +117,22 @@ export const ModuleSelector: React.FC = () => {
                         <ModuleCard 
                             type="MANAGER"
                             title="Gestor"
-                            desc="Backoffice. Financeiro, Estoque, Relatórios e BI."
+                            desc="Backoffice Operacional. Estoque, Cardápio e Mesas."
                             icon={Briefcase}
                             colorClass="text-purple-500"
                             onClick={() => handleSelect('MANAGER')}
+                        />
+                    )}
+
+                    {/* Módulo Financeiro (Novo) */}
+                    {(allowed.includes('FINANCE') || authState.currentUser?.role === 'ADMIN') && (
+                        <ModuleCard 
+                            type="FINANCE"
+                            title="Financeiro"
+                            desc="Fluxo de Caixa, DRE, Contas a Pagar e BI."
+                            icon={DollarSign}
+                            colorClass="text-emerald-500"
+                            onClick={() => handleSelect('FINANCE')}
                         />
                     )}
 
@@ -145,38 +159,6 @@ export const ModuleSelector: React.FC = () => {
                         />
                     )}
 
-                    {allowed.includes('SNACKBAR') && (
-                        <ModuleCard 
-                            type="SNACKBAR"
-                            title="Lanchonete"
-                            desc="Foco em velocidade. Balcão rápido e senhas."
-                            icon={Coffee}
-                            colorClass="text-orange-500"
-                            onClick={() => handleSelect('SNACKBAR')}
-                        />
-                    )}
-
-                    {allowed.includes('DISTRIBUTOR') && (
-                        <ModuleCard 
-                            type="DISTRIBUTOR"
-                            title="Distribuidora"
-                            desc="Gestão de rotas, volumes e estoque de bebidas."
-                            icon={Truck}
-                            colorClass="text-emerald-500"
-                            onClick={() => handleSelect('DISTRIBUTOR')}
-                        />
-                    )}
-
-                    {allowed.includes('COMMERCE') && (
-                        <ModuleCard 
-                            type="COMMERCE"
-                            title="Comércio"
-                            desc="Ponto de venda genérico para varejo."
-                            icon={ShoppingBag}
-                            colorClass="text-pink-600"
-                            onClick={() => handleSelect('COMMERCE')}
-                        />
-                    )}
                 </div>
             </main>
             

@@ -5,36 +5,36 @@ import { Routes, Route, Navigate, Link, useLocation, useNavigate } from 'react-r
 import { useRestaurant } from '../context/RestaurantContext';
 import { useAuth } from '../context/AuthProvider';
 import { 
-    LayoutDashboard, Utensils, Package, QrCode, 
+    DollarSign, TrendingUp, FileText, PieChart, Lightbulb,
     LogOut, Grid, ChefHat
 } from 'lucide-react';
 
-// Importando Sub-páginas
-import { AdminOverview } from './admin/AdminOverview';
-import { AdminProducts } from './admin/AdminProducts';
-import { AdminInventory } from './admin/AdminInventory';
-import { AdminTables } from './admin/AdminTables';
+// Importando Sub-páginas Financeiras
+import { AdminFinance } from './admin/AdminFinance';
+import { AdminAccounting } from './admin/AdminAccounting';
+import { AdminBusinessIntelligence } from './admin/AdminBusinessIntelligence'; 
+import { AdminReports } from './admin/AdminReports';
+import { AdminFinancialTips } from './admin/AdminFinancialTips';
 
-export const AdminDashboard: React.FC = () => {
+export const FinanceDashboard: React.FC = () => {
   const { state: restState } = useRestaurant();
   const { state: authState, logout } = useAuth();
   const { planLimits } = restState;
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Definição das Abas do Gestor (Focado em Operação e Estoque)
-  // Financeiro, DRE, BI e Relatórios foram movidos para o Módulo Financeiro
+  // Definição das Abas do Módulo Financeiro
   const tabs = [
-    { path: '/admin', label: 'Visão Geral', icon: LayoutDashboard, exact: true },
-    { path: '/admin/products', label: 'Cardápio', icon: Utensils },
-    { path: '/admin/tables', label: 'Mesas & QR', icon: QrCode, required: 'allowTableMgmt' },
-    { path: '/admin/inventory', label: 'Estoque', icon: Package, required: 'allowInventory' },
+    { path: '/finance', label: 'Caixa & Despesas', icon: DollarSign, exact: true },
+    { path: '/finance/dre', label: 'DRE Gerencial', icon: PieChart, required: 'allowReports' },
+    { path: '/finance/bi', label: 'Inteligência (BI)', icon: TrendingUp, required: 'allowReports' },
+    { path: '/finance/reports', label: 'Relatórios', icon: FileText, required: 'allowReports' },
+    { path: '/finance/tips', label: 'Dicas & Insights', icon: Lightbulb, required: 'allowReports' },
   ];
 
   // Filtra abas baseadas no plano
   const visibleTabs = tabs.filter(tab => {
-      if (tab.required === 'allowTableMgmt' && !planLimits.allowTableMgmt) return false;
-      if (tab.required === 'allowInventory' && !planLimits.allowInventory) return false;
+      if (tab.required === 'allowReports' && !planLimits.allowReports) return false;
       return true;
   });
 
@@ -45,12 +45,12 @@ export const AdminDashboard: React.FC = () => {
   return (
     <div className="flex flex-col h-screen bg-gray-50 overflow-hidden font-sans">
         
-        {/* TOP BAR / HEADER */}
-        <header className="bg-slate-900 text-white shadow-lg shrink-0 z-30">
+        {/* TOP BAR / HEADER (Tema Verde/Emerald) */}
+        <header className="bg-emerald-900 text-white shadow-lg shrink-0 z-30">
             <div className="max-w-[1920px] mx-auto">
                 
                 {/* Linha Superior: Identidade e Ações */}
-                <div className="px-6 py-4 flex justify-between items-center border-b border-slate-800">
+                <div className="px-6 py-4 flex justify-between items-center border-b border-emerald-800">
                     <div className="flex items-center gap-4">
                         <div className="bg-white/10 p-2 rounded-xl backdrop-blur-md border border-white/10">
                             {restState.theme.logoUrl ? (
@@ -62,10 +62,10 @@ export const AdminDashboard: React.FC = () => {
                         <div>
                             <h1 className="font-bold text-lg leading-none tracking-tight">{restState.theme.restaurantName}</h1>
                             <div className="flex items-center gap-2 mt-1">
-                                <span className="text-[10px] font-bold bg-purple-600 px-2 py-0.5 rounded text-white uppercase tracking-widest">
-                                    Módulo Gestor
+                                <span className="text-[10px] font-bold bg-emerald-600 px-2 py-0.5 rounded text-white uppercase tracking-widest">
+                                    Módulo Financeiro
                                 </span>
-                                <span className="text-[10px] text-slate-400">
+                                <span className="text-[10px] text-emerald-200">
                                     {authState.currentUser?.name}
                                 </span>
                             </div>
@@ -75,13 +75,13 @@ export const AdminDashboard: React.FC = () => {
                     <div className="flex items-center gap-3">
                         <button 
                             onClick={handleExitToModules}
-                            className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider bg-slate-800 hover:bg-slate-700 transition-colors border border-slate-700"
+                            className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider bg-emerald-800 hover:bg-emerald-700 transition-colors border border-emerald-700"
                         >
                             <Grid size={16} /> Módulos
                         </button>
                         <button 
                             onClick={logout}
-                            className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white transition-colors border border-red-500/20 hover:border-red-500"
+                            className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider bg-red-500/10 text-red-300 hover:bg-red-500 hover:text-white transition-colors border border-red-500/20 hover:border-red-500"
                         >
                             <LogOut size={16} /> Sair
                         </button>
@@ -102,11 +102,11 @@ export const AdminDashboard: React.FC = () => {
                                 className={`
                                     flex items-center gap-2 px-5 py-3 text-sm font-bold border-b-2 transition-all whitespace-nowrap
                                     ${isActive 
-                                        ? 'border-purple-500 text-white bg-white/5 rounded-t-lg' 
-                                        : 'border-transparent text-slate-400 hover:text-white hover:bg-white/5 rounded-t-lg'}
+                                        ? 'border-emerald-400 text-white bg-white/5 rounded-t-lg' 
+                                        : 'border-transparent text-emerald-200 hover:text-white hover:bg-white/5 rounded-t-lg'}
                                 `}
                             >
-                                <tab.icon size={18} className={isActive ? 'text-purple-400' : ''} />
+                                <tab.icon size={18} className={isActive ? 'text-emerald-300' : ''} />
                                 {tab.label}
                             </Link>
                         );
@@ -119,15 +119,17 @@ export const AdminDashboard: React.FC = () => {
         <main className="flex-1 overflow-y-auto bg-gray-50 relative p-4 md:p-8">
             <div className="max-w-[1920px] mx-auto h-full">
                 <Routes>
-                    <Route path="/" element={<AdminOverview />} />
-                    <Route path="products" element={<AdminProducts />} />
+                    <Route path="/" element={<AdminFinance />} />
                     
-                    {planLimits.allowInventory && (
-                        <Route path="inventory" element={<AdminInventory />} />
+                    {planLimits.allowReports && (
+                        <>
+                            <Route path="dre" element={<AdminAccounting />} />
+                            <Route path="bi" element={<AdminBusinessIntelligence />} />
+                            <Route path="reports" element={<AdminReports />} />
+                            <Route path="tips" element={<AdminFinancialTips />} />
+                        </>
                     )}
 
-                    {planLimits.allowTableMgmt && <Route path="tables" element={<AdminTables />} />}
-                    
                     {/* Fallback */}
                     <Route path="*" element={<Navigate to="" replace />} />
                 </Routes>

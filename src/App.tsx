@@ -16,7 +16,8 @@ import { WaiterApp } from './pages/WaiterApp';
 import { KitchenDisplay } from './pages/KitchenDisplay';
 import { CashierDashboard } from './pages/CashierDashboard';
 import { AdminDashboard } from './pages/AdminDashboard';
-import { SettingsDashboard } from './pages/SettingsDashboard'; // Novo Módulo
+import { FinanceDashboard } from './pages/FinanceDashboard'; // Novo Módulo
+import { SettingsDashboard } from './pages/SettingsDashboard'; 
 import { SuperAdminDashboard } from './pages/SuperAdminDashboard';
 import { LandingPage } from './pages/LandingPage';
 import { Login } from './pages/Login';
@@ -101,7 +102,7 @@ const TenantNavigation = ({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: (
     const [isAppsOpen, setIsAppsOpen] = useState(true);
 
     // Se estiver em rotas de módulos completos, não mostra essa sidebar
-    if (location.pathname.startsWith('/admin') || location.pathname.startsWith('/settings') || location.pathname.startsWith('/client') || location.pathname === '/login' || location.pathname === '/manual' || location.pathname === '/modules') {
+    if (location.pathname.startsWith('/admin') || location.pathname.startsWith('/settings') || location.pathname.startsWith('/finance') || location.pathname.startsWith('/client') || location.pathname === '/login' || location.pathname === '/manual' || location.pathname === '/modules') {
         return null;
     }
 
@@ -293,6 +294,9 @@ const TenantApp = () => {
 
                         {/* Painel de Configurações (Novo Módulo) */}
                         <Route path="/settings/*" element={<ProtectedRestaurantRoute allowedRoles={[Role.ADMIN]} requiredRoute="/settings"><SettingsDashboard /></ProtectedRestaurantRoute>} />
+
+                        {/* Painel Financeiro (Novo Módulo) */}
+                        <Route path="/finance/*" element={<ProtectedRestaurantRoute allowedRoles={[Role.ADMIN]} requiredRoute="/finance"><FinanceDashboard /></ProtectedRestaurantRoute>} />
                         
                         <Route path="*" element={<Navigate to={`/login${window.location.search}`} replace />} />
                     </Routes>

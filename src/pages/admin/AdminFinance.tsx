@@ -4,26 +4,20 @@ import { useRestaurant } from '../../context/RestaurantContext';
 import { useFinance } from '../../context/FinanceContext';
 import { useUI } from '../../context/UIContext';
 import { Button } from '../../components/Button';
-import { Modal } from '../../components/Modal'; // Importando Modal Genérico para ações locais
+import { Modal } from '../../components/Modal'; 
 import { ExpenseFormModal } from '../../components/modals/ExpenseFormModal';
 import { CashBleedModal } from '../../components/modals/CashBleedModal';
 import { supabase } from '../../lib/supabase';
 import { Expense, CashSession, Transaction, CashMovement } from '../../types';
-import { Plus, CheckSquare, Trash2, Wallet, CreditCard, Banknote, ArrowDown, Repeat, PieChart, FileText, Lightbulb, LayoutDashboard, List, Edit, Lock, Calendar, ShoppingCart, Filter, History, Clock, DollarSign, Building2, Archive, User, ArrowUp, ChevronRight } from 'lucide-react';
-
-// Importando os componentes das outras páginas para uso nas abas
-import { AdminAccounting } from './AdminAccounting';
-import { AccountingReport } from './AccountingReport';
-import { AdminFinancialTips } from './AdminFinancialTips';
-import { AdminPurchaseSuggestions } from './AdminPurchaseSuggestions'; // Nova importação
+import { Plus, CheckSquare, Trash2, Wallet, CreditCard, Banknote, ArrowDown, Repeat, Archive, User, ChevronRight, LayoutDashboard, List, DollarSign, Edit, Lock } from 'lucide-react';
 
 export const AdminFinance: React.FC = () => {
   const { state: restState } = useRestaurant();
   const { state: finState, updateExpense, deleteExpense } = useFinance();
   const { showConfirm, showAlert } = useUI();
   
-  // State for Tabs
-  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'SESSIONS' | 'EXPENSES' | 'PURCHASES' | 'DRE' | 'REPORT' | 'TIPS'>('OVERVIEW');
+  // State for Tabs (Simplified to just Operational Finance)
+  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'SESSIONS' | 'EXPENSES'>('OVERVIEW');
 
   // State for Expenses Filter
   const [expenseViewMode, setExpenseViewMode] = useState<'MONTH' | 'RECURRING' | 'HISTORY'>('MONTH');
@@ -62,7 +56,7 @@ export const AdminFinance: React.FC = () => {
                 .select('*')
                 .eq('tenant_id', restState.tenantId)
                 .order('opened_at', { ascending: false })
-                .limit(50); // Limite de 50 para performance inicial
+                .limit(50); 
 
               if (data) {
                   const mappedSessions = data.map((s: any) => ({
@@ -199,16 +193,14 @@ export const AdminFinance: React.FC = () => {
       }
       
       if (expenseViewMode === 'MONTH') {
-          // Filtra pelo mês e ano atual
           return dueDate.getMonth() === today.getMonth() && dueDate.getFullYear() === today.getFullYear();
       }
 
       if (expenseViewMode === 'HISTORY') {
           const start = new Date(historyStart);
           const end = new Date(historyEnd);
-          end.setHours(23, 59, 59, 999); // Garante que pegue o dia final inteiro
+          end.setHours(23, 59, 59, 999); 
           
-          // Se foi pago, usa a data de pagamento, se não, usa vencimento
           const dateToCheck = expense.isPaid && expense.paidDate ? new Date(expense.paidDate) : dueDate;
           return dateToCheck >= start && dateToCheck <= end;
       }
@@ -217,19 +209,15 @@ export const AdminFinance: React.FC = () => {
   }).sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
 
   // --- Handlers ---
-
-  // 1. Abrir Modal de Pagamento
   const openPayModal = (expense: Expense) => {
       setPayModal({ isOpen: true, expense });
       setPaymentMethod(expense.paymentMethod || 'BANK');
       setPaymentDate(new Date().toISOString().split('T')[0]);
   };
 
-  // 2. Confirmar Pagamento
   const handleConfirmPay = async () => {
       if (!payModal.expense) return;
       try {
-          // Usamos updateExpense para atualizar status, data e método de uma vez
           await updateExpense({
               ...payModal.expense,
               isPaid: true,
@@ -243,13 +231,11 @@ export const AdminFinance: React.FC = () => {
       }
   };
 
-  // 3. Abrir Modal de Exclusão
   const openDeleteModal = (id: string) => {
       setDeleteModal({ isOpen: true, expenseId: id });
       setAdminPin('');
   };
 
-  // 4. Confirmar Exclusão com Senha
   const handleConfirmDelete = async (e: React.FormEvent) => {
       e.preventDefault();
       if (!deleteModal.expenseId) return;
@@ -303,8 +289,8 @@ export const AdminFinance: React.FC = () => {
         <div className="bg-white border-b border-gray-200 px-6 pt-4 rounded-xl shadow-sm print:hidden">
             <div className="flex justify-between items-center mb-4">
                 <div>
-                    <h2 className="text-2xl font-bold text-gray-800">Central Financeira</h2>
-                    <p className="text-sm text-gray-500">Gestão completa de caixa, despesas e contabilidade.</p>
+                    <h2 className="text-2xl font-bold text-gray-800">Fluxo de Caixa & Despesas</h2>
+                    <p className="text-sm text-gray-500">Controle operacional do dinheiro.</p>
                 </div>
             </div>
 
@@ -312,10 +298,6 @@ export const AdminFinance: React.FC = () => {
                 <TabButton id="OVERVIEW" label="Visão Geral" icon={LayoutDashboard} />
                 <TabButton id="SESSIONS" label="Histórico de Caixas" icon={Archive} />
                 <TabButton id="EXPENSES" label="Despesas" icon={List} />
-                {restState.planLimits.allowInventory && <TabButton id="PURCHASES" label="Sugestão de Compras" icon={ShoppingCart} />}
-                <TabButton id="DRE" label="DRE Gerencial" icon={PieChart} />
-                <TabButton id="REPORT" label="Relatório Contábil" icon={FileText} />
-                <TabButton id="TIPS" label="Dicas Inteligentes" icon={Lightbulb} />
             </div>
         </div>
 
@@ -327,7 +309,6 @@ export const AdminFinance: React.FC = () => {
                 <div className="space-y-8 animate-fade-in">
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                        {/* 1. Valor Atual Esperado */}
                         <StatBox 
                             title="Valor Atual Esperado" 
                             value={`R$ ${totalExpectedBalance.toFixed(2)}`} 
@@ -335,17 +316,13 @@ export const AdminFinance: React.FC = () => {
                             color="text-emerald-600"
                             subtext="Soma de Banco + Dinheiro"
                         />
-                        
-                        {/* 2. Saldo Banco */}
                         <StatBox 
                             title="Saldo Banco" 
                             value={`R$ ${bankBalance.toFixed(2)}`} 
-                            icon={Building2} 
+                            icon={Banknote} 
                             color="text-blue-600"
                             subtext="Digital (Pix/Cartão) - Pagos"
                         />
-                        
-                        {/* 3. Saldo Dinheiro */}
                         <StatBox 
                             title="Saldo Dinheiro" 
                             value={`R$ ${drawerBalance.toFixed(2)}`} 
@@ -353,8 +330,6 @@ export const AdminFinance: React.FC = () => {
                             color="text-green-600"
                             subtext={finState.activeCashSession ? "Gaveta do Caixa Aberto" : "Caixa Fechado"}
                         />
-                        
-                        {/* 4. Despesas do Mês (Contexto) */}
                         <StatBox 
                             title="Despesas do Mês" 
                             value={`R$ ${currentMonthExpenses.toFixed(2)}`} 
@@ -446,25 +421,9 @@ export const AdminFinance: React.FC = () => {
                             <p className="text-xs text-gray-500">Gerencie pagamentos e custos.</p>
                         </div>
                         <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
-                            <div className="flex bg-gray-100 p-1 rounded-lg">
-                                <button onClick={() => setExpenseViewMode('MONTH')} className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-1 ${expenseViewMode === 'MONTH' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500'}`}><Calendar size={14}/> Mês Atual</button>
-                                <button onClick={() => setExpenseViewMode('RECURRING')} className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-1 ${expenseViewMode === 'RECURRING' ? 'bg-white text-purple-600 shadow-sm' : 'text-gray-500'}`}><Repeat size={14}/> Recorrentes</button>
-                                <button onClick={() => setExpenseViewMode('HISTORY')} className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-1 ${expenseViewMode === 'HISTORY' ? 'bg-white text-orange-600 shadow-sm' : 'text-gray-500'}`}><History size={14}/> Histórico</button>
-                            </div>
                             <Button onClick={() => { setEditingExpense(null); setIsExpenseModalOpen(true); }}><Plus size={16}/> Nova Despesa</Button>
                         </div>
                     </div>
-
-                    {/* Filtro de Data para Histórico */}
-                    {expenseViewMode === 'HISTORY' && (
-                        <div className="bg-white p-3 rounded-xl shadow-sm border flex items-center gap-3 animate-fade-in">
-                            <Filter size={16} className="text-gray-400"/>
-                            <span className="text-xs font-bold text-gray-500 uppercase">Filtrar Período:</span>
-                            <input type="date" className="border rounded p-1 text-sm bg-gray-50" value={historyStart} onChange={e => setHistoryStart(e.target.value)} />
-                            <span className="text-gray-400 font-bold">-</span>
-                            <input type="date" className="border rounded p-1 text-sm bg-gray-50" value={historyEnd} onChange={e => setHistoryEnd(e.target.value)} />
-                        </div>
-                    )}
 
                     <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
                         <div className="overflow-x-auto">
@@ -527,13 +486,6 @@ export const AdminFinance: React.FC = () => {
                     </div>
                 </div>
             )}
-            
-            {/* VIEW: PURCHASES */}
-            {activeTab === 'PURCHASES' && <AdminPurchaseSuggestions />}
-
-            {activeTab === 'DRE' && <AdminAccounting />}
-            {activeTab === 'REPORT' && <AccountingReport />}
-            {activeTab === 'TIPS' && <AdminFinancialTips />}
         </div>
 
         {/* --- MODAIS LOCAIS PARA CONFIRMAÇÃO --- */}
