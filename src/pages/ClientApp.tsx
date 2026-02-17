@@ -14,7 +14,6 @@ import {
     Zap, Clock, Trash2, ArrowRight, 
     Activity, AlertCircle, RefreshCcw, Utensils
 } from 'lucide-react';
-import { ClientProductModal } from '../components/modals/ClientProductModal';
 
 const OrderGraceTimer: React.FC<{ order: Order; graceMinutes: number; onCancel: (id: string) => void }> = ({ order, graceMinutes, onCancel }) => {
     const [timeLeft, setTimeLeft] = useState(0);
@@ -77,25 +76,37 @@ export const ClientApp: React.FC = () => {
     const [waiterCalled, setWaiterCalled] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+    const [modalQuantity, setModalQuantity] = useState(1);
+    const [modalNotes, setModalNotes] = useState('');
+    const [drinkTiming, setDrinkTiming] = useState<'IMMEDIATE' | 'WITH_FOOD'>('IMMEDIATE');
+    const [selectedExtraIds, setSelectedExtraIds] = useState<string[]>([]);
 
     const table = orderState.tables.find(t => t.id === tableId);
     const theme = state.theme;
     const graceMinutes = state.businessInfo?.orderGracePeriodMinutes || 0;
     const tableOrders = orderState.orders.filter(o => o.tableId === tableId && !o.isPaid && o.status !== 'CANCELLED');
 
+    // Resetar estado do modal sempre que um produto for selecionado
+    useEffect(() => {
+        if (selectedProduct) {
+            setModalQuantity(1);
+            setModalNotes('');
+            setDrinkTiming('IMMEDIATE');
+            setSelectedExtraIds([]);
+        }
+    }, [selectedProduct]);
+
     // Lógica para organizar categorias
     const sortedCategories = useMemo(() => {
-        // Pega todas as categorias únicas dos produtos visíveis
         const categories = Array.from(new Set(menuState.products
             .filter(p => p.isVisible && !p.isExtra)
             .map(p => p.category)
         ));
 
-        // Ordena garantindo que 'Bebidas' seja a última
         return categories.sort((a, b) => {
-            if (a === 'Bebidas') return 1; // Bebidas vai para o fim
+            if (a === 'Bebidas') return 1; 
             if (b === 'Bebidas') return -1;
-            return a.localeCompare(b); // Ordem alfabética para o resto
+            return a.localeCompare(b);
         });
     }, [menuState.products]);
 
@@ -130,8 +141,28 @@ export const ClientApp: React.FC = () => {
         });
     };
 
-    const handleAddToCart = (item: { product: Product; quantity: number; notes: string; extras: Product[] }) => {
-        setCart(prev => [...prev, item]);
+    const isDrinkProduct = (product: Product) => {
+        return product.category === 'Bebidas' || product.type === 'BAR' || product.category.toLowerCase().includes('bebida');
+    };
+
+    const handleAddToCart = () => {
+        if (!selectedProduct) return;
+        
+        let finalNote = modalNotes;
+        // Lógica específica para bebidas
+        if (isDrinkProduct(selectedProduct)) {
+            const timingText = drinkTiming === 'IMMEDIATE' ? '[IMEDIATA]' : '[COM COMIDA]';
+            finalNote = timingText; 
+        }
+
+        const chosenExtras = selectedExtraIds
+            .map(id => menuState.products.find(p => p.id === id))
+            .filter(Boolean) as Product[];
+
+        setCart(prev => [
+            ...prev, 
+            { product: selectedProduct, quantity: modalQuantity, notes: finalNote.trim(), extras: chosenExtras }
+        ]);
         setSelectedProduct(null);
     };
 
@@ -144,6 +175,7 @@ export const ClientApp: React.FC = () => {
                 flattenedItems.push({ productId: extra.id, quantity: item.quantity, notes: `[ADICIONAL]` });
             });
         });
+        // Isso cria um NOVO pedido (Order ID único) a cada envio. Não junta com os anteriores.
         await orderDispatch({ type: 'PLACE_ORDER', tableId, items: flattenedItems });
         setCart([]);
         setView('STATUS');
@@ -294,15 +326,13 @@ export const ClientApp: React.FC = () => {
                                             >
                                                 <div className={`relative shrink-0 overflow-hidden bg-gray-50 ${isGrid ? 'w-full h-48' : 'w-24 h-24 sm:w-32 sm:h-32 rounded-3xl'}`}>
                                                     <img src={product.image} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt={product.name} />
-                                                    <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-2xl text-[11px] font-black text-slate-800 shadow-sm border border-white/20">
-                                                        R$ {product.price.toFixed(0)}
-                                                    </div>
+                                                    {/* Preço sobre a foto removido conforme solicitado */}
                                                 </div>
                                                 <div className={`flex-1 flex flex-col justify-between ${isGrid ? 'p-6' : ''}`}>
                                                     <div className="space-y-2">
                                                         <h3 className="font-black text-slate-800 leading-none text-xl group-hover:text-emerald-600 transition-colors uppercase tracking-tighter">{product.name}</h3>
                                                         {product.description && (
-                                                            <p className="text-xs text-gray-500 line-clamp-2 leading-relaxed font-medium">{product.description}</p>
+                                                            <p className="text-xs text-gray-500 font-medium leading-relaxed line-clamp-3">{product.description}</p>
                                                         )}
                                                     </div>
                                                     <div className="flex justify-between items-end mt-4">
@@ -528,14 +558,98 @@ export const ClientApp: React.FC = () => {
                     </div>
                 )}
 
-                {/* MODAL ADD TO CART (CLIENTPRODUCTMODAL) */}
+                {/* MODAL ADD TO CART (ATUALIZADO) */}
                 {selectedProduct && (
-                    <ClientProductModal 
-                        isOpen={!!selectedProduct} 
-                        onClose={() => setSelectedProduct(null)} 
-                        product={selectedProduct} 
-                        onAddToCart={handleAddToCart}
-                    />
+                    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 animate-fade-in">
+                        <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col max-h-[90vh]">
+                            {/* Header com Imagem Pequena (Cover) */}
+                            <div className="relative">
+                                <div className="h-32 w-full overflow-hidden relative">
+                                    <img 
+                                        src={selectedProduct.image || 'https://via.placeholder.com/400x200?text=Sem+Foto'} 
+                                        className="w-full h-full object-cover" 
+                                        alt={selectedProduct.name} 
+                                    />
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent"></div>
+                                </div>
+                                <div className="absolute bottom-0 left-0 w-full p-4 text-white flex justify-between items-end">
+                                    <h3 className="font-black text-xl truncate pr-4 text-shadow">{selectedProduct.name}</h3>
+                                    <button onClick={() => setSelectedProduct(null)} className="bg-white/20 backdrop-blur-sm p-2 rounded-full hover:bg-red-500 hover:text-white transition-colors absolute top-4 right-4"><X size={20}/></button>
+                                </div>
+                            </div>
+
+                            <div className="p-6 space-y-6 overflow-y-auto custom-scrollbar">
+                                {/* Exibe a Descrição do Produto no Modal */}
+                                {selectedProduct.description && (
+                                    <div className="text-sm text-gray-600 leading-relaxed font-medium">
+                                        {selectedProduct.description}
+                                    </div>
+                                )}
+
+                                <div>
+                                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-4 text-center">Quantidade</label>
+                                    <div className="flex items-center gap-6 justify-center">
+                                        <button onClick={() => setModalQuantity(Math.max(1, modalQuantity - 1))} className="p-4 bg-gray-100 rounded-2xl hover:bg-red-50 hover:text-red-600 transition-colors"><Minus size={24}/></button>
+                                        <span className="text-5xl font-black w-20 text-center text-blue-600">{modalQuantity}</span>
+                                        <button onClick={() => setModalQuantity(modalQuantity + 1)} className="p-4 bg-gray-100 rounded-2xl hover:bg-emerald-50 hover:text-emerald-600 transition-colors"><Plus size={24}/></button>
+                                    </div>
+                                </div>
+                                
+                                {/* REGRAS DE NEGÓCIO: Bebidas não mostram adicionais, e adicionais apenas se houver vinculados */}
+                                {!isDrinkProduct(selectedProduct) && selectedProduct.linkedExtraIds && selectedProduct.linkedExtraIds.length > 0 && (
+                                    <div className="border-t border-b border-gray-100 py-6 space-y-3">
+                                        <label className="block text-xs font-black text-gray-400 uppercase tracking-wider flex items-center gap-1"><Plus size={12} className="text-green-500"/> Adicionais</label>
+                                        <div className="space-y-2">
+                                            {selectedProduct.linkedExtraIds.map(id => {
+                                                const extra = menuState.products.find(p => p.id === id);
+                                                if (!extra) return null;
+                                                const isSelected = selectedExtraIds.includes(id);
+                                                return (
+                                                    <div key={id} onClick={() => setSelectedExtraIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id])} className={`flex items-center justify-between p-4 rounded-2xl border-2 transition-all cursor-pointer ${isSelected ? 'bg-orange-50 border-orange-400' : 'bg-gray-50 border-transparent hover:border-gray-200'}`}>
+                                                        <span className="text-sm font-black text-slate-700">{extra.name}</span>
+                                                        <span className="text-xs font-bold text-slate-400">+ R$ {extra.price.toFixed(2)}</span>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
+                                
+                                {/* CONDITIONAL RENDERING FOR DRINKS */}
+                                {isDrinkProduct(selectedProduct) ? (
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Quando Servir?</label>
+                                        <div className="flex gap-3">
+                                            <button 
+                                                onClick={() => setDrinkTiming('IMMEDIATE')}
+                                                className={`flex-1 p-4 rounded-2xl border-2 font-bold text-xs uppercase tracking-wider transition-all ${drinkTiming === 'IMMEDIATE' ? 'bg-blue-600 text-white border-blue-600 shadow-lg' : 'bg-white text-gray-400 border-gray-200'}`}
+                                            >
+                                                <Zap size={16} className="mx-auto mb-1"/>
+                                                Imediata
+                                            </button>
+                                            <button 
+                                                onClick={() => setDrinkTiming('WITH_FOOD')}
+                                                className={`flex-1 p-4 rounded-2xl border-2 font-bold text-xs uppercase tracking-wider transition-all ${drinkTiming === 'WITH_FOOD' ? 'bg-blue-600 text-white border-blue-600 shadow-lg' : 'bg-white text-gray-400 border-gray-200'}`}
+                                            >
+                                                <Utensils size={16} className="mx-auto mb-1"/>
+                                                Com Comida
+                                            </button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Observações</label>
+                                        <textarea className="w-full border-2 border-gray-100 bg-gray-50 rounded-2xl p-4 text-sm font-medium focus:border-blue-500 focus:bg-white outline-none transition-all resize-none" rows={3} placeholder="Ex: Sem cebola, ponto da carne..." value={modalNotes} onChange={e => setModalNotes(e.target.value)} />
+                                    </div>
+                                )}
+                            </div>
+                            <div className="p-6 border-t bg-gray-50 shrink-0">
+                                <Button onClick={handleAddToCart} className="w-full py-5 text-xl font-black shadow-2xl shadow-blue-200 rounded-2xl uppercase tracking-widest">
+                                    Adicionar • R$ {((selectedProduct.price + selectedExtraIds.reduce((sum, id) => sum + (menuState.products.find(p => p.id === id)?.price || 0), 0)) * modalQuantity).toFixed(2)}
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
                 )}
             </main>
         </div>
