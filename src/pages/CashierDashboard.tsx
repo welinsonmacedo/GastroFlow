@@ -58,8 +58,12 @@ export const CashierDashboard: React.FC = () => {
 
   // DELIVERY States
   const [deliveryCart, setDeliveryCart] = useState<{ item: InventoryItem; quantity: number; notes: string; extras: InventoryItem[] }[]>([]);
+  
+  // Obtem métodos de pagamento configurados
+  const configuredPaymentMethods = restState.businessInfo?.paymentMethods?.filter(pm => pm.isActive) || [];
+
   const [deliveryForm, setDeliveryForm] = useState<DeliveryInfo>({ 
-      customerName: '', phone: '', address: '', platform: 'PHONE', methodId: '', deliveryFee: 0, changeFor: 0, paymentMethod: 'CASH', paymentStatus: 'PENDING' 
+      customerName: '', phone: '', address: '', platform: 'PHONE', methodId: '', deliveryFee: 0, changeFor: 0, paymentMethod: '', paymentStatus: 'PENDING' 
   });
   const [deliverySearch, setDeliverySearch] = useState('');
   
@@ -78,6 +82,13 @@ export const CashierDashboard: React.FC = () => {
   const totalAmount = ordersToPay.reduce((sum, order) => sum + order.items.reduce((s, i) => s + (i.productPrice * i.quantity), 0), 0);
 
   const activeDeliveryOrders = orderState.orders.filter(o => o.type === 'DELIVERY' && !o.isPaid && o.status !== 'CANCELLED');
+
+  // Inicializa o método de pagamento padrão se houver
+  useEffect(() => {
+      if (configuredPaymentMethods.length > 0 && !deliveryForm.paymentMethod) {
+          setDeliveryForm(prev => ({ ...prev, paymentMethod: configuredPaymentMethods[0].name }));
+      }
+  }, [configuredPaymentMethods]);
 
   const handleManualRefresh = async () => {
       setIsRefreshing(true);
@@ -188,6 +199,12 @@ export const CashierDashboard: React.FC = () => {
       }));
   };
 
+  // Verifica se o método de pagamento selecionado é do tipo DINHEIRO
+  const isCashPaymentSelected = () => {
+      const method = configuredPaymentMethods.find(pm => pm.name === deliveryForm.paymentMethod);
+      return method?.type === 'CASH';
+  };
+
   const handleDeliverySubmit = async () => {
       if (deliveryCart.length === 0) return showAlert({ title: "Carrinho Vazio", message: "Adicione itens ao pedido.", type: 'WARNING' });
       if (!deliveryForm.customerName) return showAlert({ title: "Dados Incompletos", message: "Informe o nome do cliente.", type: 'WARNING' });
@@ -224,7 +241,12 @@ export const CashierDashboard: React.FC = () => {
           });
 
           setDeliveryCart([]);
-          setDeliveryForm({ customerName: '', phone: '', address: '', platform: 'PHONE', methodId: '', deliveryFee: 0, changeFor: 0, paymentMethod: 'CASH', paymentStatus: 'PENDING' });
+          setDeliveryForm({ 
+              customerName: '', phone: '', address: '', platform: 'PHONE', methodId: '', 
+              deliveryFee: 0, changeFor: 0, 
+              paymentMethod: configuredPaymentMethods[0]?.name || '', 
+              paymentStatus: 'PENDING' 
+          });
           showAlert({ title: "Sucesso", message: "Pedido enviado para a cozinha!", type: 'SUCCESS' });
       } catch (error) {
           showAlert({ title: "Erro", message: "Falha ao criar pedido delivery.", type: 'ERROR' });
@@ -245,7 +267,7 @@ export const CashierDashboard: React.FC = () => {
               await orderDispatch({ 
                   type: 'PROCESS_PAYMENT', 
                   amount: total, 
-                  method: 'CASH', // Assumindo dinheiro se não especificado, idealmente viria do deliveryInfo
+                  method: order.deliveryInfo?.paymentMethod || 'CASH', // Usa o método salvo no pedido
                   orderId: order.id,
                   cashierName: 'Delivery'
               });
@@ -305,8 +327,8 @@ export const CashierDashboard: React.FC = () => {
                 <div class="total-line">TOTAL: R$ ${total.toFixed(2)}</div>
             </div>
             <div class="payment-info">
-                Forma Pagto: ${customer.paymentMethod === 'CASH' ? 'DINHEIRO' : (customer.paymentMethod === 'ONLINE' ? 'PAGO ONLINE' : 'CARTÃO NA ENTREGA')}<br/>
-                ${customer.paymentMethod === 'CASH' && customer.changeFor ? `Troco p/ R$ ${customer.changeFor.toFixed(2)} -> R$ ${(customer.changeFor - total).toFixed(2)}` : ''}
+                Forma Pagto: ${customer.paymentMethod || 'A COMBINAR'}<br/>
+                ${isCashPaymentSelected() && customer.changeFor ? `Troco p/ R$ ${customer.changeFor.toFixed(2)} -> R$ ${(customer.changeFor - total).toFixed(2)}` : ''}
                 ${customer.paymentStatus === 'PAID' ? '(JÁ PAGO)' : '(COBRAR NA ENTREGA)'}
             </div>
             <script>window.print(); window.close();</script>
@@ -567,8 +589,33 @@ export const CashierDashboard: React.FC = () => {
                               <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 shrink-0 space-y-3">
                                   <div className="grid grid-cols-3 gap-2">
                                       <div className="col-span-1"><label className="text-[9px] font-bold text-gray-400 uppercase">Taxa</label><input type="number" className="w-full border p-1.5 rounded-lg text-xs" value={deliveryForm.deliveryFee} onChange={e => setDeliveryForm({...deliveryForm, deliveryFee: parseFloat(e.target.value)})} /></div>
-                                      <div className="col-span-1"><label className="text-[9px] font-bold text-gray-400 uppercase">Pagamento</label><select className="w-full border p-1.5 rounded-lg text-xs bg-white" value={deliveryForm.paymentMethod} onChange={e => setDeliveryForm({...deliveryForm, paymentMethod: e.target.value as any})}><option value="CASH">Dinheiro</option><option value="CARD_MACHINE">Maq.</option><option value="ONLINE">Online</option></select></div>
-                                      {deliveryForm.paymentMethod === 'CASH' && <div className="col-span-1"><label className="text-[9px] font-bold text-gray-400 uppercase">Troco</label><input type="number" className="w-full border p-1.5 rounded-lg text-xs" placeholder="0.00" value={deliveryForm.changeFor || ''} onChange={e => setDeliveryForm({...deliveryForm, changeFor: parseFloat(e.target.value)})} /></div>}
+                                      <div className="col-span-1">
+                                          <label className="text-[9px] font-bold text-gray-400 uppercase">Pagamento</label>
+                                          <select 
+                                              className="w-full border p-1.5 rounded-lg text-xs bg-white text-slate-800 font-medium" 
+                                              value={deliveryForm.paymentMethod} 
+                                              onChange={e => setDeliveryForm({...deliveryForm, paymentMethod: e.target.value})}
+                                          >
+                                              <option value="">Selecione...</option>
+                                              {configuredPaymentMethods.map(pm => (
+                                                  <option key={pm.id} value={pm.name}>{pm.name}</option>
+                                              ))}
+                                              {configuredPaymentMethods.length === 0 && (
+                                                  <>
+                                                      <option value="CASH">Dinheiro</option>
+                                                      <option value="CARD_MACHINE">Maquininha</option>
+                                                      <option value="ONLINE">Online</option>
+                                                  </>
+                                              )}
+                                          </select>
+                                      </div>
+                                      {/* Troco aparece apenas se o método selecionado for tipo 'CASH' */}
+                                      {isCashPaymentSelected() && (
+                                          <div className="col-span-1">
+                                              <label className="text-[9px] font-bold text-gray-400 uppercase">Troco</label>
+                                              <input type="number" className="w-full border p-1.5 rounded-lg text-xs" placeholder="0.00" value={deliveryForm.changeFor || ''} onChange={e => setDeliveryForm({...deliveryForm, changeFor: parseFloat(e.target.value)})} />
+                                          </div>
+                                      )}
                                   </div>
                                   
                                   <div className="pt-2 border-t flex items-center justify-between">

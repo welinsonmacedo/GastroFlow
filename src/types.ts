@@ -65,7 +65,7 @@ export interface DeliveryInfo {
     platform: string; 
     deliveryFee: number; 
     changeFor?: number; 
-    paymentMethod?: 'CASH' | 'CARD_MACHINE' | 'ONLINE'; 
+    paymentMethod?: string; 
     paymentStatus?: 'PENDING' | 'PAID';
 }
 
@@ -118,8 +118,8 @@ export interface RestaurantBusinessInfo {
     orderGracePeriodMinutes?: number;
     adminPin?: string;
     deliverySettings?: DeliveryMethodConfig[]; 
-    paymentMethods?: PaymentMethodConfig[]; // Novas configurações de pagamento
-    expenseCategories?: ExpenseCategory[]; // Novas categorias de despesa
+    paymentMethods?: PaymentMethodConfig[]; 
+    expenseCategories?: ExpenseCategory[]; 
 }
 
 export interface RestaurantTenant {
