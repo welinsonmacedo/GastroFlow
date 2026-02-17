@@ -120,8 +120,8 @@ export const InventoryDashboard: React.FC = () => {
             </div>
         </header>
 
-        {/* CONTEÚDO PRINCIPAL */}
-        <main className="flex-1 overflow-y-auto bg-gray-50 relative p-4 md:p-8">
+        {/* CONTEÚDO PRINCIPAL - Alterado para overflow-hidden para garantir h-full real */}
+        <main className="flex-1 overflow-hidden bg-gray-50 relative p-4 md:p-8">
             <div className="max-w-[1920px] mx-auto h-full">
                 <Routes>
                     <Route path="/" element={<AdminInventory view="ITEMS" />} />
