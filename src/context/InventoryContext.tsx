@@ -64,7 +64,7 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
                 return {
                     id: i.id, 
                     name: i.name, 
-                    barcode: i.barcode || '', // Mapeia o barcode
+                    barcode: i.barcode || '', 
                     unit: i.unit, 
                     quantity: Number(i.quantity) || 0, 
                     minQuantity: Number(i.min_quantity) || 0, 
@@ -72,6 +72,7 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
                     salePrice: Number(i.sale_price) || 0, 
                     type: (i.type || 'INGREDIENT').toUpperCase() as InventoryType, 
                     category: i.category, 
+                    description: i.description || '', // Mapeia descrição
                     image: i.image, 
                     recipe: recipeItems,
                     isExtra: i.is_extra || false,
@@ -130,6 +131,7 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
               price: item.salePrice || 0,
               cost_price: item.costPrice || 0,
               linked_inventory_item_id: inventoryId,
+              description: item.description || '', // Sincroniza descrição
               is_extra: true,
               target_categories: item.targetCategories || [],
               category: 'Adicionais',
@@ -161,7 +163,8 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           cost_price: item.costPrice || 0, 
           sale_price: item.salePrice || 0, 
           type: item.type, 
-          category: item.category, 
+          category: item.category,
+          description: item.description, // Salva descrição
           image: item.image,
           is_extra: item.isExtra,
           target_categories: item.targetCategories
@@ -205,6 +208,7 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           image: item.image, 
           type: item.type,
           category: item.category, 
+          description: item.description, // Atualiza descrição
           is_extra: item.isExtra,
           target_categories: item.targetCategories
       };

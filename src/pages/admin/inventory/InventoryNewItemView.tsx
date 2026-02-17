@@ -5,23 +5,39 @@ import { useUI } from '../../../context/UIContext';
 import { Button } from '../../../components/Button';
 import { InventoryItem } from '../../../types';
 import { ImageUploader } from '../../../components/ImageUploader';
-import { PlusCircle, Layers, Plus, X, ScanLine, Tag, DollarSign, Package } from 'lucide-react';
+import { PlusCircle, Layers, Plus, X, ScanLine, Tag, DollarSign, Package, FileText, Sparkles, Loader2 } from 'lucide-react';
+import { generateProductDescription } from '../../../services/geminiService';
 
 export const InventoryNewItemView: React.FC = () => {
   const { state: invState, addInventoryItem } = useInventory();
   const { showAlert } = useUI();
   
   const [newItemForm, setNewItemForm] = useState<Partial<InventoryItem>>({
-    name: '', barcode: '', unit: 'UN', type: 'INGREDIENT', quantity: 0, minQuantity: 5, costPrice: 0, salePrice: 0, category: '', isExtra: false, image: '', targetCategories: []
+    name: '', barcode: '', unit: 'UN', type: 'INGREDIENT', quantity: 0, minQuantity: 5, costPrice: 0, salePrice: 0, category: '', description: '', isExtra: false, image: '', targetCategories: []
   });
   const [recipeItems, setRecipeItems] = useState<{ ingredientId: string, quantity: number }[]>([]);
   const [selectedIngToAdd, setSelectedIngToAdd] = useState('');
+  const [loadingAI, setLoadingAI] = useState(false);
   
   const defaultCategories = ['Lanches', 'Pizzas', 'Pratos Principais', 'Acompanhamentos', 'Bebidas', 'Sobremesas', 'Mercearia', 'Limpeza', 'Higiene', 'Padaria'];
 
   const toggleTargetCategory = (cat: string) => {
       const current = newItemForm.targetCategories || [];
       setNewItemForm({ ...newItemForm, targetCategories: current.includes(cat) ? current.filter(c => c !== cat) : [...current, cat] });
+  };
+
+  const handleGenerateDescription = async () => {
+      if (!newItemForm.name) return showAlert({ title: "Nome Obrigatório", message: "Preencha o nome do item.", type: 'WARNING' });
+      
+      setLoadingAI(true);
+      try {
+          const desc = await generateProductDescription(newItemForm.name, newItemForm.category || 'Geral');
+          setNewItemForm({ ...newItemForm, description: desc });
+      } catch (error) {
+          showAlert({ title: "Erro IA", message: "Falha ao gerar descrição.", type: 'ERROR' });
+      } finally {
+          setLoadingAI(false);
+      }
   };
 
   const handleSaveNewItem = async (e: React.FormEvent) => {
@@ -40,12 +56,16 @@ export const InventoryNewItemView: React.FC = () => {
              return acc + ((ing?.costPrice || 0) * item.quantity);
         }, 0);
       }
-      if (finalItem.type === 'INGREDIENT') { finalItem.salePrice = 0; finalItem.category = ''; }
+      if (finalItem.type === 'INGREDIENT') { 
+          finalItem.salePrice = 0; 
+          finalItem.category = ''; 
+          finalItem.description = '';
+      }
 
       await addInventoryItem(finalItem as InventoryItem);
       showAlert({ title: "Sucesso", message: "Item criado com sucesso!", type: 'SUCCESS' });
       // Reset form
-      setNewItemForm({ name: '', barcode: '', unit: 'UN', type: 'INGREDIENT', quantity: 0, minQuantity: 5, costPrice: 0, salePrice: 0, category: '', isExtra: false, image: '', targetCategories: [] });
+      setNewItemForm({ name: '', barcode: '', unit: 'UN', type: 'INGREDIENT', quantity: 0, minQuantity: 5, costPrice: 0, salePrice: 0, category: '', description: '', isExtra: false, image: '', targetCategories: [] });
       setRecipeItems([]);
     } catch (error: any) {
       showAlert({ title: "Erro", message: error.message, type: 'ERROR' });
@@ -210,6 +230,29 @@ export const InventoryNewItemView: React.FC = () => {
                                               <div className="flex-1 flex flex-col justify-center">
                                                   <ImageUploader value={newItemForm.image || ''} onChange={(val) => setNewItemForm({...newItemForm, image: val})} maxSizeKB={200} />
                                               </div>
+                                              
+                                              <div className="mt-4">
+                                                  <div className="flex justify-between items-center mb-1">
+                                                      <label className="text-xs font-bold text-slate-500 uppercase flex items-center gap-1">
+                                                          <FileText size={14}/> Descrição do Cardápio
+                                                      </label>
+                                                      <button 
+                                                          type="button"
+                                                          onClick={handleGenerateDescription}
+                                                          disabled={loadingAI}
+                                                          className="text-[10px] bg-purple-100 text-purple-700 px-2 py-0.5 rounded font-bold flex items-center gap-1 hover:bg-purple-200 transition-colors disabled:opacity-50"
+                                                      >
+                                                          {loadingAI ? <Loader2 size={10} className="animate-spin"/> : <Sparkles size={10}/>}
+                                                          Gerar com IA
+                                                      </button>
+                                                  </div>
+                                                  <textarea 
+                                                      className="w-full border-2 p-2 rounded-xl text-sm outline-none focus:border-blue-500 resize-none h-24"
+                                                      placeholder="Descreva o produto..."
+                                                      value={newItemForm.description || ''}
+                                                      onChange={e => setNewItemForm({...newItemForm, description: e.target.value})}
+                                                  />
+                                              </div>
                                           </div>
                                      )}
                                      {newItemForm.type === 'INGREDIENT' && (
@@ -221,11 +264,35 @@ export const InventoryNewItemView: React.FC = () => {
                                 </div>
                           )}
                           
-                          {/* Image Uploader for Composite (Optional, if needed) */}
+                          {/* Image Uploader for Composite */}
                           {newItemForm.type === 'COMPOSITE' && (
-                              <div className="border rounded-xl p-3 bg-gray-50 mt-2">
-                                  <label className="block text-xs font-bold mb-2 text-slate-600">Foto do Prato</label>
-                                  <ImageUploader value={newItemForm.image || ''} onChange={(val) => setNewItemForm({...newItemForm, image: val})} maxSizeKB={200} />
+                              <div className="border rounded-xl p-3 bg-gray-50 mt-2 space-y-4">
+                                  <div>
+                                      <label className="block text-xs font-bold mb-2 text-slate-600">Foto do Prato</label>
+                                      <ImageUploader value={newItemForm.image || ''} onChange={(val) => setNewItemForm({...newItemForm, image: val})} maxSizeKB={200} />
+                                  </div>
+                                  <div>
+                                      <div className="flex justify-between items-center mb-1">
+                                          <label className="text-xs font-bold text-slate-500 uppercase flex items-center gap-1">
+                                              <FileText size={14}/> Descrição do Cardápio
+                                          </label>
+                                          <button 
+                                              type="button"
+                                              onClick={handleGenerateDescription}
+                                              disabled={loadingAI}
+                                              className="text-[10px] bg-purple-100 text-purple-700 px-2 py-0.5 rounded font-bold flex items-center gap-1 hover:bg-purple-200 transition-colors disabled:opacity-50"
+                                          >
+                                              {loadingAI ? <Loader2 size={10} className="animate-spin"/> : <Sparkles size={10}/>}
+                                              Gerar com IA
+                                          </button>
+                                      </div>
+                                      <textarea 
+                                          className="w-full border-2 p-2 rounded-xl text-sm outline-none focus:border-blue-500 resize-none h-24"
+                                          placeholder="Descreva o produto..."
+                                          value={newItemForm.description || ''}
+                                          onChange={e => setNewItemForm({...newItemForm, description: e.target.value})}
+                                      />
+                                  </div>
                               </div>
                           )}
                       </div>

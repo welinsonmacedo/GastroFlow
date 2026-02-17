@@ -7,7 +7,8 @@ import { useRestaurant } from '../../context/RestaurantContext';
 import { useInventory } from '../../context/InventoryContext';
 import { useUI } from '../../context/UIContext';
 import { Product, ProductType, InventoryItem } from '../../types';
-import { Archive, FileText, DollarSign, Package } from 'lucide-react';
+import { Archive, FileText, DollarSign, Package, Sparkles, Loader2 } from 'lucide-react';
+import { generateProductDescription } from '../../services/geminiService';
 
 interface ProductFormModalProps {
   isOpen: boolean;
@@ -35,6 +36,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({ isOpen, onCl
   
   // Common
   const [description, setDescription] = useState('');
+  const [loadingAI, setLoadingAI] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -57,6 +59,16 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({ isOpen, onCl
     }
   }, [isOpen, productToEdit, allowInventory]);
 
+  // Se seleciona um item do estoque, puxa a descrição dele se o campo estiver vazio
+  useEffect(() => {
+      if (selectedStockId && mode === 'LINK' && !productToEdit) {
+          const stockItem = invState.inventory.find(i => i.id === selectedStockId);
+          if (stockItem && stockItem.description && !description) {
+              setDescription(stockItem.description);
+          }
+      }
+  }, [selectedStockId, mode]);
+
   const availableForMenu = invState.inventory.filter(i => 
       (i.type === 'RESALE' || i.type === 'COMPOSITE') && 
       !menuState.products.some(p => p.linkedInventoryItemId === i.id && (!productToEdit || p.id !== productToEdit.id)) &&
@@ -64,6 +76,34 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({ isOpen, onCl
   );
 
   const defaultCategories = ['Lanches', 'Pizzas', 'Pratos Principais', 'Acompanhamentos', 'Bebidas', 'Sobremesas'];
+
+  const handleGenerateDescription = async () => {
+      let name = '';
+      let category = '';
+
+      if (mode === 'LINK') {
+          const item = invState.inventory.find(i => i.id === selectedStockId);
+          if (item) {
+              name = item.name;
+              category = item.category || 'Geral';
+          }
+      } else {
+          name = simpleName;
+          category = simpleCategory;
+      }
+
+      if (!name) return showAlert({ title: "Nome Obrigatório", message: "Preencha o nome antes de gerar a descrição.", type: 'WARNING' });
+
+      setLoadingAI(true);
+      try {
+          const generated = await generateProductDescription(name, category);
+          setDescription(generated);
+      } catch (error) {
+          showAlert({ title: "Erro IA", message: "Não foi possível gerar a descrição.", type: 'ERROR' });
+      } finally {
+          setLoadingAI(false);
+      }
+  };
 
   const handleSave = async (e: React.FormEvent) => {
       e.preventDefault();
@@ -90,6 +130,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({ isOpen, onCl
                   costPrice: 0,
                   salePrice: simplePrice,
                   category: simpleCategory,
+                  description: description, // Salva descrição no estoque também
                   isExtra: false,
                   image: ''
               };
@@ -248,9 +289,20 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({ isOpen, onCl
             )}
 
             <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase mb-2 flex items-center gap-2">
-                    <FileText size={16} className="text-blue-600"/> Descrição para o Cliente
-                </label>
+                <div className="flex justify-between items-center mb-2">
+                    <label className="block text-xs font-bold text-slate-500 uppercase flex items-center gap-2">
+                        <FileText size={16} className="text-blue-600"/> Descrição para o Cliente
+                    </label>
+                    <button 
+                        type="button"
+                        onClick={handleGenerateDescription}
+                        disabled={loadingAI}
+                        className="text-[10px] bg-purple-100 text-purple-700 px-2 py-1 rounded-lg font-bold flex items-center gap-1 hover:bg-purple-200 transition-colors disabled:opacity-50"
+                    >
+                        {loadingAI ? <Loader2 size={10} className="animate-spin"/> : <Sparkles size={10}/>}
+                        Gerar com IA
+                    </button>
+                </div>
                 <textarea
                     className="w-full border-2 p-3 rounded-xl text-sm bg-white focus:border-blue-500 outline-none shadow-sm transition-all resize-none"
                     rows={3}

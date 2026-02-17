@@ -180,6 +180,7 @@ export interface InventoryItem {
     costPrice: number;
     salePrice: number;
     category?: string;
+    description?: string; // Novo Campo de Descrição
     type: InventoryType;
     image?: string;
     recipe?: InventoryRecipeItem[];
