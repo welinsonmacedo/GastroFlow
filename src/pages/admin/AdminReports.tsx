@@ -47,10 +47,17 @@ export const AdminReports: React.FC = () => {
                     .order('created_at', { ascending: false });
                 
                 if (error) throw error;
-                setData(trans || []);
+                
+                // Mapeia garantindo números
+                const mappedData = (trans || []).map((t: any) => ({
+                    ...t,
+                    amount: Number(t.amount) || 0
+                }));
+
+                setData(mappedData);
                 setSummary({
-                    total: trans?.reduce((acc, t) => acc + t.amount, 0) || 0,
-                    count: trans?.length || 0
+                    total: mappedData.reduce((acc, t) => acc + t.amount, 0),
+                    count: mappedData.length
                 });
             }
             else if (activeTab === 'EXPENSES') {
@@ -63,11 +70,18 @@ export const AdminReports: React.FC = () => {
                     .order('due_date', { ascending: false });
 
                 if (error) throw error;
-                setData(exps || []);
+
+                // Mapeia garantindo números
+                const mappedData = (exps || []).map((e: any) => ({
+                    ...e,
+                    amount: Number(e.amount) || 0
+                }));
+
+                setData(mappedData);
                 setSummary({
-                    total: exps?.reduce((acc, e) => acc + e.amount, 0) || 0,
-                    paid: exps?.filter(e => e.is_paid).reduce((acc, e) => acc + e.amount, 0) || 0,
-                    pending: exps?.filter(e => !e.is_paid).reduce((acc, e) => acc + e.amount, 0) || 0
+                    total: mappedData.reduce((acc, e) => acc + e.amount, 0),
+                    paid: mappedData.filter((e: any) => e.is_paid).reduce((acc, e) => acc + e.amount, 0),
+                    pending: mappedData.filter((e: any) => !e.is_paid).reduce((acc, e) => acc + e.amount, 0)
                 });
             }
             else if (activeTab === 'FINANCE') {
@@ -79,10 +93,10 @@ export const AdminReports: React.FC = () => {
 
                 const flow = [
                     ...(trans || []).map((t: any) => ({ 
-                        date: t.created_at, type: 'IN', description: `Venda (${t.method}) - ${t.items_summary}`, amount: t.amount 
+                        date: t.created_at, type: 'IN', description: `Venda (${t.method}) - ${t.items_summary || ''}`, amount: Number(t.amount) || 0 
                     })),
                     ...(exps || []).map((e: any) => ({
-                        date: e.paid_date, type: 'OUT', description: `${e.description} (${e.category})`, amount: e.amount
+                        date: e.paid_date, type: 'OUT', description: `${e.description} (${e.category})`, amount: Number(e.amount) || 0
                     }))
                 ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
@@ -107,6 +121,7 @@ export const AdminReports: React.FC = () => {
                 
                 const formattedLogs = logs?.map((l: any) => ({
                     ...l,
+                    quantity: Number(l.quantity) || 0,
                     itemName: l.inventory_items?.name || 'Item Removido',
                     unit: l.inventory_items?.unit || '-'
                 }));
@@ -228,9 +243,9 @@ export const AdminReports: React.FC = () => {
                 )}
                 {activeTab === 'FINANCE' && (
                     <>
-                        <div className="bg-green-50 p-5 rounded-2xl border border-green-100"><p className="text-xs font-black text-green-600 uppercase">Entradas</p><p className="text-3xl font-black text-green-700">R$ {summary.totalIn?.toFixed(2)}</p></div>
-                        <div className="bg-red-50 p-5 rounded-2xl border border-red-100"><p className="text-xs font-black text-red-400 uppercase">Saídas</p><p className="text-3xl font-black text-red-700">R$ {summary.totalOut?.toFixed(2)}</p></div>
-                        <div className={`p-5 rounded-2xl border ${summary.balance >= 0 ? 'bg-blue-50 border-blue-100' : 'bg-orange-50 border-orange-100'}`}><p className="text-xs font-black uppercase opacity-60">Saldo Líquido</p><p className={`text-3xl font-black ${summary.balance >= 0 ? 'text-blue-700' : 'text-orange-700'}`}>R$ {summary.balance?.toFixed(2)}</p></div>
+                        <div className="bg-green-50 p-5 rounded-2xl border border-green-100"><p className="text-xs font-black text-green-600 uppercase">Entradas</p><p className="text-3xl font-black text-green-700">R$ {(summary.totalIn || 0).toFixed(2)}</p></div>
+                        <div className="bg-red-50 p-5 rounded-2xl border border-red-100"><p className="text-xs font-black text-red-400 uppercase">Saídas</p><p className="text-3xl font-black text-red-700">R$ {(summary.totalOut || 0).toFixed(2)}</p></div>
+                        <div className={`p-5 rounded-2xl border ${summary.balance >= 0 ? 'bg-blue-50 border-blue-100' : 'bg-orange-50 border-orange-100'}`}><p className="text-xs font-black uppercase opacity-60">Saldo Líquido</p><p className={`text-3xl font-black ${summary.balance >= 0 ? 'text-blue-700' : 'text-orange-700'}`}>R$ {(summary.balance || 0).toFixed(2)}</p></div>
                     </>
                 )}
             </div>
@@ -293,7 +308,7 @@ export const AdminReports: React.FC = () => {
                                                 </span>
                                             </td>
                                             <td className={`p-4 text-right font-bold ${item.type === 'IN' ? 'text-green-600' : 'text-red-600'} print:text-black`}>
-                                                {item.type === 'OUT' ? '- ' : ''} R$ {item.amount.toFixed(2)}
+                                                {item.type === 'OUT' ? '- ' : ''} R$ {(item.amount || 0).toFixed(2)}
                                             </td>
                                         </>
                                     )}
