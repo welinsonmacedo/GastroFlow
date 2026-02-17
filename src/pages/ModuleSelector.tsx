@@ -25,20 +25,20 @@ const ModuleCard = ({
 }) => (
     <div 
         onClick={onClick}
-        className="bg-white rounded-3xl p-8 shadow-xl border border-gray-100 cursor-pointer transform transition-all duration-300 hover:scale-[1.03] hover:shadow-2xl hover:border-transparent group relative overflow-hidden h-full flex flex-col"
+        className="bg-white rounded-2xl p-5 shadow-lg border border-gray-100 cursor-pointer transform transition-all duration-300 hover:scale-[1.02] hover:shadow-xl hover:border-transparent group relative overflow-hidden h-full flex flex-col"
     >
         {/* Hover Effect Background */}
         <div className={`absolute inset-0 opacity-0 group-hover:opacity-5 transition-opacity duration-500 ${colorClass.replace('text-', 'bg-')}`}></div>
         
-        <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-6 shadow-lg transition-transform group-hover:rotate-6 ${colorClass.replace('text-', 'bg-').replace('600', '100').replace('500', '100')} ${colorClass}`}>
-            <Icon size={32} />
+        <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 shadow-md transition-transform group-hover:rotate-6 ${colorClass.replace('text-', 'bg-').replace('600', '100').replace('500', '100')} ${colorClass}`}>
+            <Icon size={24} />
         </div>
         
-        <h3 className="text-2xl font-black text-slate-800 mb-3 group-hover:text-slate-900">{title}</h3>
-        <p className="text-slate-500 text-sm leading-relaxed mb-6 flex-1">{desc}</p>
+        <h3 className="text-lg font-black text-slate-800 mb-2 group-hover:text-slate-900 leading-tight">{title}</h3>
+        <p className="text-slate-500 text-xs leading-relaxed mb-4 flex-1">{desc}</p>
         
-        <div className={`flex items-center gap-2 font-bold text-sm uppercase tracking-wider ${colorClass}`}>
-            Acessar Módulo <ArrowRight size={16} className="transition-transform group-hover:translate-x-1"/>
+        <div className={`flex items-center gap-2 font-bold text-xs uppercase tracking-wider ${colorClass}`}>
+            Acessar <ArrowRight size={14} className="transition-transform group-hover:translate-x-1"/>
         </div>
     </div>
 );
@@ -78,7 +78,7 @@ export const ModuleSelector: React.FC = () => {
             <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-emerald-600 rounded-full blur-[150px] opacity-10 -translate-x-1/2 translate-y-1/2"></div>
 
             {/* Header */}
-            <header className="p-8 flex justify-between items-center relative z-10">
+            <header className="p-6 md:p-8 flex justify-between items-center relative z-10">
                 <div className="flex items-center gap-3">
                     <div className="bg-white/10 backdrop-blur-md p-2 rounded-xl border border-white/10">
                         {state.theme.logoUrl ? (
@@ -104,17 +104,17 @@ export const ModuleSelector: React.FC = () => {
             </header>
 
             {/* Main Content */}
-            <main className="flex-1 flex flex-col items-center justify-center p-6 relative z-10">
-                <div className="text-center mb-12 max-w-2xl mx-auto">
-                    <h2 className="text-4xl md:text-5xl font-black text-white mb-6 tracking-tight">
+            <main className="flex-1 flex flex-col items-center justify-center p-4 md:p-6 relative z-10">
+                <div className="text-center mb-8 max-w-2xl mx-auto">
+                    <h2 className="text-3xl md:text-4xl font-black text-white mb-4 tracking-tight">
                         Escolha seu Ambiente
                     </h2>
-                    <p className="text-slate-400 text-lg">
+                    <p className="text-slate-400 text-base">
                         Selecione o módulo que deseja acessar agora.
                     </p>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5 gap-6 max-w-7xl w-full">
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4 max-w-6xl w-full">
                     
                     {allowed.includes('RESTAURANT') && (
                         <ModuleCard 
@@ -185,7 +185,7 @@ export const ModuleSelector: React.FC = () => {
                 </div>
             </main>
             
-            <footer className="p-8 text-center text-slate-600 text-sm relative z-10">
+            <footer className="p-6 text-center text-slate-600 text-xs relative z-10">
                 &copy; {new Date().getFullYear()} Flux Eat Systems. Todos os módulos integrados.
             </footer>
         </div>
