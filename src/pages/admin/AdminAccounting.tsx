@@ -4,45 +4,43 @@ import { useRestaurant } from '../../context/RestaurantContext';
 import { useUI } from '../../context/UIContext';
 import { Button } from '../../components/Button';
 import { supabase } from '../../lib/supabase';
-import { Loader2, RefreshCcw, Printer, PieChart, TrendingUp, CheckCircle2, ArrowUpRight, AlertCircle, FileText, DollarSign, Store, Package, HelpCircle, SlidersHorizontal, Eye, CreditCard, BarChart2, Users, ShoppingBag, Bike, Monitor, Settings } from 'lucide-react';
+import { 
+    Loader2, RefreshCcw, Printer, Filter, Settings, 
+    TrendingUp, TrendingDown, DollarSign, PieChart, 
+    Calendar, ChevronDown, ChevronUp, AlertCircle, FileText
+} from 'lucide-react';
 
 export const AdminAccounting: React.FC = () => {
   const { state } = useRestaurant();
   const { showAlert } = useUI();
   const printRef = useRef<HTMLDivElement>(null);
   
-  // Filtros de Data
+  // --- ESTADOS ---
   const [dateStart, setDateStart] = useState(new Date(new Date().setDate(1)).toISOString().split('T')[0]); 
   const [dateEnd, setDateEnd] = useState(new Date().toISOString().split('T')[0]);
   const [loading, setLoading] = useState(false);
-  
-  // Configurações do Relatório
   const [showConfig, setShowConfig] = useState(false);
+  
+  // Configurações Contábeis
   const [config, setConfig] = useState({
       accountingMethod: 'COMPETENCE' as 'COMPETENCE' | 'CASH',
-      taxRate: 6.0,
-      // fees removed here, using businessInfo instead
-  });
-  
-  // Visibilidade das Seções
-  const [visibility, setVisibility] = useState({
-      charts: true,
-      revenue: true,
-      cmv: true,
-      expenses: true,
-      financial: true,
-      operational: true
+      taxRate: 6.0, // Simples Nacional (Estimado)
   });
 
-  const [data, setData] = useState<any>({
-      grossRevenue: 0, saloonSales: 0, posSales: 0, 
-      taxes: 0, cardFees: 0, netRevenue: 0,
-      cmv: 0, grossProfit: 0, operatingExpenses: 0, expensesByCategory: {},
-      ebitda: 0, financialExpenses: 0, netIncome: 0, hasData: false,
-      channelAnalysis: { dineIn: 0, delivery: 0, pdv: 0 },
-      staffPerformance: []
+  // Estado dos Dados
+  const [dreData, setDreData] = useState({
+      grossRevenue: 0,
+      deductions: { taxes: 0, fees: 0, total: 0 },
+      netRevenue: 0,
+      cmv: 0,
+      grossProfit: 0, // Margem de Contribuição
+      expenses: { fixed: 0, variable: 0, personnel: 0, financial: 0, total: 0, byCategory: {} as Record<string, number> },
+      ebitda: 0,
+      netResult: 0,
+      hasData: false
   });
 
+  // --- BUSCA E CÁLCULO ---
   const fetchDRE = useCallback(async () => {
       if (!state.tenantId) return;
       setLoading(true);
@@ -51,34 +49,31 @@ export const AdminAccounting: React.FC = () => {
           const start = dateStart + ' 00:00:00';
           const end = dateEnd + ' 23:59:59';
 
-          // 1. Buscar Transações
+          // 1. Receita (Transações)
           const { data: transRes, error: transErr } = await supabase
             .from('transactions')
-            .select('*, orders(order_type)') 
+            .select('*')
             .eq('tenant_id', state.tenantId)
             .gte('created_at', start)
             .lte('created_at', end)
             .neq('status', 'CANCELLED');
 
-          if (transErr) console.error("Erro transações:", transErr);
+          if (transErr) throw transErr;
 
-          // 2. Buscar Itens CMV
+          // 2. Custos (CMV) - Baseado em Pedidos Pagos
           const { data: itemsRes, error: itemsErr } = await supabase
             .from('order_items')
-            .select('quantity, product_price, product_cost_price, orders!inner(is_paid, created_at, status)')
+            .select('quantity, product_cost_price, orders!inner(is_paid, created_at, status)')
             .eq('tenant_id', state.tenantId)
             .eq('orders.is_paid', true)
             .neq('orders.status', 'CANCELLED')
             .gte('orders.created_at', start)
             .lte('orders.created_at', end);
 
-          if (itemsErr) console.error("Erro CMV:", itemsErr);
+          if (itemsErr) throw itemsErr;
 
-          // 3. Buscar Despesas
-          let expensesQuery = supabase
-            .from('expenses')
-            .select('*')
-            .eq('tenant_id', state.tenantId);
+          // 3. Despesas (Operacionais e Financeiras)
+          let expensesQuery = supabase.from('expenses').select('*').eq('tenant_id', state.tenantId);
 
           if (config.accountingMethod === 'CASH') {
               expensesQuery = expensesQuery.eq('is_paid', true).gte('paid_date', dateStart).lte('paid_date', dateEnd);
@@ -87,255 +82,350 @@ export const AdminAccounting: React.FC = () => {
           }
 
           const { data: expsRes, error: expsErr } = await expensesQuery;
-          if (expsErr) console.error("Erro Despesas:", expsErr);
+          if (expsErr) throw expsErr;
 
-          // --- Cálculos Financeiros ---
-          let grossRev = 0;
-          let calculatedCardFees = 0;
+          // --- PROCESSAMENTO ---
           
-          let dineInTotal = 0;
-          let deliveryTotal = 0;
-          let pdvTotal = 0;
-          const staffMap: Record<string, { count: number, total: number }> = {};
-
-          // Helper para obter taxa configurada
-          // Como as transações gravam apenas o TIPO (CREDIT, DEBIT), vamos pegar a média das taxas configuradas para esse tipo
-          // Ou, se houver apenas uma configuração ativa daquele tipo, usamos ela.
-          const getFeeRate = (methodType: string) => {
+          // Receita Bruta e Taxas de Cartão
+          let grossRevenue = 0;
+          let cardFees = 0;
+          
+          // Helper para taxas de cartão (busca do businessInfo ou usa fallback)
+          const getFeeRate = (method: string) => {
               const methods = state.businessInfo?.paymentMethods || [];
-              const relevantMethods = methods.filter(m => m.type === methodType && m.isActive);
-              if (relevantMethods.length === 0) return 0;
-              // Média simples das taxas ativas daquele tipo
-              const sumRates = relevantMethods.reduce((acc, m) => acc + m.feePercentage, 0);
-              return sumRates / relevantMethods.length;
+              const matched = methods.find(m => m.type === method && m.isActive);
+              return matched ? matched.feePercentage : (method === 'CREDIT' ? 3.99 : (method === 'DEBIT' ? 1.99 : 0));
           };
 
-          (transRes || []).forEach((t: any) => {
-              const amt = Number(t.amount) || 0;
-              grossRev += amt;
+          transRes?.forEach((t: any) => {
+              const amount = Number(t.amount) || 0;
+              grossRevenue += amount;
+              cardFees += amount * (getFeeRate(t.method) / 100);
+          });
+
+          // Impostos (Simples Nacional)
+          const taxes = grossRevenue * (config.taxRate / 100);
+          
+          // Deduções Totais
+          const deductionsTotal = taxes + cardFees;
+
+          // Receita Líquida
+          const netRevenue = grossRevenue - deductionsTotal;
+
+          // CMV
+          let cmv = 0;
+          itemsRes?.forEach((item: any) => {
+              cmv += (Number(item.quantity) * Number(item.product_cost_price));
+          });
+
+          // Lucro Bruto (Margem de Contribuição)
+          const grossProfit = netRevenue - cmv;
+
+          // Despesas Operacionais
+          let expPersonnel = 0;
+          let expFinancial = 0;
+          let expOperational = 0;
+          const expensesByCategory: Record<string, number> = {};
+
+          expsRes?.forEach((e: any) => {
+              const amount = Number(e.amount);
+              const cat = e.category || 'Outros';
               
-              // Taxas baseadas na configuração global
-              const rate = getFeeRate(t.method);
-              calculatedCardFees += amt * (rate / 100);
+              expensesByCategory[cat] = (expensesByCategory[cat] || 0) + amount;
 
-              // Análise de Canal
-              let orderType = 'DINE_IN';
-              if (t.orders) {
-                  if (Array.isArray(t.orders)) orderType = t.orders[0]?.order_type || 'DINE_IN';
-                  else orderType = t.orders.order_type || 'DINE_IN';
-              } else if (t.items_summary?.toLowerCase().includes('balcão')) {
-                  orderType = 'PDV';
-              }
-
-              if (orderType === 'DELIVERY') deliveryTotal += amt;
-              else if (orderType === 'PDV') pdvTotal += amt;
-              else dineInTotal += amt;
-
-              // Performance da Equipe
-              const cashier = t.cashier_name || 'Sistema/QR';
-              if (!staffMap[cashier]) staffMap[cashier] = { count: 0, total: 0 };
-              staffMap[cashier].count += 1;
-              staffMap[cashier].total += amt;
+              if (['Pessoal', 'Salário', 'Pró-labore'].includes(cat)) expPersonnel += amount;
+              else if (['Impostos', 'Taxas Bancárias', 'Juros'].includes(cat)) expFinancial += amount;
+              else expOperational += amount;
           });
 
-          const staffRanking = Object.entries(staffMap).map(([name, stats]) => ({ name, ...stats })).sort((a, b) => b.total - a.total);
+          const totalExpenses = expPersonnel + expFinancial + expOperational;
+          const ebitda = grossProfit - expOperational - expPersonnel; // EBITDA aproximado
+          const netResult = ebitda - expFinancial;
 
-          let cmvTotal = 0;
-          (itemsRes || []).forEach((item: any) => {
-              const qty = Number(item.quantity) || 0;
-              const cost = Number(item.product_cost_price) || 0;
-              cmvTotal += (qty * cost);
+          setDreData({
+              grossRevenue,
+              deductions: { taxes, fees: cardFees, total: deductionsTotal },
+              netRevenue,
+              cmv,
+              grossProfit,
+              expenses: { 
+                  personnel: expPersonnel, 
+                  financial: expFinancial, 
+                  variable: expOperational, // Tratando operacionais gerais como fixas/variáveis mistas por enquanto
+                  fixed: 0,
+                  total: totalExpenses,
+                  byCategory: expensesByCategory
+              },
+              ebitda,
+              netResult,
+              hasData: grossRevenue > 0 || totalExpenses > 0
           });
 
-          const taxes = grossRev * (config.taxRate / 100);
-          const netRevenue = grossRev - taxes - calculatedCardFees;
-          const grossProfit = netRevenue - cmvTotal;
-
-          let opExpenses = 0, finExpenses = 0;
-          const expByCat: any = {};
-          
-          (expsRes || []).forEach((e: any) => {
-              const amt = Number(e.amount) || 0;
-              if (['Impostos', 'Taxas Bancárias'].includes(e.category)) {
-                  finExpenses += amt;
-              } else {
-                  opExpenses += amt;
-                  expByCat[e.category] = (expByCat[e.category] || 0) + amt;
-              }
-          });
-
-          const ebitda = grossProfit - opExpenses;
-          
-          setData({
-              grossRevenue: grossRev, 
-              saloonSales: dineInTotal, 
-              posSales: pdvTotal + deliveryTotal, 
-              taxes, cardFees: calculatedCardFees, netRevenue,
-              cmv: cmvTotal, grossProfit, operatingExpenses: opExpenses,
-              expensesByCategory: expByCat, ebitda, financialExpenses: finExpenses,
-              netIncome: ebitda - finExpenses,
-              hasData: grossRev > 0 || opExpenses > 0 || (expsRes && expsRes.length > 0),
-              channelAnalysis: { dineIn: dineInTotal, delivery: deliveryTotal, pdv: pdvTotal },
-              staffPerformance: staffRanking
-          });
-
-      } catch (error: any) {
-          console.error("DRE Fetch Error:", error);
-          showAlert({ title: "Erro no DRE", message: "Falha ao compilar dados.", type: 'ERROR' });
+      } catch (error) {
+          console.error(error);
+          showAlert({ title: 'Erro', message: 'Falha ao calcular DRE.', type: 'ERROR' });
       } finally {
           setLoading(false);
       }
-  }, [state.tenantId, state.businessInfo, dateStart, dateEnd, config, showAlert]);
+  }, [state.tenantId, dateStart, dateEnd, config, state.businessInfo]);
 
   useEffect(() => { 
       if (state.tenantId) fetchDRE(); 
   }, [state.tenantId, fetchDRE]);
 
-  const cmvPerc = data.netRevenue > 0 ? (data.cmv / data.netRevenue) * 100 : 0;
-  const marginPerc = data.netRevenue > 0 ? (data.grossProfit / data.netRevenue) * 100 : 0;
-  const profitPerc = data.grossRevenue > 0 ? (data.netIncome / data.grossRevenue) * 100 : 0;
+  // --- UTILS DE RENDERIZAÇÃO ---
+  
+  // Análise Vertical (AV%)
+  const getAV = (value: number) => {
+      if (dreData.grossRevenue === 0) return '0.0%';
+      return `${((value / dreData.grossRevenue) * 100).toFixed(1)}%`;
+  };
 
-  const Row = ({ label, value, type = 'normal', indent = false, isNegative = false, description = '' }: any) => (
-    <div className={`flex justify-between py-2.5 print:py-1 ${indent ? 'pl-8' : ''} ${type === 'total' ? 'border-t-2 border-slate-800 font-black text-slate-900 bg-slate-50 mt-2 px-2 print:bg-transparent print:border-black' : 'border-b border-slate-100 text-slate-600 print:border-slate-300'}`}>
-        <div className="flex items-center gap-2 group relative">
-            <span className={type === 'total' ? 'uppercase tracking-tight text-sm print:text-black' : 'font-medium text-sm print:text-black'}>{label}</span>
-            {description && (
-                <div className="absolute left-0 bottom-full mb-2 w-64 p-3 bg-slate-800 text-white text-xs rounded-lg shadow-xl opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50 print:hidden">
-                    {description}
-                </div>
-            )}
-        </div>
-        <span className={`font-mono font-bold ${isNegative ? 'text-red-500 print:text-black' : 'text-slate-800 print:text-black'}`}>
-            {isNegative && value > 0 ? '-' : ''} R$ {Math.abs(value).toFixed(2)}
-        </span>
-    </div>
+  const formatCurrency = (val: number) => val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+  // Componente de Linha do DRE
+  const DreRow = ({ label, value, type = 'normal', indent = 0, isNegative = false }: any) => {
+    const isHeader = type === 'header';
+    const isResult = type === 'result';
+    
+    return (
+      <div className={`flex justify-between items-center py-3 border-b border-gray-100 text-sm hover:bg-gray-50 transition-colors
+          ${isHeader ? 'font-bold text-slate-800 bg-gray-50/50 mt-4' : 'text-slate-600'}
+          ${isResult ? 'font-black text-base border-t-2 border-slate-200 bg-slate-50 mt-2' : ''}
+          print:py-1 print:border-gray-200
+      `}>
+          <div className="flex-1 pl-4" style={{ paddingLeft: `${indent * 1.5}rem` }}>
+              {label}
+          </div>
+          <div className="w-32 text-right font-mono font-medium">
+              <span className={isNegative ? 'text-red-500' : (isResult && value > 0 ? 'text-emerald-600' : 'text-slate-800')}>
+                  {isNegative && value > 0 ? '-' : ''} {formatCurrency(value)}
+              </span>
+          </div>
+          <div className="w-20 text-right pr-4 font-mono text-xs text-slate-400">
+              {getAV(value)}
+          </div>
+      </div>
+    );
+  };
+
+  const KPICard = ({ title, value, subtext, icon: Icon, colorClass }: any) => (
+      <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between h-full relative overflow-hidden group hover:shadow-md transition-all">
+          <div className={`absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity ${colorClass}`}>
+              <Icon size={48} />
+          </div>
+          <div>
+              <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">{title}</p>
+              <h3 className={`text-2xl font-black ${colorClass.replace('bg-', 'text-').replace('100', '600')}`}>{value}</h3>
+          </div>
+          <p className="text-[10px] text-gray-400 font-medium mt-3 border-t pt-2 flex justify-between">
+              <span>Margem</span>
+              <span className="font-bold">{subtext}</span>
+          </p>
+      </div>
   );
 
   return (
-    <div className="space-y-6 animate-fade-in pb-20 print:pb-0 print:space-y-4">
-        {/* Header - Controles */}
+    <div className="space-y-6 animate-fade-in pb-20 print:p-0 print:bg-white">
+        
+        {/* HEADER & CONTROLES (Oculto na Impressão) */}
         <div className="flex flex-col gap-4 print:hidden">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-200 gap-4">
                 <div>
-                    <h2 className="text-2xl font-black text-slate-800 flex items-center gap-2"><PieChart className="text-blue-600"/> DRE Gerencial</h2>
-                    <p className="text-sm text-gray-500">Relatório de Lucratividade e Operação</p>
+                    <h2 className="text-2xl font-black text-slate-800 flex items-center gap-2">
+                        <FileText className="text-blue-600"/> DRE Gerencial
+                    </h2>
+                    <p className="text-sm text-gray-500">Demonstração do Resultado do Exercício</p>
                 </div>
-                <div className="flex flex-col md:flex-row gap-2 items-end">
-                    <div className="flex gap-2 bg-gray-100 p-1.5 rounded-xl border border-gray-200">
-                        <input type="date" className="bg-transparent p-1 text-xs font-bold outline-none" value={dateStart} onChange={e => setDateStart(e.target.value)} />
-                        <span className="text-gray-400 self-center font-bold">→</span>
-                        <input type="date" className="bg-transparent p-1 text-xs font-bold outline-none" value={dateEnd} onChange={e => setDateEnd(e.target.value)} />
+                
+                <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+                     {/* Seletor de Data */}
+                     <div className="flex items-center gap-2 bg-gray-100 p-1.5 rounded-xl border border-gray-200 shadow-inner">
+                        <Calendar size={16} className="text-gray-400 ml-2"/>
+                        <input 
+                            type="date" 
+                            className="bg-transparent text-sm font-bold text-slate-700 outline-none p-1" 
+                            value={dateStart} 
+                            onChange={e => setDateStart(e.target.value)} 
+                        />
+                        <span className="text-gray-400 font-bold">à</span>
+                        <input 
+                            type="date" 
+                            className="bg-transparent text-sm font-bold text-slate-700 outline-none p-1" 
+                            value={dateEnd} 
+                            onChange={e => setDateEnd(e.target.value)} 
+                        />
                     </div>
-                    <div className="flex gap-2">
-                        <Button onClick={() => setShowConfig(!showConfig)} variant="secondary" className={`h-[42px] px-4 border-gray-200 ${showConfig ? 'bg-blue-50 text-blue-600 border-blue-200' : 'bg-white'}`}><SlidersHorizontal size={18}/></Button>
-                        <Button onClick={fetchDRE} disabled={loading} className="h-[42px] px-6">{loading ? <Loader2 className="animate-spin" size={18}/> : <RefreshCcw size={18}/>} <span className="ml-2">Atualizar</span></Button>
-                        <Button variant="secondary" onClick={() => window.print()} className="h-[42px] bg-white border-gray-200"><Printer size={18}/></Button>
-                    </div>
+
+                    <Button variant="secondary" onClick={() => setShowConfig(!showConfig)} className={`h-[44px] w-[44px] p-0 flex items-center justify-center ${showConfig ? 'bg-blue-100 text-blue-600 border-blue-200' : ''}`}>
+                        <Settings size={20}/>
+                    </Button>
+                    
+                    <Button onClick={fetchDRE} disabled={loading} className="h-[44px] px-6 shadow-blue-200 shadow-lg">
+                        {loading ? <Loader2 className="animate-spin" /> : <RefreshCcw size={18}/>} 
+                        <span className="ml-2 hidden sm:inline">Gerar</span>
+                    </Button>
+
+                    <Button variant="outline" onClick={() => window.print()} className="h-[44px]">
+                        <Printer size={18}/>
+                    </Button>
                 </div>
             </div>
 
-            {/* Painel de Configuração */}
+            {/* Painel de Configurações */}
             {showConfig && (
-                <div className="bg-white p-6 rounded-2xl shadow-lg border border-blue-100 animate-fade-in grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="bg-white p-6 rounded-2xl shadow-lg border border-blue-100 animate-fade-in grid grid-cols-1 md:grid-cols-2 gap-8 relative z-10">
                     <div>
-                        <h4 className="text-xs font-black text-blue-600 uppercase tracking-widest mb-3 flex items-center gap-2"><Settings size={14}/> Dados Gerais</h4>
+                        <h4 className="text-xs font-black text-blue-600 uppercase tracking-widest mb-3">Parâmetros Fiscais</h4>
                         <div className="space-y-4">
-                            <div><label className="block text-xs font-bold text-gray-500 mb-1">Regime Contábil</label><div className="flex bg-gray-100 p-1 rounded-lg"><button onClick={() => setConfig({...config, accountingMethod: 'COMPETENCE'})} className={`flex-1 py-1.5 text-xs font-bold rounded-md ${config.accountingMethod === 'COMPETENCE' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500'}`}>Competência</button><button onClick={() => setConfig({...config, accountingMethod: 'CASH'})} className={`flex-1 py-1.5 text-xs font-bold rounded-md ${config.accountingMethod === 'CASH' ? 'bg-white text-emerald-600 shadow-sm' : 'text-gray-500'}`}>Caixa</button></div></div>
-                            <div><label className="block text-xs font-bold text-gray-500 mb-1">Imposto Simples (%)</label><input type="number" step="0.1" className="w-full border p-2 rounded-lg text-sm font-bold" value={config.taxRate} onChange={e => setConfig({...config, taxRate: parseFloat(e.target.value) || 0})} /></div>
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 mb-1">Regime de Apuração</label>
+                                <div className="flex bg-gray-100 p-1 rounded-lg">
+                                    <button onClick={() => setConfig({...config, accountingMethod: 'COMPETENCE'})} className={`flex-1 py-2 text-xs font-bold rounded-md transition-all ${config.accountingMethod === 'COMPETENCE' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500'}`}>Competência (Venda)</button>
+                                    <button onClick={() => setConfig({...config, accountingMethod: 'CASH'})} className={`flex-1 py-2 text-xs font-bold rounded-md transition-all ${config.accountingMethod === 'CASH' ? 'bg-white text-emerald-600 shadow-sm' : 'text-gray-500'}`}>Caixa (Pagamento)</button>
+                                </div>
+                                <p className="text-[10px] text-gray-400 mt-1">Competência considera a data da venda. Caixa considera a data do recebimento/pagamento.</p>
+                            </div>
                         </div>
                     </div>
                     <div>
-                        <h4 className="text-xs font-black text-blue-600 uppercase tracking-widest mb-3 flex items-center gap-2"><Eye size={14}/> Exibir Seções</h4>
-                        <div className="grid grid-cols-2 gap-2">
-                            {Object.keys(visibility).map(key => (
-                                <label key={key} className={`flex items-center gap-2 p-2 rounded-lg border cursor-pointer ${visibility[key as keyof typeof visibility] ? 'bg-blue-50 border-blue-200' : 'bg-gray-50 border-transparent opacity-60'}`}><input type="checkbox" className="hidden" checked={visibility[key as keyof typeof visibility]} onChange={e => setVisibility({...visibility, [key]: e.target.checked})} /><span className="text-[10px] font-bold uppercase">{key}</span></label>
-                            ))}
+                        <h4 className="text-xs font-black text-blue-600 uppercase tracking-widest mb-3">Tributação</h4>
+                        <div>
+                            <label className="block text-xs font-bold text-gray-500 mb-1">Alíquota Simples Nacional (%)</label>
+                            <input type="number" step="0.1" className="w-full border p-2 rounded-lg text-sm font-bold bg-gray-50 focus:bg-white focus:border-blue-500 outline-none" value={config.taxRate} onChange={e => setConfig({...config, taxRate: parseFloat(e.target.value) || 0})} />
                         </div>
                     </div>
                 </div>
             )}
         </div>
 
-        {data.hasData ? (
-            <>
-                {visibility.charts && (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 print:hidden">
-                        <div className={`p-6 rounded-2xl border-2 bg-white shadow-sm flex flex-col ${cmvPerc > 35 ? 'border-red-200 bg-red-50/30' : 'border-emerald-200 bg-emerald-50/30'}`}>
-                            <div className="flex justify-between items-start mb-2"><span className="text-gray-500 text-[10px] font-black uppercase tracking-widest">CMV Real</span>{cmvPerc > 35 ? <ArrowUpRight className="text-red-500" /> : <CheckCircle2 className="text-emerald-500" />}</div>
-                            <div className="text-4xl font-black text-slate-800">{cmvPerc.toFixed(1)}%</div>
-                        </div>
-                        <div className="p-6 rounded-2xl border-2 bg-white shadow-sm flex flex-col border-blue-200 bg-blue-50/30">
-                            <div className="flex justify-between items-start mb-2"><span className="text-gray-500 text-[10px] font-black uppercase tracking-widest">Margem Bruta</span><TrendingUp className="text-blue-500" /></div>
-                            <div className="text-4xl font-black text-slate-800">{marginPerc.toFixed(1)}%</div>
-                        </div>
-                        <div className={`p-6 rounded-2xl border-2 bg-white shadow-sm flex flex-col ${profitPerc < 10 ? 'border-orange-200 bg-orange-50/30' : 'border-emerald-200 bg-emerald-50/30'}`}>
-                            <div className="flex justify-between items-start mb-2"><span className="text-gray-500 text-[10px] font-black uppercase tracking-widest">Lucratividade</span>{profitPerc < 10 ? <AlertCircle className="text-orange-500" /> : <TrendingUp className="text-emerald-500" />}</div>
-                            <div className="text-4xl font-black text-slate-800">{profitPerc.toFixed(1)}%</div>
-                        </div>
-                    </div>
-                )}
+        {/* --- RELATÓRIO VISUAL --- */}
+        {dreData.hasData ? (
+            <div ref={printRef} className="print:w-full print:max-w-none space-y-6">
+                
+                {/* 1. Dashboard de KPIs (Executivo) */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 print:grid-cols-4 print:gap-2">
+                    <KPICard 
+                        title="Receita Líquida" 
+                        value={formatCurrency(dreData.netRevenue)} 
+                        subtext={getAV(dreData.netRevenue)}
+                        icon={DollarSign}
+                        colorClass="bg-blue-100 text-blue-600"
+                    />
+                    <KPICard 
+                        title="Margem Contrib." 
+                        value={formatCurrency(dreData.grossProfit)} 
+                        subtext={getAV(dreData.grossProfit)}
+                        icon={TrendingUp}
+                        colorClass="bg-emerald-100 text-emerald-600"
+                    />
+                    <KPICard 
+                        title="EBITDA" 
+                        value={formatCurrency(dreData.ebitda)} 
+                        subtext={getAV(dreData.ebitda)}
+                        icon={PieChart}
+                        colorClass="bg-purple-100 text-purple-600"
+                    />
+                    <KPICard 
+                        title="Lucro Líquido" 
+                        value={formatCurrency(dreData.netResult)} 
+                        subtext={getAV(dreData.netResult)}
+                        icon={dreData.netResult >= 0 ? TrendingUp : AlertCircle}
+                        colorClass={dreData.netResult >= 0 ? "bg-green-100 text-green-600" : "bg-red-100 text-red-600"}
+                    />
+                </div>
 
-                <div className="bg-white rounded-3xl shadow-xl border border-slate-200 overflow-hidden print:shadow-none print:border-none print:rounded-none">
-                    <div className="bg-slate-900 p-10 text-white flex justify-between items-end print:bg-white print:text-black print:p-0 print:border-b-2 print:border-black print:mb-4">
+                {/* 2. Demonstração Vertical Detalhada (Papel A4 Style) */}
+                <div className="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden print:shadow-none print:border-2 print:border-black">
+                    {/* Cabeçalho do Relatório */}
+                    <div className="bg-slate-900 text-white p-6 print:bg-white print:text-black print:border-b-2 print:border-black flex justify-between items-center">
                         <div>
-                            <h1 className="text-4xl font-black tracking-tighter uppercase mb-1 print:text-2xl">DRE Gerencial</h1>
-                            <p className="text-blue-400 text-sm font-bold uppercase tracking-widest flex items-center gap-2 print:text-black"><Store size={16} className="print:hidden"/> {state.theme.restaurantName}</p>
+                            <h1 className="text-xl font-black uppercase tracking-widest">Relatório DRE</h1>
+                            <p className="text-xs text-slate-400 font-bold uppercase print:text-slate-600">{state.theme.restaurantName}</p>
                         </div>
                         <div className="text-right">
-                            <p className="text-slate-500 text-[10px] font-black uppercase mb-1 print:text-black">Período</p>
-                            <p className="text-lg font-mono font-bold bg-white/10 px-3 py-1 rounded-lg print:bg-transparent print:p-0 print:text-sm">{new Date(dateStart).toLocaleDateString()} — {new Date(dateEnd).toLocaleDateString()}</p>
+                            <p className="text-xs text-slate-400 font-mono print:text-black">Período</p>
+                            <p className="font-bold text-sm">{new Date(dateStart).toLocaleDateString()} a {new Date(dateEnd).toLocaleDateString()}</p>
                         </div>
                     </div>
 
-                    <div className="p-10 max-w-4xl mx-auto print:p-0 print:max-w-none">
-                        <div className="space-y-1">
-                            {visibility.revenue && (
-                                <>
-                                    <h3 className="text-xs font-black text-blue-600 uppercase tracking-widest mb-4 flex items-center gap-2 print:text-black print:border-b print:mt-4"><DollarSign size={14} className="print:hidden"/> 1. Receita e Deduções</h3>
-                                    <Row label="(+) Receita Bruta de Vendas" value={data.grossRevenue} />
-                                    <Row label="    Vendas Mesas / Salão" value={data.saloonSales} indent />
-                                    <Row label="    Vendas Balcão / PDV" value={data.posSales} indent />
-                                    <Row label={`(-) Impostos (${config.taxRate}%)`} value={data.taxes} isNegative />
-                                    <Row label="(-) Taxas de Cartão / Recebimento" value={data.cardFees} isNegative description="Calculado com base nas taxas configuradas em Financeiro." />
-                                    <Row label="(=) RECEITA LÍQUIDA" value={data.netRevenue} type="total" />
-                                </>
-                            )}
-
-                            {visibility.cmv && (
-                                <>
-                                    <h3 className="text-xs font-black text-orange-600 uppercase tracking-widest mb-4 mt-12 flex items-center gap-2 print:text-black print:border-b print:mt-6"><Package size={14} className="print:hidden"/> 2. Custos Variáveis (CMV)</h3>
-                                    <Row label="(-) Custo de Mercadoria Vendida" value={data.cmv} isNegative />
-                                    <Row label="(=) LUCRO BRUTO" value={data.grossProfit} type="total" />
-                                </>
-                            )}
-
-                            {visibility.expenses && (
-                                <>
-                                    <h3 className="text-xs font-black text-purple-600 uppercase tracking-widest mb-4 mt-12 flex items-center gap-2 print:text-black print:border-b print:mt-6"><FileText size={14} className="print:hidden"/> 3. Despesas Operacionais</h3>
-                                    {Object.entries(data.expensesByCategory).map(([cat, val]: any) => (
-                                        <Row key={cat} label={`(-) ${cat}`} value={val} indent isNegative />
-                                    ))}
-                                    <Row label="(=) EBITDA (Operacional)" value={data.ebitda} type="total" />
-                                </>
-                            )}
-
-                            {visibility.financial && (
-                                <>
-                                    <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 mt-12 flex items-center gap-2 print:text-black print:border-b print:mt-6"><TrendingUp size={14} className="print:hidden"/> 4. Resultado Final</h3>
-                                    <Row label="(-) Despesas Financeiras" value={data.financialExpenses} isNegative />
-                                    <Row label="(=) LUCRO LÍQUIDO FINAL" value={data.netIncome} type="total" />
-                                </>
-                            )}
+                    {/* Tabela */}
+                    <div className="p-0">
+                        {/* HEADER DA TABELA */}
+                        <div className="flex justify-between items-center px-4 py-2 bg-slate-50 border-b border-slate-200 text-[10px] font-black uppercase tracking-widest text-slate-500">
+                            <span className="flex-1">Descrição</span>
+                            <span className="w-32 text-right">Valor (R$)</span>
+                            <span className="w-20 text-right pr-4">Análise (AV)</span>
                         </div>
+
+                        {/* RECEITA */}
+                        <DreRow label="(+) RECEITA OPERACIONAL BRUTA" value={dreData.grossRevenue} type="header" />
+                        <DreRow label="Vendas de Mercadorias e Serviços" value={dreData.grossRevenue} indent={1} />
+                        
+                        {/* DEDUÇÕES */}
+                        <DreRow label="(-) DEDUÇÕES DA RECEITA" value={dreData.deductions.total} type="header" isNegative />
+                        <DreRow label="Impostos (Simples Nacional)" value={dreData.deductions.taxes} indent={1} isNegative />
+                        <DreRow label="Taxas de Cartões / Meios de Pagto" value={dreData.deductions.fees} indent={1} isNegative />
+
+                        <DreRow label="(=) RECEITA OPERACIONAL LÍQUIDA" value={dreData.netRevenue} type="result" />
+
+                        {/* CMV */}
+                        <DreRow label="(-) CUSTOS VARIÁVEIS (CMV)" value={dreData.cmv} type="header" isNegative />
+                        <DreRow label="Custo das Mercadorias Vendidas" value={dreData.cmv} indent={1} isNegative />
+
+                        <DreRow label="(=) MARGEM DE CONTRIBUIÇÃO (LUCRO BRUTO)" value={dreData.grossProfit} type="result" />
+
+                        {/* DESPESAS */}
+                        <DreRow label="(-) DESPESAS OPERACIONAIS" value={dreData.expenses.total} type="header" isNegative />
+                        <DreRow label="Despesas com Pessoal" value={dreData.expenses.personnel} indent={1} isNegative />
+                        <DreRow label="Despesas Gerais / Fixas" value={dreData.expenses.variable} indent={1} isNegative />
+                        
+                        {/* Detalhamento Expansível (Visualmente indentado) */}
+                        {Object.entries(dreData.expenses.byCategory).map(([cat, val]) => {
+                            if (!['Pessoal', 'Salário', 'Pró-labore', 'Impostos', 'Taxas Bancárias', 'Juros'].includes(cat)) {
+                                return <DreRow key={cat} label={`• ${cat}`} value={val as number} indent={2} isNegative />;
+                            }
+                            return null;
+                        })}
+
+                        <DreRow label="(=) EBITDA (Res. Operacional)" value={dreData.ebitda} type="result" />
+
+                        {/* FINANCEIRO */}
+                        <DreRow label="(-) RESULTADO FINANCEIRO" value={dreData.expenses.financial} type="header" isNegative />
+                        <DreRow label="Despesas Financeiras / Bancárias" value={dreData.expenses.financial} indent={1} isNegative />
+
+                        {/* RESULTADO FINAL */}
+                        <div className={`mt-6 p-4 flex justify-between items-center border-t-4 ${dreData.netResult >= 0 ? 'border-emerald-500 bg-emerald-50' : 'border-red-500 bg-red-50'} print:bg-white print:border-black print:border-y-2`}>
+                            <div className="pl-2">
+                                <h3 className={`text-lg font-black uppercase tracking-tight ${dreData.netResult >= 0 ? 'text-emerald-800' : 'text-red-800'} print:text-black`}>
+                                    (=) Resultado Líquido do Exercício
+                                </h3>
+                                <p className="text-xs text-slate-500 font-medium">Lucro/Prejuízo Final</p>
+                            </div>
+                            <div className="text-right">
+                                <div className={`text-2xl font-black font-mono ${dreData.netResult >= 0 ? 'text-emerald-600' : 'text-red-600'} print:text-black`}>
+                                    {formatCurrency(dreData.netResult)}
+                                </div>
+                                <div className="text-sm font-bold text-slate-400">
+                                    Margem Líquida: {getAV(dreData.netResult)}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {/* Rodapé do Relatório */}
+                    <div className="bg-slate-50 p-4 border-t border-slate-200 text-center text-[10px] text-slate-400 print:bg-white">
+                        <p>Documento gerado eletronicamente pelo sistema GastroFlow em {new Date().toLocaleString()}.</p>
+                        <p>Os valores apresentados são gerenciais e não substituem a contabilidade fiscal oficial.</p>
                     </div>
                 </div>
-            </>
+            </div>
         ) : (
-            <div className="flex flex-col items-center justify-center p-20 text-center text-slate-400">
+            <div className="flex flex-col items-center justify-center p-20 text-center text-slate-400 bg-white rounded-2xl border border-dashed border-slate-300">
                 <PieChart size={64} className="mb-4 opacity-20"/>
                 <h3 className="text-lg font-bold text-slate-600">Sem dados para exibir</h3>
-                <p className="max-w-xs text-sm mt-2">Nenhuma transação, venda ou despesa encontrada no período.</p>
-                <Button onClick={fetchDRE} variant="outline" className="mt-6">Tentar Novamente</Button>
+                <p className="max-w-xs text-sm mt-2 mb-6">Nenhuma transação, venda ou despesa encontrada no período selecionado.</p>
+                <Button onClick={fetchDRE} className="px-8">Recarregar Dados</Button>
             </div>
         )}
     </div>
