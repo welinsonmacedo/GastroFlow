@@ -1,10 +1,9 @@
-
 import React, { useState, useEffect } from 'react';
 import { Modal } from '../Modal';
 import { Button } from '../Button';
 import { useSaaS } from '../../context/SaaSContext';
 import { RestaurantTenant, PlanType, SystemModule } from '../../types';
-import { X, Check, Copy, Grid, ChevronDown, ChevronRight } from 'lucide-react';
+import { ChevronDown, ChevronRight, Check, Copy } from 'lucide-react';
 
 // --- Definition of Modules and their Granular Features (Tabs) ---
 // Keys must match what is used in Dashboard files to filter tabs
@@ -28,44 +27,44 @@ const MODULE_STRUCTURE = {
         ]
     },
     INVENTORY: {
-        label: "Estoque",
-        description: "Controle de insumos, compras e fornecedores.",
+        label: "Estoque (Novo)",
+        description: "Controle avançado de insumos e compras.",
         features: [
-            { key: "inventory_manage", label: "Itens & Estoque" },
-            { key: "inventory_purchases", label: "Compras & Sugestões" },
-            { key: "inventory_suppliers", label: "Fornecedores" }
+            { key: "inventory_manage", label: "Gestão (Itens, Balanço, Logs)" },
+            { key: "inventory_purchases", label: "Compras (Notas Fiscais, Sugestões)" },
+            { key: "inventory_suppliers", label: "Gestão de Fornecedores" }
         ]
     },
     MANAGER: {
         label: "Gestor (Backoffice)",
-        description: "Administração e cadastros.",
+        description: "Administração geral e cadastros.",
         features: [
-            { key: "admin_overview", label: "Visão Geral" },
-            { key: "admin_products", label: "Cardápio" },
+            { key: "admin_overview", label: "Visão Geral & Monitoramento Online" },
+            { key: "admin_products", label: "Cardápio Digital" },
             { key: "admin_tables", label: "Mesas & QR Code" }
         ]
     },
     FINANCE: {
         label: "Financeiro",
-        description: "Controle fiscal e fluxo de caixa.",
+        description: "Controle fiscal, DRE e BI.",
         features: [
-            { key: "finance_expenses", label: "Caixa & Despesas" },
+            { key: "finance_expenses", label: "Fluxo de Caixa & Despesas" },
             { key: "finance_dre", label: "DRE Gerencial" },
-            { key: "finance_bi", label: "Inteligência (BI)" },
+            { key: "finance_bi", label: "Business Intelligence (BI)" },
             { key: "finance_reports", label: "Relatórios Detalhados" },
             { key: "finance_tips", label: "Dicas Financeiras" }
         ]
     },
     CONFIG: {
         label: "Configurações",
-        description: "Ajustes do sistema.",
+        description: "Ajustes do sistema e segurança.",
         features: [
             { key: "config_business", label: "Dados da Empresa" },
-            { key: "config_delivery", label: "Config. Delivery" },
-            { key: "config_finance_settings", label: "Config. Financeira" },
             { key: "config_operations", label: "Regras Operacionais" },
-            { key: "config_security", label: "Segurança" },
-            { key: "config_appearance", label: "Aparência & Marca" },
+            { key: "config_delivery", label: "Config. Delivery & Taxas" },
+            { key: "config_finance_settings", label: "Config. Financeira (Pagamentos)" },
+            { key: "config_security", label: "Segurança (Senha Mestra)" },
+            { key: "config_appearance", label: "Aparência (White-label)" },
             { key: "config_staff", label: "Equipe & Acessos" }
         ]
     }
@@ -215,7 +214,7 @@ export const SaaSEditTenantModal: React.FC<SaaSEditTenantModalProps> = ({ isOpen
         <Modal isOpen={isOpen} onClose={onClose} title={`Gerenciar ${tenant.name}`} variant="dialog" maxWidth="md">
             <div className="flex border-b mb-4 overflow-x-auto">
                 <button onClick={() => setTab('DETAILS')} className={`px-4 py-2 text-sm font-bold border-b-2 transition-colors whitespace-nowrap ${tab === 'DETAILS' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}>Detalhes</button>
-                <button onClick={() => setTab('MODULES')} className={`px-4 py-2 text-sm font-bold border-b-2 transition-colors whitespace-nowrap ${tab === 'MODULES' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}>Módulos</button>
+                <button onClick={() => setTab('MODULES')} className={`px-4 py-2 text-sm font-bold border-b-2 transition-colors whitespace-nowrap ${tab === 'MODULES' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}>Módulos & Permissões</button>
                 <button onClick={() => setTab('ADMIN')} className={`px-4 py-2 text-sm font-bold border-b-2 transition-colors whitespace-nowrap ${tab === 'ADMIN' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}>Criar Admin</button>
             </div>
 
@@ -294,7 +293,7 @@ export const SaaSEditTenantModal: React.FC<SaaSEditTenantModalProps> = ({ isOpen
     );
 };
 
-// --- Tenant Links Modal (Mantida igual) ---
+// --- Tenant Links Modal ---
 export const SaaSTenantLinksModal: React.FC<{ isOpen: boolean, onClose: () => void, tenant: RestaurantTenant | null }> = ({ isOpen, onClose, tenant }) => {
     const [copiedLink, setCopiedLink] = useState<string | null>(null);
 
