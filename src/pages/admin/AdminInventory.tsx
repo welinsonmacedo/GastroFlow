@@ -69,7 +69,10 @@ export const AdminInventory: React.FC = () => {
       const matchesType = filterType === 'ALL' || item.type === filterType;
 
       // 3. Filtro de Estoque Baixo
-      const matchesLowStock = onlyLowStock ? item.quantity <= item.minQuantity : true;
+      // Itens "Produzidos" (COMPOSITE) são ignorados neste filtro pois não têm estoque direto crítico
+      const matchesLowStock = onlyLowStock 
+          ? (item.quantity <= item.minQuantity && item.type !== 'COMPOSITE') 
+          : true;
 
       return matchesSearch && matchesType && matchesLowStock;
   });
