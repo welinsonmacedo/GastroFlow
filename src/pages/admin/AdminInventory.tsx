@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useInventory } from '../../context/InventoryContext';
 import { useUI } from '../../context/UIContext';
@@ -169,8 +170,8 @@ export const AdminInventory: React.FC<AdminInventoryProps> = ({ view }) => {
       });
 
       return (
-        <div className="space-y-6 animate-fade-in">
-            <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex flex-col lg:flex-row gap-4 justify-between items-center">
+        <div className="space-y-6 animate-fade-in w-full h-full flex flex-col">
+            <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex flex-col lg:flex-row gap-4 justify-between items-center shrink-0">
                 <div className="flex bg-gray-100 p-1 rounded-xl overflow-x-auto max-w-full">
                     <button onClick={() => setFilterType('ALL')} className={`px-4 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 ${filterType === 'ALL' ? 'bg-white text-slate-800 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>Todos</button>
                     <button onClick={() => setFilterType('INGREDIENT')} className={`px-4 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 ${filterType === 'INGREDIENT' ? 'bg-white text-orange-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}><Package size={14}/> Matéria Prima</button>
@@ -189,10 +190,10 @@ export const AdminInventory: React.FC<AdminInventoryProps> = ({ view }) => {
                 </div>
             </div>
 
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                <div className="overflow-x-auto">
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex-1">
+                <div className="overflow-x-auto h-full">
                     <table className="w-full text-left">
-                        <thead className="bg-slate-50 text-slate-500 text-[10px] font-black uppercase tracking-widest border-b">
+                        <thead className="bg-slate-50 text-slate-500 text-[10px] font-black uppercase tracking-widest border-b sticky top-0 z-10">
                             <tr>
                                 <th className="p-4">Item / Insumo</th>
                                 <th className="p-4">Código (EAN)</th>
@@ -257,43 +258,43 @@ export const AdminInventory: React.FC<AdminInventoryProps> = ({ view }) => {
   };
 
   const renderNewItemView = () => (
-      <div className="max-w-4xl mx-auto bg-white p-8 rounded-2xl shadow-sm border border-gray-200 animate-fade-in">
-          <header className="mb-6 border-b pb-4">
+      <div className="w-full bg-white p-8 rounded-2xl shadow-sm border border-gray-200 animate-fade-in flex flex-col h-full overflow-y-auto">
+          <header className="mb-6 border-b pb-4 shrink-0">
               <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2"><PlusCircle size={24} className="text-blue-600"/> Cadastrar Novo Item</h2>
               <p className="text-sm text-gray-500">Adicione insumos ou produtos para venda.</p>
           </header>
           
-          <form onSubmit={handleSaveNewItem} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <form onSubmit={handleSaveNewItem} className="space-y-6 flex-1">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   {/* Coluna 1 */}
-                  <div className="space-y-4">
-                      <div><label className="block text-xs font-bold mb-1">Nome do Item</label><input required className="w-full border p-2.5 rounded-xl" value={newItemForm.name} onChange={e => setNewItemForm({ ...newItemForm, name: e.target.value })} /></div>
+                  <div className="space-y-5">
+                      <div><label className="block text-xs font-bold mb-1 text-slate-600">Nome do Item</label><input required className="w-full border p-3 rounded-xl focus:border-blue-500 outline-none transition-colors bg-gray-50 focus:bg-white" value={newItemForm.name} onChange={e => setNewItemForm({ ...newItemForm, name: e.target.value })} placeholder="Ex: Queijo Mussarela" /></div>
                       <div className="grid grid-cols-2 gap-4">
-                          <div><label className="block text-xs font-bold mb-1">Tipo</label><select className="w-full border p-2.5 rounded-xl bg-white" value={newItemForm.type} onChange={e => setNewItemForm({ ...newItemForm, type: e.target.value as any })}><option value="INGREDIENT">Matéria Prima</option><option value="RESALE">Revenda</option><option value="COMPOSITE">Produzido (Prato)</option></select></div>
-                          <div><label className="block text-xs font-bold mb-1">Unidade</label><select className="w-full border p-2.5 rounded-xl bg-white" value={newItemForm.unit} onChange={e => setNewItemForm({ ...newItemForm, unit: e.target.value })}><option value="UN">UN</option><option value="KG">KG</option><option value="LT">LT</option></select></div>
+                          <div><label className="block text-xs font-bold mb-1 text-slate-600">Tipo</label><select className="w-full border p-3 rounded-xl bg-white focus:border-blue-500 outline-none" value={newItemForm.type} onChange={e => setNewItemForm({ ...newItemForm, type: e.target.value as any })}><option value="INGREDIENT">Matéria Prima</option><option value="RESALE">Revenda</option><option value="COMPOSITE">Produzido (Prato)</option></select></div>
+                          <div><label className="block text-xs font-bold mb-1 text-slate-600">Unidade</label><select className="w-full border p-3 rounded-xl bg-white focus:border-blue-500 outline-none" value={newItemForm.unit} onChange={e => setNewItemForm({ ...newItemForm, unit: e.target.value })}><option value="UN">UN</option><option value="KG">KG</option><option value="LT">LT</option></select></div>
                       </div>
                       
                       {/* Categoria apenas para Venda */}
                       {newItemForm.type !== 'INGREDIENT' && (
                           <div>
                             <label className="block text-xs font-bold mb-1 text-purple-700">Categoria (Cardápio)</label>
-                            <input className="w-full border p-2.5 rounded-xl" list="categories" value={newItemForm.category} onChange={e => setNewItemForm({...newItemForm, category: e.target.value})} />
+                            <input className="w-full border p-3 rounded-xl focus:border-purple-500 outline-none" list="categories" value={newItemForm.category} onChange={e => setNewItemForm({...newItemForm, category: e.target.value})} placeholder="Selecione ou digite..." />
                             <datalist id="categories">{defaultCategories.map(c => <option key={c} value={c}/>)}</datalist>
                           </div>
                       )}
 
                       {/* Checkbox Adicional */}
-                      <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
-                           <label className="flex items-center gap-2 cursor-pointer">
-                               <input type="checkbox" checked={newItemForm.isExtra} onChange={e => setNewItemForm({...newItemForm, isExtra: e.target.checked})} className="w-5 h-5 text-orange-600 rounded"/>
-                               <span className="text-sm font-bold text-slate-700">É um Adicional?</span>
+                      <div className="p-5 bg-orange-50/50 rounded-xl border border-orange-100">
+                           <label className="flex items-center gap-3 cursor-pointer">
+                               <input type="checkbox" checked={newItemForm.isExtra} onChange={e => setNewItemForm({...newItemForm, isExtra: e.target.checked})} className="w-5 h-5 text-orange-600 rounded focus:ring-orange-500"/>
+                               <span className="text-sm font-bold text-slate-700">Item Adicional (Extra)?</span>
                            </label>
                            {newItemForm.isExtra && (
-                               <div className="mt-3 space-y-1 max-h-32 overflow-y-auto">
-                                   <p className="text-xs font-bold text-gray-500 mb-1">Disponível em:</p>
+                               <div className="mt-4 space-y-2 max-h-40 overflow-y-auto pr-2 custom-scrollbar">
+                                   <p className="text-xs font-bold text-orange-800 mb-2">Disponível nas categorias:</p>
                                    {defaultCategories.map(cat => (
-                                       <label key={cat} className="flex items-center gap-2 text-xs p-1 hover:bg-white rounded cursor-pointer">
-                                           <input type="checkbox" checked={newItemForm.targetCategories?.includes(cat)} onChange={() => toggleTargetCategory(cat)} className="rounded text-orange-500"/> {cat}
+                                       <label key={cat} className="flex items-center gap-2 text-xs p-2 bg-white rounded-lg border border-orange-100 hover:border-orange-300 cursor-pointer transition-all">
+                                           <input type="checkbox" checked={newItemForm.targetCategories?.includes(cat)} onChange={() => toggleTargetCategory(cat)} className="rounded text-orange-500 focus:ring-0"/> {cat}
                                        </label>
                                    ))}
                                </div>
@@ -302,58 +303,61 @@ export const AdminInventory: React.FC<AdminInventoryProps> = ({ view }) => {
                   </div>
 
                   {/* Coluna 2 */}
-                  <div className="space-y-4">
+                  <div className="space-y-5">
                       {newItemForm.type === 'COMPOSITE' ? (
-                          <div className="bg-purple-50 p-4 rounded-xl border border-purple-100">
-                              <h4 className="text-xs font-black text-purple-700 uppercase mb-2">Receita (Ingredientes)</h4>
-                              <div className="flex gap-2 mb-2">
-                                  <select className="flex-1 text-sm border p-2 rounded-lg" value={selectedIngToAdd} onChange={e => setSelectedIngToAdd(e.target.value)}>
+                          <div className="bg-purple-50 p-6 rounded-xl border border-purple-100 h-full flex flex-col">
+                              <h4 className="text-xs font-black text-purple-700 uppercase mb-3 flex items-center gap-2"><Layers size={14}/> Receita (Ficha Técnica)</h4>
+                              <div className="flex gap-2 mb-3">
+                                  <select className="flex-1 text-sm border p-2.5 rounded-lg bg-white focus:border-purple-500 outline-none" value={selectedIngToAdd} onChange={e => setSelectedIngToAdd(e.target.value)}>
                                       <option value="">Adicionar Insumo...</option>
                                       {invState.inventory.filter(i => i.type === 'INGREDIENT').map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
                                   </select>
-                                  <Button type="button" size="sm" onClick={() => { if(selectedIngToAdd) { setRecipeItems([...recipeItems, { ingredientId: selectedIngToAdd, quantity: 1 }]); setSelectedIngToAdd(''); } }}><Plus size={16}/></Button>
+                                  <Button type="button" size="sm" onClick={() => { if(selectedIngToAdd) { setRecipeItems([...recipeItems, { ingredientId: selectedIngToAdd, quantity: 1 }]); setSelectedIngToAdd(''); } }} className="bg-purple-600 hover:bg-purple-700 text-white"><Plus size={16}/></Button>
                               </div>
-                              <div className="space-y-2 max-h-40 overflow-y-auto">
+                              <div className="space-y-2 flex-1 overflow-y-auto custom-scrollbar pr-2 bg-white/50 rounded-xl p-2 border border-purple-100">
                                   {recipeItems.map((r, idx) => {
                                       const ing = invState.inventory.find(i => i.id === r.ingredientId);
                                       return (
-                                          <div key={idx} className="flex justify-between items-center bg-white p-2 rounded border text-sm">
-                                              <span>{ing?.name}</span>
-                                              <div className="flex items-center gap-1"><input type="number" step="0.001" className="w-16 border rounded p-1 text-right" value={r.quantity} onChange={e => { const n = [...recipeItems]; n[idx].quantity = parseFloat(e.target.value); setRecipeItems(n); }} /><button type="button" onClick={() => setRecipeItems(recipeItems.filter((_, i) => i !== idx))} className="text-red-500"><X size={14}/></button></div>
+                                          <div key={idx} className="flex justify-between items-center bg-white p-3 rounded-lg border border-gray-100 shadow-sm text-sm">
+                                              <span className="font-bold text-slate-700">{ing?.name}</span>
+                                              <div className="flex items-center gap-2"><input type="number" step="0.001" className="w-20 border p-1.5 rounded text-right font-mono" value={r.quantity} onChange={e => { const n = [...recipeItems]; n[idx].quantity = parseFloat(e.target.value); setRecipeItems(n); }} /><button type="button" onClick={() => setRecipeItems(recipeItems.filter((_, i) => i !== idx))} className="text-red-400 hover:text-red-600 bg-red-50 p-1.5 rounded hover:bg-red-100 transition-colors"><X size={14}/></button></div>
                                           </div>
                                       )
                                   })}
+                                  {recipeItems.length === 0 && <p className="text-center text-purple-300 text-xs italic py-4">Nenhum ingrediente adicionado.</p>}
                               </div>
                           </div>
                       ) : (
                           <div className="grid grid-cols-2 gap-4">
-                              <div><label className="block text-xs font-bold mb-1 text-blue-600">Estoque Inicial</label><input type="number" step="0.001" className="w-full border p-2.5 rounded-xl font-bold bg-blue-50 border-blue-100" value={newItemForm.quantity} onChange={e => setNewItemForm({...newItemForm, quantity: parseFloat(e.target.value)})} /></div>
-                              <div><label className="block text-xs font-bold mb-1">Mínimo</label><input type="number" className="w-full border p-2.5 rounded-xl" value={newItemForm.minQuantity} onChange={e => setNewItemForm({...newItemForm, minQuantity: parseFloat(e.target.value)})} /></div>
-                              <div className="col-span-2"><label className="block text-xs font-bold mb-1">Custo Médio (R$)</label><input type="number" step="0.01" className="w-full border p-2.5 rounded-xl" value={newItemForm.costPrice} onChange={e => setNewItemForm({...newItemForm, costPrice: parseFloat(e.target.value)})} /></div>
+                              <div><label className="block text-xs font-bold mb-1 text-blue-600">Estoque Inicial</label><input type="number" step="0.001" className="w-full border-2 border-blue-100 p-3 rounded-xl font-bold bg-blue-50 text-blue-800 outline-none focus:border-blue-400" value={newItemForm.quantity} onChange={e => setNewItemForm({...newItemForm, quantity: parseFloat(e.target.value)})} /></div>
+                              <div><label className="block text-xs font-bold mb-1 text-slate-600">Estoque Mínimo</label><input type="number" className="w-full border p-3 rounded-xl focus:border-blue-500 outline-none" value={newItemForm.minQuantity} onChange={e => setNewItemForm({...newItemForm, minQuantity: parseFloat(e.target.value)})} /></div>
+                              <div className="col-span-2"><label className="block text-xs font-bold mb-1 text-slate-600">Custo Médio (R$)</label><input type="number" step="0.01" className="w-full border p-3 rounded-xl focus:border-blue-500 outline-none" value={newItemForm.costPrice} onChange={e => setNewItemForm({...newItemForm, costPrice: parseFloat(e.target.value)})} /></div>
                           </div>
                       )}
                       
                       {newItemForm.type !== 'INGREDIENT' && (
-                          <div><label className="block text-xs font-bold mb-1 text-emerald-600">Preço de Venda (R$)</label><input type="number" step="0.01" className="w-full border p-2.5 rounded-xl font-black text-emerald-600 bg-emerald-50 border-emerald-100" value={newItemForm.salePrice} onChange={e => setNewItemForm({...newItemForm, salePrice: parseFloat(e.target.value)})} /></div>
+                          <div><label className="block text-xs font-bold mb-1 text-emerald-600">Preço de Venda (R$)</label><input type="number" step="0.01" className="w-full border-2 border-emerald-100 p-3 rounded-xl font-black text-emerald-600 bg-emerald-50 text-xl outline-none focus:border-emerald-400" value={newItemForm.salePrice} onChange={e => setNewItemForm({...newItemForm, salePrice: parseFloat(e.target.value)})} /></div>
                       )}
 
                       {/* Image Uploader */}
                       {newItemForm.type !== 'INGREDIENT' && (
                           <div className="border rounded-xl p-4 bg-gray-50">
-                              <label className="block text-xs font-bold mb-2">Imagem</label>
+                              <label className="block text-xs font-bold mb-2 text-slate-600">Imagem do Produto</label>
                               <ImageUploader value={newItemForm.image || ''} onChange={(val) => setNewItemForm({...newItemForm, image: val})} maxSizeKB={200} />
                           </div>
                       )}
                   </div>
               </div>
-              <Button type="submit" className="w-full py-4 text-lg">Salvar Item</Button>
+              <div className="border-t pt-4 mt-auto">
+                  <Button type="submit" className="w-full py-4 text-lg shadow-lg font-bold">Salvar Item no Estoque</Button>
+              </div>
           </form>
       </div>
   );
 
   const renderEntryView = () => (
-      <div className="max-w-4xl mx-auto bg-white p-8 rounded-2xl shadow-sm border border-gray-200 animate-fade-in">
-          <header className="mb-6 flex justify-between items-center border-b pb-4">
+      <div className="w-full bg-white p-8 rounded-2xl shadow-sm border border-gray-200 animate-fade-in flex flex-col h-full overflow-y-auto">
+          <header className="mb-6 flex justify-between items-center border-b pb-4 shrink-0">
               <div><h2 className="text-xl font-bold text-gray-800">Entrada de Nota Fiscal</h2><p className="text-sm text-gray-500">Atualiza estoque e gera contas a pagar.</p></div>
               <div className="text-right"><p className="text-xs font-bold text-gray-400">TOTAL DA NOTA</p><p className="text-2xl font-black text-blue-600">R$ {(entryForm.items.reduce((acc, i) => acc + i.totalPrice, 0) + Number(entryForm.taxAmount)).toFixed(2)}</p></div>
           </header>
@@ -361,151 +365,169 @@ export const AdminInventory: React.FC<AdminInventoryProps> = ({ view }) => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
               <div>
                   <label className="block text-xs font-bold mb-1">Fornecedor</label>
-                  <select className="w-full border p-2.5 rounded-lg bg-white" value={entryForm.supplierId} onChange={e => setEntryForm({...entryForm, supplierId: e.target.value})}>
+                  <select className="w-full border p-3 rounded-xl bg-white focus:border-blue-500 outline-none" value={entryForm.supplierId} onChange={e => setEntryForm({...entryForm, supplierId: e.target.value})}>
                       <option value="">Selecione...</option>
                       {invState.suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                   </select>
               </div>
-              <div><label className="block text-xs font-bold mb-1">Número Nota</label><input className="w-full border p-2.5 rounded-lg" value={entryForm.invoiceNumber} onChange={e => setEntryForm({...entryForm, invoiceNumber: e.target.value})} /></div>
-              <div><label className="block text-xs font-bold mb-1">Data Emissão</label><input type="date" className="w-full border p-2.5 rounded-lg" value={entryForm.date} onChange={e => setEntryForm({...entryForm, date: e.target.value})} /></div>
+              <div><label className="block text-xs font-bold mb-1">Número Nota</label><input className="w-full border p-3 rounded-xl focus:border-blue-500 outline-none" value={entryForm.invoiceNumber} onChange={e => setEntryForm({...entryForm, invoiceNumber: e.target.value})} /></div>
+              <div><label className="block text-xs font-bold mb-1">Data Emissão</label><input type="date" className="w-full border p-3 rounded-xl focus:border-blue-500 outline-none" value={entryForm.date} onChange={e => setEntryForm({...entryForm, date: e.target.value})} /></div>
           </div>
 
-          <div className="bg-slate-50 p-6 rounded-xl border border-slate-200 mb-6">
-              <h4 className="text-xs font-black text-slate-500 uppercase mb-3">Adicionar Item</h4>
+          <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200 mb-6 shadow-inner">
+              <h4 className="text-xs font-black text-slate-500 uppercase mb-3">Adicionar Item da Nota</h4>
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-                  <div className="md:col-span-2"><label className="block text-[10px] font-bold mb-1">Insumo</label><select className="w-full border p-2 rounded-lg text-sm" value={entryTempItem.itemId} onChange={e => setEntryTempItem({...entryTempItem, itemId: e.target.value})}><option value="">Selecione...</option>{invState.inventory.filter(i => i.type !== 'COMPOSITE').map(i => <option key={i.id} value={i.id}>{i.name} ({i.unit})</option>)}</select></div>
-                  <div><label className="block text-[10px] font-bold mb-1">Qtd</label><input type="number" className="w-full border p-2 rounded-lg" value={entryTempItem.quantity} onChange={e => setEntryTempItem({...entryTempItem, quantity: parseFloat(e.target.value)})} /></div>
-                  <div><label className="block text-[10px] font-bold mb-1">Preço Un.</label><input type="number" className="w-full border p-2 rounded-lg" value={entryTempItem.unitPrice} onChange={e => setEntryTempItem({...entryTempItem, unitPrice: parseFloat(e.target.value)})} /></div>
+                  <div className="md:col-span-2"><label className="block text-[10px] font-bold mb-1">Insumo / Produto</label><select className="w-full border p-2.5 rounded-lg text-sm bg-white focus:border-blue-500 outline-none" value={entryTempItem.itemId} onChange={e => setEntryTempItem({...entryTempItem, itemId: e.target.value})}><option value="">Selecione...</option>{invState.inventory.filter(i => i.type !== 'COMPOSITE').map(i => <option key={i.id} value={i.id}>{i.name} ({i.unit})</option>)}</select></div>
+                  <div><label className="block text-[10px] font-bold mb-1">Qtd</label><input type="number" className="w-full border p-2.5 rounded-lg focus:border-blue-500 outline-none" value={entryTempItem.quantity} onChange={e => setEntryTempItem({...entryTempItem, quantity: parseFloat(e.target.value)})} /></div>
+                  <div><label className="block text-[10px] font-bold mb-1">Preço Un.</label><input type="number" className="w-full border p-2.5 rounded-lg focus:border-blue-500 outline-none" value={entryTempItem.unitPrice} onChange={e => setEntryTempItem({...entryTempItem, unitPrice: parseFloat(e.target.value)})} /></div>
               </div>
-              <Button onClick={handleAddEntryItem} size="sm" className="mt-3"><Plus size={14}/> Adicionar à Lista</Button>
+              <Button onClick={handleAddEntryItem} size="sm" className="mt-4 w-full md:w-auto"><Plus size={14}/> Adicionar à Lista</Button>
           </div>
 
-          <div className="border rounded-xl overflow-hidden mb-6">
-              <table className="w-full text-left text-sm">
-                  <thead className="bg-gray-100 font-bold text-gray-600"><tr><th className="p-3">Item</th><th className="p-3 text-right">Qtd</th><th className="p-3 text-right">Unit.</th><th className="p-3 text-right">Total</th><th className="p-3"></th></tr></thead>
-                  <tbody>{entryForm.items.map((it, idx) => (
-                      <tr key={idx} className="border-b"><td className="p-3">{invState.inventory.find(i => i.id === it.inventoryItemId)?.name}</td><td className="p-3 text-right">{it.quantity}</td><td className="p-3 text-right">R$ {it.unitPrice.toFixed(2)}</td><td className="p-3 text-right font-bold">R$ {it.totalPrice.toFixed(2)}</td><td className="p-3 text-center"><button onClick={() => setEntryForm({...entryForm, items: entryForm.items.filter((_, i) => i !== idx)})} className="text-red-500"><Trash2 size={14}/></button></td></tr>
-                  ))}</tbody>
-              </table>
+          <div className="border rounded-2xl overflow-hidden mb-6 flex-1 min-h-[200px]">
+              <div className="overflow-y-auto h-full custom-scrollbar">
+                  <table className="w-full text-left text-sm">
+                      <thead className="bg-gray-100 font-bold text-gray-600 sticky top-0 z-10"><tr><th className="p-4 bg-gray-100">Item</th><th className="p-4 text-right bg-gray-100">Qtd</th><th className="p-4 text-right bg-gray-100">Unit.</th><th className="p-4 text-right bg-gray-100">Total</th><th className="p-4 bg-gray-100"></th></tr></thead>
+                      <tbody className="divide-y divide-gray-100 bg-white">
+                          {entryForm.items.map((it, idx) => (
+                              <tr key={idx} className="hover:bg-gray-50">
+                                  <td className="p-4">{invState.inventory.find(i => i.id === it.inventoryItemId)?.name}</td>
+                                  <td className="p-4 text-right">{it.quantity}</td>
+                                  <td className="p-4 text-right">R$ {it.unitPrice.toFixed(2)}</td>
+                                  <td className="p-4 text-right font-bold text-slate-700">R$ {it.totalPrice.toFixed(2)}</td>
+                                  <td className="p-4 text-center"><button onClick={() => setEntryForm({...entryForm, items: entryForm.items.filter((_, i) => i !== idx)})} className="text-red-400 hover:text-red-600 p-1.5 hover:bg-red-50 rounded-lg transition-colors"><Trash2 size={16}/></button></td>
+                              </tr>
+                          ))}
+                          {entryForm.items.length === 0 && <tr><td colSpan={5} className="p-8 text-center text-gray-400 italic">Nenhum item adicionado à nota.</td></tr>}
+                      </tbody>
+                  </table>
+              </div>
           </div>
 
-          <div className="flex gap-4 items-end mb-6">
+          <div className="flex gap-6 items-end mb-6 shrink-0 bg-gray-50 p-4 rounded-xl border border-gray-200">
               <div className="flex-1">
-                  <label className="block text-xs font-bold mb-1">Custos Extras (Frete/Imposto)</label>
-                  <input type="number" className="w-full border p-2 rounded-lg" value={entryForm.taxAmount} onChange={e => setEntryForm({...entryForm, taxAmount: parseFloat(e.target.value)})} />
+                  <label className="block text-xs font-bold mb-1 text-slate-600">Custos Extras (Frete/Imposto)</label>
+                  <input type="number" className="w-full border p-2.5 rounded-lg focus:border-blue-500 outline-none bg-white" value={entryForm.taxAmount} onChange={e => setEntryForm({...entryForm, taxAmount: parseFloat(e.target.value)})} />
               </div>
-              <label className="flex items-center gap-2 mb-2 cursor-pointer"><input type="checkbox" checked={entryForm.distributeTax} onChange={e => setEntryForm({...entryForm, distributeTax: e.target.checked})} /> <span className="text-xs font-bold text-gray-600">Distribuir no custo unitário?</span></label>
+              <label className="flex items-center gap-2 mb-2 cursor-pointer pb-1"><input type="checkbox" className="w-4 h-4 text-blue-600 rounded" checked={entryForm.distributeTax} onChange={e => setEntryForm({...entryForm, distributeTax: e.target.checked})} /> <span className="text-xs font-bold text-gray-600">Distribuir no custo unitário?</span></label>
           </div>
 
-          <Button onClick={handleSubmitEntry} className="w-full py-4 text-lg">Finalizar Entrada</Button>
+          <Button onClick={handleSubmitEntry} className="w-full py-4 text-lg font-bold shadow-lg shrink-0">Finalizar Entrada</Button>
       </div>
   );
 
   const renderCountView = () => (
-      <div className="max-w-4xl mx-auto bg-white p-8 rounded-2xl shadow-sm border border-gray-200 animate-fade-in flex flex-col h-[calc(100vh-140px)]">
+      <div className="w-full h-full bg-white p-8 rounded-2xl shadow-sm border border-gray-200 animate-fade-in flex flex-col overflow-hidden">
           <header className="mb-4 flex justify-between items-center shrink-0">
               <div><h2 className="text-xl font-bold text-gray-800">Balanço de Estoque</h2><p className="text-sm text-gray-500">Contagem física para ajuste de perdas/sobras.</p></div>
-              <div className="relative w-64"><Search className="absolute left-3 top-2.5 text-gray-400" size={16}/><input className="w-full border rounded-lg pl-9 p-2 text-sm" placeholder="Filtrar lista..." value={countSearch} onChange={e => setCountSearch(e.target.value)}/></div>
+              <div className="relative w-72"><Search className="absolute left-3 top-3 text-gray-400" size={18}/><input className="w-full border-2 pl-10 pr-4 py-2.5 rounded-xl text-sm focus:border-blue-500 outline-none" placeholder="Filtrar lista..." value={countSearch} onChange={e => setCountSearch(e.target.value)}/></div>
           </header>
 
-          <div className="flex-1 overflow-y-auto border rounded-xl relative custom-scrollbar">
-              <table className="w-full text-left text-sm relative">
-                  <thead className="bg-gray-100 text-gray-600 sticky top-0 z-10"><tr><th className="p-3">Item</th><th className="p-3 text-right">Estoque Sistema</th><th className="p-3 text-right w-32">Contagem Real</th><th className="p-3 text-right">Diferença</th></tr></thead>
-                  <tbody className="divide-y">
-                      {invState.inventory.filter(i => i.type !== 'COMPOSITE' && i.name.toLowerCase().includes(countSearch.toLowerCase())).map(item => {
-                          const sysQty = item.quantity;
-                          const inputVal = counts[item.id] ?? '';
-                          const realQty = inputVal === '' ? sysQty : parseFloat(inputVal);
-                          const diff = realQty - sysQty;
-                          return (
-                              <tr key={item.id} className="hover:bg-gray-50">
-                                  <td className="p-3 font-medium">{item.name} <span className="text-xs text-gray-400">({item.unit})</span></td>
-                                  <td className="p-3 text-right font-mono text-gray-500">{sysQty}</td>
-                                  <td className="p-2"><input type="number" className={`w-full border rounded p-1.5 text-right font-bold outline-none focus:border-blue-500 ${diff !== 0 ? 'bg-yellow-50 border-yellow-300' : ''}`} placeholder={sysQty.toString()} value={inputVal} onChange={e => setCounts({...counts, [item.id]: e.target.value})} /></td>
-                                  <td className={`p-3 text-right font-bold ${diff < 0 ? 'text-red-600' : diff > 0 ? 'text-green-600' : 'text-gray-300'}`}>{diff > 0 ? `+${diff}` : diff}</td>
-                              </tr>
-                          )
-                      })}
-                  </tbody>
-              </table>
+          <div className="flex-1 overflow-hidden border rounded-2xl relative flex flex-col">
+              <div className="overflow-y-auto custom-scrollbar flex-1">
+                  <table className="w-full text-left text-sm relative">
+                      <thead className="bg-gray-100 text-gray-600 font-bold uppercase text-xs sticky top-0 z-10 shadow-sm"><tr><th className="p-4 bg-gray-100">Item</th><th className="p-4 text-right bg-gray-100">Estoque Sistema</th><th className="p-4 text-right w-40 bg-gray-100">Contagem Real</th><th className="p-4 text-right bg-gray-100">Diferença</th></tr></thead>
+                      <tbody className="divide-y divide-gray-50">
+                          {invState.inventory.filter(i => i.type !== 'COMPOSITE' && i.name.toLowerCase().includes(countSearch.toLowerCase())).map(item => {
+                              const sysQty = item.quantity;
+                              const inputVal = counts[item.id] ?? '';
+                              const realQty = inputVal === '' ? sysQty : parseFloat(inputVal);
+                              const diff = realQty - sysQty;
+                              return (
+                                  <tr key={item.id} className="hover:bg-blue-50/30 transition-colors">
+                                      <td className="p-4 font-bold text-slate-700">{item.name} <span className="text-xs font-normal text-gray-400">({item.unit})</span></td>
+                                      <td className="p-4 text-right font-mono text-slate-500 bg-gray-50/50">{sysQty}</td>
+                                      <td className="p-2"><input type="number" className={`w-full border-2 p-2 rounded-lg text-right font-bold outline-none focus:border-blue-500 transition-colors ${diff !== 0 ? 'bg-yellow-50 border-yellow-300' : 'border-gray-200'}`} placeholder={sysQty.toString()} value={inputVal} onChange={e => setCounts({...counts, [item.id]: e.target.value})} /></td>
+                                      <td className={`p-4 text-right font-black ${diff < 0 ? 'text-red-600' : diff > 0 ? 'text-green-600' : 'text-gray-300'}`}>{diff > 0 ? `+${diff}` : diff}</td>
+                                  </tr>
+                              )
+                          })}
+                      </tbody>
+                  </table>
+              </div>
           </div>
           
-          <div className="pt-4 mt-4 border-t shrink-0">
-              <Button onClick={handleSubmitCount} className="w-full py-4 text-lg">Processar Ajustes</Button>
+          <div className="pt-6 mt-auto shrink-0 border-t border-gray-100">
+              <Button onClick={handleSubmitCount} className="w-full py-4 text-lg font-bold shadow-lg">Processar Ajustes de Estoque</Button>
           </div>
       </div>
   );
 
   const renderSuppliersView = () => (
-      <div className="max-w-5xl mx-auto space-y-6">
-          <div className="flex justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+      <div className="w-full h-full flex flex-col space-y-6 overflow-hidden">
+          <div className="flex justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-200 shrink-0">
               <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2"><Truck className="text-blue-600"/> Fornecedores</h2>
-              <Button onClick={() => setShowSupplierForm(true)}><Plus size={16}/> Novo Fornecedor</Button>
+              <Button onClick={() => setShowSupplierForm(true)}><Plus size={18}/> Novo Fornecedor</Button>
           </div>
 
-          {showSupplierForm && (
-              <div className="bg-slate-50 p-6 rounded-2xl border-2 border-slate-200 animate-fade-in">
-                  <h4 className="text-sm font-black text-slate-800 uppercase tracking-widest mb-4">Cadastro</h4>
-                  <form onSubmit={handleSaveSupplier} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="md:col-span-2"><label className="text-xs font-bold block mb-1">Nome / Razão Social</label><input required className="w-full border p-2 rounded-lg" value={newSupplierForm.name} onChange={e => setNewSupplierForm({...newSupplierForm, name: e.target.value})} /></div>
-                      <div><label className="text-xs font-bold block mb-1">CNPJ</label><input className="w-full border p-2 rounded-lg" value={newSupplierForm.cnpj} onChange={e => setNewSupplierForm({...newSupplierForm, cnpj: e.target.value})} /></div>
-                      <div><label className="text-xs font-bold block mb-1">Contato</label><input className="w-full border p-2 rounded-lg" value={newSupplierForm.contactName} onChange={e => setNewSupplierForm({...newSupplierForm, contactName: e.target.value})} /></div>
-                      <div><label className="text-xs font-bold block mb-1">Telefone</label><input className="w-full border p-2 rounded-lg" value={newSupplierForm.phone} onChange={e => setNewSupplierForm({...newSupplierForm, phone: e.target.value})} /></div>
-                      <div><label className="text-xs font-bold block mb-1">Email</label><input className="w-full border p-2 rounded-lg" value={newSupplierForm.email} onChange={e => setNewSupplierForm({...newSupplierForm, email: e.target.value})} /></div>
-                      <div className="md:col-span-2 flex gap-2 mt-2">
-                          <Button type="button" variant="secondary" onClick={() => setShowSupplierForm(false)} className="flex-1">Cancelar</Button>
-                          <Button type="submit" className="flex-1">Salvar</Button>
-                      </div>
-                  </form>
-              </div>
-          )}
+          <div className="flex-1 overflow-y-auto custom-scrollbar pb-20">
+              {showSupplierForm && (
+                  <div className="bg-white p-6 rounded-2xl border-2 border-blue-100 shadow-md mb-6 animate-fade-in">
+                      <h4 className="text-sm font-black text-blue-800 uppercase tracking-widest mb-4">Cadastro de Fornecedor</h4>
+                      <form onSubmit={handleSaveSupplier} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="md:col-span-2"><label className="text-xs font-bold block mb-1 text-slate-600">Nome / Razão Social</label><input required className="w-full border p-3 rounded-lg focus:border-blue-500 outline-none" value={newSupplierForm.name} onChange={e => setNewSupplierForm({...newSupplierForm, name: e.target.value})} /></div>
+                          <div><label className="text-xs font-bold block mb-1 text-slate-600">CNPJ</label><input className="w-full border p-3 rounded-lg focus:border-blue-500 outline-none" value={newSupplierForm.cnpj} onChange={e => setNewSupplierForm({...newSupplierForm, cnpj: e.target.value})} /></div>
+                          <div><label className="text-xs font-bold block mb-1 text-slate-600">Nome Contato</label><input className="w-full border p-3 rounded-lg focus:border-blue-500 outline-none" value={newSupplierForm.contactName} onChange={e => setNewSupplierForm({...newSupplierForm, contactName: e.target.value})} /></div>
+                          <div><label className="text-xs font-bold block mb-1 text-slate-600">Telefone</label><input className="w-full border p-3 rounded-lg focus:border-blue-500 outline-none" value={newSupplierForm.phone} onChange={e => setNewSupplierForm({...newSupplierForm, phone: e.target.value})} /></div>
+                          <div><label className="text-xs font-bold block mb-1 text-slate-600">Email</label><input className="w-full border p-3 rounded-lg focus:border-blue-500 outline-none" value={newSupplierForm.email} onChange={e => setNewSupplierForm({...newSupplierForm, email: e.target.value})} /></div>
+                          <div className="md:col-span-2 flex gap-3 mt-2">
+                              <Button type="button" variant="secondary" onClick={() => setShowSupplierForm(false)} className="flex-1 py-3">Cancelar</Button>
+                              <Button type="submit" className="flex-1 py-3 shadow-md">Salvar Fornecedor</Button>
+                          </div>
+                      </form>
+                  </div>
+              )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {invState.suppliers.map(s => (
-                  <div key={s.id} className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between group hover:border-blue-300 transition-all relative">
-                      <button onClick={() => handleDeleteSupplier(s.id)} className="absolute top-4 right-4 text-red-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={16}/></button>
-                      <div>
-                          <h4 className="font-bold text-slate-800 text-lg mb-1">{s.name}</h4>
-                          <p className="text-xs text-slate-500 flex items-center gap-1 mb-2"><UserIcon size={12}/> {s.contactName || 'Sem contato'}</p>
-                          <div className="space-y-1">
-                              <p className="text-xs bg-slate-50 p-1.5 rounded flex items-center gap-2"><Phone size={12}/> {s.phone}</p>
-                              <p className="text-xs bg-slate-50 p-1.5 rounded flex items-center gap-2"><FileText size={12}/> {s.cnpj}</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                  {invState.suppliers.map(s => (
+                      <div key={s.id} className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between group hover:border-blue-400 hover:shadow-lg transition-all relative">
+                          <button onClick={() => handleDeleteSupplier(s.id)} className="absolute top-4 right-4 text-red-300 hover:text-red-500 hover:bg-red-50 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all"><Trash2 size={16}/></button>
+                          <div>
+                              <h4 className="font-bold text-slate-800 text-lg mb-1 truncate pr-6" title={s.name}>{s.name}</h4>
+                              <p className="text-xs text-slate-500 flex items-center gap-1 mb-3"><UserIcon size={12}/> {s.contactName || 'Sem contato'}</p>
+                              <div className="space-y-2">
+                                  <p className="text-xs bg-slate-50 p-2 rounded-lg flex items-center gap-2 border border-slate-100 font-medium text-slate-600"><Phone size={12} className="text-blue-500"/> {s.phone || '-'}</p>
+                                  <p className="text-xs bg-slate-50 p-2 rounded-lg flex items-center gap-2 border border-slate-100 font-medium text-slate-600"><FileText size={12} className="text-blue-500"/> {s.cnpj || '-'}</p>
+                              </div>
                           </div>
                       </div>
-                  </div>
-              ))}
-              {invState.suppliers.length === 0 && <div className="col-span-full text-center py-10 text-gray-400">Nenhum fornecedor cadastrado.</div>}
+                  ))}
+                  {invState.suppliers.length === 0 && !showSupplierForm && <div className="col-span-full text-center py-20 text-gray-400 flex flex-col items-center justify-center border-2 border-dashed border-gray-200 rounded-2xl"><Truck size={48} className="mb-4 opacity-20"/><p>Nenhum fornecedor cadastrado.</p></div>}
+              </div>
           </div>
       </div>
   );
 
   const renderLogsView = () => (
-      <div className="max-w-6xl mx-auto space-y-6">
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+      <div className="w-full space-y-6 h-full flex flex-col overflow-hidden">
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 shrink-0">
               <h2 className="text-2xl font-black text-slate-800 flex items-center gap-2"><ClipboardList className="text-purple-600"/> Logs de Estoque</h2>
+              <p className="text-sm text-gray-500">Histórico de todas as movimentações de entrada e saída.</p>
           </div>
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-              <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-50 text-slate-500 font-black uppercase tracking-widest border-b"><tr><th className="p-4">Data</th><th className="p-4">Item</th><th className="p-4">Tipo</th><th className="p-4 text-right">Qtd</th><th className="p-4">Motivo</th><th className="p-4">Usuário</th></tr></thead>
-                  <tbody className="divide-y">
-                      {invState.inventoryLogs.map(log => (
-                          <tr key={log.id} className="hover:bg-slate-50">
-                              <td className="p-4 text-slate-400 font-mono">{log.created_at?.toLocaleString()}</td>
-                              <td className="p-4 font-bold text-slate-700">{invState.inventory.find(i => i.id === log.item_id)?.name || 'Desconhecido'}</td>
-                              <td className="p-4"><span className={`px-2 py-1 rounded font-black uppercase ${log.type === 'IN' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{log.type === 'IN' ? 'Entrada' : 'Saída'}</span></td>
-                              <td className="p-4 text-right font-mono font-bold">{log.quantity}</td>
-                              <td className="p-4 text-slate-600">{log.reason}</td>
-                              <td className="p-4 text-slate-400 italic">{log.user_name}</td>
-                          </tr>
-                      ))}
-                  </tbody>
-              </table>
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col">
+              <div className="overflow-y-auto custom-scrollbar flex-1">
+                  <table className="w-full text-left text-xs">
+                      <thead className="bg-slate-50 text-slate-500 font-black uppercase tracking-widest border-b sticky top-0 z-10"><tr><th className="p-4 bg-slate-50">Data</th><th className="p-4 bg-slate-50">Item</th><th className="p-4 bg-slate-50">Tipo</th><th className="p-4 text-right bg-slate-50">Qtd</th><th className="p-4 bg-slate-50">Motivo</th><th className="p-4 bg-slate-50">Usuário</th></tr></thead>
+                      <tbody className="divide-y divide-slate-50">
+                          {invState.inventoryLogs.map(log => (
+                              <tr key={log.id} className="hover:bg-slate-50 transition-colors">
+                                  <td className="p-4 text-slate-500 font-mono whitespace-nowrap">{log.created_at?.toLocaleString()}</td>
+                                  <td className="p-4 font-bold text-slate-700">{invState.inventory.find(i => i.id === log.item_id)?.name || 'Desconhecido'}</td>
+                                  <td className="p-4"><span className={`px-2 py-1 rounded font-black uppercase text-[10px] ${log.type === 'IN' ? 'bg-green-100 text-green-700' : log.type === 'SALE' ? 'bg-blue-100 text-blue-700' : 'bg-red-100 text-red-700'}`}>{log.type === 'IN' ? 'Entrada' : log.type === 'SALE' ? 'Venda' : 'Saída'}</span></td>
+                                  <td className="p-4 text-right font-mono font-bold">{log.quantity}</td>
+                                  <td className="p-4 text-slate-600 max-w-xs truncate" title={log.reason}>{log.reason}</td>
+                                  <td className="p-4 text-slate-400 italic font-bold">{log.user_name}</td>
+                              </tr>
+                          ))}
+                      </tbody>
+                  </table>
+              </div>
           </div>
       </div>
   );
 
   return (
-    <div className="animate-fade-in pb-20">
+    <div className="animate-fade-in pb-20 w-full h-full flex flex-col">
         {view === 'ITEMS' && renderItemsView()}
         {view === 'NEW_ITEM' && renderNewItemView()}
         {view === 'ENTRY' && renderEntryView()}
@@ -513,7 +535,7 @@ export const AdminInventory: React.FC<AdminInventoryProps> = ({ view }) => {
         {view === 'SUPPLIERS' && renderSuppliersView()}
         {view === 'LOGS' && renderLogsView()}
 
-        {/* Modais Componentizados para Edições Rápidas */}
+        {/* Modais Componentizados para Edições Rápidas (Estes continuam como modais pois são auxiliares da tela ITEMS) */}
         <InventoryItemModal 
             isOpen={activeModal === 'ITEM_EDIT'} 
             onClose={() => setActiveModal('NONE')} 
