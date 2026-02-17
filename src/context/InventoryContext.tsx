@@ -13,7 +13,7 @@ interface InventoryState {
 
 interface InventoryContextType {
   state: InventoryState;
-  addInventoryItem: (item: InventoryItem) => Promise<void>;
+  addInventoryItem: (item: InventoryItem) => Promise<string | null>; // Alterado para retornar ID
   updateInventoryItem: (item: InventoryItem) => Promise<void>;
   deleteInventoryItem: (itemId: string) => Promise<void>;
   updateStock: (itemId: string, quantity: number, operation: 'IN' | 'OUT', reason: string, userName?: string) => Promise<void>;
@@ -147,8 +147,8 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       }
   };
 
-  const addInventoryItem = async (item: InventoryItem) => {
-      if(!tenantId) return;
+  const addInventoryItem = async (item: InventoryItem): Promise<string | null> => {
+      if(!tenantId) return null;
       
       const payload = {
           tenant_id: tenantId, 
@@ -186,6 +186,8 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       if (newItem) {
           await syncExtraToProducts(item, newItem.id);
       }
+      
+      return newItem ? newItem.id : null;
   };
 
   const updateInventoryItem = async (item: InventoryItem) => {

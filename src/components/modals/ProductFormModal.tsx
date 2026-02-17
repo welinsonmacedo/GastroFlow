@@ -77,11 +77,11 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({ isOpen, onCl
       try {
           if (mode === 'CREATE') {
               // MODO SIMPLES (Plano Básico ou Criação Rápida)
-              // 1. Cria o InventoryItem automaticamente em background
               if (!simpleName || !simpleCategory) return showAlert({ title: "Dados Incompletos", message: "Preencha nome e categoria.", type: 'WARNING' });
 
+              // Cria o item no inventário em background para manter a integridade referencial
               const newItem: InventoryItem = {
-                  id: Math.random().toString(36).substr(2, 9), // Temp ID, backend replaces
+                  id: Math.random().toString(36).substr(2, 9), // ID temporário, será substituído
                   name: simpleName,
                   unit: 'UN',
                   type: 'RESALE',
@@ -94,39 +94,13 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({ isOpen, onCl
                   image: ''
               };
 
-              // Precisamos esperar o ID real se quisermos vincular corretamente, 
-              // mas como o addInventoryItem é void no context atual, assumimos fluxo otimista ou refatoramos.
-              // O Context atual do Inventory não retorna o ID criado. 
-              // SOLUÇÃO: Criar item e confiar na sincronia ou (idealmente) o addInventoryItem retornaria o ID.
-              // Para este código funcionar sem mudar a assinatura do Context agora:
-              // Vamos simular a busca pós-criação.
+              const createdId = await addInventoryItem(newItem);
               
-              await addInventoryItem(newItem);
-              
-              // Pequeno hack: Buscamos o item recém criado pelo nome (arriscado em concorrência, mas ok para MVP)
-              // Em produção real, addInventoryItem deve retornar o objeto criado.
-              // Vamos assumir que a criação funcionou e usar os dados do form para criar o produto, 
-              // O vínculo será feito via trigger ou reconciliação se possível, mas aqui vamos tentar achar o item.
-              // *Como não posso mudar o Context signature agora sem quebrar contratos, 
-              // vou buscar o item mais recente no inventory state após um pequeno delay ou refresh.*
-              
-              // Workaround seguro: Não vincular agora se não temos o ID, ou forçar o reload.
-              // Porem, Products PRECISAM de linkedInventoryItemId.
-              // Vamos ALERTAR que em modo simples, precisamos de um refresh ou assumir que o usuário
-              // tem inventário e deve usar o modo LINK se possível.
-              
-              // Se o plano não permite inventário, o sistema de backend deve lidar com produtos sem link?
-              // O DB diz: linked_inventory_item_id UUID REFERENCES inventory_items(id) ON DELETE SET NULL
-              // Então pode ser NULL.
-              
-              if (!allowInventory) {
-                  // Se não tem inventário, cria produto SEM link
-                  targetStockId = ''; // Vai ser null
+              if (createdId) {
+                  targetStockId = createdId;
               } else {
-                  // Se tem inventário mas usou criação rápida, alertamos para usar a aba de estoque
-                  // Ou implementamos a busca.
-                  // Simplificação para UX: Bloqueia criação rápida se inventory é permitido, 
-                  // forçando o fluxo correto de Estoque -> Menu.
+                  // Se falhar a criação do item de estoque (raro), não podemos criar o produto corretamente vinculado
+                  throw new Error("Erro ao gerar item base no estoque.");
               }
               
               targetName = simpleName;
@@ -134,12 +108,12 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({ isOpen, onCl
               targetCategory = simpleCategory;
 
           } else {
-              // MODO VÍNCULO (Padrão)
+              // MODO VÍNCULO (Padrão para quem usa estoque)
               const stockItem = invState.inventory.find(i => i.id === selectedStockId);
               if (!stockItem) return showAlert({ title: "Erro", message: "Selecione um item do estoque.", type: 'ERROR' });
               
               if (!stockItem.category) {
-                  return showAlert({ title: "Sem Categoria", message: "O item selecionado não tem categoria no estoque.", type: 'WARNING' });
+                  return showAlert({ title: "Sem Categoria", message: "O item selecionado não tem categoria no estoque. Edite o item no painel de Estoque.", type: 'WARNING' });
               }
 
               targetStockId = stockItem.id;
@@ -155,7 +129,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({ isOpen, onCl
               category: targetCategory,
               description: description,
               image: targetImage,
-              linkedInventoryItemId: targetStockId || undefined, // undefined vira null no DB
+              linkedInventoryItemId: targetStockId, // Agora temos certeza que tem um ID válido
               isExtra: false,
               linkedExtraIds: [],
               targetCategories: [],
@@ -177,11 +151,11 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({ isOpen, onCl
               });
           }
           
-          showAlert({ title: "Sucesso", message: "Produto salvo!", type: 'SUCCESS' });
+          showAlert({ title: "Sucesso", message: "Produto salvo no cardápio!", type: 'SUCCESS' });
           onClose();
       } catch (error: any) {
           console.error(error);
-          showAlert({ title: "Erro", message: "Falha ao salvar produto.", type: 'ERROR' });
+          showAlert({ title: "Erro", message: error.message || "Falha ao salvar produto.", type: 'ERROR' });
       }
   };
 
@@ -195,18 +169,17 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({ isOpen, onCl
     >
         <form onSubmit={handleSave} className="space-y-6">
             
-            {/* Se o plano permitir inventário, o usuário deve preferencialmente vincular */}
+            {/* Se o plano permitir inventário, o usuário deve preferencialmente vincular, mas damos opção */}
             {allowInventory && !productToEdit && (
                 <div className="flex bg-gray-100 p-1 rounded-xl mb-4">
-                    <button type="button" onClick={() => setMode('LINK')} className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${mode === 'LINK' ? 'bg-white shadow text-blue-600' : 'text-gray-500'}`}>Vincular Estoque</button>
-                    {/* Criação rápida desabilitada se tiver inventário para forçar boas práticas, ou habilitar se desejar */}
-                    {/* <button type="button" onClick={() => setMode('CREATE')} className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${mode === 'CREATE' ? 'bg-white shadow text-blue-600' : 'text-gray-500'}`}>Criação Rápida</button> */}
+                    <button type="button" onClick={() => setMode('LINK')} className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${mode === 'LINK' ? 'bg-white shadow text-blue-600' : 'text-gray-500'}`}>Vincular Estoque (Recomendado)</button>
+                    <button type="button" onClick={() => setMode('CREATE')} className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${mode === 'CREATE' ? 'bg-white shadow text-blue-600' : 'text-gray-500'}`}>Criação Rápida</button>
                 </div>
             )}
 
             {!allowInventory && (
                 <div className="bg-orange-50 p-3 rounded-xl border border-orange-100 text-xs text-orange-800 mb-4">
-                    <p>Seu plano atual não possui controle de estoque. Os produtos criados aqui serão apenas para exibição no cardápio e venda.</p>
+                    <p>Seu plano atual não possui controle de estoque avançado. Os produtos criados aqui terão estoque infinito.</p>
                 </div>
             )}
 
@@ -249,7 +222,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({ isOpen, onCl
                     )}
                 </>
             ) : (
-                // MODO SIMPLES (SEM ESTOQUE)
+                // MODO SIMPLES (Criação Direta)
                 <div className="space-y-4">
                     <div>
                         <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Nome do Produto</label>
