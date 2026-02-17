@@ -6,7 +6,7 @@ import { useInventory } from '../../context/InventoryContext';
 import { 
     TrendingUp, AlertTriangle, Target, Calendar, 
     ArrowUpRight, ArrowDownRight, PieChart, BarChart3, 
-    Zap, Award, TrendingDown, DollarSign, Activity, Filter, Package, FileText, Wallet
+    Zap, Award, TrendingDown, DollarSign, Activity, Filter, Package, FileText, Wallet, Truck
 } from 'lucide-react';
 
 export const AdminBusinessIntelligence: React.FC = () => {
@@ -63,10 +63,9 @@ export const AdminBusinessIntelligence: React.FC = () => {
         const estimatedDeductions = grossRevenue * 0.10; 
         const netRevenue = grossRevenue - estimatedDeductions;
 
-        // CMV Estimado com base nos pedidos do período filtrado (Custos de Produtos)
-        let estimatedCost = 0;
-        
-        // Precisamos filtrar as ordens que correspondem ao período selecionado
+        // A. CUSTO DE PRODUTOS VENDIDOS (CMV)
+        // Baseado nos pedidos realizados e pagos no período
+        let cmvCost = 0;
         const filteredOrders = orderState.orders.filter(o => {
             if (o.status === 'CANCELLED') return false;
             const d = new Date(o.timestamp);
@@ -76,28 +75,41 @@ export const AdminBusinessIntelligence: React.FC = () => {
         });
 
         filteredOrders.forEach(o => {
-            o.items.forEach(i => { estimatedCost += (i.productCostPrice * i.quantity); });
+            o.items.forEach(i => { cmvCost += (i.productCostPrice * i.quantity); });
         });
 
-        // Custos Operacionais (Despesas Pagas - Outros Custos)
-        const operatingExpenses = finState.expenses.filter(e => {
+        // Filtrar despesas pagas no período
+        const paidExpenses = finState.expenses.filter(e => {
             if (!e.isPaid || !e.paidDate) return false;
             const d = new Date(e.paidDate);
             const matchYear = d.getFullYear() === selectedYear;
             const matchMonth = selectedMonth === 'ALL' ? true : d.getMonth() === parseInt(selectedMonth);
             return matchYear && matchMonth;
-        }).reduce((acc, e) => acc + e.amount, 0);
+        });
 
-        const cmvPercentage = grossRevenue > 0 ? (estimatedCost / grossRevenue) * 100 : 0;
+        // B. CUSTO DE PRODUTOS COMPRADOS (Reposição de Estoque)
+        // Despesas com categoria 'Fornecedor' ou com supplierId vinculado
+        const purchasesCost = paidExpenses
+            .filter(e => e.category === 'Fornecedor' || !!e.supplierId)
+            .reduce((acc, e) => acc + e.amount, 0);
+
+        // C. CUSTOS OPERACIONAIS (Despesas Gerais)
+        // Tudo que NÃO é Fornecedor/Compra de produto
+        const operatingExpenses = paidExpenses
+            .filter(e => e.category !== 'Fornecedor' && !e.supplierId)
+            .reduce((acc, e) => acc + e.amount, 0);
+
+        const cmvPercentage = grossRevenue > 0 ? (cmvCost / grossRevenue) * 100 : 0;
+        const purchasesPercentage = grossRevenue > 0 ? (purchasesCost / grossRevenue) * 100 : 0;
         const expensesPercentage = grossRevenue > 0 ? (operatingExpenses / grossRevenue) * 100 : 0;
         
-        // Resultado Final (Bruto - CMV - Despesas)
-        const netResult = grossRevenue - estimatedCost - operatingExpenses;
+        // Resultado Operacional (Lucro) = Receita Bruta - CMV (Vendido) - Despesas Operacionais
+        // Nota: Usamos CMV e não Compras para o lucro, pois estoque comprado e não vendido é ativo, não prejuízo imediato (contabilmente).
+        const netResult = grossRevenue - cmvCost - operatingExpenses;
 
         // Comparativo com período anterior
         let prevRevenue = 0;
         if (selectedMonth !== 'ALL') {
-            // Mês anterior
             const prevMonthDate = new Date(selectedYear, parseInt(selectedMonth) - 1, 1);
             prevRevenue = finState.transactions.filter(t => 
                 t.status !== 'CANCELLED' && 
@@ -105,7 +117,6 @@ export const AdminBusinessIntelligence: React.FC = () => {
                 new Date(t.timestamp).getFullYear() === prevMonthDate.getFullYear()
             ).reduce((acc, t) => acc + t.amount, 0);
         } else {
-            // Ano anterior
             prevRevenue = finState.transactions.filter(t => 
                 t.status !== 'CANCELLED' && 
                 new Date(t.timestamp).getFullYear() === selectedYear - 1
@@ -120,7 +131,9 @@ export const AdminBusinessIntelligence: React.FC = () => {
             prevRevenue, 
             growth, 
             cmvPercentage, 
-            estimatedCost, // Custo Produtos
+            cmvCost, // Custo Produtos Vendidos
+            purchasesCost, // Custo Produtos Comprados
+            purchasesPercentage,
             operatingExpenses, // Outros Custos
             expensesPercentage,
             netResult
@@ -283,47 +296,67 @@ export const AdminBusinessIntelligence: React.FC = () => {
                     </div>
 
                     {/* NOVA SEÇÃO: DETALHAMENTO DE CUSTOS E RESULTADO */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        {/* Custos de Produtos */}
-                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-orange-100">
-                            <div className="flex items-center gap-3 mb-4">
-                                <div className="bg-orange-50 p-2 rounded-lg text-orange-600"><Package size={20}/></div>
-                                <h4 className="text-sm font-bold text-gray-700 uppercase">Custos de Produtos (CMV)</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        {/* 1. Custos de Produtos Vendidos (CMV) */}
+                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-orange-100 flex flex-col justify-between">
+                            <div>
+                                <div className="flex items-center gap-2 mb-4">
+                                    <div className="bg-orange-50 p-2 rounded-lg text-orange-600"><Package size={18}/></div>
+                                    <h4 className="text-xs font-black text-gray-500 uppercase tracking-wide">Produtos Vendidos (CMV)</h4>
+                                </div>
+                                <h3 className="text-2xl font-black text-slate-800 mb-2">R$ {executiveStats.cmvCost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</h3>
+                                <p className="text-[10px] text-gray-400 leading-tight">Custo dos insumos dos pratos que foram vendidos.</p>
                             </div>
-                            <h3 className="text-3xl font-black text-slate-800 mb-2">R$ {executiveStats.estimatedCost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</h3>
-                            <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden mb-2">
+                            <div className="mt-4 w-full bg-gray-100 h-1.5 rounded-full overflow-hidden">
                                 <div className="bg-orange-500 h-full" style={{ width: `${Math.min(executiveStats.cmvPercentage, 100)}%` }}></div>
                             </div>
-                            <p className="text-xs text-gray-500 font-bold">{executiveStats.cmvPercentage.toFixed(1)}% da Receita Bruta</p>
                         </div>
 
-                        {/* Outros Custos */}
-                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-red-100">
-                            <div className="flex items-center gap-3 mb-4">
-                                <div className="bg-red-50 p-2 rounded-lg text-red-600"><FileText size={20}/></div>
-                                <h4 className="text-sm font-bold text-gray-700 uppercase">Custos Operacionais (Outros)</h4>
+                        {/* 2. Custos de Produtos Comprados (Compras/Reposição) */}
+                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-blue-100 flex flex-col justify-between">
+                            <div>
+                                <div className="flex items-center gap-2 mb-4">
+                                    <div className="bg-blue-50 p-2 rounded-lg text-blue-600"><Truck size={18}/></div>
+                                    <h4 className="text-xs font-black text-gray-500 uppercase tracking-wide">Compras (Reposição)</h4>
+                                </div>
+                                <h3 className="text-2xl font-black text-slate-800 mb-2">R$ {executiveStats.purchasesCost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</h3>
+                                <p className="text-[10px] text-gray-400 leading-tight">Total pago a fornecedores para repor estoque no período.</p>
                             </div>
-                            <h3 className="text-3xl font-black text-slate-800 mb-2">R$ {executiveStats.operatingExpenses.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</h3>
-                            <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden mb-2">
+                            <div className="mt-4 w-full bg-gray-100 h-1.5 rounded-full overflow-hidden">
+                                <div className="bg-blue-500 h-full" style={{ width: `${Math.min(executiveStats.purchasesPercentage, 100)}%` }}></div>
+                            </div>
+                        </div>
+
+                        {/* 3. Custos Operacionais */}
+                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-red-100 flex flex-col justify-between">
+                            <div>
+                                <div className="flex items-center gap-2 mb-4">
+                                    <div className="bg-red-50 p-2 rounded-lg text-red-600"><FileText size={18}/></div>
+                                    <h4 className="text-xs font-black text-gray-500 uppercase tracking-wide">Custos Operacionais</h4>
+                                </div>
+                                <h3 className="text-2xl font-black text-slate-800 mb-2">R$ {executiveStats.operatingExpenses.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</h3>
+                                <p className="text-[10px] text-gray-400 leading-tight">Despesas gerais (Aluguel, Pessoal, Luz) exceto fornecedores.</p>
+                            </div>
+                            <div className="mt-4 w-full bg-gray-100 h-1.5 rounded-full overflow-hidden">
                                 <div className="bg-red-500 h-full" style={{ width: `${Math.min(executiveStats.expensesPercentage, 100)}%` }}></div>
                             </div>
-                            <p className="text-xs text-gray-500 font-bold">{executiveStats.expensesPercentage.toFixed(1)}% da Receita Bruta</p>
                         </div>
 
-                        {/* Resultado Final */}
+                        {/* 4. Resultado Final */}
                         <div className={`p-6 rounded-2xl shadow-sm border-2 flex flex-col justify-between ${executiveStats.netResult >= 0 ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'}`}>
-                            <div className="flex items-center gap-3 mb-4">
-                                <div className={`p-2 rounded-lg ${executiveStats.netResult >= 0 ? 'bg-emerald-200 text-emerald-800' : 'bg-red-200 text-red-800'}`}><Wallet size={20}/></div>
-                                <h4 className={`text-sm font-black uppercase ${executiveStats.netResult >= 0 ? 'text-emerald-800' : 'text-red-800'}`}>Resultado Operacional</h4>
-                            </div>
                             <div>
-                                <h3 className={`text-4xl font-black mb-1 ${executiveStats.netResult >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>
+                                <div className="flex items-center gap-2 mb-4">
+                                    <div className={`p-2 rounded-lg ${executiveStats.netResult >= 0 ? 'bg-emerald-200 text-emerald-800' : 'bg-red-200 text-red-800'}`}><Wallet size={18}/></div>
+                                    <h4 className={`text-xs font-black uppercase tracking-wide ${executiveStats.netResult >= 0 ? 'text-emerald-800' : 'text-red-800'}`}>Resultado Operacional</h4>
+                                </div>
+                                <h3 className={`text-3xl font-black mb-1 ${executiveStats.netResult >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>
                                     R$ {executiveStats.netResult.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                                 </h3>
-                                <p className={`text-xs font-bold uppercase ${executiveStats.netResult >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                                <p className={`text-[10px] font-bold uppercase ${executiveStats.netResult >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
                                     {executiveStats.netResult >= 0 ? 'LUCRO' : 'PREJUÍZO'}
                                 </p>
                             </div>
+                            <p className="text-[9px] opacity-70 mt-2 font-medium">Cálculo: Faturamento - CMV - Custos Operacionais</p>
                         </div>
                     </div>
 
