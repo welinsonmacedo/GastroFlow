@@ -6,7 +6,7 @@ import { useRestaurant } from '../context/RestaurantContext';
 import { useAuth } from '../context/AuthProvider';
 import { 
     DollarSign, ShoppingCart, BarChart3,
-    LogOut, Grid, Store, Lock
+    LogOut, Grid, Store, Lock, History
 } from 'lucide-react';
 import { Role } from '../types';
 
@@ -14,6 +14,7 @@ import { Role } from '../types';
 import { AdminFinance } from './admin/AdminFinance';
 import { AdminReports } from './admin/AdminReports';
 import { CommercePOS } from './commerce/CommercePOS';
+import { CommerceHistoryView } from './commerce/CommerceHistoryView';
 
 export const CommerceDashboard: React.FC = () => {
   const { state: restState } = useRestaurant();
@@ -30,6 +31,14 @@ export const CommerceDashboard: React.FC = () => {
         path: '/commerce/pos', 
         label: 'PDV (Caixa)', 
         icon: ShoppingCart, 
+        roles: [Role.ADMIN, Role.CASHIER],
+        required: 'allowCashier',
+        featureKey: 'commerce_pos'
+    },
+    { 
+        path: '/commerce/history', 
+        label: 'Histórico', 
+        icon: History, 
         roles: [Role.ADMIN, Role.CASHIER],
         required: 'allowCashier',
         featureKey: 'commerce_pos'
@@ -169,6 +178,7 @@ export const CommerceDashboard: React.FC = () => {
             <div className="h-full w-full">
                 <Routes>
                     <Route path="pos" element={<div className="h-full p-4 md:p-6"><CommercePOS /></div>} />
+                    <Route path="history" element={<div className="h-full p-4 md:p-6 overflow-y-auto"><CommerceHistoryView /></div>} />
                     
                     {planLimits.allowExpenses && (
                         <Route path="finance" element={<div className="h-full overflow-y-auto p-4 md:p-8"><AdminFinance /></div>} />

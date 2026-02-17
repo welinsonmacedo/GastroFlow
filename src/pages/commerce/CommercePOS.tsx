@@ -1,23 +1,27 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useInventory } from '../../context/InventoryContext';
 import { useOrder } from '../../context/OrderContext';
 import { useFinance } from '../../context/FinanceContext';
 import { useUI } from '../../context/UIContext';
+import { useAuth } from '../../context/AuthProvider'; // Added
 import { InventoryItem } from '../../types';
 import { 
     Search, ShoppingCart, Trash2, Package, Banknote, Zap, CreditCard, 
-    ScanLine, RefreshCcw, Plus, Minus, Keyboard, X, Lock
+    ScanLine, RefreshCcw, Plus, Minus, Keyboard, X, Lock, Wallet, LogOut, Loader2, ArrowDown
 } from 'lucide-react';
 import { Modal } from '../../components/Modal';
 import { Button } from '../../components/Button';
+import { CloseRegisterModal } from '../../components/modals/CloseRegisterModal'; // Added
+import { CashBleedModal } from '../../components/modals/CashBleedModal'; // Added
+import { AddToCartModal } from '../../components/modals/AddToCartModal';
 
 // Estilo de PDV Rápido (Supermercado)
 export const CommercePOS: React.FC = () => {
     const { state: invState } = useInventory();
     const { dispatch: orderDispatch } = useOrder();
-    const { state: finState, refreshTransactions } = useFinance();
-    const { showAlert } = useUI();
+    const { state: finState, refreshTransactions, openRegister } = useFinance(); // Added openRegister
+    const { state: authState, logout } = useAuth(); // Added
+    const { showAlert, showConfirm } = useUI();
 
     const [cart, setCart] = useState<{ item: InventoryItem; quantity: number; notes: string; extras: InventoryItem[] }[]>([]);
     const [search, setSearch] = useState('');
@@ -28,24 +32,30 @@ export const CommercePOS: React.FC = () => {
     const [paymentModalOpen, setPaymentModalOpen] = useState(false);
     const [cashReceived, setCashReceived] = useState('');
 
+    // Caixa Controls
+    const [openRegisterAmount, setOpenRegisterAmount] = useState('');
+    const [openingLoading, setOpeningLoading] = useState(false);
+    const [closeModalOpen, setCloseModalOpen] = useState(false);
+    const [bleedModalOpen, setBleedModalOpen] = useState(false);
+
     const inputRef = useRef<HTMLInputElement>(null);
 
     // Foca no input sempre que possível
     useEffect(() => {
         const focusInput = () => {
-            if (!paymentModalOpen && inputRef.current) {
+            if (!paymentModalOpen && !closeModalOpen && !bleedModalOpen && inputRef.current) {
                 inputRef.current.focus();
             }
         };
         focusInput();
         window.addEventListener('click', focusInput);
         return () => window.removeEventListener('click', focusInput);
-    }, [paymentModalOpen]);
+    }, [paymentModalOpen, closeModalOpen, bleedModalOpen]);
 
     // Atalhos de Teclado
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
-            if (paymentModalOpen) return;
+            if (paymentModalOpen || closeModalOpen || bleedModalOpen) return;
             
             if (e.key === 'F2') {
                 e.preventDefault();
@@ -58,7 +68,7 @@ export const CommercePOS: React.FC = () => {
         };
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [cart, paymentModalOpen]);
+    }, [cart, paymentModalOpen, closeModalOpen, bleedModalOpen]);
 
     const addToCart = (item: InventoryItem, qty: number = 1) => {
         setCart(prev => {
@@ -72,22 +82,34 @@ export const CommercePOS: React.FC = () => {
 
     const handleScan = (e: React.FormEvent) => {
         e.preventDefault();
-        const code = barcodeInput.trim();
+        let code = barcodeInput.trim();
         if (!code) return;
 
-        // 1. Tenta por Código de Barras
+        let qty = 1;
+
+        // Lógica de Quantidade (10/789...)
+        if (code.includes('/')) {
+            const parts = code.split('/');
+            const parsedQty = parseFloat(parts[0]);
+            if (!isNaN(parsedQty) && parsedQty > 0) {
+                qty = parsedQty;
+                // O restante é o código
+                code = parts.slice(1).join('/').trim();
+            }
+        }
+
+        // 1. Tenta por Código de Barras Exato
         let item = invState.inventory.find(i => i.barcode === code);
         
-        // 2. Se não achar, tenta por ID interno (se for curto) ou Nome exato
+        // 2. Se não achar, tenta por Nome (Contém)
         if (!item) {
-             item = invState.inventory.find(i => i.name.toLowerCase() === code.toLowerCase());
+             item = invState.inventory.find(i => i.name.toLowerCase().includes(code.toLowerCase()));
         }
 
         if (item) {
-            addToCart(item);
+            addToCart(item, qty);
             setBarcodeInput('');
         } else {
-            // Se for texto parcial, abre busca visual (poderia ser implementado)
             showAlert({ title: "Não encontrado", message: "Produto não localizado.", type: 'WARNING' });
             setBarcodeInput('');
         }
@@ -123,14 +145,55 @@ export const CommercePOS: React.FC = () => {
         } catch (error: any) { showAlert({ title: "Erro na Venda", message: "Não foi possível salvar.", type: 'ERROR' }); } finally { setProcessing(false); }
     };
 
+    const handleOpenRegister = async (e: React.FormEvent) => {
+        e.preventDefault();
+        const amount = parseFloat(openRegisterAmount);
+        if (isNaN(amount) || amount < 0) return showAlert({ title: "Valor Inválido", message: "Informe um valor inicial válido.", type: 'WARNING' });
+  
+        setOpeningLoading(true);
+        try {
+            await openRegister(amount, authState.currentUser?.name || 'Operador');
+            setOpenRegisterAmount('');
+        } catch (error: any) {
+            showAlert({ title: "Erro ao Abrir", message: error.message || "Falha ao abrir caixa.", type: 'ERROR' });
+        } finally { setOpeningLoading(false); }
+    };
+
+    const handleLogout = () => {
+        showConfirm({ title: "Sair do Caixa?", message: "Isso fará logout do sistema.", type: 'WARNING', confirmText: "Sair", onConfirm: logout });
+    };
+
     const [barcodeInput, setBarcodeInput] = useState('');
+
+    // Modal Item Manual (caso clique no grid)
+    const [itemModalOpen, setItemModalOpen] = useState(false);
+    const [selectedItemForModal, setSelectedItemForModal] = useState<InventoryItem | null>(null);
+
+    const handleModalAddToCart = (data: { quantity: number; notes: string; extras: InventoryItem[] }) => {
+        if (selectedItemForModal) {
+            addToCart(selectedItemForModal, data.quantity);
+        }
+    };
 
     if (!finState.activeCashSession) {
         return (
-            <div className="h-full flex items-center justify-center text-slate-500 flex-col gap-4">
-                <div className="bg-red-100 p-6 rounded-full text-red-500"><Lock size={48} /></div>
-                <h2 className="text-2xl font-bold">Caixa Fechado</h2>
-                <p>Acesse o módulo Financeiro para abrir o turno.</p>
+            <div className="h-full flex items-center justify-center bg-slate-950 p-4 font-sans">
+                <div className="bg-white p-10 rounded-[3rem] shadow-2xl text-center max-w-md w-full border border-white/10 relative">
+                    <button onClick={handleLogout} className="absolute top-6 right-6 text-gray-400 hover:text-red-500 transition-colors"><LogOut size={24} /></button>
+                    <div className="bg-indigo-50 p-6 rounded-full w-24 h-24 flex items-center justify-center mx-auto mb-8 shadow-inner"><Lock size={48} className="text-indigo-600" /></div>
+                    <h2 className="text-3xl font-black mb-2 text-slate-800 uppercase tracking-tighter">Caixa Fechado</h2>
+                    <p className="text-gray-400 mb-8 font-medium">Informe o fundo de troco para iniciar as vendas.</p>
+                    <form onSubmit={handleOpenRegister}>
+                        <div className="mb-8">
+                            <label className="block text-[10px] font-black text-gray-400 mb-3 uppercase tracking-widest">Saldo Inicial</label>
+                            <div className="relative">
+                                <span className="absolute left-4 top-5 font-black text-2xl text-gray-300">R$</span>
+                                <input type="number" step="0.01" className="border-2 border-gray-100 p-6 rounded-3xl w-full text-center text-4xl font-black text-indigo-600 focus:outline-none focus:border-indigo-500 transition-all shadow-inner bg-gray-50" placeholder="0.00" value={openRegisterAmount} onChange={e => setOpenRegisterAmount(e.target.value)} autoFocus required disabled={openingLoading}/>
+                            </div>
+                        </div>
+                        <Button type="submit" disabled={openingLoading} className="w-full py-5 text-xl font-black rounded-3xl shadow-2xl shadow-indigo-200 bg-indigo-600 hover:bg-indigo-700">{openingLoading ? <Loader2 className="animate-spin" /> : 'ABRIR CAIXA'}</Button>
+                    </form>
+                </div>
             </div>
         );
     }
@@ -139,6 +202,24 @@ export const CommercePOS: React.FC = () => {
         <div className="h-full flex flex-col md:flex-row gap-4">
             {/* ESQUERDA: LISTA E BUSCA */}
             <div className="flex-1 flex flex-col gap-4 overflow-hidden">
+                {/* Header de Ações de Caixa */}
+                <div className="flex items-center justify-between bg-white p-3 rounded-2xl border border-gray-200 shadow-sm">
+                    <div className="flex items-center gap-2">
+                        <div className="bg-emerald-100 text-emerald-700 px-3 py-1.5 rounded-lg text-xs font-bold uppercase border border-emerald-200 flex items-center gap-2">
+                            <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span> Caixa Aberto
+                        </div>
+                        <span className="text-xs font-bold text-gray-500">Op: {finState.activeCashSession.operatorName}</span>
+                    </div>
+                    <div className="flex gap-2">
+                        <button onClick={() => setBleedModalOpen(true)} className="flex items-center gap-1 px-3 py-1.5 bg-red-50 text-red-600 rounded-lg text-xs font-bold hover:bg-red-100 border border-red-100 transition-colors">
+                            <ArrowDown size={14}/> Sangria
+                        </button>
+                        <button onClick={() => setCloseModalOpen(true)} className="flex items-center gap-1 px-3 py-1.5 bg-slate-800 text-white rounded-lg text-xs font-bold hover:bg-slate-700 shadow-sm transition-colors">
+                            <Lock size={14}/> Fechar Caixa
+                        </button>
+                    </div>
+                </div>
+
                 {/* Search Bar (Scanner Input) */}
                 <div className="bg-white p-4 rounded-2xl shadow-sm border border-indigo-100 flex gap-4 items-center">
                     <div className="relative flex-1">
@@ -147,7 +228,7 @@ export const CommercePOS: React.FC = () => {
                             <input 
                                 ref={inputRef}
                                 className="w-full pl-12 pr-4 py-3 rounded-xl border-2 border-indigo-100 focus:border-indigo-500 outline-none font-mono text-lg font-bold uppercase tracking-widest placeholder-indigo-300"
-                                placeholder="Escanear Código de Barras (ou digitar nome)..."
+                                placeholder="Escanear Código ou Digitar Nome..."
                                 value={barcodeInput}
                                 onChange={e => setBarcodeInput(e.target.value)}
                                 autoFocus
@@ -180,7 +261,7 @@ export const CommercePOS: React.FC = () => {
                             <div className="h-full flex flex-col items-center justify-center text-slate-300 gap-4">
                                 <ShoppingCart size={64} strokeWidth={1}/>
                                 <p className="text-xl font-bold uppercase tracking-widest">Caixa Livre</p>
-                                <p className="text-sm">Aguardando leitura de produtos...</p>
+                                <p className="text-sm text-center">Use o leitor ou digite o nome.<br/>Dica: Digite "2/Coca" para lançar 2 unidades.</p>
                             </div>
                         )}
                         {cart.map((line, idx) => (
@@ -291,6 +372,17 @@ export const CommercePOS: React.FC = () => {
                     </div>
                 </div>
             </Modal>
+
+            {/* Modais de Caixa */}
+            <CloseRegisterModal isOpen={closeModalOpen} onClose={() => setCloseModalOpen(false)} />
+            <CashBleedModal isOpen={bleedModalOpen} onClose={() => setBleedModalOpen(false)} />
+            
+            <AddToCartModal 
+                isOpen={itemModalOpen} 
+                onClose={() => setItemModalOpen(false)} 
+                item={selectedItemForModal} 
+                onConfirm={handleModalAddToCart} 
+            />
         </div>
     );
 };
