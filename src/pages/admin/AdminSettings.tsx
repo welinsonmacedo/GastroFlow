@@ -15,6 +15,9 @@ export const AdminSettings: React.FC = () => {
   const { state: staffState, deleteUser } = useStaff();
   const { showAlert, showConfirm } = useUI();
   
+  // Acessa limites do plano
+  const { planLimits } = state;
+
   // Controle das Abas
   const [activeSettingsTab, setActiveSettingsTab] = useState<'BUSINESS' | 'RULES' | 'SECURITY' | 'DELIVERY' | 'TEAM' | 'FINANCE_CONFIG'>('BUSINESS');
   
@@ -37,14 +40,14 @@ export const AdminSettings: React.FC = () => {
       id: '', name: '', type: 'OWN', feeType: 'FIXED', feeValue: 0, feeBehavior: 'ADD_TO_TOTAL', isActive: true, estimatedTimeMin: 30, estimatedTimeMax: 45
   });
 
-  // Modal de Payment Method (Nova)
+  // Modal de Payment Method
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [paymentForm, setPaymentForm] = useState<PaymentMethodConfig>({ id: '', name: '', type: 'CREDIT', feePercentage: 0, isActive: true });
   
-  // Estado para nova Categoria de Despesa (Inline)
+  // Estado para nova Categoria de Despesa
   const [newCategoryName, setNewCategoryName] = useState('');
 
-  // States para Gestão de Equipe (Staff)
+  // States para Gestão de Equipe
   const [isStaffModalOpen, setIsStaffModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [copiedInviteId, setCopiedInviteId] = useState<string | null>(null);
@@ -248,9 +251,19 @@ export const AdminSettings: React.FC = () => {
         {/* Navigation Tabs */}
         <div className="flex gap-1 mb-6 border-b border-gray-200 overflow-x-auto">
             <button onClick={() => setActiveSettingsTab('BUSINESS')} className={`px-6 py-3 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${activeSettingsTab === 'BUSINESS' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}><Building2 size={18} /> Dados da Empresa</button>
-            <button onClick={() => setActiveSettingsTab('DELIVERY')} className={`px-6 py-3 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${activeSettingsTab === 'DELIVERY' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}><Bike size={18} /> Delivery</button>
-            <button onClick={() => setActiveSettingsTab('FINANCE_CONFIG')} className={`px-6 py-3 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${activeSettingsTab === 'FINANCE_CONFIG' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}><DollarSign size={18} /> Financeiro</button>
-            <button onClick={() => setActiveSettingsTab('TEAM')} className={`px-6 py-3 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${activeSettingsTab === 'TEAM' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}><Users size={18} /> Equipe</button>
+            
+            {planLimits.allowCashier && (
+                <button onClick={() => setActiveSettingsTab('DELIVERY')} className={`px-6 py-3 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${activeSettingsTab === 'DELIVERY' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}><Bike size={18} /> Delivery</button>
+            )}
+
+            {(planLimits.allowExpenses || planLimits.allowCashier) && (
+                <button onClick={() => setActiveSettingsTab('FINANCE_CONFIG')} className={`px-6 py-3 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${activeSettingsTab === 'FINANCE_CONFIG' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}><DollarSign size={18} /> Financeiro</button>
+            )}
+            
+            {planLimits.allowStaff && (
+                <button onClick={() => setActiveSettingsTab('TEAM')} className={`px-6 py-3 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${activeSettingsTab === 'TEAM' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}><Users size={18} /> Equipe</button>
+            )}
+
             <button onClick={() => setActiveSettingsTab('RULES')} className={`px-6 py-3 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${activeSettingsTab === 'RULES' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}><SlidersHorizontal size={18} /> Regras</button>
             <button onClick={() => setActiveSettingsTab('SECURITY')} className={`px-6 py-3 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${activeSettingsTab === 'SECURITY' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}><ShieldCheck size={18} /> Segurança</button>
         </div>
@@ -304,7 +317,7 @@ export const AdminSettings: React.FC = () => {
                 </div>
             )}
 
-            {/* TAB: FINANCE CONFIGURATION (NEW) */}
+            {/* TAB: FINANCE CONFIGURATION */}
             {activeSettingsTab === 'FINANCE_CONFIG' && (
                 <div className="space-y-6 animate-fade-in">
                     {/* Payment Methods */}
@@ -344,33 +357,35 @@ export const AdminSettings: React.FC = () => {
                         </div>
                     </div>
 
-                    {/* Expense Categories */}
-                    <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-200">
-                        <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2 mb-2"><Tag className="text-purple-600"/> Categorias de Despesas</h2>
-                        <p className="text-sm text-gray-500 mb-6">Categorias usadas para classificar contas a pagar e lançamentos no DRE.</p>
+                    {/* Expense Categories (Only show if Expenses allowed) */}
+                    {planLimits.allowExpenses && (
+                        <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-200">
+                            <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2 mb-2"><Tag className="text-purple-600"/> Categorias de Despesas</h2>
+                            <p className="text-sm text-gray-500 mb-6">Categorias usadas para classificar contas a pagar e lançamentos no DRE.</p>
 
-                        <div className="flex gap-2 mb-4">
-                            <input 
-                                className="border p-2 rounded-lg flex-1 text-sm" 
-                                placeholder="Nova Categoria (ex: Marketing)" 
-                                value={newCategoryName} 
-                                onChange={e => setNewCategoryName(e.target.value)} 
-                            />
-                            <Button onClick={handleAddCategory} disabled={!newCategoryName} size="sm"><Plus size={16}/> Adicionar</Button>
-                        </div>
+                            <div className="flex gap-2 mb-4">
+                                <input 
+                                    className="border p-2 rounded-lg flex-1 text-sm" 
+                                    placeholder="Nova Categoria (ex: Marketing)" 
+                                    value={newCategoryName} 
+                                    onChange={e => setNewCategoryName(e.target.value)} 
+                                />
+                                <Button onClick={handleAddCategory} disabled={!newCategoryName} size="sm"><Plus size={16}/> Adicionar</Button>
+                            </div>
 
-                        <div className="flex flex-wrap gap-2">
-                            {(businessForm.expenseCategories || []).map((cat) => (
-                                <div key={cat.id} className="bg-gray-100 text-gray-700 px-3 py-1.5 rounded-lg text-sm font-bold border border-gray-200 flex items-center gap-2 group">
-                                    {cat.name}
-                                    <button onClick={() => handleDeleteCategory(cat.id)} className="text-gray-400 hover:text-red-500 transition-colors"><Trash2 size={14}/></button>
-                                </div>
-                            ))}
-                            {(!businessForm.expenseCategories || businessForm.expenseCategories.length === 0) && (
-                                <p className="text-gray-400 italic text-sm">Nenhuma categoria cadastrada.</p>
-                            )}
+                            <div className="flex flex-wrap gap-2">
+                                {(businessForm.expenseCategories || []).map((cat) => (
+                                    <div key={cat.id} className="bg-gray-100 text-gray-700 px-3 py-1.5 rounded-lg text-sm font-bold border border-gray-200 flex items-center gap-2 group">
+                                        {cat.name}
+                                        <button onClick={() => handleDeleteCategory(cat.id)} className="text-gray-400 hover:text-red-500 transition-colors"><Trash2 size={14}/></button>
+                                    </div>
+                                ))}
+                                {(!businessForm.expenseCategories || businessForm.expenseCategories.length === 0) && (
+                                    <p className="text-gray-400 italic text-sm">Nenhuma categoria cadastrada.</p>
+                                )}
+                            </div>
                         </div>
-                    </div>
+                    )}
                 </div>
             )}
 
@@ -596,7 +611,7 @@ export const AdminSettings: React.FC = () => {
             </div>
         </Modal>
 
-        {/* Modal de Forma de Pagamento (NOVO) */}
+        {/* Modal de Forma de Pagamento */}
         <Modal isOpen={isPaymentModalOpen} onClose={() => setIsPaymentModalOpen(false)} title="Forma de Pagamento" variant="dialog" maxWidth="sm">
             <div className="space-y-4">
                 <div>
