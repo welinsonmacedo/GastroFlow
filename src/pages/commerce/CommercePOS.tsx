@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useInventory } from '../../context/InventoryContext';
 import { useOrder } from '../../context/OrderContext';
@@ -65,7 +66,7 @@ export const CommercePOS: React.FC = () => {
             if (existing) {
                 return prev.map(i => i.item.id === item.id ? { ...i, quantity: i.quantity + qty } : i);
             }
-            return [...prev, { item, quantity: qty }];
+            return [...prev, { item, quantity: qty, notes: '', extras: [] }];
         });
     };
 
@@ -100,22 +101,11 @@ export const CommercePOS: React.FC = () => {
         
         if (method === 'CASH') {
             setCashReceived('');
-            setCashModalOpen(true);
+            setPaymentModalOpen(true);
             return;
         }
         
-        setProcessing(true);
-        try {
-            const itemsPayload: any[] = [];
-            cart.forEach(cartItem => {
-                itemsPayload.push({ inventoryItemId: cartItem.item.id, quantity: cartItem.quantity, notes: cartItem.notes });
-                cartItem.extras.forEach(extra => itemsPayload.push({ inventoryItemId: extra.id, quantity: cartItem.quantity, notes: `[ADICIONAL] para ${cartItem.item.name}` }));
-            });
-            await orderDispatch({ type: 'PROCESS_POS_SALE', sale: { customerName: customerName.trim() || 'Consumidor Final', items: itemsPayload, totalAmount: cartTotal, method } });
-            setCart([]); setCustomerName(''); setCashModalOpen(false);
-            showAlert({ title: "Venda Registrada", message: `Venda de R$ ${cartTotal.toFixed(2)} realizada!`, type: 'SUCCESS' });
-            await refreshTransactions();
-        } catch (error: any) { showAlert({ title: "Erro na Venda", message: "Não foi possível salvar.", type: 'ERROR' }); } finally { setProcessing(false); }
+        await finalizeSale(method);
     };
     
     const finalizeSale = async (method: string) => {
@@ -127,7 +117,7 @@ export const CommercePOS: React.FC = () => {
                 cartItem.extras.forEach(extra => itemsPayload.push({ inventoryItemId: extra.id, quantity: cartItem.quantity, notes: `[ADICIONAL] para ${cartItem.item.name}` }));
             });
             await orderDispatch({ type: 'PROCESS_POS_SALE', sale: { customerName: customerName.trim() || 'Consumidor Final', items: itemsPayload, totalAmount: cartTotal, method } });
-            setCart([]); setCustomerName(''); setCashModalOpen(false);
+            setCart([]); setCustomerName(''); setPaymentModalOpen(false);
             showAlert({ title: "Venda Registrada", message: `Venda de R$ ${cartTotal.toFixed(2)} realizada!`, type: 'SUCCESS' });
             await refreshTransactions();
         } catch (error: any) { showAlert({ title: "Erro na Venda", message: "Não foi possível salvar.", type: 'ERROR' }); } finally { setProcessing(false); }
@@ -285,16 +275,16 @@ export const CommercePOS: React.FC = () => {
                         </div>
 
                         <div className="grid grid-cols-2 gap-2">
-                            <button onClick={() => handleSale('CASH')} disabled={parseFloat(cashReceived) < cartTotal} className="py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold uppercase shadow disabled:opacity-50 flex flex-col items-center">
+                            <button onClick={() => finalizeSale('CASH')} disabled={parseFloat(cashReceived) < cartTotal} className="py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold uppercase shadow disabled:opacity-50 flex flex-col items-center">
                                 <Banknote size={20} className="mb-1"/> DINHEIRO
                             </button>
-                            <button onClick={() => handleSale('PIX')} className="py-4 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-bold uppercase shadow flex flex-col items-center">
+                            <button onClick={() => finalizeSale('PIX')} className="py-4 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-bold uppercase shadow flex flex-col items-center">
                                 <Zap size={20} className="mb-1"/> PIX
                             </button>
-                            <button onClick={() => handleSale('DEBIT')} className="py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold uppercase shadow flex flex-col items-center text-xs">
+                            <button onClick={() => finalizeSale('DEBIT')} className="py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold uppercase shadow flex flex-col items-center text-xs">
                                 <CreditCard size={18} className="mb-1"/> Débito
                             </button>
-                            <button onClick={() => handleSale('CREDIT')} className="py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold uppercase shadow flex flex-col items-center text-xs">
+                            <button onClick={() => finalizeSale('CREDIT')} className="py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold uppercase shadow flex flex-col items-center text-xs">
                                 <CreditCard size={18} className="mb-1"/> Crédito
                             </button>
                         </div>

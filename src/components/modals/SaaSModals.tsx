@@ -63,12 +63,6 @@ export const SaaSEditTenantModal: React.FC<SaaSEditTenantModalProps> = ({ isOpen
     const handleUpdate = (e: React.FormEvent) => {
         e.preventDefault();
         if(tenant) {
-            // Nota: O despacho de UPDATE_TENANT no contexto atual só lida com campos básicos.
-            // Para atualizar módulos, você precisaria adicionar essa lógica ao SaaSContext.tsx ou criar uma nova action.
-            // Por simplicidade aqui, assumimos que UPDATE_TENANT pode ser estendido ou lidamos só com basics.
-            // Mas para o update de módulos funcionar, precisamos atualizar o backend.
-            
-            // Aqui despachamos update normal e uma ação para módulos se necessário (implícita no futuro)
              dispatch({ 
                 type: 'UPDATE_TENANT', 
                 payload: { id: tenant.id, name: editForm.name!, slug: editForm.slug!, ownerName: editForm.ownerName!, email: editForm.email! } 
@@ -86,15 +80,14 @@ export const SaaSEditTenantModal: React.FC<SaaSEditTenantModalProps> = ({ isOpen
     };
     
     const handleSaveModules = async () => {
-         // Esta função precisaria de uma action específica no SaaSContext para atualizar 'allowed_modules' no Supabase
-         // Como não podemos editar o SaaSContext facilmente sem reenviar o arquivo todo, vamos simular via console
-         console.log("Saving modules for tenant:", tenant?.id, selectedModules);
+         if(!tenant) return;
          
-         // Idealmente:
-         // dispatch({ type: 'UPDATE_TENANT_MODULES', tenantId: tenant.id, modules: selectedModules });
-         // onClose();
-         
-         alert("Funcionalidade de salvar módulos requer atualização no Backend Context. Módulos selecionados: " + selectedModules.join(", "));
+         dispatch({
+             type: 'UPDATE_TENANT_MODULES',
+             tenantId: tenant.id,
+             modules: selectedModules
+         });
+         onClose();
     };
 
     const handleCreateAdmin = (e: React.FormEvent) => {
@@ -137,26 +130,40 @@ export const SaaSEditTenantModal: React.FC<SaaSEditTenantModalProps> = ({ isOpen
                             </div>
                         </label>
                         <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
-                            <input type="checkbox" checked={selectedModules.includes('SNACKBAR')} onChange={() => toggleModule('SNACKBAR')} className="w-5 h-5 text-orange-600 rounded" />
-                            <div>
-                                <span className="font-bold text-slate-800 block">Lanchonete</span>
-                                <span className="text-xs text-gray-400">Venda balcão rápida e senhas.</span>
-                            </div>
-                        </label>
-                        <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
-                            <input type="checkbox" checked={selectedModules.includes('DISTRIBUTOR')} onChange={() => toggleModule('DISTRIBUTOR')} className="w-5 h-5 text-emerald-600 rounded" />
-                            <div>
-                                <span className="font-bold text-slate-800 block">Distribuidora</span>
-                                <span className="text-xs text-gray-400">Logística de entrega e volume.</span>
-                            </div>
-                        </label>
-                         <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
                             <input type="checkbox" checked={selectedModules.includes('COMMERCE')} onChange={() => toggleModule('COMMERCE')} className="w-5 h-5 text-purple-600 rounded" />
                             <div>
                                 <span className="font-bold text-slate-800 block">Comércio</span>
-                                <span className="text-xs text-gray-400">PDV genérico.</span>
+                                <span className="text-xs text-gray-400">PDV Rápido (Supermercado) e Leitor de Código.</span>
                             </div>
                         </label>
+                         <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
+                            <input type="checkbox" checked={selectedModules.includes('MANAGER')} onChange={() => toggleModule('MANAGER')} className="w-5 h-5 text-gray-600 rounded" />
+                            <div>
+                                <span className="font-bold text-slate-800 block">Gestor (Backoffice)</span>
+                                <span className="text-xs text-gray-400">Administração, Estoque básico e Cardápio.</span>
+                            </div>
+                        </label>
+                        <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
+                            <input type="checkbox" checked={selectedModules.includes('FINANCE')} onChange={() => toggleModule('FINANCE')} className="w-5 h-5 text-emerald-600 rounded" />
+                            <div>
+                                <span className="font-bold text-slate-800 block">Financeiro</span>
+                                <span className="text-xs text-gray-400">Fluxo de Caixa, DRE e Relatórios.</span>
+                            </div>
+                        </label>
+                        <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
+                            <input type="checkbox" checked={selectedModules.includes('CONFIG')} onChange={() => toggleModule('CONFIG')} className="w-5 h-5 text-slate-600 rounded" />
+                            <div>
+                                <span className="font-bold text-slate-800 block">Configurações</span>
+                                <span className="text-xs text-gray-400">Aparência, Equipe e Dados da Empresa.</span>
+                            </div>
+                        </label>
+                        {/* 
+                            Placeholders para futuros módulos
+                            <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50 opacity-60">
+                                <input type="checkbox" checked={selectedModules.includes('SNACKBAR')} onChange={() => toggleModule('SNACKBAR')} className="w-5 h-5 text-orange-600 rounded" />
+                                <div><span className="font-bold text-slate-800 block">Lanchonete (Em Breve)</span></div>
+                            </label>
+                        */}
                     </div>
                     <Button onClick={handleSaveModules} className="w-full mt-2">Salvar Módulos</Button>
                 </div>

@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
-import { RestaurantTenant, PlanType, Plan } from '../types';
+import { RestaurantTenant, PlanType, Plan, SystemModule } from '../types';
 import { supabase } from '../lib/supabase';
 import { createClient } from '@supabase/supabase-js';
 import { useUI } from './UIContext';
@@ -26,6 +26,7 @@ type SaaSAction =
   | { type: 'SET_PLANS'; payload: Plan[] }
   | { type: 'CREATE_TENANT'; payload: { name: string; slug: string; ownerName: string; email: string; plan: PlanType } }
   | { type: 'UPDATE_TENANT'; payload: { id: string; name: string; slug: string; ownerName: string; email: string } }
+  | { type: 'UPDATE_TENANT_MODULES'; tenantId: string; modules: SystemModule[] }
   | { type: 'CREATE_TENANT_ADMIN'; payload: { tenantId: string; name: string; email: string; pin: string; password?: string } }
   | { type: 'ADD_TENANT_TO_LIST'; tenant: RestaurantTenant }
   | { type: 'TOGGLE_STATUS'; tenantId: string }
@@ -109,6 +110,16 @@ const saasReducer = (state: SaaSState, action: SaaSAction): SaaSState => {
             : t
         )
       };
+
+    case 'UPDATE_TENANT_MODULES':
+      return {
+          ...state,
+          tenants: state.tenants.map(t => 
+              t.id === action.tenantId
+                  ? { ...t, allowedModules: action.modules }
+                  : t
+          )
+      };
     
     case 'UPDATE_PROFILE':
         return { ...state, adminName: action.name, adminEmail: action.email };
@@ -189,7 +200,8 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
                         plan: t.plan as PlanType,
                         joinedAt: new Date(t.created_at),
                         requestCount: 0, 
-                        businessInfo: t.business_info || {} 
+                        businessInfo: t.business_info || {},
+                        allowedModules: t.allowed_modules || ['RESTAURANT']
                     }));
                     dispatch({ type: 'SET_TENANTS', payload: mapped });
                     fetchTenantStats(mapped.map(t => t.id));
@@ -279,7 +291,8 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 email: action.payload.email,
                 plan: action.payload.plan,
                 status: 'ACTIVE',
-                theme_config: defaultTheme
+                theme_config: defaultTheme,
+                allowed_modules: ['RESTAURANT'] // Default module
             }).select().single();
 
             if (error) throw error;
@@ -293,13 +306,14 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
                         id: newTenant.id,
                         name: newTenant.name,
                         slug: newTenant.slug,
-                        ownerName: newTenant.ownerName,
+                        ownerName: newTenant.owner_name,
                         email: newTenant.email,
                         status: newTenant.status,
                         plan: newTenant.plan,
                         joinedAt: new Date(newTenant.created_at),
                         requestCount: 0,
-                        businessInfo: {}
+                        businessInfo: {},
+                        allowedModules: ['RESTAURANT']
                     }
                 });
             }
@@ -322,6 +336,23 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
             dispatch(action);
         } catch (error) {
             showAlert({ title: "Erro", message: "Erro ao atualizar.", type: 'ERROR' });
+        }
+        return;
+    }
+
+    if (action.type === 'UPDATE_TENANT_MODULES') {
+        try {
+            const { error } = await supabase.from('tenants').update({
+                allowed_modules: action.modules
+            }).eq('id', action.tenantId);
+            
+            if (error) throw error;
+            
+            dispatch(action);
+            showAlert({ title: "Sucesso", message: "Módulos atualizados!", type: 'SUCCESS' });
+        } catch (error) {
+            console.error(error);
+            showAlert({ title: "Erro", message: "Erro ao atualizar módulos.", type: 'ERROR' });
         }
         return;
     }
