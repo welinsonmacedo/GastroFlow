@@ -28,6 +28,12 @@ export const AdminReports: React.FC = () => {
     const [data, setData] = useState<any[]>([]);
     const [summary, setSummary] = useState<any>({});
 
+    // Helper seguro para formatar valores
+    const formatCurrency = (val: any) => {
+        const num = Number(val);
+        return (isNaN(num) ? 0 : num).toFixed(2);
+    };
+
     const fetchData = async () => {
         if (!state.tenantId) return;
         setLoading(true);
@@ -88,14 +94,41 @@ export const AdminReports: React.FC = () => {
     const handleExportCSV = () => {
         if (data.length === 0) return showAlert({ title: "Vazio", message: "Sem dados para exportar.", type: "WARNING" });
         let headers = "", rows = "";
-        if (activeTab === 'REVENUE') { headers = "Data;Metodo;Resumo;Valor\n"; rows = data.map(i => `${new Date(i.created_at).toLocaleString()};${i.method};${i.items_summary};${i.amount.toFixed(2).replace('.', ',')}`).join("\n"); }
-        else if (activeTab === 'EXPENSES') { headers = "Vencimento;Descricao;Categoria;Valor;Status\n"; rows = data.map(i => `${new Date(i.due_date).toLocaleDateString()};${i.description};${i.category};${i.amount.toFixed(2).replace('.', ',')};${i.is_paid ? 'PAGO' : 'PENDENTE'}`).join("\n"); }
-        else if (activeTab === 'FINANCE') { headers = "Data;Tipo;Descricao;Detalhes;Valor\n"; rows = data.map(i => `${new Date(i.date).toLocaleString()};${i.type};${i.description};${i.details};${i.amount.toFixed(2).replace('.', ',')}`).join("\n"); }
-        else if (activeTab === 'INVENTORY') { headers = "Data;Item;Operacao;Qtd;Motivo\n"; rows = data.map(i => `${new Date(i.created_at).toLocaleString()};${i.itemName};${i.type};${i.quantity};${i.reason}`).join("\n"); }
-        const encodedUri = encodeURI("data:text/csv;charset=utf-8," + headers + rows);
+        
+        const safeVal = (v: any) => formatCurrency(v).replace('.', ',');
+
+        if (activeTab === 'REVENUE') { 
+            headers = "Data;Metodo;Resumo;Valor\n"; 
+            rows = data.map(i => `${new Date(i.created_at).toLocaleString()};${i.method};${i.items_summary};${safeVal(i.amount)}`).join("\n"); 
+        } else if (activeTab === 'EXPENSES') { 
+            headers = "Vencimento;Descricao;Categoria;Valor;Status\n"; 
+            rows = data.map(i => `${new Date(i.due_date).toLocaleDateString()};${i.description};${i.category};${safeVal(i.amount)};${i.is_paid ? 'PAGO' : 'PENDENTE'}`).join("\n"); 
+        } else if (activeTab === 'FINANCE') { 
+            headers = isDetailed 
+                ? "Data;Tipo;Produto/Descricao;Cliente/Categoria;Qtd;Valor Entrada;Valor Saida\n"
+                : "Data;Tipo;Descricao;Detalhes;Valor Entrada;Valor Saida\n";
+            
+            rows = data.map(i => {
+                const date = new Date(i.date).toLocaleString();
+                const desc = (i.description || '').replace(/;/g, ',');
+                const det = (i.details || '').replace(/;/g, ',');
+                const valIn = i.type === 'IN' ? safeVal(i.amount) : '0,00';
+                const valOut = i.type === 'OUT' ? safeVal(i.amount) : '0,00';
+                
+                return isDetailed 
+                    ? `${date};${i.type === 'IN' ? 'RECEITA' : 'DESPESA'};${desc};${det};${i.qty || 0};${valIn};${valOut}`
+                    : `${date};${i.type === 'IN' ? 'RECEITA' : 'DESPESA'};${desc};${det};${valIn};${valOut}`;
+            }).join("\n");
+        } else if (activeTab === 'INVENTORY') { 
+            headers = "Data;Item;Operacao;Qtd;Motivo\n"; 
+            rows = data.map(i => `${new Date(i.created_at).toLocaleString()};${i.itemName};${i.type};${i.quantity};${i.reason}`).join("\n"); 
+        }
+
+        const csvContent = "data:text/csv;charset=utf-8," + headers + rows;
+        const encodedUri = encodeURI(csvContent);
         const link = document.createElement("a");
         link.setAttribute("href", encodedUri);
-        link.setAttribute("download", `relatorio_${activeTab}.csv`);
+        link.setAttribute("download", `relatorio_${activeTab.toLowerCase()}.csv`);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -106,12 +139,13 @@ export const AdminReports: React.FC = () => {
 
         let tableRows = '';
         data.forEach(item => {
+            const amount = formatCurrency(item.amount);
             if (activeTab === 'REVENUE') {
-                tableRows += `<tr><td>${new Date(item.created_at).toLocaleString()}</td><td>${item.items_summary}</td><td>${item.method}</td><td class="text-right">R$ ${item.amount.toFixed(2)}</td></tr>`;
+                tableRows += `<tr><td>${new Date(item.created_at).toLocaleString()}</td><td>${item.items_summary}</td><td>${item.method}</td><td class="text-right">R$ ${amount}</td></tr>`;
             } else if (activeTab === 'EXPENSES') {
-                tableRows += `<tr><td>${new Date(item.due_date).toLocaleDateString()}</td><td>${item.description}</td><td>${item.category}</td><td class="text-right">R$ ${item.amount.toFixed(2)}</td></tr>`;
+                tableRows += `<tr><td>${new Date(item.due_date).toLocaleDateString()}</td><td>${item.description}</td><td>${item.category}</td><td class="text-right">R$ ${amount}</td></tr>`;
             } else if (activeTab === 'FINANCE') {
-                tableRows += `<tr><td>${new Date(item.date).toLocaleString()}</td><td>${item.description}</td><td>${item.type}</td><td class="text-right">R$ ${item.amount.toFixed(2)}</td></tr>`;
+                tableRows += `<tr><td>${new Date(item.date).toLocaleString()}</td><td>${item.description}</td><td>${item.type}</td><td class="text-right">R$ ${amount}</td></tr>`;
             } else if (activeTab === 'INVENTORY') {
                 tableRows += `<tr><td>${new Date(item.created_at).toLocaleString()}</td><td>${item.itemName}</td><td>${item.type}</td><td class="text-right">${item.quantity} ${item.unit}</td></tr>`;
             }
@@ -208,23 +242,23 @@ export const AdminReports: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 print:grid-cols-3">
                 {activeTab === 'REVENUE' && (
                     <>
-                        <div className="bg-blue-50 p-5 rounded-2xl border border-blue-100"><p className="text-xs font-black text-blue-400 uppercase">Receita Total</p><p className="text-3xl font-black text-blue-700">R$ {summary.total?.toFixed(2)}</p></div>
-                        <div className="bg-white p-5 rounded-2xl border border-gray-200"><p className="text-xs font-black text-gray-400 uppercase">Transações</p><p className="text-3xl font-black text-slate-700">{summary.count}</p></div>
-                        <div className="bg-white p-5 rounded-2xl border border-gray-200"><p className="text-xs font-black text-gray-400 uppercase">Ticket Médio</p><p className="text-3xl font-black text-slate-700">R$ {(summary.count > 0 ? summary.total / summary.count : 0).toFixed(2)}</p></div>
+                        <div className="bg-blue-50 p-5 rounded-2xl border border-blue-100"><p className="text-xs font-black text-blue-400 uppercase">Receita Total</p><p className="text-3xl font-black text-blue-700">R$ {formatCurrency(summary.total)}</p></div>
+                        <div className="bg-white p-5 rounded-2xl border border-gray-200"><p className="text-xs font-black text-gray-400 uppercase">Transações</p><p className="text-3xl font-black text-slate-700">{summary.count || 0}</p></div>
+                        <div className="bg-white p-5 rounded-2xl border border-gray-200"><p className="text-xs font-black text-gray-400 uppercase">Ticket Médio</p><p className="text-3xl font-black text-slate-700">R$ {formatCurrency(summary.count > 0 ? summary.total / summary.count : 0)}</p></div>
                     </>
                 )}
                 {activeTab === 'EXPENSES' && (
                     <>
-                        <div className="bg-red-50 p-5 rounded-2xl border border-red-100"><p className="text-xs font-black text-red-400 uppercase">Total Despesas</p><p className="text-3xl font-black text-red-700">R$ {summary.total?.toFixed(2)}</p></div>
-                        <div className="bg-green-50 p-5 rounded-2xl border border-green-100"><p className="text-xs font-black text-green-600 uppercase">Pago</p><p className="text-3xl font-black text-green-700">R$ {summary.paid?.toFixed(2)}</p></div>
-                        <div className="bg-yellow-50 p-5 rounded-2xl border border-yellow-100"><p className="text-xs font-black text-yellow-600 uppercase">Pendente</p><p className="text-3xl font-black text-yellow-700">R$ {summary.pending?.toFixed(2)}</p></div>
+                        <div className="bg-red-50 p-5 rounded-2xl border border-red-100"><p className="text-xs font-black text-red-400 uppercase">Total Despesas</p><p className="text-3xl font-black text-red-700">R$ {formatCurrency(summary.total)}</p></div>
+                        <div className="bg-green-50 p-5 rounded-2xl border border-green-100"><p className="text-xs font-black text-green-600 uppercase">Pago</p><p className="text-3xl font-black text-green-700">R$ {formatCurrency(summary.paid)}</p></div>
+                        <div className="bg-yellow-50 p-5 rounded-2xl border border-yellow-100"><p className="text-xs font-black text-yellow-600 uppercase">Pendente</p><p className="text-3xl font-black text-yellow-700">R$ {formatCurrency(summary.pending)}</p></div>
                     </>
                 )}
                 {activeTab === 'FINANCE' && (
                     <>
-                        <div className="bg-green-50 p-5 rounded-2xl border border-green-100"><p className="text-xs font-black text-green-600 uppercase">Entradas</p><p className="text-3xl font-black text-green-700">R$ {(summary.totalIn || 0).toFixed(2)}</p></div>
-                        <div className="bg-red-50 p-5 rounded-2xl border border-red-100"><p className="text-xs font-black text-red-400 uppercase">Saídas</p><p className="text-3xl font-black text-red-700">R$ {(summary.totalOut || 0).toFixed(2)}</p></div>
-                        <div className={`p-5 rounded-2xl border ${summary.balance >= 0 ? 'bg-blue-50 border-blue-100' : 'bg-orange-50 border-orange-100'}`}><p className="text-xs font-black uppercase opacity-60">Saldo Líquido</p><p className={`text-3xl font-black ${summary.balance >= 0 ? 'text-blue-700' : 'text-orange-700'}`}>R$ {(summary.balance || 0).toFixed(2)}</p></div>
+                        <div className="bg-green-50 p-5 rounded-2xl border border-green-100"><p className="text-xs font-black text-green-600 uppercase">Entradas</p><p className="text-3xl font-black text-green-700">R$ {formatCurrency(summary.totalIn)}</p></div>
+                        <div className="bg-red-50 p-5 rounded-2xl border border-red-100"><p className="text-xs font-black text-red-400 uppercase">Saídas</p><p className="text-3xl font-black text-red-700">R$ {formatCurrency(summary.totalOut)}</p></div>
+                        <div className={`p-5 rounded-2xl border ${summary.balance >= 0 ? 'bg-blue-50 border-blue-100' : 'bg-orange-50 border-orange-100'}`}><p className="text-xs font-black uppercase opacity-60">Saldo Líquido</p><p className={`text-3xl font-black ${summary.balance >= 0 ? 'text-blue-700' : 'text-orange-700'}`}>R$ {formatCurrency(summary.balance)}</p></div>
                     </>
                 )}
             </div>
@@ -251,13 +285,65 @@ export const AdminReports: React.FC = () => {
                                             : activeTab === 'FINANCE' ? new Date(item.date).toLocaleString() 
                                             : new Date(item.due_date).toLocaleDateString()}
                                     </td>
-                                    {activeTab === 'REVENUE' && (<><td className="p-4 font-medium">{item.items_summary}</td><td className="p-4"><span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded text-[10px] font-bold uppercase border border-blue-100">{item.method}</span></td><td className="p-4 text-right font-bold text-slate-700">R$ {item.amount.toFixed(2)}</td></>)}
-                                    {activeTab === 'EXPENSES' && (<><td className="p-4 font-medium">{item.description}</td><td className="p-4 text-slate-500">{item.category}</td><td className="p-4">{item.is_paid ? <span className="text-green-600 font-bold text-xs">PAGO</span> : <span className="text-yellow-600 font-bold text-xs">PENDENTE</span>}</td><td className="p-4 text-right font-bold text-red-600">- R$ {item.amount.toFixed(2)}</td></>)}
-                                    {activeTab === 'FINANCE' && (<><td className="p-4 font-medium">{item.description}</td><td className="p-4 text-center"><span className={`px-2 py-1 rounded text-xs font-bold ${item.type === 'IN' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{item.type === 'IN' ? 'ENTRADA' : 'SAÍDA'}</span></td><td className={`p-4 text-right font-bold ${item.type === 'IN' ? 'text-green-600' : 'text-red-600'}`}>{item.type === 'OUT' ? '- ' : ''} R$ {(item.amount || 0).toFixed(2)}</td></>)}
-                                    {activeTab === 'INVENTORY' && (<><td className="p-4 font-bold text-slate-700">{item.itemName}</td><td className="p-4 text-slate-500 text-xs italic">{item.reason}</td><td className="p-4 text-center"><span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${item.type === 'IN' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{item.type === 'IN' ? 'Entrada' : 'Saída'}</span></td><td className="p-4 text-right font-mono font-bold">{item.quantity} {item.unit}</td></>)}
+
+                                    {activeTab === 'REVENUE' && (
+                                        <>
+                                            <td className="p-4 font-medium">{item.items_summary}</td>
+                                            <td className="p-4"><span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded text-[10px] font-bold uppercase border border-blue-100 print:border-0 print:bg-transparent print:text-black">{item.method}</span></td>
+                                            <td className="p-4 text-right font-bold text-slate-700 print:text-black">R$ {formatCurrency(item.amount)}</td>
+                                        </>
+                                    )}
+
+                                    {activeTab === 'EXPENSES' && (
+                                        <>
+                                            <td className="p-4 font-medium">{item.description}</td>
+                                            <td className="p-4 text-slate-500">{item.category}</td>
+                                            <td className="p-4">
+                                                {item.is_paid ? <span className="text-green-600 font-bold text-xs">PAGO</span> : <span className="text-yellow-600 font-bold text-xs">PENDENTE</span>}
+                                            </td>
+                                            <td className="p-4 text-right font-bold text-red-600 print:text-black">- R$ {formatCurrency(item.amount)}</td>
+                                        </>
+                                    )}
+
+                                    {activeTab === 'FINANCE' && (
+                                        <>
+                                            <td className="p-4 font-medium">{item.description}</td>
+                                            
+                                            {isDetailed && (
+                                                <>
+                                                    <td className="p-4 text-xs text-slate-500">{item.details}</td>
+                                                    <td className="p-4 text-center font-mono text-xs">{item.qty > 1 ? item.qty : ''}</td>
+                                                </>
+                                            )}
+
+                                            <td className="p-4 text-center">
+                                                <span className={`px-2 py-1 rounded text-xs font-bold ${item.type === 'IN' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'} print:bg-transparent print:text-black`}>
+                                                    {item.type === 'IN' ? 'ENTRADA' : 'SAÍDA'}
+                                                </span>
+                                            </td>
+                                            <td className={`p-4 text-right font-bold ${item.type === 'IN' ? 'text-green-600' : 'text-red-600'} print:text-black`}>
+                                                {item.type === 'OUT' ? '- ' : ''} R$ {formatCurrency(item.amount)}
+                                            </td>
+                                        </>
+                                    )}
+
+                                    {activeTab === 'INVENTORY' && (
+                                        <>
+                                            <td className="p-4 font-bold text-slate-700">{item.itemName}</td>
+                                            <td className="p-4 text-slate-500 text-xs italic">{item.reason} ({item.user_name})</td>
+                                            <td className="p-4 text-center">
+                                                 <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${item.type === 'IN' ? 'bg-green-100 text-green-700' : item.type === 'OUT' ? 'bg-red-100 text-red-700' : item.type === 'SALE' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100' } print:bg-transparent print:text-black`}>
+                                                    {item.type === 'IN' ? 'Entrada' : item.type === 'OUT' ? 'Saída' : item.type === 'SALE' ? 'Venda' : 'Perda'}
+                                                 </span>
+                                            </td>
+                                            <td className="p-4 text-right font-mono font-bold">{item.quantity} {item.unit}</td>
+                                        </>
+                                    )}
                                 </tr>
                             ))}
-                            {data.length === 0 && <tr><td colSpan={5} className="p-10 text-center text-gray-400">Nenhum registro encontrado no período.</td></tr>}
+                            {data.length === 0 && (
+                                <tr><td colSpan={isDetailed && activeTab === 'FINANCE' ? 6 : 5} className="p-10 text-center text-gray-400">Nenhum registro encontrado no período.</td></tr>
+                            )}
                         </tbody>
                     </table>
                 </div>
