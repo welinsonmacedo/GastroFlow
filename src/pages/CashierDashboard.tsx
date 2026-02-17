@@ -491,154 +491,133 @@ export const CashierDashboard: React.FC = () => {
 
           <main className="flex-1 p-3 md:p-6 overflow-hidden">
                   
-                  {/* VIEW: DELIVERY */}
+                  {/* VIEW: DELIVERY (LAYOUT OTIMIZADO 3 COLUNAS) */}
                   {activeTab === 'DELIVERY' && (
-                      <div className="flex flex-col lg:flex-row gap-6 h-full overflow-hidden">
-                          {/* Coluna Esquerda: Novo Pedido */}
-                          <div className="lg:w-1/2 flex flex-col gap-4 h-full overflow-hidden animate-fade-in">
-                              <div className="bg-white p-5 rounded-[2rem] shadow-sm border border-gray-100 shrink-0 overflow-y-auto custom-scrollbar">
-                                  <h3 className="font-black text-slate-800 uppercase tracking-tight mb-4 flex items-center gap-2"><Bike size={20} className="text-orange-500"/> Novo Delivery</h3>
-                                  <div className="space-y-3">
-                                      <div className="grid grid-cols-2 gap-3">
-                                          <input className="border p-2.5 rounded-xl bg-gray-50 text-sm" placeholder="Nome do Cliente" value={deliveryForm.customerName} onChange={e => setDeliveryForm({...deliveryForm, customerName: e.target.value})} />
-                                          <input className="border p-2.5 rounded-xl bg-gray-50 text-sm" placeholder="Telefone / WhatsApp" value={deliveryForm.phone} onChange={e => setDeliveryForm({...deliveryForm, phone: e.target.value})} />
-                                      </div>
-                                      <input className="w-full border p-2.5 rounded-xl bg-gray-50 text-sm" placeholder="Endereço Completo (Rua, Número, Bairro)" value={deliveryForm.address} onChange={e => setDeliveryForm({...deliveryForm, address: e.target.value})} />
-                                      
-                                      {/* Métodos de Entrega Dinâmicos - Layout Corrigido com Flex Wrap */}
-                                      <div>
-                                          <label className="text-[10px] font-bold text-gray-400 uppercase">Método de Entrega</label>
-                                          <div className="flex flex-wrap gap-2 mt-2">
-                                              {deliveryMethods.map(m => (
-                                                  <button 
-                                                    key={m.id} 
-                                                    onClick={() => selectDeliveryMethod(m)} 
-                                                    className={`px-3 py-2 rounded-xl text-xs font-bold border transition-all flex items-center gap-2 whitespace-nowrap 
-                                                    ${deliveryForm.methodId === m.id 
-                                                        ? 'bg-orange-500 text-white border-orange-500 shadow-md' 
-                                                        : (m.type === 'APP' ? 'bg-purple-50 text-purple-700 border-purple-100 hover:bg-purple-100' : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50')
-                                                    }`}
-                                                  >
-                                                      {m.name}
-                                                  </button>
-                                              ))}
-                                              {deliveryMethods.length === 0 && <span className="text-xs text-red-400 italic">Configure métodos em Admin.</span>}
-                                          </div>
-                                      </div>
+                      <div className="flex flex-col xl:flex-row gap-4 h-full overflow-hidden">
+                          
+                          {/* Coluna 1: Produtos (Catálogo) */}
+                          <div className="xl:w-[30%] flex flex-col bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden h-full">
+                              <div className="p-4 border-b bg-gray-50/50">
+                                  <div className="relative group">
+                                      <Search className="absolute left-4 top-3 text-gray-400" size={18}/>
+                                      <input className="w-full pl-10 pr-4 py-2.5 rounded-xl border bg-white text-sm focus:border-blue-500 outline-none" placeholder="Buscar produto..." value={deliverySearch} onChange={e => setDeliverySearch(e.target.value)} />
+                                  </div>
+                              </div>
+                              <div className="flex-1 overflow-y-auto p-3 grid grid-cols-2 gap-3 content-start custom-scrollbar">
+                                  {invState.inventory.filter(i => 
+                                      !i.isExtra && 
+                                      i.type !== 'INGREDIENT' && 
+                                      i.name.toLowerCase().includes(deliverySearch.toLowerCase())
+                                  ).map(item => (
+                                      <button key={item.id} onClick={() => openItemModal(item)} className="bg-gray-50 p-3 rounded-xl border border-transparent hover:border-blue-300 hover:shadow-md transition-all text-left flex flex-col justify-between h-24">
+                                          <div className="font-bold text-slate-800 text-xs line-clamp-2">{item.name}</div>
+                                          <div className="text-blue-600 font-black text-sm mt-1">R$ {item.salePrice.toFixed(2)}</div>
+                                      </button>
+                                  ))}
+                              </div>
+                          </div>
 
-                                      {/* Taxas e Pagamento */}
-                                      <div className="grid grid-cols-2 gap-3 bg-gray-50 p-3 rounded-xl border border-gray-100">
-                                          <div>
-                                              <label className="text-[10px] font-bold text-gray-400 uppercase">Taxa de Entrega</label>
-                                              <input type="number" className="w-full border p-2 rounded-lg text-sm" value={deliveryForm.deliveryFee} onChange={e => setDeliveryForm({...deliveryForm, deliveryFee: parseFloat(e.target.value)})} />
-                                          </div>
-                                          <div>
-                                              <label className="text-[10px] font-bold text-gray-400 uppercase">Forma Pagto</label>
-                                              <select className="w-full border p-2 rounded-lg text-sm bg-white" value={deliveryForm.paymentMethod} onChange={e => setDeliveryForm({...deliveryForm, paymentMethod: e.target.value as any})}>
-                                                  <option value="CASH">Dinheiro</option>
-                                                  <option value="CARD_MACHINE">Maquininha</option>
-                                                  <option value="ONLINE">Pago Online / App</option>
-                                              </select>
-                                          </div>
-                                          <div>
-                                              <label className="text-[10px] font-bold text-gray-400 uppercase">Status Pagto</label>
-                                              <select className="w-full border p-2 rounded-lg text-sm bg-white" value={deliveryForm.paymentStatus} onChange={e => setDeliveryForm({...deliveryForm, paymentStatus: e.target.value as any})}>
-                                                  <option value="PENDING">Cobrar na Entrega</option>
-                                                  <option value="PAID">Já Pago</option>
-                                              </select>
-                                          </div>
-                                          {deliveryForm.paymentMethod === 'CASH' && (
-                                              <div>
-                                                  <label className="text-[10px] font-bold text-gray-400 uppercase">Troco Para</label>
-                                                  <input type="number" className="w-full border p-2 rounded-lg text-sm" placeholder="R$ 0,00" value={deliveryForm.changeFor || ''} onChange={e => setDeliveryForm({...deliveryForm, changeFor: parseFloat(e.target.value)})} />
-                                              </div>
-                                          )}
+                          {/* Coluna 2: Pedido (Formulário + Carrinho) */}
+                          <div className="xl:w-[40%] flex flex-col gap-4 h-full overflow-hidden">
+                              
+                              {/* Bloco Superior: Dados do Cliente */}
+                              <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 shrink-0">
+                                  <h3 className="font-black text-slate-700 uppercase tracking-tight mb-3 flex items-center gap-2 text-xs"><User size={14}/> Cliente</h3>
+                                  <div className="space-y-2">
+                                      <div className="flex gap-2">
+                                          <input className="flex-1 border p-2 rounded-lg bg-gray-50 text-xs font-bold" placeholder="Nome" value={deliveryForm.customerName} onChange={e => setDeliveryForm({...deliveryForm, customerName: e.target.value})} />
+                                          <input className="w-1/3 border p-2 rounded-lg bg-gray-50 text-xs font-bold" placeholder="Telefone" value={deliveryForm.phone} onChange={e => setDeliveryForm({...deliveryForm, phone: e.target.value})} />
+                                      </div>
+                                      <input className="w-full border p-2 rounded-lg bg-gray-50 text-xs font-bold" placeholder="Endereço Completo" value={deliveryForm.address} onChange={e => setDeliveryForm({...deliveryForm, address: e.target.value})} />
+                                      
+                                      {/* Métodos de Entrega Compactos */}
+                                      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+                                          {deliveryMethods.map(m => (
+                                              <button key={m.id} onClick={() => selectDeliveryMethod(m)} className={`px-3 py-1.5 rounded-lg text-[10px] font-black border uppercase whitespace-nowrap transition-all ${deliveryForm.methodId === m.id ? 'bg-orange-500 text-white border-orange-500' : 'bg-white text-gray-500 border-gray-200'}`}>{m.name}</button>
+                                          ))}
                                       </div>
                                   </div>
                               </div>
 
-                              {/* Busca Produtos para Delivery */}
-                              <div className="flex-1 bg-white rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden flex flex-col">
-                                  <div className="p-4 border-b">
-                                      <div className="relative group">
-                                          <Search className="absolute left-4 top-3 text-gray-400" size={18}/>
-                                          <input className="w-full pl-10 pr-4 py-2.5 rounded-xl border bg-gray-50 text-sm focus:bg-white focus:border-blue-500 outline-none" placeholder="Adicionar produtos..." value={deliverySearch} onChange={e => setDeliverySearch(e.target.value)} />
-                                      </div>
+                              {/* Bloco Central: Carrinho */}
+                              <div className="flex-1 bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col">
+                                  <div className="p-3 border-b bg-gray-50/50 flex justify-between items-center">
+                                      <span className="text-xs font-black text-gray-500 uppercase tracking-widest">Itens ({deliveryCart.length})</span>
+                                      <button onClick={() => setDeliveryCart([])} className="text-[10px] text-red-500 font-bold uppercase hover:underline">Limpar</button>
                                   </div>
-                                  <div className="flex-1 overflow-y-auto p-3 grid grid-cols-2 gap-3 content-start custom-scrollbar">
-                                      {/* FILTRO: Não mostrar INGREDIENT e nem Extras soltos */}
-                                      {invState.inventory.filter(i => 
-                                          !i.isExtra && 
-                                          i.type !== 'INGREDIENT' && 
-                                          i.name.toLowerCase().includes(deliverySearch.toLowerCase())
-                                      ).map(item => (
-                                          <button key={item.id} onClick={() => openItemModal(item)} className="bg-gray-50 p-3 rounded-xl border border-transparent hover:border-blue-300 hover:shadow-md transition-all text-left">
-                                              <div className="font-bold text-slate-800 text-xs truncate">{item.name}</div>
-                                              <div className="text-blue-600 font-black text-sm mt-1">R$ {item.salePrice.toFixed(2)}</div>
-                                          </button>
+                                  <div className="flex-1 overflow-y-auto p-2 space-y-2 custom-scrollbar">
+                                      {deliveryCart.map((item, idx) => (
+                                          <div key={idx} className="flex justify-between items-center p-2 rounded-lg bg-gray-50 border border-transparent hover:border-gray-200 group">
+                                              <div className="flex-1 min-w-0">
+                                                  <div className="text-xs font-bold text-slate-800 truncate">{item.quantity}x {item.item.name}</div>
+                                                  {item.extras.length > 0 && <div className="text-[9px] text-orange-600 truncate">+ {item.extras.map(e => e.name).join(', ')}</div>}
+                                                  {item.notes && <div className="text-[9px] text-gray-400 italic truncate">"{item.notes}"</div>}
+                                              </div>
+                                              <div className="flex items-center gap-2">
+                                                  <span className="text-xs font-bold text-blue-600">R$ {((item.item.salePrice + item.extras.reduce((s,e)=>s+e.salePrice,0)) * item.quantity).toFixed(2)}</span>
+                                                  <button onClick={() => setDeliveryCart(deliveryCart.filter((_, i) => i !== idx))} className="text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={14}/></button>
+                                              </div>
+                                          </div>
                                       ))}
+                                      {deliveryCart.length === 0 && <div className="text-center py-10 text-gray-300 text-xs uppercase font-bold">Carrinho Vazio</div>}
+                                  </div>
+                              </div>
+
+                              {/* Bloco Inferior: Pagamento e Total */}
+                              <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 shrink-0 space-y-3">
+                                  <div className="grid grid-cols-3 gap-2">
+                                      <div className="col-span-1"><label className="text-[9px] font-bold text-gray-400 uppercase">Taxa</label><input type="number" className="w-full border p-1.5 rounded-lg text-xs" value={deliveryForm.deliveryFee} onChange={e => setDeliveryForm({...deliveryForm, deliveryFee: parseFloat(e.target.value)})} /></div>
+                                      <div className="col-span-1"><label className="text-[9px] font-bold text-gray-400 uppercase">Pagamento</label><select className="w-full border p-1.5 rounded-lg text-xs bg-white" value={deliveryForm.paymentMethod} onChange={e => setDeliveryForm({...deliveryForm, paymentMethod: e.target.value as any})}><option value="CASH">Dinheiro</option><option value="CARD_MACHINE">Maq.</option><option value="ONLINE">Online</option></select></div>
+                                      {deliveryForm.paymentMethod === 'CASH' && <div className="col-span-1"><label className="text-[9px] font-bold text-gray-400 uppercase">Troco</label><input type="number" className="w-full border p-1.5 rounded-lg text-xs" placeholder="0.00" value={deliveryForm.changeFor || ''} onChange={e => setDeliveryForm({...deliveryForm, changeFor: parseFloat(e.target.value)})} /></div>}
                                   </div>
                                   
-                                  {/* Resumo Carrinho Delivery */}
-                                  <div className="p-4 bg-slate-50 border-t">
-                                      <div className="flex justify-between items-center mb-3">
-                                          <span className="text-xs font-bold text-gray-500 uppercase">{deliveryCart.length} Itens</span>
-                                          <span className="text-xl font-black text-slate-800">R$ {calculateDeliveryTotal().toFixed(2)}</span>
-                                      </div>
+                                  <div className="pt-2 border-t flex items-center justify-between">
+                                      <span className="text-2xl font-black text-slate-800">R$ {calculateDeliveryTotal().toFixed(2)}</span>
                                       <div className="flex gap-2">
-                                          <Button variant="secondary" onClick={handlePrintCurrentDelivery} disabled={deliveryCart.length === 0} className="w-14 bg-white border border-gray-200" title="Imprimir Conferência"><Printer size={18}/></Button>
-                                          <Button onClick={handleDeliverySubmit} disabled={processingSale} className="flex-1 bg-orange-600 hover:bg-orange-500 text-white shadow-orange-200">
-                                              {processingSale ? 'Enviando...' : 'Enviar para Cozinha'}
-                                          </Button>
+                                          <Button variant="secondary" onClick={handlePrintCurrentDelivery} disabled={deliveryCart.length === 0} className="w-10 h-10 p-0 flex items-center justify-center rounded-xl bg-gray-100" title="Imprimir"><Printer size={18}/></Button>
+                                          <Button onClick={handleDeliverySubmit} disabled={processingSale} className="h-10 px-6 rounded-xl bg-orange-600 hover:bg-orange-500 text-white shadow-lg text-xs font-black uppercase tracking-wide">ENVIAR</Button>
                                       </div>
                                   </div>
                               </div>
                           </div>
 
-                          {/* Coluna Direita: Kanban de Pedidos */}
-                          <div className="lg:w-1/2 bg-slate-100 p-4 rounded-[2rem] border border-slate-200 overflow-hidden flex flex-col">
-                              <h3 className="font-black text-slate-700 uppercase tracking-tight mb-4 ml-2">Monitor de Entregas</h3>
-                              <div className="flex-1 overflow-y-auto space-y-3 custom-scrollbar pr-2">
-                                  {activeDeliveryOrders.length === 0 && (
-                                      <div className="text-center py-20 text-gray-400">
-                                          <Bike size={48} className="mx-auto mb-2 opacity-20"/>
-                                          <p className="text-xs font-bold uppercase">Nenhum pedido ativo</p>
-                                      </div>
-                                  )}
+                          {/* Coluna 3: Monitor de Entregas */}
+                          <div className="xl:w-[30%] bg-slate-100 p-4 rounded-2xl border border-slate-200 overflow-hidden flex flex-col h-full">
+                              <h3 className="font-black text-slate-700 uppercase tracking-tight mb-3 ml-1 text-xs">Em Andamento ({activeDeliveryOrders.length})</h3>
+                              <div className="flex-1 overflow-y-auto space-y-2 custom-scrollbar pr-1">
                                   {activeDeliveryOrders.map(order => {
                                       const total = order.items.reduce((acc, i) => acc + (i.productPrice * i.quantity), 0);
                                       const kitchenItems = order.items.filter(i => i.productType === 'KITCHEN');
                                       const isReady = kitchenItems.length === 0 || kitchenItems.every(i => i.status === OrderStatus.READY);
 
                                       return (
-                                          <div key={order.id} className={`bg-white p-4 rounded-2xl shadow-sm border-l-4 transition-all ${isReady ? 'border-l-emerald-500' : 'border-l-orange-400'}`}>
-                                              <div className="flex justify-between items-start mb-2">
-                                                  <div>
-                                                      <h4 className="font-bold text-slate-800">{order.deliveryInfo?.customerName}</h4>
-                                                      <div className="text-[10px] text-gray-500 font-bold uppercase flex items-center gap-2 mt-1">
-                                                          <span className="bg-gray-100 px-2 py-0.5 rounded">{order.deliveryInfo?.platform}</span>
+                                          <div key={order.id} className={`bg-white p-3 rounded-xl shadow-sm border-l-4 transition-all ${isReady ? 'border-l-emerald-500' : 'border-l-orange-400'}`}>
+                                              <div className="flex justify-between items-start mb-1">
+                                                  <div className="flex-1 min-w-0">
+                                                      <h4 className="font-bold text-slate-800 text-sm truncate">{order.deliveryInfo?.customerName}</h4>
+                                                      <div className="text-[10px] text-gray-500 font-bold uppercase flex items-center gap-1 mt-0.5">
+                                                          <span className="bg-gray-100 px-1.5 py-0.5 rounded">{order.deliveryInfo?.platform}</span>
                                                           <span>#{order.id.slice(0,4)}</span>
                                                       </div>
                                                   </div>
                                                   <div className="text-right">
-                                                      <div className="font-black text-slate-800">R$ {total.toFixed(2)}</div>
-                                                      <div className={`text-[9px] font-black uppercase px-2 py-0.5 rounded mt-1 inline-block ${isReady ? 'bg-emerald-100 text-emerald-700' : 'bg-orange-100 text-orange-700'}`}>
-                                                          {isReady ? 'Pronto p/ Entrega' : 'Preparando'}
-                                                      </div>
+                                                      <div className="font-black text-slate-800 text-sm">R$ {total.toFixed(2)}</div>
                                                   </div>
                                               </div>
-                                              <div className="text-xs text-gray-500 mb-3 flex items-start gap-1">
-                                                  <MapPin size={12} className="shrink-0 mt-0.5"/>
-                                                  <span className="truncate">{order.deliveryInfo?.address || 'Retirada'}</span>
-                                              </div>
-                                              {isReady && (
-                                                  <button onClick={() => handleDispatchDelivery(order.id)} className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-xs shadow-md shadow-emerald-200 transition-all flex items-center justify-center gap-2">
-                                                      <CheckCircle size={14}/> Despachar / Finalizar
+                                              <div className="text-[10px] text-gray-500 mb-2 truncate flex items-center gap-1"><MapPin size={10}/> {order.deliveryInfo?.address || 'Retirada'}</div>
+                                              {isReady ? (
+                                                  <button onClick={() => handleDispatchDelivery(order.id)} className="w-full py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-bold text-[10px] uppercase shadow-sm flex items-center justify-center gap-1">
+                                                      <CheckCircle size={12}/> Despachar
                                                   </button>
+                                              ) : (
+                                                  <div className="w-full py-1.5 bg-orange-100 text-orange-700 rounded-lg font-bold text-[10px] uppercase text-center border border-orange-200">
+                                                      Preparando
+                                                  </div>
                                               )}
                                           </div>
                                       );
                                   })}
+                                  {activeDeliveryOrders.length === 0 && <div className="text-center py-10 text-gray-400 text-xs font-bold uppercase">Sem pedidos ativos</div>}
                               </div>
                           </div>
                       </div>
