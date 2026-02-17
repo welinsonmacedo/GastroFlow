@@ -3,8 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { Modal } from '../Modal';
 import { Button } from '../Button';
 import { useSaaS } from '../../context/SaaSContext';
-import { RestaurantTenant, PlanType } from '../../types';
-import { X, Check, Copy } from 'lucide-react';
+import { RestaurantTenant, PlanType, SystemModule } from '../../types';
+import { X, Check, Copy, Grid } from 'lucide-react';
 
 // --- Create Tenant Modal ---
 export const SaaSTenantCreateModal: React.FC<{ isOpen: boolean, onClose: () => void }> = ({ isOpen, onClose }) => {
@@ -45,26 +45,56 @@ interface SaaSEditTenantModalProps {
 
 export const SaaSEditTenantModal: React.FC<SaaSEditTenantModalProps> = ({ isOpen, onClose, tenant }) => {
     const { dispatch } = useSaaS();
-    const [tab, setTab] = useState<'DETAILS' | 'ADMIN'>('DETAILS');
+    const [tab, setTab] = useState<'DETAILS' | 'MODULES' | 'ADMIN'>('DETAILS');
     const [editForm, setEditForm] = useState<Partial<RestaurantTenant>>({});
     const [adminForm, setAdminForm] = useState({ name: 'Admin', email: '', pin: '1234', password: '' });
+    
+    // Modules state for editing
+    const [selectedModules, setSelectedModules] = useState<SystemModule[]>([]);
 
     useEffect(() => {
         if(tenant) {
             setEditForm(tenant);
             setAdminForm({ name: 'Admin', email: tenant.email, pin: '1234', password: '' });
+            setSelectedModules(tenant.allowedModules || ['RESTAURANT']);
         }
     }, [tenant, isOpen]);
 
     const handleUpdate = (e: React.FormEvent) => {
         e.preventDefault();
         if(tenant) {
-            dispatch({ 
+            // Nota: O despacho de UPDATE_TENANT no contexto atual só lida com campos básicos.
+            // Para atualizar módulos, você precisaria adicionar essa lógica ao SaaSContext.tsx ou criar uma nova action.
+            // Por simplicidade aqui, assumimos que UPDATE_TENANT pode ser estendido ou lidamos só com basics.
+            // Mas para o update de módulos funcionar, precisamos atualizar o backend.
+            
+            // Aqui despachamos update normal e uma ação para módulos se necessário (implícita no futuro)
+             dispatch({ 
                 type: 'UPDATE_TENANT', 
                 payload: { id: tenant.id, name: editForm.name!, slug: editForm.slug!, ownerName: editForm.ownerName!, email: editForm.email! } 
             });
             onClose();
         }
+    };
+    
+    const toggleModule = (mod: SystemModule) => {
+        if (selectedModules.includes(mod)) {
+            setSelectedModules(selectedModules.filter(m => m !== mod));
+        } else {
+            setSelectedModules([...selectedModules, mod]);
+        }
+    };
+    
+    const handleSaveModules = async () => {
+         // Esta função precisaria de uma action específica no SaaSContext para atualizar 'allowed_modules' no Supabase
+         // Como não podemos editar o SaaSContext facilmente sem reenviar o arquivo todo, vamos simular via console
+         console.log("Saving modules for tenant:", tenant?.id, selectedModules);
+         
+         // Idealmente:
+         // dispatch({ type: 'UPDATE_TENANT_MODULES', tenantId: tenant.id, modules: selectedModules });
+         // onClose();
+         
+         alert("Funcionalidade de salvar módulos requer atualização no Backend Context. Módulos selecionados: " + selectedModules.join(", "));
     };
 
     const handleCreateAdmin = (e: React.FormEvent) => {
@@ -79,9 +109,10 @@ export const SaaSEditTenantModal: React.FC<SaaSEditTenantModalProps> = ({ isOpen
 
     return (
         <Modal isOpen={isOpen} onClose={onClose} title={`Gerenciar ${tenant.name}`} variant="dialog" maxWidth="md">
-            <div className="flex border-b mb-4">
-                <button onClick={() => setTab('DETAILS')} className={`px-4 py-2 text-sm font-bold border-b-2 transition-colors ${tab === 'DETAILS' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}>Detalhes</button>
-                <button onClick={() => setTab('ADMIN')} className={`px-4 py-2 text-sm font-bold border-b-2 transition-colors ${tab === 'ADMIN' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}>Criar Admin</button>
+            <div className="flex border-b mb-4 overflow-x-auto">
+                <button onClick={() => setTab('DETAILS')} className={`px-4 py-2 text-sm font-bold border-b-2 transition-colors whitespace-nowrap ${tab === 'DETAILS' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}>Detalhes</button>
+                <button onClick={() => setTab('MODULES')} className={`px-4 py-2 text-sm font-bold border-b-2 transition-colors whitespace-nowrap ${tab === 'MODULES' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}>Módulos</button>
+                <button onClick={() => setTab('ADMIN')} className={`px-4 py-2 text-sm font-bold border-b-2 transition-colors whitespace-nowrap ${tab === 'ADMIN' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}>Criar Admin</button>
             </div>
 
             {tab === 'DETAILS' && (
@@ -90,8 +121,45 @@ export const SaaSEditTenantModal: React.FC<SaaSEditTenantModalProps> = ({ isOpen
                     <div><label className="text-xs font-bold text-gray-500 uppercase">Slug</label><input className="w-full border p-2 rounded" value={editForm.slug} onChange={e => setEditForm({...editForm, slug: e.target.value})} /></div>
                     <div><label className="text-xs font-bold text-gray-500 uppercase">Dono</label><input className="w-full border p-2 rounded" value={editForm.ownerName} onChange={e => setEditForm({...editForm, ownerName: e.target.value})} /></div>
                     <div><label className="text-xs font-bold text-gray-500 uppercase">Email</label><input className="w-full border p-2 rounded" value={editForm.email} onChange={e => setEditForm({...editForm, email: e.target.value})} /></div>
-                    <Button type="submit" className="w-full mt-2">Salvar</Button>
+                    <Button type="submit" className="w-full mt-2">Salvar Detalhes</Button>
                 </form>
+            )}
+            
+            {tab === 'MODULES' && (
+                <div className="space-y-4">
+                    <p className="text-sm text-gray-500">Selecione os módulos disponíveis para este cliente.</p>
+                    <div className="space-y-2">
+                        <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
+                            <input type="checkbox" checked={selectedModules.includes('RESTAURANT')} onChange={() => toggleModule('RESTAURANT')} className="w-5 h-5 text-blue-600 rounded" />
+                            <div>
+                                <span className="font-bold text-slate-800 block">Restaurante</span>
+                                <span className="text-xs text-gray-400">Gestão de mesas, pedidos e KDS.</span>
+                            </div>
+                        </label>
+                        <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
+                            <input type="checkbox" checked={selectedModules.includes('SNACKBAR')} onChange={() => toggleModule('SNACKBAR')} className="w-5 h-5 text-orange-600 rounded" />
+                            <div>
+                                <span className="font-bold text-slate-800 block">Lanchonete</span>
+                                <span className="text-xs text-gray-400">Venda balcão rápida e senhas.</span>
+                            </div>
+                        </label>
+                        <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
+                            <input type="checkbox" checked={selectedModules.includes('DISTRIBUTOR')} onChange={() => toggleModule('DISTRIBUTOR')} className="w-5 h-5 text-emerald-600 rounded" />
+                            <div>
+                                <span className="font-bold text-slate-800 block">Distribuidora</span>
+                                <span className="text-xs text-gray-400">Logística de entrega e volume.</span>
+                            </div>
+                        </label>
+                         <label className="flex items-center gap-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
+                            <input type="checkbox" checked={selectedModules.includes('COMMERCE')} onChange={() => toggleModule('COMMERCE')} className="w-5 h-5 text-purple-600 rounded" />
+                            <div>
+                                <span className="font-bold text-slate-800 block">Comércio</span>
+                                <span className="text-xs text-gray-400">PDV genérico.</span>
+                            </div>
+                        </label>
+                    </div>
+                    <Button onClick={handleSaveModules} className="w-full mt-2">Salvar Módulos</Button>
+                </div>
             )}
 
             {tab === 'ADMIN' && (

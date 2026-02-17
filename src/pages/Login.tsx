@@ -26,16 +26,11 @@ export const Login: React.FC = () => {
 
   useEffect(() => {
     if (authState.currentUser) {
-        const role = authState.currentUser.role;
-        if (role === Role.ADMIN) navigate('/admin');
-        else if (role === Role.WAITER) navigate('/waiter');
-        else if (role === Role.KITCHEN) navigate('/kitchen');
-        else if (role === Role.CASHIER) navigate('/cashier');
-        else navigate('/waiter');
+        // Redireciona para o seletor de módulos ao logar
+        navigate('/modules');
     }
   }, [authState.currentUser, navigate]);
 
-  // ... (Keep existing useEffect for query params)
   useEffect(() => {
       const params = new URLSearchParams(location.search);
       const emailParam = params.get('email');

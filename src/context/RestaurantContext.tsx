@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useReducer, useEffect, useCallback } from 'react';
-import { RestaurantTheme, PlanLimits, RestaurantBusinessInfo } from '../types';
+import { RestaurantTheme, PlanLimits, RestaurantBusinessInfo, SystemModule } from '../types';
 import { getTenantSlug } from '../utils/tenant';
 import { supabase } from '../lib/supabase';
 
@@ -11,6 +11,8 @@ interface RestaurantState {
   isValidTenant: boolean;
   isInactiveTenant: boolean;
   planLimits: PlanLimits;
+  allowedModules: SystemModule[];
+  activeModule: SystemModule | null;
   theme: RestaurantTheme;
   businessInfo: RestaurantBusinessInfo;
 }
@@ -20,6 +22,7 @@ type Action =
   | { type: 'INIT_DATA'; payload: Partial<RestaurantState> }
   | { type: 'TENANT_NOT_FOUND' }
   | { type: 'TENANT_INACTIVE' } 
+  | { type: 'SET_ACTIVE_MODULE'; module: SystemModule }
   | { type: 'UPDATE_THEME'; theme: RestaurantTheme }
   | { type: 'UPDATE_BUSINESS_INFO'; info: RestaurantBusinessInfo }
   | { type: 'SYNC_REALTIME_DATA'; payload: any };
@@ -31,6 +34,8 @@ const initialState: RestaurantState = {
   isValidTenant: false,
   isInactiveTenant: false,
   planLimits: { maxTables: -1, maxProducts: -1, maxStaff: -1, allowKds: true, allowCashier: true, allowReports: true, allowInventory: true, allowPurchases: true, allowExpenses: true, allowStaff: true, allowTableMgmt: true, allowCustomization: true },
+  allowedModules: ['RESTAURANT'],
+  activeModule: null,
   theme: { 
       primaryColor: '#22c55e', 
       backgroundColor: '#fff', 
@@ -42,7 +47,6 @@ const initialState: RestaurantState = {
       buttonStyle: 'fill'
   },
   businessInfo: {
-      // Valores padrão para evitar undefined
       paymentMethods: [
           { id: '1', name: 'Dinheiro', type: 'CASH', feePercentage: 0, isActive: true },
           { id: '2', name: 'PIX', type: 'PIX', feePercentage: 0, isActive: true },
@@ -66,6 +70,7 @@ const restaurantReducer = (state: RestaurantState, action: Action): RestaurantSt
     case 'TENANT_NOT_FOUND': return { ...state, isLoading: false, isValidTenant: false };
     case 'TENANT_INACTIVE': return { ...state, isLoading: false, isValidTenant: true, isInactiveTenant: true };
     case 'INIT_DATA': return { ...state, ...action.payload, isLoading: false, isValidTenant: true, isInactiveTenant: false };
+    case 'SET_ACTIVE_MODULE': return { ...state, activeModule: action.module };
     case 'UPDATE_THEME': return { ...state, theme: action.theme };
     case 'UPDATE_BUSINESS_INFO': return { ...state, businessInfo: action.info };
     case 'SYNC_REALTIME_DATA': 
@@ -73,6 +78,7 @@ const restaurantReducer = (state: RestaurantState, action: Action): RestaurantSt
             ...state, 
             theme: action.payload.theme_config || state.theme,
             businessInfo: action.payload.business_info || state.businessInfo,
+            allowedModules: action.payload.allowed_modules || state.allowedModules,
             isInactiveTenant: action.payload.status === 'INACTIVE'
         };
     default: return state;
@@ -82,6 +88,7 @@ const restaurantReducer = (state: RestaurantState, action: Action): RestaurantSt
 const RestaurantContext = createContext<{
   state: RestaurantState;
   dispatch: (action: any) => Promise<void>;
+  setActiveModule: (module: SystemModule) => void;
 } | undefined>(undefined);
 
 export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -91,12 +98,12 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const slug = getTenantSlug();
     if (!slug) { localDispatch({ type: 'SET_LOADING', isLoading: false }); return; }
 
-    const { data: tenant } = await supabase.from('tenants').select('id, slug, status, theme_config, business_info, plan').eq('slug', slug).maybeSingle();
+    const { data: tenant } = await supabase.from('tenants').select('id, slug, status, theme_config, business_info, plan, allowed_modules').eq('slug', slug).maybeSingle();
     
     if (!tenant) { localDispatch({ type: 'TENANT_NOT_FOUND' }); return; }
     if (tenant.status === 'INACTIVE') { localDispatch({ type: 'TENANT_INACTIVE' }); return; }
 
-    // Busca os limites do plano no banco de dados
+    // Busca os limites do plano
     let fetchedLimits = initialState.planLimits;
     if (tenant.plan) {
         const { data: planData } = await supabase.from('plans').select('limits').eq('key', tenant.plan).maybeSingle();
@@ -105,14 +112,16 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         }
     }
     
-    // Mescla businessInfo do banco com os defaults (para garantir que paymentMethods e expenseCategories existam)
     const mergedBusinessInfo = {
         ...initialState.businessInfo,
         ...(tenant.business_info || {}),
-        // Garante arrays se vierem null do banco
         paymentMethods: (tenant.business_info?.paymentMethods) || initialState.businessInfo.paymentMethods,
         expenseCategories: (tenant.business_info?.expenseCategories) || initialState.businessInfo.expenseCategories
     };
+
+    // Recupera módulo ativo da sessão se houver
+    const storedModule = sessionStorage.getItem(`fluxeat_module_${tenant.id}`);
+    const initialActiveModule = storedModule as SystemModule | null;
 
     localDispatch({
         type: 'INIT_DATA',
@@ -121,7 +130,9 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             tenantSlug: tenant.slug,
             theme: tenant.theme_config || initialState.theme,
             businessInfo: mergedBusinessInfo,
-            planLimits: fetchedLimits
+            planLimits: fetchedLimits,
+            allowedModules: tenant.allowed_modules || ['RESTAURANT'],
+            activeModule: initialActiveModule
         }
     });
   }, []);
@@ -153,6 +164,13 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       return () => { supabase.removeChannel(channel); };
   }, [state.tenantId]);
 
+  const setActiveModule = (module: SystemModule) => {
+      if (state.tenantId) {
+          sessionStorage.setItem(`fluxeat_module_${state.tenantId}`, module);
+      }
+      localDispatch({ type: 'SET_ACTIVE_MODULE', module });
+  };
+
   const dispatch = async (action: any) => {
     const { tenantId } = state;
     if (!tenantId) return;
@@ -170,7 +188,7 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   };
 
-  return <RestaurantContext.Provider value={{ state, dispatch }}>{children}</RestaurantContext.Provider>;
+  return <RestaurantContext.Provider value={{ state, dispatch, setActiveModule }}>{children}</RestaurantContext.Provider>;
 };
 
 export const useRestaurant = () => {

@@ -30,6 +30,8 @@ export enum OrderStatus {
 
 export type OrderType = 'DINE_IN' | 'DELIVERY' | 'PDV';
 
+export type SystemModule = 'RESTAURANT' | 'SNACKBAR' | 'DISTRIBUTOR' | 'COMMERCE';
+
 export type DeliveryPlatform = 'PHONE' | 'WHATSAPP' | 'IFOOD' | 'UBER_EATS' | 'RAPPI' | 'OTHER' | 'OWN_FLEET';
 
 export interface DeliveryMethodConfig {
@@ -132,6 +134,7 @@ export interface RestaurantTenant {
   plan: PlanType;
   joinedAt: Date;
   requestCount?: number;
+  allowedModules?: SystemModule[]; // Novo campo
   businessInfo?: RestaurantBusinessInfo;
 }
 

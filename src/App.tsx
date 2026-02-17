@@ -17,7 +17,7 @@ import { ClientApp } from './pages/ClientApp';
 import { WaiterApp } from './pages/WaiterApp';
 import { KitchenDisplay } from './pages/KitchenDisplay';
 import { CashierDashboard } from './pages/CashierDashboard';
-import { AdminDashboard } from './pages/AdminDashboard'; // O Shell do Admin que contém sub-rotas
+import { AdminDashboard } from './pages/AdminDashboard'; 
 import { SuperAdminDashboard } from './pages/SuperAdminDashboard';
 import { LandingPage } from './pages/LandingPage';
 import { Login } from './pages/Login';
@@ -27,6 +27,7 @@ import { OwnerLogin } from './pages/OwnerLogin';
 import { PrivacyPolicy } from './pages/PrivacyPolicy';
 import { TermsOfService } from './pages/TermsOfService';
 import { ManualPage } from './pages/ManualPage';
+import { ModuleSelector } from './pages/ModuleSelector'; // Nova
 
 import { InstallPWA } from './components/InstallPWA';
 import { Lock } from 'lucide-react';
@@ -47,6 +48,11 @@ const ProtectedRestaurantRoute = ({ children, allowedRoles, requiredRoute, requi
 
     if (!authState.isAuthenticated || !authState.currentUser) {
         return <Navigate to={`/login${window.location.search}`} replace />;
+    }
+
+    // Se não tiver módulo ativo selecionado, manda pro seletor
+    if (!restState.activeModule && restState.allowedModules.length > 0) {
+         return <Navigate to="/modules" replace />;
     }
 
     if (requiredFeature && restState.planLimits) {
@@ -112,12 +118,15 @@ const TenantApp = () => {
                         {/* App do Cliente (Cardápio) */}
                         <Route path="/client/table/:tableId" element={<ClientApp />} />
                         
-                        {/* Apps Operacionais */}
+                        {/* Seletor de Módulos (Novo) */}
+                        <Route path="/modules" element={<ModuleSelector />} />
+                        
+                        {/* Apps Operacionais (Protegidos) */}
                         <Route path="/waiter" element={<ProtectedRestaurantRoute allowedRoles={[Role.WAITER, Role.ADMIN]} requiredRoute="/waiter"><WaiterApp /></ProtectedRestaurantRoute>} />
                         <Route path="/kitchen" element={<ProtectedRestaurantRoute allowedRoles={[Role.KITCHEN, Role.ADMIN]} requiredRoute="/kitchen" requiredFeature="allowKds"><KitchenDisplay /></ProtectedRestaurantRoute>} />
                         <Route path="/cashier" element={<ProtectedRestaurantRoute allowedRoles={[Role.CASHIER, Role.ADMIN]} requiredRoute="/cashier" requiredFeature="allowCashier"><CashierDashboard /></ProtectedRestaurantRoute>} />
                         
-                        {/* Painel Administrativo (Contém sub-rotas internas como /products, /inventory, etc.) */}
+                        {/* Painel Administrativo */}
                         <Route path="/admin/*" element={<ProtectedRestaurantRoute allowedRoles={[Role.ADMIN]} requiredRoute="/admin"><AdminDashboard /></ProtectedRestaurantRoute>} />
                         
                         <Route path="*" element={<Navigate to={`/login${window.location.search}`} replace />} />
