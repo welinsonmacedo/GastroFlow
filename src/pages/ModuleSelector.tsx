@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { useRestaurant } from '../context/RestaurantContext';
 import { useAuth } from '../context/AuthProvider';
 import { SystemModule } from '../types';
-import { ChefHat, Coffee, Truck, ShoppingBag, ArrowRight, LogOut, Grid, Briefcase, Settings, DollarSign, Store } from 'lucide-react';
+import { ChefHat, Coffee, Truck, ShoppingBag, ArrowRight, LogOut, Grid, Briefcase, Settings, DollarSign, Store, Package } from 'lucide-react';
 import { Button } from '../components/Button';
 
 const ModuleCard = ({ 
@@ -48,7 +48,7 @@ export const ModuleSelector: React.FC = () => {
     const { logout, state: authState } = useAuth();
     const navigate = useNavigate();
 
-    const allowed = state.allowedModules || ['RESTAURANT', 'MANAGER', 'CONFIG', 'FINANCE', 'COMMERCE'];
+    const allowed = state.allowedModules || ['RESTAURANT', 'MANAGER', 'CONFIG', 'FINANCE', 'COMMERCE', 'INVENTORY'];
     const tenantName = state.theme.restaurantName;
 
     const handleSelect = (module: SystemModule) => {
@@ -63,7 +63,9 @@ export const ModuleSelector: React.FC = () => {
         } else if (module === 'CONFIG') {
             navigate('/settings'); 
         } else if (module === 'COMMERCE') {
-            navigate('/commerce'); // Novo módulo
+            navigate('/commerce'); 
+        } else if (module === 'INVENTORY') {
+            navigate('/inventory'); // Novo módulo
         } else {
             alert("Módulo em desenvolvimento.");
         }
@@ -129,7 +131,7 @@ export const ModuleSelector: React.FC = () => {
                         <ModuleCard 
                             type="COMMERCE"
                             title="Varejo"
-                            desc="PDV Rápido (Supermercado), Leitor de Código e Estoque."
+                            desc="PDV Rápido (Supermercado), Leitor de Código e Venda Balcão."
                             icon={Store}
                             colorClass="text-indigo-500"
                             onClick={() => handleSelect('COMMERCE')}
@@ -140,10 +142,21 @@ export const ModuleSelector: React.FC = () => {
                         <ModuleCard 
                             type="MANAGER"
                             title="Gestor"
-                            desc="Backoffice Operacional. Estoque, Cardápio e Mesas."
+                            desc="Backoffice Operacional. Cardápio e Mesas."
                             icon={Briefcase}
                             colorClass="text-purple-500"
                             onClick={() => handleSelect('MANAGER')}
+                        />
+                    )}
+                    
+                    {(allowed.includes('INVENTORY') || authState.currentUser?.role === 'ADMIN') && (
+                        <ModuleCard 
+                            type="INVENTORY"
+                            title="Estoque"
+                            desc="Insumos, Compras, Fornecedores e Fichas Técnicas."
+                            icon={Package}
+                            colorClass="text-orange-500"
+                            onClick={() => handleSelect('INVENTORY')}
                         />
                     )}
 

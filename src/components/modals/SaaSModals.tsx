@@ -23,9 +23,17 @@ const MODULE_STRUCTURE = {
         description: "PDV rápido tipo supermercado.",
         features: [
             { key: "commerce_pos", label: "PDV (Caixa Rápido)" },
-            { key: "commerce_inventory", label: "Estoque & Produtos" },
             { key: "commerce_finance", label: "Financeiro Simplificado" },
             { key: "commerce_reports", label: "Relatórios de Venda" }
+        ]
+    },
+    INVENTORY: {
+        label: "Estoque",
+        description: "Controle de insumos, compras e fornecedores.",
+        features: [
+            { key: "inventory_manage", label: "Itens & Estoque" },
+            { key: "inventory_purchases", label: "Compras & Sugestões" },
+            { key: "inventory_suppliers", label: "Fornecedores" }
         ]
     },
     MANAGER: {
@@ -34,8 +42,7 @@ const MODULE_STRUCTURE = {
         features: [
             { key: "admin_overview", label: "Visão Geral" },
             { key: "admin_products", label: "Cardápio" },
-            { key: "admin_tables", label: "Mesas & QR Code" },
-            { key: "admin_inventory", label: "Estoque Avançado" }
+            { key: "admin_tables", label: "Mesas & QR Code" }
         ]
     },
     FINANCE: {
@@ -53,7 +60,11 @@ const MODULE_STRUCTURE = {
         label: "Configurações",
         description: "Ajustes do sistema.",
         features: [
-            { key: "config_general", label: "Geral & Regras" },
+            { key: "config_business", label: "Dados da Empresa" },
+            { key: "config_delivery", label: "Config. Delivery" },
+            { key: "config_finance_settings", label: "Config. Financeira" },
+            { key: "config_operations", label: "Regras Operacionais" },
+            { key: "config_security", label: "Segurança" },
             { key: "config_appearance", label: "Aparência & Marca" },
             { key: "config_staff", label: "Equipe & Acessos" }
         ]

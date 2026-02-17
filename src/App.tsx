@@ -16,7 +16,8 @@ import { AdminDashboard } from './pages/AdminDashboard';
 import { FinanceDashboard } from './pages/FinanceDashboard'; 
 import { SettingsDashboard } from './pages/SettingsDashboard';
 import { RestaurantDashboard } from './pages/RestaurantDashboard';
-import { CommerceDashboard } from './pages/CommerceDashboard'; // Novo
+import { CommerceDashboard } from './pages/CommerceDashboard'; 
+import { InventoryDashboard } from './pages/InventoryDashboard'; // Novo
 import { SuperAdminDashboard } from './pages/SuperAdminDashboard';
 import { LandingPage } from './pages/LandingPage';
 import { Login } from './pages/Login';
@@ -36,7 +37,7 @@ import { getTenantSlug } from './utils/tenant';
 interface ProtectedRouteProps {
     allowedRoles?: Role[];
     requiredRoute?: string;
-    requiredFeature?: 'allowKds' | 'allowCashier' | 'allowReports';
+    requiredFeature?: 'allowKds' | 'allowCashier' | 'allowReports' | 'allowInventory';
 }
 
 const ProtectedRestaurantRoute = ({ children, allowedRoles, requiredRoute, requiredFeature }: PropsWithChildren<ProtectedRouteProps>) => {
@@ -125,6 +126,9 @@ const TenantApp = () => {
                         
                         {/* Módulo Comércio (Varejo) */}
                         <Route path="/commerce/*" element={<ProtectedRestaurantRoute requiredRoute="/commerce"><CommerceDashboard /></ProtectedRestaurantRoute>} />
+                        
+                        {/* Módulo Estoque (Novo) */}
+                        <Route path="/inventory/*" element={<ProtectedRestaurantRoute requiredRoute="/inventory" requiredFeature="allowInventory"><InventoryDashboard /></ProtectedRestaurantRoute>} />
 
                         {/* Painel Administrativo (Gestor) */}
                         <Route path="/admin/*" element={<ProtectedRestaurantRoute allowedRoles={[Role.ADMIN]} requiredRoute="/admin"><AdminDashboard /></ProtectedRestaurantRoute>} />

@@ -5,13 +5,12 @@ import { Routes, Route, Navigate, Link, useLocation, useNavigate } from 'react-r
 import { useRestaurant } from '../context/RestaurantContext';
 import { useAuth } from '../context/AuthProvider';
 import { 
-    DollarSign, ShoppingCart, Package, BarChart3,
+    DollarSign, ShoppingCart, BarChart3,
     LogOut, Grid, Store, Lock
 } from 'lucide-react';
 import { Role } from '../types';
 
 // Importando Sub-páginas
-import { AdminInventory } from './admin/AdminInventory';
 import { AdminFinance } from './admin/AdminFinance';
 import { AdminReports } from './admin/AdminReports';
 import { CommercePOS } from './commerce/CommercePOS';
@@ -36,14 +35,6 @@ export const CommerceDashboard: React.FC = () => {
         featureKey: 'commerce_pos'
     },
     { 
-        path: '/commerce/inventory', 
-        label: 'Estoque & Produtos', 
-        icon: Package, 
-        roles: [Role.ADMIN, Role.KITCHEN],
-        required: 'allowInventory',
-        featureKey: 'commerce_inventory'
-    },
-    { 
         path: '/commerce/finance', 
         label: 'Financeiro', 
         icon: DollarSign, 
@@ -65,7 +56,6 @@ export const CommerceDashboard: React.FC = () => {
   const visibleTabs = tabs.filter(tab => {
       // 1. Plano
       if (tab.required === 'allowCashier' && !planLimits.allowCashier) return false;
-      if (tab.required === 'allowInventory' && !planLimits.allowInventory) return false;
       if (tab.required === 'allowExpenses' && !planLimits.allowExpenses) return false;
       if (tab.required === 'allowReports' && !planLimits.allowReports) return false;
       
@@ -180,10 +170,6 @@ export const CommerceDashboard: React.FC = () => {
                 <Routes>
                     <Route path="pos" element={<div className="h-full p-4 md:p-6"><CommercePOS /></div>} />
                     
-                    {planLimits.allowInventory && (
-                        <Route path="inventory" element={<div className="h-full overflow-y-auto p-4 md:p-8"><AdminInventory /></div>} />
-                    )}
-
                     {planLimits.allowExpenses && (
                         <Route path="finance" element={<div className="h-full overflow-y-auto p-4 md:p-8"><AdminFinance /></div>} />
                     )}

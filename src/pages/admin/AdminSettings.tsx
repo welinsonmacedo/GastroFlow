@@ -7,15 +7,16 @@ import { Building2, MapPin, Phone, Loader2, Share2, Clock, Lock, Save, SlidersHo
 import { RestaurantBusinessInfo, DeliveryMethodConfig, PaymentMethodConfig, ExpenseCategory } from '../../types';
 import { Modal } from '../../components/Modal';
 
-export const AdminSettings: React.FC = () => {
+interface AdminSettingsProps {
+    view: 'BUSINESS' | 'RULES' | 'SECURITY' | 'DELIVERY' | 'FINANCE_CONFIG';
+}
+
+export const AdminSettings: React.FC<AdminSettingsProps> = ({ view }) => {
   const { state, dispatch } = useRestaurant();
   const { showAlert, showConfirm } = useUI();
   
   // Acessa limites do plano
   const { planLimits } = state;
-
-  // Controle das Abas Internas (Team removido daqui)
-  const [activeSettingsTab, setActiveSettingsTab] = useState<'BUSINESS' | 'RULES' | 'SECURITY' | 'DELIVERY' | 'FINANCE_CONFIG'>('BUSINESS');
   
   // Business Info State
   const [businessForm, setBusinessForm] = useState<RestaurantBusinessInfo>({
@@ -216,34 +217,40 @@ export const AdminSettings: React.FC = () => {
       }
   };
 
+  const getPageTitle = () => {
+      switch(view) {
+          case 'BUSINESS': return 'Dados Gerais';
+          case 'RULES': return 'Regras Operacionais';
+          case 'SECURITY': return 'Segurança';
+          case 'DELIVERY': return 'Configuração de Delivery';
+          case 'FINANCE_CONFIG': return 'Configurações Financeiras';
+          default: return 'Configurações';
+      }
+  };
+
+  const getPageDescription = () => {
+      switch(view) {
+          case 'BUSINESS': return 'Informações cadastrais e de contato.';
+          case 'RULES': return 'Tempos de preparo e regras de pedidos.';
+          case 'SECURITY': return 'Senhas mestras e proteção.';
+          case 'DELIVERY': return 'Métodos de entrega e taxas.';
+          case 'FINANCE_CONFIG': return 'Formas de pagamento e categorias.';
+          default: return '';
+      }
+  };
+
   return (
     <div className="max-w-4xl mx-auto animate-fade-in pb-10">
         
         <header className="mb-8">
-            <h2 className="text-2xl font-bold text-gray-800">Dados Gerais</h2>
-            <p className="text-gray-500">Informações cadastrais, regras e métodos.</p>
+            <h2 className="text-2xl font-bold text-gray-800">{getPageTitle()}</h2>
+            <p className="text-gray-500">{getPageDescription()}</p>
         </header>
-
-        {/* Navigation Tabs */}
-        <div className="flex gap-1 mb-6 border-b border-gray-200 overflow-x-auto">
-            <button onClick={() => setActiveSettingsTab('BUSINESS')} className={`px-6 py-3 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${activeSettingsTab === 'BUSINESS' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}><Building2 size={18} /> Dados da Empresa</button>
-            
-            {planLimits.allowCashier && (
-                <button onClick={() => setActiveSettingsTab('DELIVERY')} className={`px-6 py-3 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${activeSettingsTab === 'DELIVERY' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}><Bike size={18} /> Delivery</button>
-            )}
-
-            {(planLimits.allowExpenses || planLimits.allowCashier) && (
-                <button onClick={() => setActiveSettingsTab('FINANCE_CONFIG')} className={`px-6 py-3 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${activeSettingsTab === 'FINANCE_CONFIG' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}><DollarSign size={18} /> Financeiro</button>
-            )}
-            
-            <button onClick={() => setActiveSettingsTab('RULES')} className={`px-6 py-3 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${activeSettingsTab === 'RULES' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}><SlidersHorizontal size={18} /> Regras</button>
-            <button onClick={() => setActiveSettingsTab('SECURITY')} className={`px-6 py-3 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${activeSettingsTab === 'SECURITY' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}><ShieldCheck size={18} /> Segurança</button>
-        </div>
 
         <div className="space-y-8">
             
-            {/* TAB: DADOS DA EMPRESA */}
-            {activeSettingsTab === 'BUSINESS' && (
+            {/* VIEW: DADOS DA EMPRESA */}
+            {view === 'BUSINESS' && (
                 <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-200 animate-fade-in">
                     <h2 className="text-xl font-bold mb-1 text-gray-800 flex items-center gap-2"><Building2 className="text-orange-600"/> Dados Cadastrais</h2>
                     <p className="text-sm text-gray-500 mb-8">Estes dados aparecem nas notas impressas e no rodapé do sistema.</p>
@@ -279,18 +286,12 @@ export const AdminSettings: React.FC = () => {
                                 <div><label className="block text-xs font-bold mb-1">Website</label><input className="w-full border p-3 rounded-lg" value={businessForm.website} onChange={e => setBusinessForm({...businessForm, website: e.target.value})} placeholder="www.seusite.com.br" /></div>
                             </div>
                         </div>
-
-                        <div className="pt-4 border-t border-gray-200">
-                            <Button onClick={handleSaveBusiness} className="w-full py-4 text-lg shadow-lg flex items-center justify-center gap-2">
-                                <Save size={20}/> Salvar Dados
-                            </Button>
-                        </div>
                     </div>
                 </div>
             )}
 
-            {/* TAB: FINANCE CONFIGURATION */}
-            {activeSettingsTab === 'FINANCE_CONFIG' && (
+            {/* VIEW: FINANCE CONFIGURATION */}
+            {view === 'FINANCE_CONFIG' && (
                 <div className="space-y-6 animate-fade-in">
                     {/* Payment Methods */}
                     <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-200">
@@ -361,8 +362,8 @@ export const AdminSettings: React.FC = () => {
                 </div>
             )}
 
-            {/* TAB: DELIVERY SETTINGS */}
-            {activeSettingsTab === 'DELIVERY' && (
+            {/* VIEW: DELIVERY SETTINGS */}
+            {view === 'DELIVERY' && (
                 <div className="bg-white p-8 rounded-2xl shadow-sm border-2 border-green-100 animate-fade-in">
                     <div className="flex justify-between items-start mb-6">
                         <div>
@@ -410,8 +411,8 @@ export const AdminSettings: React.FC = () => {
                 </div>
             )}
 
-            {/* TAB: REGRAS DE NEGÓCIO */}
-            {activeSettingsTab === 'RULES' && (
+            {/* VIEW: REGRAS DE NEGÓCIO */}
+            {view === 'RULES' && (
                 <div className="bg-white p-8 rounded-2xl shadow-sm border-2 border-blue-100 overflow-hidden relative animate-fade-in">
                     <div className="absolute top-0 right-0 bg-blue-600 text-white px-4 py-1 rounded-bl-xl text-[10px] font-black uppercase tracking-widest">Operacional</div>
                     <div className="flex items-start gap-4 mb-6">
@@ -442,8 +443,8 @@ export const AdminSettings: React.FC = () => {
                 </div>
             )}
 
-            {/* TAB: SEGURANÇA */}
-            {activeSettingsTab === 'SECURITY' && (
+            {/* VIEW: SEGURANÇA */}
+            {view === 'SECURITY' && (
                 <div className="bg-white p-8 rounded-2xl shadow-sm border-2 border-red-100 animate-fade-in">
                     <div className="flex items-start gap-4 mb-6">
                         <div className="bg-red-50 p-3 rounded-2xl text-red-600">
@@ -455,7 +456,7 @@ export const AdminSettings: React.FC = () => {
                         </div>
                     </div>
                     <div className="bg-gray-50 p-6 rounded-2xl border border-gray-200">
-                        <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-2">Senha Mestra</label>
+                        <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-2">Senha Mestra de Cancelamento</label>
                         <input 
                             type="text" 
                             className="w-full border-2 p-3 rounded-xl focus:border-red-500 outline-none font-mono text-lg tracking-widest"
@@ -463,14 +464,17 @@ export const AdminSettings: React.FC = () => {
                             value={businessForm.adminPin || ''}
                             onChange={e => setBusinessForm({...businessForm, adminPin: e.target.value})}
                         />
-                    </div>
-                    <div className="pt-4 border-t border-gray-200 mt-6">
-                        <Button onClick={handleSaveBusiness} className="w-full py-4 text-lg shadow-lg flex items-center justify-center gap-2">
-                            <Save size={20}/> Salvar Segurança
-                        </Button>
+                        <p className="text-[10px] text-gray-400 mt-2">Esta senha será exigida para cancelar vendas no caixa. Mantenha em segredo.</p>
                     </div>
                 </div>
             )}
+
+            {/* Botão de Salvar Global */}
+            <div className="pt-4 border-t border-gray-200 mt-6">
+                <Button onClick={handleSaveBusiness} className="w-full py-4 text-lg shadow-lg flex items-center justify-center gap-2">
+                    <Save size={20}/> Salvar Configurações
+                </Button>
+            </div>
         </div>
 
         {/* Modal de Cadastro de Método de Delivery */}

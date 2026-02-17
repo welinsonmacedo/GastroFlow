@@ -5,7 +5,8 @@ import { Routes, Route, Navigate, Link, useLocation, useNavigate } from 'react-r
 import { useRestaurant } from '../context/RestaurantContext';
 import { useAuth } from '../context/AuthProvider';
 import { 
-    Palette, Users, SlidersHorizontal, LogOut, Grid, ChefHat
+    Palette, Users, SlidersHorizontal, LogOut, Grid, ChefHat, 
+    Building2, Bike, DollarSign, ShieldCheck, FileText, Settings
 } from 'lucide-react';
 
 // Importando Sub-páginas
@@ -20,21 +21,35 @@ export const SettingsDashboard: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Definição das Abas do Módulo Configurações
+  // Definição das Abas do Módulo Configurações (Agora separadas)
   const tabs = [
-    { path: '/settings', label: 'Geral & Regras', icon: SlidersHorizontal, exact: true, featureKey: 'config_general' },
+    { path: '/settings', label: 'Dados da Empresa', icon: Building2, exact: true, featureKey: 'config_business' },
+    { path: '/settings/operations', label: 'Regras & Operação', icon: SlidersHorizontal, featureKey: 'config_operations' },
+    { path: '/settings/delivery', label: 'Delivery', icon: Bike, required: 'allowCashier', featureKey: 'config_delivery' },
+    { path: '/settings/finance-config', label: 'Financeiro', icon: DollarSign, required: 'allowExpenses', featureKey: 'config_finance_settings' },
+    { path: '/settings/security', label: 'Segurança', icon: ShieldCheck, featureKey: 'config_security' },
     { path: '/settings/appearance', label: 'Aparência & Marca', icon: Palette, required: 'allowCustomization', featureKey: 'config_appearance' },
     { path: '/settings/staff', label: 'Equipe & Acessos', icon: Users, required: 'allowStaff', featureKey: 'config_staff' },
   ];
 
   // Filtra abas
   const visibleTabs = tabs.filter(tab => {
+      // Checa Limites do Plano
       if (tab.required === 'allowCustomization' && !planLimits.allowCustomization) return false;
       if (tab.required === 'allowStaff' && !planLimits.allowStaff) return false;
+      if (tab.required === 'allowCashier' && !planLimits.allowCashier) return false;
+      if (tab.required === 'allowExpenses' && !planLimits.allowExpenses && !planLimits.allowCashier) return false; // Finance config needed for cashier too
       
-      // Checa Features
+      // Checa Features Granulares (NOVO)
+      // Fallback para 'config_general' se for legado
       if (allowedFeatures && allowedFeatures.length > 0) {
-          if (!allowedFeatures.includes(tab.featureKey)) return false;
+          // Se for uma das novas features separadas
+          if (['config_business', 'config_operations', 'config_delivery', 'config_finance_settings', 'config_security'].includes(tab.featureKey)) {
+              // Se tiver a feature específica OU a antiga config_general
+              if (!allowedFeatures.includes(tab.featureKey) && !allowedFeatures.includes('config_general')) return false;
+          } else {
+              if (!allowedFeatures.includes(tab.featureKey)) return false;
+          }
       }
 
       return true;
@@ -90,7 +105,7 @@ export const SettingsDashboard: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Linha Inferior */}
+                {/* Linha Inferior (Abas) */}
                 <div className="px-6 flex gap-1 overflow-x-auto scrollbar-hide pt-2">
                     {visibleTabs.map(tab => {
                         const isActive = tab.exact 
@@ -121,7 +136,13 @@ export const SettingsDashboard: React.FC = () => {
         <main className="flex-1 overflow-y-auto bg-gray-50 relative p-4 md:p-8">
             <div className="max-w-[1920px] mx-auto h-full">
                 <Routes>
-                    <Route path="/" element={<AdminSettings />} />
+                    {/* Renderiza o AdminSettings passando a view correta via props */}
+                    <Route path="/" element={<AdminSettings view="BUSINESS" />} />
+                    <Route path="operations" element={<AdminSettings view="RULES" />} />
+                    <Route path="delivery" element={<AdminSettings view="DELIVERY" />} />
+                    <Route path="finance-config" element={<AdminSettings view="FINANCE_CONFIG" />} />
+                    <Route path="security" element={<AdminSettings view="SECURITY" />} />
+                    
                     {planLimits.allowCustomization && <Route path="appearance" element={<AdminMenuAppearance />} />}
                     {planLimits.allowStaff && <Route path="staff" element={<AdminStaff />} />}
 

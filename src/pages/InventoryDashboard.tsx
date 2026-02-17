@@ -5,38 +5,37 @@ import { Routes, Route, Navigate, Link, useLocation, useNavigate } from 'react-r
 import { useRestaurant } from '../context/RestaurantContext';
 import { useAuth } from '../context/AuthProvider';
 import { 
-    LayoutDashboard, Utensils, QrCode, 
-    LogOut, Grid, ChefHat
+    Package, ShoppingCart, Truck, LogOut, Grid, ChefHat
 } from 'lucide-react';
 
-// Importando Sub-páginas
-import { AdminOverview } from './admin/AdminOverview';
-import { AdminProducts } from './admin/AdminProducts';
-import { AdminTables } from './admin/AdminTables';
+// Importando Sub-páginas de Estoque
+import { AdminInventory } from './admin/AdminInventory';
+import { AdminPurchaseSuggestions } from './admin/AdminPurchaseSuggestions';
 
-export const AdminDashboard: React.FC = () => {
+export const InventoryDashboard: React.FC = () => {
   const { state: restState } = useRestaurant();
   const { state: authState, logout } = useAuth();
   const { planLimits, allowedFeatures } = restState;
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Definição das Abas do Gestor (Estoque removido)
+  // Definição das Abas do Módulo Estoque
   const tabs = [
-    { path: '/admin', label: 'Visão Geral', icon: LayoutDashboard, exact: true, featureKey: 'admin_overview' },
-    { path: '/admin/products', label: 'Cardápio', icon: Utensils, featureKey: 'admin_products' },
-    { path: '/admin/tables', label: 'Mesas & QR', icon: QrCode, required: 'allowTableMgmt', featureKey: 'admin_tables' },
+    { path: '/inventory', label: 'Gestão de Itens', icon: Package, exact: true, featureKey: 'inventory_manage' },
+    { path: '/inventory/purchases', label: 'Sugestão de Compras', icon: ShoppingCart, featureKey: 'inventory_purchases' },
+    // Fornecedores agora é gerido dentro de Gestão de Itens via modal, mas poderia ter aba própria
+    // { path: '/inventory/suppliers', label: 'Fornecedores', icon: Truck, featureKey: 'inventory_suppliers' },
   ];
 
   // Filtra abas
   const visibleTabs = tabs.filter(tab => {
-      if (tab.required === 'allowTableMgmt' && !planLimits.allowTableMgmt) return false;
+      // Checa Limites do Plano
+      if (!planLimits.allowInventory) return false;
       
-      // Checagem de features granulares
+      // Checa Features Granulares
       if (allowedFeatures && allowedFeatures.length > 0) {
           if (!allowedFeatures.includes(tab.featureKey)) return false;
       }
-
       return true;
   });
 
@@ -48,11 +47,11 @@ export const AdminDashboard: React.FC = () => {
     <div className="flex flex-col h-screen bg-gray-50 overflow-hidden font-sans">
         
         {/* TOP BAR / HEADER */}
-        <header className="bg-slate-900 text-white shadow-lg shrink-0 z-30">
+        <header className="bg-orange-900 text-white shadow-lg shrink-0 z-30">
             <div className="max-w-[1920px] mx-auto">
                 
                 {/* Linha Superior */}
-                <div className="px-6 py-4 flex justify-between items-center border-b border-slate-800">
+                <div className="px-6 py-4 flex justify-between items-center border-b border-orange-800">
                     <div className="flex items-center gap-4">
                         <div className="bg-white/10 p-2 rounded-xl backdrop-blur-md border border-white/10">
                             {restState.theme.logoUrl ? (
@@ -64,10 +63,10 @@ export const AdminDashboard: React.FC = () => {
                         <div>
                             <h1 className="font-bold text-lg leading-none tracking-tight">{restState.theme.restaurantName}</h1>
                             <div className="flex items-center gap-2 mt-1">
-                                <span className="text-[10px] font-bold bg-purple-600 px-2 py-0.5 rounded text-white uppercase tracking-widest">
-                                    Módulo Gestor
+                                <span className="text-[10px] font-bold bg-orange-600 px-2 py-0.5 rounded text-white uppercase tracking-widest">
+                                    Módulo Estoque
                                 </span>
-                                <span className="text-[10px] text-slate-400">
+                                <span className="text-[10px] text-orange-200">
                                     {authState.currentUser?.name}
                                 </span>
                             </div>
@@ -77,13 +76,13 @@ export const AdminDashboard: React.FC = () => {
                     <div className="flex items-center gap-3">
                         <button 
                             onClick={handleExitToModules}
-                            className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider bg-slate-800 hover:bg-slate-700 transition-colors border border-slate-700"
+                            className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider bg-orange-800 hover:bg-orange-700 transition-colors border border-orange-700"
                         >
                             <Grid size={16} /> Módulos
                         </button>
                         <button 
                             onClick={logout}
-                            className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white transition-colors border border-red-500/20 hover:border-red-500"
+                            className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider bg-red-500/10 text-red-300 hover:bg-red-500 hover:text-white transition-colors border border-red-500/20 hover:border-red-500"
                         >
                             <LogOut size={16} /> Sair
                         </button>
@@ -104,11 +103,11 @@ export const AdminDashboard: React.FC = () => {
                                 className={`
                                     flex items-center gap-2 px-5 py-3 text-sm font-bold border-b-2 transition-all whitespace-nowrap
                                     ${isActive 
-                                        ? 'border-purple-500 text-white bg-white/5 rounded-t-lg' 
-                                        : 'border-transparent text-slate-400 hover:text-white hover:bg-white/5 rounded-t-lg'}
+                                        ? 'border-orange-400 text-white bg-white/5 rounded-t-lg' 
+                                        : 'border-transparent text-orange-200 hover:text-white hover:bg-white/5 rounded-t-lg'}
                                 `}
                             >
-                                <tab.icon size={18} className={isActive ? 'text-purple-400' : ''} />
+                                <tab.icon size={18} className={isActive ? 'text-orange-300' : ''} />
                                 {tab.label}
                             </Link>
                         );
@@ -121,10 +120,9 @@ export const AdminDashboard: React.FC = () => {
         <main className="flex-1 overflow-y-auto bg-gray-50 relative p-4 md:p-8">
             <div className="max-w-[1920px] mx-auto h-full">
                 <Routes>
-                    <Route path="/" element={<AdminOverview />} />
-                    <Route path="products" element={<AdminProducts />} />
-                    {planLimits.allowTableMgmt && <Route path="tables" element={<AdminTables />} />}
-                    
+                    <Route path="/" element={<AdminInventory />} />
+                    <Route path="purchases" element={<AdminPurchaseSuggestions />} />
+
                     {/* Fallback */}
                     <Route path="*" element={<Navigate to="" replace />} />
                 </Routes>
