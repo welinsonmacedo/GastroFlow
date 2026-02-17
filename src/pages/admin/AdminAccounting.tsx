@@ -177,7 +177,7 @@ export const AdminAccounting: React.FC = () => {
                   variable: expVariable, 
                   personnel: expPersonnel, 
                   financial: expFinancial, 
-                  total: totalOpExpenses + expFinancial,
+                  total: totalOpExpenses + expFinancial, 
                   byCategory: expByCat 
               },
               ebitda,
@@ -455,8 +455,8 @@ export const AdminAccounting: React.FC = () => {
         )}
     </div>
 
-    {/* CONTEÚDO EXCLUSIVO PARA IMPRESSÃO */}
-    <div className="hidden print:block">
+    {/* CONTEÚDO EXCLUSIVO PARA IMPRESSÃO - FORÇA OVERLAY TOTAL */}
+    <div className="hidden print:block fixed inset-0 z-[9999] bg-white w-full h-full p-0 m-0 overflow-visible">
         <DREReportPrint 
             data={data}
             dateStart={dateStart}

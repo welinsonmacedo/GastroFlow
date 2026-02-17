@@ -182,7 +182,7 @@ export const AdminFinance: React.FC = () => {
     <div className="space-y-6 animate-fade-in pb-10">
         
         {/* --- Header Navigation --- */}
-        <div className="bg-white border-b border-gray-200 px-6 pt-4 rounded-xl shadow-sm">
+        <div className="bg-white border-b border-gray-200 px-6 pt-4 rounded-xl shadow-sm print:hidden">
             <div className="flex justify-between items-center mb-4">
                 <div>
                     <h2 className="text-2xl font-bold text-gray-800">Central Financeira</h2>

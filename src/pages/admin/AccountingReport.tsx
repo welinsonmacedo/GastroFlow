@@ -62,7 +62,6 @@ export const AccountingReport: React.FC = () => {
   // Helper para formatar data sem problemas de fuso horário
   const formatDateSafe = (dateStr: string) => {
       if(!dateStr) return '-';
-      // Adiciona hora fixa para evitar rolagem de dia por timezone
       const d = new Date(dateStr + 'T12:00:00'); 
       return d.toLocaleDateString();
   };
@@ -75,14 +74,14 @@ export const AccountingReport: React.FC = () => {
       const endIso = dateEnd + ' 23:59:59';
 
       try {
-          // 1. Receitas (Agrupadas por Método de Pagamento - Crucial para Contabilidade)
+          // 1. Receitas
           const { data: transactions } = await supabase
               .from('transactions')
               .select('amount, method')
               .eq('tenant_id', state.tenantId)
               .gte('created_at', startIso)
               .lte('created_at', endIso)
-              .neq('status', 'CANCELLED'); // Excluir cancelados
+              .neq('status', 'CANCELLED');
 
           const incomeMap: Record<string, { amount: number, count: number }> = {};
           let totalInc = 0;
@@ -97,8 +96,7 @@ export const AccountingReport: React.FC = () => {
 
           const incomes = Object.entries(incomeMap).map(([k, v]) => ({ method: k, ...v })).sort((a,b) => b.amount - a.amount);
 
-          // 2. Despesas (Agrupadas por Categoria)
-          // Utiliza 'paid_date' (Regime de Caixa) pois é o padrão para relatórios de fluxo financeiro real
+          // 2. Despesas
           const { data: expenses } = await supabase
               .from('expenses')
               .select('amount, category')
@@ -135,7 +133,6 @@ export const AccountingReport: React.FC = () => {
       }
   };
 
-  // Carrega dados iniciais ao montar
   useEffect(() => {
       fetchReportData();
   }, [state.tenantId]);
@@ -174,7 +171,6 @@ export const AccountingReport: React.FC = () => {
           csvContent += `${row.category},${row.count},${row.amount.toFixed(2)}\n`;
       });
       csvContent += `TOTAL DESPESAS,,${report.totalExpense.toFixed(2)}\n\n`;
-      
       csvContent += `RESULTADO LIQUIDO,,${(report.totalIncome - report.totalExpense).toFixed(2)}\n`;
 
       const encodedUri = encodeURI(csvContent);
@@ -195,7 +191,6 @@ export const AccountingReport: React.FC = () => {
             </div>
             
             <div className="flex flex-col md:flex-row items-center gap-3 w-full xl:w-auto overflow-x-auto">
-                {/* Filtro de Data Flexível com Presets */}
                 <div className="flex items-center gap-2 bg-gray-50 p-1.5 rounded-lg border border-gray-200 shadow-sm">
                     <div className="flex items-center gap-2 px-2 border-r border-gray-200 mr-1">
                         <Filter size={16} className="text-gray-400"/>
@@ -212,45 +207,24 @@ export const AccountingReport: React.FC = () => {
                             <option value="LAST_30">Últimos 30 dias</option>
                         </select>
                     </div>
-                    <input 
-                        type="date" 
-                        className="bg-white border rounded px-2 py-1.5 text-sm font-medium focus:ring-2 focus:ring-blue-500 outline-none" 
-                        value={dateStart} 
-                        onChange={e => { setDateStart(e.target.value); setPreset('CUSTOM'); }} 
-                    />
+                    <input type="date" className="bg-white border rounded px-2 py-1.5 text-sm font-medium focus:ring-2 focus:ring-blue-500 outline-none" value={dateStart} onChange={e => { setDateStart(e.target.value); setPreset('CUSTOM'); }} />
                     <ArrowRight size={14} className="text-gray-400"/>
-                    <input 
-                        type="date" 
-                        className="bg-white border rounded px-2 py-1.5 text-sm font-medium focus:ring-2 focus:ring-blue-500 outline-none" 
-                        value={dateEnd} 
-                        onChange={e => { setDateEnd(e.target.value); setPreset('CUSTOM'); }} 
-                    />
-                    <button 
-                        onClick={fetchReportData}
-                        disabled={loading}
-                        className="ml-1 bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-md transition-colors disabled:opacity-50 shadow-sm"
-                        title="Atualizar Relatório"
-                    >
-                        <RefreshCcw size={16} className={loading ? "animate-spin" : ""}/>
-                    </button>
+                    <input type="date" className="bg-white border rounded px-2 py-1.5 text-sm font-medium focus:ring-2 focus:ring-blue-500 outline-none" value={dateEnd} onChange={e => { setDateEnd(e.target.value); setPreset('CUSTOM'); }} />
+                    <button onClick={fetchReportData} disabled={loading} className="ml-1 bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-md transition-colors disabled:opacity-50 shadow-sm"><RefreshCcw size={16} className={loading ? "animate-spin" : ""}/></button>
                 </div>
 
                 <div className="flex gap-2">
-                    <Button variant="secondary" onClick={handleExportCSV} disabled={loading} size="sm" className="whitespace-nowrap">
-                        <Download size={16}/> <span className="hidden sm:inline">CSV</span>
-                    </Button>
-                    <Button onClick={handlePrint} disabled={loading} size="sm" className="whitespace-nowrap">
-                        <Printer size={16}/> <span className="hidden sm:inline">Imprimir</span>
-                    </Button>
+                    <Button variant="secondary" onClick={handleExportCSV} disabled={loading} size="sm" className="whitespace-nowrap"><Download size={16}/> <span className="hidden sm:inline">CSV</span></Button>
+                    <Button onClick={handlePrint} disabled={loading} size="sm" className="whitespace-nowrap"><Printer size={16}/> <span className="hidden sm:inline">Imprimir</span></Button>
                 </div>
             </div>
         </div>
 
-        {/* Paper Container */}
-        <div className="flex-1 overflow-y-auto p-4 md:p-8 flex justify-center">
+        {/* Paper Container - Ajustado para impressão */}
+        <div className="flex-1 overflow-y-auto p-4 md:p-8 flex justify-center print:overflow-visible print:h-auto print:block print:p-0 print:m-0">
             <div 
                 ref={printRef}
-                className="bg-white w-full max-w-[210mm] min-h-[297mm] p-[10mm] md:p-[20mm] shadow-xl print:shadow-none print:w-full print:max-w-none print:p-0 print:m-0 text-slate-900"
+                className="bg-white w-full max-w-[210mm] min-h-[297mm] p-[10mm] md:p-[20mm] shadow-xl print:shadow-none print:w-full print:max-w-none print:min-h-0 print:p-0 print:m-0 text-slate-900 print:absolute print:top-0 print:left-0 print:z-50"
             >
                 {/* Cabeçalho Oficial */}
                 <header className="border-b-2 border-slate-800 pb-6 mb-8 flex justify-between items-start">
@@ -270,7 +244,7 @@ export const AccountingReport: React.FC = () => {
                     </div>
                     <div className="text-right">
                         <div className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Período de Apuração</div>
-                        <div className="text-xl font-mono font-bold bg-slate-100 px-3 py-1 rounded border border-slate-200">
+                        <div className="text-xl font-mono font-bold bg-slate-100 px-3 py-1 rounded border border-slate-200 print:bg-transparent print:border-none print:p-0">
                             {report.periodStart} <span className="text-slate-400 mx-1">até</span> {report.periodEnd}
                         </div>
                         <p className="text-[10px] text-slate-400 mt-2">Emitido em: {new Date().toLocaleDateString()}</p>
@@ -281,43 +255,43 @@ export const AccountingReport: React.FC = () => {
                     {/* Resumo */}
                     <section className="grid grid-cols-3 gap-4 mb-8">
                         <div className="p-4 border rounded-lg bg-gray-50 print:bg-white print:border-slate-300">
-                            <span className="text-xs font-bold uppercase text-slate-500">Total Entradas</span>
-                            <div className="text-2xl font-bold text-slate-900">R$ {report.totalIncome.toFixed(2)}</div>
+                            <span className="text-xs font-bold uppercase text-slate-500 print:text-black">Total Entradas</span>
+                            <div className="text-2xl font-bold text-slate-900 print:text-black">R$ {report.totalIncome.toFixed(2)}</div>
                         </div>
                         <div className="p-4 border rounded-lg bg-gray-50 print:bg-white print:border-slate-300">
-                            <span className="text-xs font-bold uppercase text-slate-500">Total Saídas</span>
-                            <div className="text-2xl font-bold text-slate-900">R$ {report.totalExpense.toFixed(2)}</div>
+                            <span className="text-xs font-bold uppercase text-slate-500 print:text-black">Total Saídas</span>
+                            <div className="text-2xl font-bold text-slate-900 print:text-black">R$ {report.totalExpense.toFixed(2)}</div>
                         </div>
                         <div className="p-4 border rounded-lg bg-slate-100 print:bg-white print:border-slate-800">
-                            <span className="text-xs font-bold uppercase text-slate-900">Saldo do Período</span>
-                            <div className="text-2xl font-bold text-slate-900">R$ {(report.totalIncome - report.totalExpense).toFixed(2)}</div>
+                            <span className="text-xs font-bold uppercase text-slate-900 print:text-black">Saldo do Período</span>
+                            <div className="text-2xl font-bold text-slate-900 print:text-black">R$ {(report.totalIncome - report.totalExpense).toFixed(2)}</div>
                         </div>
                     </section>
 
                     {/* Tabela de Receitas */}
-                    <section>
-                        <h3 className="text-sm font-black uppercase border-b border-slate-300 pb-2 mb-4 flex items-center gap-2">
+                    <section className="break-inside-avoid">
+                        <h3 className="text-sm font-black uppercase border-b border-slate-300 pb-2 mb-4 flex items-center gap-2 print:border-black">
                             1. Detalhamento de Receitas (Faturamento)
                         </h3>
                         <table className="w-full text-sm text-left">
                             <thead>
-                                <tr className="border-b border-slate-200 text-slate-500 text-xs uppercase">
+                                <tr className="border-b border-slate-200 text-slate-500 text-xs uppercase print:border-black print:text-black">
                                     <th className="py-2">Meio de Pagamento</th>
                                     <th className="py-2 text-right">Qtd. Transações</th>
                                     <th className="py-2 text-right">Valor Total (R$)</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-slate-100">
+                            <tbody className="divide-y divide-slate-100 print:divide-slate-300">
                                 {report.incomes.map((item, idx) => (
                                     <tr key={idx}>
-                                        <td className="py-3 font-medium text-slate-700">{item.method}</td>
-                                        <td className="py-3 text-right text-slate-500">{item.count}</td>
-                                        <td className="py-3 text-right font-bold text-slate-900">R$ {item.amount.toFixed(2)}</td>
+                                        <td className="py-3 font-medium text-slate-700 print:text-black">{item.method}</td>
+                                        <td className="py-3 text-right text-slate-500 print:text-black">{item.count}</td>
+                                        <td className="py-3 text-right font-bold text-slate-900 print:text-black">R$ {item.amount.toFixed(2)}</td>
                                     </tr>
                                 ))}
                                 {report.incomes.length === 0 && <tr><td colSpan={3} className="py-4 text-center text-gray-400 italic">Sem registros de receita no período.</td></tr>}
                             </tbody>
-                            <tfoot className="border-t-2 border-slate-300 font-bold">
+                            <tfoot className="border-t-2 border-slate-300 font-bold print:border-black">
                                 <tr>
                                     <td className="py-3 uppercase text-xs">Total Receitas</td>
                                     <td className="py-3 text-right text-xs"></td>
@@ -328,29 +302,29 @@ export const AccountingReport: React.FC = () => {
                     </section>
 
                     {/* Tabela de Despesas */}
-                    <section className="mt-8">
-                        <h3 className="text-sm font-black uppercase border-b border-slate-300 pb-2 mb-4 flex items-center gap-2">
+                    <section className="mt-8 break-inside-avoid">
+                        <h3 className="text-sm font-black uppercase border-b border-slate-300 pb-2 mb-4 flex items-center gap-2 print:border-black">
                             2. Detalhamento de Despesas (Dedutíveis)
                         </h3>
                         <table className="w-full text-sm text-left">
                             <thead>
-                                <tr className="border-b border-slate-200 text-slate-500 text-xs uppercase">
+                                <tr className="border-b border-slate-200 text-slate-500 text-xs uppercase print:border-black print:text-black">
                                     <th className="py-2">Categoria de Despesa</th>
                                     <th className="py-2 text-right">Qtd. Lançamentos</th>
                                     <th className="py-2 text-right">Valor Total (R$)</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-slate-100">
+                            <tbody className="divide-y divide-slate-100 print:divide-slate-300">
                                 {report.expenses.map((item, idx) => (
                                     <tr key={idx}>
-                                        <td className="py-3 font-medium text-slate-700">{item.category}</td>
-                                        <td className="py-3 text-right text-slate-500">{item.count}</td>
-                                        <td className="py-3 text-right font-bold text-slate-900">R$ {item.amount.toFixed(2)}</td>
+                                        <td className="py-3 font-medium text-slate-700 print:text-black">{item.category}</td>
+                                        <td className="py-3 text-right text-slate-500 print:text-black">{item.count}</td>
+                                        <td className="py-3 text-right font-bold text-slate-900 print:text-black">R$ {item.amount.toFixed(2)}</td>
                                     </tr>
                                 ))}
                                 {report.expenses.length === 0 && <tr><td colSpan={3} className="py-4 text-center text-gray-400 italic">Sem registros de despesas pagas no período.</td></tr>}
                             </tbody>
-                            <tfoot className="border-t-2 border-slate-300 font-bold">
+                            <tfoot className="border-t-2 border-slate-300 font-bold print:border-black">
                                 <tr>
                                     <td className="py-3 uppercase text-xs">Total Despesas</td>
                                     <td className="py-3 text-right text-xs"></td>
@@ -361,9 +335,9 @@ export const AccountingReport: React.FC = () => {
                     </section>
                 </main>
 
-                <footer className="mt-16 border-t border-slate-200 pt-8">
+                <footer className="mt-16 border-t border-slate-200 pt-8 print:border-black">
                     <div className="flex justify-between items-end">
-                        <div className="text-[10px] text-slate-400 max-w-md">
+                        <div className="text-[10px] text-slate-400 max-w-md print:text-black">
                             <p className="font-bold uppercase mb-1">Declaração de Responsabilidade</p>
                             <p>Este relatório foi gerado eletronicamente pelo sistema Flux Eat com base nos lançamentos operacionais realizados pelo estabelecimento. Os valores aqui expressos servem como base para a apuração contábil, sujeitos à conferência dos extratos bancários e notas fiscais.</p>
                         </div>
