@@ -5,7 +5,8 @@ import { Routes, Route, Navigate, Link, useLocation, useNavigate } from 'react-r
 import { useRestaurant } from '../context/RestaurantContext';
 import { useAuth } from '../context/AuthProvider';
 import { 
-    Package, ShoppingCart, Truck, LogOut, Grid, ChefHat, ClipboardList, Archive
+    Package, ShoppingCart, Truck, LogOut, Grid, ChefHat, 
+    ClipboardList, Archive, PlusCircle, FileInput, Scale
 } from 'lucide-react';
 
 // Importando Sub-páginas de Estoque
@@ -21,10 +22,13 @@ export const InventoryDashboard: React.FC = () => {
 
   // Definição das Abas do Módulo Estoque
   const tabs = [
-    { path: '/inventory', label: 'Gestão de Itens', icon: Package, exact: true, featureKey: 'inventory_manage' },
+    { path: '/inventory', label: 'Itens', icon: Package, exact: true, featureKey: 'inventory_manage' },
+    { path: '/inventory/new', label: 'Novo Item', icon: PlusCircle, featureKey: 'inventory_manage' },
+    { path: '/inventory/entry', label: 'Entrada Nota', icon: FileInput, featureKey: 'inventory_purchases' },
+    { path: '/inventory/count', label: 'Balanço', icon: Scale, featureKey: 'inventory_manage' },
+    { path: '/inventory/purchases', label: 'Sugestões', icon: ShoppingCart, featureKey: 'inventory_purchases' },
     { path: '/inventory/suppliers', label: 'Fornecedores', icon: Truck, featureKey: 'inventory_suppliers' },
-    { path: '/inventory/purchases', label: 'Sugestão de Compras', icon: ShoppingCart, featureKey: 'inventory_purchases' },
-    { path: '/inventory/logs', label: 'Histórico & Logs', icon: ClipboardList, featureKey: 'inventory_manage' },
+    { path: '/inventory/logs', label: 'Logs', icon: ClipboardList, featureKey: 'inventory_manage' },
   ];
 
   // Filtra abas
@@ -121,9 +125,13 @@ export const InventoryDashboard: React.FC = () => {
             <div className="max-w-[1920px] mx-auto h-full">
                 <Routes>
                     <Route path="/" element={<AdminInventory view="ITEMS" />} />
+                    <Route path="new" element={<AdminInventory view="NEW_ITEM" />} />
+                    <Route path="entry" element={<AdminInventory view="ENTRY" />} />
+                    <Route path="count" element={<AdminInventory view="COUNT" />} />
                     <Route path="suppliers" element={<AdminInventory view="SUPPLIERS" />} />
-                    <Route path="purchases" element={<AdminPurchaseSuggestions />} />
                     <Route path="logs" element={<AdminInventory view="LOGS" />} />
+                    
+                    <Route path="purchases" element={<AdminPurchaseSuggestions />} />
 
                     {/* Fallback */}
                     <Route path="*" element={<Navigate to="" replace />} />
