@@ -15,7 +15,8 @@ import { ClientApp } from './pages/ClientApp';
 import { AdminDashboard } from './pages/AdminDashboard';
 import { FinanceDashboard } from './pages/FinanceDashboard'; 
 import { SettingsDashboard } from './pages/SettingsDashboard';
-import { RestaurantDashboard } from './pages/RestaurantDashboard'; // Novo Módulo Unificado
+import { RestaurantDashboard } from './pages/RestaurantDashboard';
+import { CommerceDashboard } from './pages/CommerceDashboard'; // Novo
 import { SuperAdminDashboard } from './pages/SuperAdminDashboard';
 import { LandingPage } from './pages/LandingPage';
 import { Login } from './pages/Login';
@@ -116,12 +117,15 @@ const TenantApp = () => {
                         {/* App do Cliente (Cardápio) */}
                         <Route path="/client/table/:tableId" element={<ClientApp />} />
                         
-                        {/* Seletor de Módulos (Novo) */}
+                        {/* Seletor de Módulos */}
                         <Route path="/modules" element={<ModuleSelector />} />
                         
                         {/* Módulo Restaurante (Operacional) */}
                         <Route path="/restaurant/*" element={<ProtectedRestaurantRoute requiredRoute="/restaurant"><RestaurantDashboard /></ProtectedRestaurantRoute>} />
                         
+                        {/* Módulo Comércio (Varejo) */}
+                        <Route path="/commerce/*" element={<ProtectedRestaurantRoute requiredRoute="/commerce"><CommerceDashboard /></ProtectedRestaurantRoute>} />
+
                         {/* Painel Administrativo (Gestor) */}
                         <Route path="/admin/*" element={<ProtectedRestaurantRoute allowedRoles={[Role.ADMIN]} requiredRoute="/admin"><AdminDashboard /></ProtectedRestaurantRoute>} />
 

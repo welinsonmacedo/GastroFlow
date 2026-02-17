@@ -4,7 +4,7 @@ import { useInventory } from '../../context/InventoryContext';
 import { useUI } from '../../context/UIContext';
 import { Button } from '../../components/Button';
 import { InventoryItem } from '../../types';
-import { Archive, AlertTriangle, Plus, ArrowDown, Edit, FileText, Truck, ClipboardList, Search, Trash2, Filter, Layers, Package, ShoppingBag } from 'lucide-react';
+import { Archive, AlertTriangle, Plus, ArrowDown, Edit, FileText, Truck, ClipboardList, Search, Trash2, Filter, Layers, Package, ShoppingBag, ScanLine } from 'lucide-react';
 
 // Modais Separados
 import { InventoryItemModal } from '../../components/modals/InventoryItemModal';
@@ -63,13 +63,15 @@ export const AdminInventory: React.FC = () => {
   const filteredInventory = invState.inventory.filter(item => {
       // 1. Filtro de Texto
       const term = searchTerm.toLowerCase();
-      const matchesSearch = item.name.toLowerCase().includes(term) || item.unit.toLowerCase().includes(term);
+      const matchesSearch = 
+        item.name.toLowerCase().includes(term) || 
+        item.unit.toLowerCase().includes(term) ||
+        (item.barcode && item.barcode.includes(term));
       
       // 2. Filtro de Tipo
       const matchesType = filterType === 'ALL' || item.type === filterType;
 
       // 3. Filtro de Estoque Baixo
-      // Itens "Produzidos" (COMPOSITE) são ignorados neste filtro pois não têm estoque direto crítico
       const matchesLowStock = onlyLowStock 
           ? (item.quantity <= item.minQuantity && item.type !== 'COMPOSITE') 
           : true;
@@ -141,7 +143,7 @@ export const AdminInventory: React.FC = () => {
                     <Search className="absolute left-3 top-2.5 text-gray-400" size={18} />
                     <input 
                         type="text" 
-                        placeholder="Buscar item..." 
+                        placeholder="Buscar item ou código..." 
                         className="w-full pl-10 pr-4 py-2 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all bg-gray-50 focus:bg-white"
                         value={searchTerm}
                         onChange={e => setSearchTerm(e.target.value)}
@@ -157,6 +159,7 @@ export const AdminInventory: React.FC = () => {
                     <thead className="bg-slate-50 text-slate-500 text-[10px] font-black uppercase tracking-widest border-b">
                         <tr>
                             <th className="p-4">Item / Insumo</th>
+                            <th className="p-4">Código (EAN)</th>
                             <th className="p-4">Tipo</th>
                             <th className="p-4 text-center">Unidade</th>
                             <th className="p-4 text-right">Estoque</th>
@@ -180,6 +183,9 @@ export const AdminInventory: React.FC = () => {
                                             {item.quantity <= item.minQuantity && item.type !== 'COMPOSITE' && <span className="text-[9px] text-red-500 font-bold flex items-center gap-1 uppercase"><AlertTriangle size={10}/> Abaixo do Mínimo ({item.minQuantity})</span>}
                                         </div>
                                     </div>
+                                </td>
+                                <td className="p-4 text-xs font-mono text-gray-500">
+                                    {item.barcode ? <span className="flex items-center gap-1"><ScanLine size={12}/>{item.barcode}</span> : '-'}
                                 </td>
                                 <td className="p-4">
                                     <span className={`text-[10px] font-bold px-2 py-1 rounded-md ${item.type === 'INGREDIENT' ? 'bg-orange-50 text-orange-600' : item.type === 'RESALE' ? 'bg-blue-50 text-blue-600' : 'bg-purple-50 text-purple-600'}`}>
@@ -210,7 +216,7 @@ export const AdminInventory: React.FC = () => {
                         ))}
                         {filteredInventory.length === 0 && (
                             <tr>
-                                <td colSpan={6} className="p-10 text-center text-slate-400">
+                                <td colSpan={7} className="p-10 text-center text-slate-400">
                                     <div className="flex flex-col items-center gap-2">
                                         <Filter size={32} className="opacity-20"/>
                                         <p>Nenhum item encontrado com os filtros atuais.</p>

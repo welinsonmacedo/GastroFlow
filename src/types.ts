@@ -161,6 +161,7 @@ export type InventoryType = 'INGREDIENT' | 'RESALE' | 'COMPOSITE';
 export interface InventoryItem {
     id: string;
     name: string;
+    barcode?: string; // Novo campo
     unit: string;
     quantity: number;
     minQuantity: number;

@@ -6,7 +6,7 @@ import { ImageUploader } from '../ImageUploader';
 import { useInventory } from '../../context/InventoryContext';
 import { useUI } from '../../context/UIContext';
 import { InventoryItem, InventoryType } from '../../types';
-import { Layers, CheckSquare, Square, Plus, X, Tag } from 'lucide-react';
+import { Layers, CheckSquare, Square, Plus, X, Tag, ScanLine } from 'lucide-react';
 
 interface InventoryItemModalProps {
   isOpen: boolean;
@@ -19,7 +19,7 @@ export const InventoryItemModal: React.FC<InventoryItemModalProps> = ({ isOpen, 
   const { showAlert } = useUI();
 
   const [form, setForm] = useState<Partial<InventoryItem>>({
-    name: '', unit: 'UN', type: 'INGREDIENT', quantity: 0, minQuantity: 5, costPrice: 0, salePrice: 0, category: '', isExtra: false, image: '', targetCategories: []
+    name: '', barcode: '', unit: 'UN', type: 'INGREDIENT', quantity: 0, minQuantity: 5, costPrice: 0, salePrice: 0, category: '', isExtra: false, image: '', targetCategories: []
   });
 
   const [recipeItems, setRecipeItems] = useState<{ ingredientId: string, quantity: number }[]>([]);
@@ -31,13 +31,13 @@ export const InventoryItemModal: React.FC<InventoryItemModalProps> = ({ isOpen, 
         setForm({ ...itemToEdit });
         setRecipeItems(itemToEdit.recipe?.map(r => ({ ingredientId: r.ingredientId, quantity: r.quantity })) || []);
       } else {
-        setForm({ name: '', unit: 'UN', type: 'INGREDIENT', quantity: 0, minQuantity: 5, costPrice: 0, salePrice: 0, category: '', isExtra: false, image: '', targetCategories: [] });
+        setForm({ name: '', barcode: '', unit: 'UN', type: 'INGREDIENT', quantity: 0, minQuantity: 5, costPrice: 0, salePrice: 0, category: '', isExtra: false, image: '', targetCategories: [] });
         setRecipeItems([]);
       }
     }
   }, [isOpen, itemToEdit]);
 
-  const defaultCategories = ['Lanches', 'Pizzas', 'Pratos Principais', 'Acompanhamentos', 'Bebidas', 'Sobremesas'];
+  const defaultCategories = ['Lanches', 'Pizzas', 'Pratos Principais', 'Acompanhamentos', 'Bebidas', 'Sobremesas', 'Mercearia', 'Limpeza', 'Higiene', 'Padaria'];
 
   const toggleTargetCategory = (cat: string) => {
       const current = form.targetCategories || [];
@@ -111,6 +111,15 @@ export const InventoryItemModal: React.FC<InventoryItemModalProps> = ({ isOpen, 
                   <label className="block text-xs font-bold mb-1">Nome do Item</label>
                   <input required className="w-full border-2 p-3 rounded-xl focus:border-blue-500 outline-none" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Ex: Filé de Frango, Coca-Cola 350ml" />
                 </div>
+                
+                <div>
+                  <label className="block text-xs font-bold mb-1">Código de Barras (EAN)</label>
+                  <div className="relative">
+                      <ScanLine className="absolute left-3 top-3.5 text-gray-400" size={18}/>
+                      <input className="w-full border-2 pl-10 p-3 rounded-xl focus:border-blue-500 outline-none" value={form.barcode || ''} onChange={e => setForm({ ...form, barcode: e.target.value })} placeholder="Escaneie ou digite..." />
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-bold mb-1">Tipo de Item</label>
@@ -133,13 +142,13 @@ export const InventoryItemModal: React.FC<InventoryItemModalProps> = ({ isOpen, 
                 
                 {form.type !== 'INGREDIENT' && (
                     <div>
-                        <label className="block text-xs font-bold mb-1 text-purple-700">Categoria no Cardápio</label>
-                        <select className="w-full border-2 p-3 rounded-xl bg-white border-purple-200" value={form.category || ''} onChange={e => setForm({...form, category: e.target.value})}>
-                            <option value="">Selecione...</option>
+                        <label className="block text-xs font-bold mb-1 text-purple-700">Categoria</label>
+                        <input className="w-full border-2 p-3 rounded-xl bg-white border-purple-200" list="categories" value={form.category || ''} onChange={e => setForm({...form, category: e.target.value})} placeholder="Selecione ou digite..." />
+                        <datalist id="categories">
                             {defaultCategories.map(cat => (
-                                <option key={cat} value={cat}>{cat}</option>
+                                <option key={cat} value={cat} />
                             ))}
-                        </select>
+                        </datalist>
                     </div>
                 )}
               </div>

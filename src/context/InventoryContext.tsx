@@ -13,7 +13,7 @@ interface InventoryState {
 
 interface InventoryContextType {
   state: InventoryState;
-  addInventoryItem: (item: InventoryItem) => Promise<string | null>; // Alterado para retornar ID
+  addInventoryItem: (item: InventoryItem) => Promise<string | null>; 
   updateInventoryItem: (item: InventoryItem) => Promise<void>;
   deleteInventoryItem: (itemId: string) => Promise<void>;
   updateStock: (itemId: string, quantity: number, operation: 'IN' | 'OUT', reason: string, userName?: string) => Promise<void>;
@@ -64,6 +64,7 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
                 return {
                     id: i.id, 
                     name: i.name, 
+                    barcode: i.barcode || '', // Mapeia o barcode
                     unit: i.unit, 
                     quantity: Number(i.quantity) || 0, 
                     minQuantity: Number(i.min_quantity) || 0, 
@@ -153,6 +154,7 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       const payload = {
           tenant_id: tenantId, 
           name: item.name, 
+          barcode: item.barcode, // Adicionado
           unit: item.unit, 
           quantity: item.quantity || 0,
           min_quantity: item.minQuantity || 0, 
@@ -195,6 +197,7 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       
       const payload = {
           name: item.name, 
+          barcode: item.barcode, // Adicionado
           unit: item.unit, 
           min_quantity: item.minQuantity || 0,
           cost_price: item.costPrice || 0, 

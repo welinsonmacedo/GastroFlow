@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { useRestaurant } from '../context/RestaurantContext';
 import { useAuth } from '../context/AuthProvider';
 import { SystemModule } from '../types';
-import { ChefHat, Coffee, Truck, ShoppingBag, ArrowRight, LogOut, Grid, Briefcase, Settings, DollarSign } from 'lucide-react';
+import { ChefHat, Coffee, Truck, ShoppingBag, ArrowRight, LogOut, Grid, Briefcase, Settings, DollarSign, Store } from 'lucide-react';
 import { Button } from '../components/Button';
 
 const ModuleCard = ({ 
@@ -48,20 +48,22 @@ export const ModuleSelector: React.FC = () => {
     const { logout, state: authState } = useAuth();
     const navigate = useNavigate();
 
-    const allowed = state.allowedModules || ['RESTAURANT', 'MANAGER', 'CONFIG', 'FINANCE'];
+    const allowed = state.allowedModules || ['RESTAURANT', 'MANAGER', 'CONFIG', 'FINANCE', 'COMMERCE'];
     const tenantName = state.theme.restaurantName;
 
     const handleSelect = (module: SystemModule) => {
         setActiveModule(module);
         
         if (module === 'RESTAURANT') {
-            navigate('/restaurant'); // Atualizado: Vai para o Dashboard Restaurante
+            navigate('/restaurant'); 
         } else if (module === 'MANAGER') {
-            navigate('/admin'); // Vai para o painel administrativo (Backoffice)
+            navigate('/admin'); 
         } else if (module === 'FINANCE') {
-            navigate('/finance'); // Novo painel financeiro
+            navigate('/finance'); 
         } else if (module === 'CONFIG') {
-            navigate('/settings'); // Vai para configurações
+            navigate('/settings'); 
+        } else if (module === 'COMMERCE') {
+            navigate('/commerce'); // Novo módulo
         } else {
             alert("Módulo em desenvolvimento.");
         }
@@ -110,9 +112,30 @@ export const ModuleSelector: React.FC = () => {
                     </p>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 max-w-7xl w-full">
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5 gap-6 max-w-7xl w-full">
                     
-                    {/* Módulo Gestor (Admin) */}
+                    {allowed.includes('RESTAURANT') && (
+                        <ModuleCard 
+                            type="RESTAURANT"
+                            title="Restaurante"
+                            desc="Salão, Mesas, KDS e Caixa Gastronômico."
+                            icon={ChefHat}
+                            colorClass="text-blue-600"
+                            onClick={() => handleSelect('RESTAURANT')}
+                        />
+                    )}
+
+                    {(allowed.includes('COMMERCE') || authState.currentUser?.role === 'ADMIN') && (
+                        <ModuleCard 
+                            type="COMMERCE"
+                            title="Varejo"
+                            desc="PDV Rápido (Supermercado), Leitor de Código e Estoque."
+                            icon={Store}
+                            colorClass="text-indigo-500"
+                            onClick={() => handleSelect('COMMERCE')}
+                        />
+                    )}
+
                     {(allowed.includes('MANAGER') || authState.currentUser?.role === 'ADMIN') && (
                         <ModuleCard 
                             type="MANAGER"
@@ -124,7 +147,6 @@ export const ModuleSelector: React.FC = () => {
                         />
                     )}
 
-                    {/* Módulo Financeiro (Novo) */}
                     {(allowed.includes('FINANCE') || authState.currentUser?.role === 'ADMIN') && (
                         <ModuleCard 
                             type="FINANCE"
@@ -136,26 +158,14 @@ export const ModuleSelector: React.FC = () => {
                         />
                     )}
 
-                    {/* Módulo Configurações */}
                     {(allowed.includes('CONFIG') || authState.currentUser?.role === 'ADMIN') && (
                         <ModuleCard 
                             type="CONFIG"
                             title="Configurações"
-                            desc="Dados da empresa, equipe, regras, delivery e aparência."
+                            desc="Dados da empresa, equipe e aparência."
                             icon={Settings}
                             colorClass="text-gray-500"
                             onClick={() => handleSelect('CONFIG')}
-                        />
-                    )}
-
-                    {allowed.includes('RESTAURANT') && (
-                        <ModuleCard 
-                            type="RESTAURANT"
-                            title="Restaurante"
-                            desc="Operação de salão. Mapa de mesas, KDS (Cozinha) e Caixa."
-                            icon={ChefHat}
-                            colorClass="text-blue-600"
-                            onClick={() => handleSelect('RESTAURANT')}
                         />
                     )}
 
