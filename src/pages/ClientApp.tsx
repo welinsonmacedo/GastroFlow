@@ -7,12 +7,12 @@ import { useMenu } from '../context/MenuContext';
 import { useOrder } from '../context/OrderContext';
 import { useUI } from '../context/UIContext';
 import { Button } from '../components/Button';
+import { ClientProductModal } from '../components/modals/ClientProductModal';
 import { TableStatus, Product, Order } from '../types';
 import { 
-    ShoppingCart, ChefHat, Plus, Minus, X, Lock, 
+    ShoppingCart, ChefHat, Plus, X, Lock, 
     Receipt, Loader2, Bell, ArrowLeft, Search, Edit3, 
-    Zap, Clock, Trash2, ArrowRight, 
-    Activity, AlertCircle, RefreshCcw, Utensils, CheckSquare, Square
+    Clock, Trash2, ArrowRight, Activity, AlertCircle, RefreshCcw
 } from 'lucide-react';
 
 const OrderGraceTimer: React.FC<{ order: Order; graceMinutes: number; onCancel: (id: string) => void }> = ({ order, graceMinutes, onCancel }) => {
@@ -76,32 +76,11 @@ export const ClientApp: React.FC = () => {
     const [waiterCalled, setWaiterCalled] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-    const [modalQuantity, setModalQuantity] = useState(1);
-    const [modalNotes, setModalNotes] = useState('');
-    const [drinkTiming, setDrinkTiming] = useState<'IMMEDIATE' | 'WITH_FOOD'>('IMMEDIATE');
-    const [selectedExtraIds, setSelectedExtraIds] = useState<string[]>([]);
 
     const table = orderState.tables.find(t => t.id === tableId);
     const theme = state.theme;
     const graceMinutes = state.businessInfo?.orderGracePeriodMinutes || 0;
     const tableOrders = orderState.orders.filter(o => o.tableId === tableId && !o.isPaid && o.status !== 'CANCELLED');
-
-    // Helpers
-    const isDrinkProduct = (product: Product) => {
-        return product.category === 'Bebidas' || product.type === 'BAR' || product.category.toLowerCase().includes('bebida');
-    };
-
-    // Verifica se existe comida no carrinho (qualquer item que não seja bebida)
-    const hasFoodInCart = cart.some(item => !isDrinkProduct(item.product));
-
-    useEffect(() => {
-        if (selectedProduct) {
-            setModalQuantity(1);
-            setModalNotes('');
-            setDrinkTiming('IMMEDIATE');
-            setSelectedExtraIds([]);
-        }
-    }, [selectedProduct]);
 
     const groupItems = (items: any[]) => {
         const grouped: any[] = [];
@@ -129,25 +108,8 @@ export const ClientApp: React.FC = () => {
         showAlert({ title: "Garçom Chamado", message: "Sua solicitação foi enviada. Logo alguém virá lhe atender.", type: 'SUCCESS' });
     };
 
-    const handleAddToCart = () => {
-        if (!selectedProduct) return;
-        
-        let finalNote = modalNotes;
-        
-        // Lógica específica para bebidas: Só pergunta timing se tiver comida no carrinho
-        if (isDrinkProduct(selectedProduct) && hasFoodInCart) {
-            const timingText = drinkTiming === 'IMMEDIATE' ? '[IMEDIATA]' : '[COM COMIDA]';
-            finalNote = timingText; 
-        }
-
-        const chosenExtras = selectedExtraIds
-            .map(id => menuState.products.find(p => p.id === id))
-            .filter(Boolean) as Product[];
-
-        setCart(prev => [
-            ...prev, 
-            { product: selectedProduct, quantity: modalQuantity, notes: finalNote.trim(), extras: chosenExtras }
-        ]);
+    const handleAddToCart = (item: { product: Product; quantity: number; notes: string; extras: Product[] }) => {
+        setCart(prev => [...prev, item]);
         setSelectedProduct(null);
     };
 
@@ -163,18 +125,6 @@ export const ClientApp: React.FC = () => {
         await orderDispatch({ type: 'PLACE_ORDER', tableId, items: flattenedItems });
         setCart([]);
         setView('STATUS');
-    };
-
-    const getGroupedExtras = (product: Product) => {
-        const ids = product.linkedExtraIds || [];
-        const extras = ids.map(id => menuState.products.find(p => p.id === id)).filter(Boolean) as Product[];
-        const grouped: Record<string, Product[]> = {};
-        extras.forEach(ex => {
-            const cat = ex.category || 'Opções';
-            if(!grouped[cat]) grouped[cat] = [];
-            grouped[cat].push(ex);
-        });
-        return grouped;
     };
 
     if (state.isLoading || menuState.isLoading) return <div className="h-full flex flex-col items-center justify-center bg-gray-50 text-gray-400 font-sans"><Loader2 className="animate-spin mb-4 text-emerald-500" size={48} /><p className="font-black uppercase tracking-widest text-xs">Preparando Experiência...</p></div>;
@@ -306,64 +256,14 @@ export const ClientApp: React.FC = () => {
                         </div>
                     </div>
                 )}
-
-                {/* MODAL ADD TO CART */}
-                {selectedProduct && (
-                    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 animate-fade-in">
-                        <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col max-h-[90vh]">
-                            <div className="relative">
-                                <div className="h-40 w-full overflow-hidden relative"><img src={selectedProduct.image || 'https://via.placeholder.com/400x200?text=Sem+Foto'} className="w-full h-full object-cover" alt={selectedProduct.name} /><div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent"></div></div>
-                                <div className="absolute bottom-0 left-0 w-full p-4 text-white">
-                                    <div className="flex justify-between items-end"><h3 className="font-black text-2xl truncate pr-4 text-shadow leading-none">{selectedProduct.name}</h3><button onClick={() => setSelectedProduct(null)} className="bg-white/20 backdrop-blur-sm p-2 rounded-full hover:bg-red-500 hover:text-white transition-colors absolute top-4 right-4"><X size={20}/></button></div>
-                                    {selectedProduct.description && (<p className="text-xs text-gray-200 mt-2 font-medium line-clamp-2 leading-relaxed">{selectedProduct.description}</p>)}
-                                </div>
-                            </div>
-
-                            <div className="p-6 space-y-6 overflow-y-auto custom-scrollbar flex-1">
-                                <div>
-                                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-4 text-center">Quantidade</label>
-                                    <div className="flex items-center gap-6 justify-center"><button onClick={() => setModalQuantity(Math.max(1, modalQuantity - 1))} className="p-4 bg-gray-100 rounded-2xl hover:bg-red-50 hover:text-red-600 transition-colors"><Minus size={24}/></button><span className="text-5xl font-black w-20 text-center text-blue-600">{modalQuantity}</span><button onClick={() => setModalQuantity(modalQuantity + 1)} className="p-4 bg-gray-100 rounded-2xl hover:bg-emerald-50 hover:text-emerald-600 transition-colors"><Plus size={24}/></button></div>
-                                </div>
-                                
-                                {!isDrinkProduct(selectedProduct) && selectedProduct.linkedExtraIds && selectedProduct.linkedExtraIds.length > 0 && (
-                                    <div className="border-t border-gray-100 py-6 space-y-6">
-                                        {Object.entries(getGroupedExtras(selectedProduct)).map(([category, extras]) => (
-                                            <div key={category} className="space-y-3">
-                                                <label className="block text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1 border-b border-gray-100 pb-1">{category}</label>
-                                                <div className="space-y-2">
-                                                    {extras.map(extra => {
-                                                        const isSelected = selectedExtraIds.includes(extra.id);
-                                                        return (
-                                                            <div key={extra.id} onClick={() => setSelectedExtraIds(prev => prev.includes(extra.id) ? prev.filter(i => i !== extra.id) : [...prev, extra.id])} className={`flex items-center justify-between p-3 rounded-2xl border-2 transition-all cursor-pointer ${isSelected ? 'bg-orange-50 border-orange-400 shadow-sm' : 'bg-white border-gray-100 hover:border-gray-200'}`}>
-                                                                <div className="flex items-center gap-3">{isSelected ? <CheckSquare size={20} className="text-orange-600"/> : <Square size={20} className="text-gray-300"/>}<span className={`text-sm font-bold ${isSelected ? 'text-orange-900' : 'text-slate-700'}`}>{extra.name}</span></div>
-                                                                <span className="text-xs font-bold text-slate-400">+ R$ {extra.price.toFixed(2)}</span>
-                                                            </div>
-                                                        );
-                                                    })}
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                                
-                                {isDrinkProduct(selectedProduct) && hasFoodInCart ? (
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Quando Servir?</label>
-                                        <div className="flex gap-3">
-                                            <button onClick={() => setDrinkTiming('IMMEDIATE')} className={`flex-1 p-4 rounded-2xl border-2 font-bold text-xs uppercase tracking-wider transition-all ${drinkTiming === 'IMMEDIATE' ? 'bg-blue-600 text-white border-blue-600 shadow-lg' : 'bg-white text-gray-400 border-gray-200'}`}><Zap size={16} className="mx-auto mb-1"/> Imediata</button>
-                                            <button onClick={() => setDrinkTiming('WITH_FOOD')} className={`flex-1 p-4 rounded-2xl border-2 font-bold text-xs uppercase tracking-wider transition-all ${drinkTiming === 'WITH_FOOD' ? 'bg-blue-600 text-white border-blue-600 shadow-lg' : 'bg-white text-gray-400 border-gray-200'}`}><Utensils size={16} className="mx-auto mb-1"/> Com Comida</button>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="space-y-2"><label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Observações</label><textarea className="w-full border-2 border-gray-100 bg-gray-50 rounded-2xl p-4 text-sm font-medium focus:border-blue-500 focus:bg-white outline-none transition-all resize-none" rows={3} placeholder="Ex: Sem cebola, ponto da carne..." value={modalNotes} onChange={e => setModalNotes(e.target.value)} /></div>
-                                )}
-                            </div>
-                            <div className="p-6 border-t bg-gray-50 shrink-0 safe-area-bottom">
-                                <Button onClick={handleAddToCart} className="w-full py-5 text-xl font-black shadow-2xl shadow-blue-200 rounded-2xl uppercase tracking-widest">Adicionar • R$ {((selectedProduct.price + selectedExtraIds.reduce((sum, id) => sum + (menuState.products.find(p => p.id === id)?.price || 0), 0)) * modalQuantity).toFixed(2)}</Button>
-                            </div>
-                        </div>
-                    </div>
-                )}
+                
+                {/* O Modal antigo foi removido e substituído por ClientProductModal importado */}
+                <ClientProductModal 
+                    isOpen={!!selectedProduct} 
+                    onClose={() => setSelectedProduct(null)} 
+                    product={selectedProduct} 
+                    onAddToCart={handleAddToCart}
+                />
             </main>
         </div>
     );

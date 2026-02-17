@@ -1,21 +1,22 @@
 
-import React, { useState, useEffect } from 'react';
-import { useRestaurant } from '../context/RestaurantContext';
-import { useInventory } from '../context/InventoryContext'; 
-import { useOrder } from '../context/OrderContext';
+import React, { useState } from 'react';
 import { useFinance } from '../context/FinanceContext';
+import { useOrder } from '../context/OrderContext';
 import { useUI } from '../context/UIContext';
 import { useAuth } from '../context/AuthProvider';
-import { TableStatus, InventoryItem, DeliveryInfo, DeliveryPlatform, OrderStatus, DeliveryMethodConfig } from '../types'; 
+import { TableStatus } from '../types'; 
 import { Button } from '../components/Button';
-import { DollarSign, History, ShoppingCart, Search, Wallet, Receipt, Trash2, User, Lock, XCircle, RefreshCcw, LayoutDashboard, CreditCard, Banknote, Zap, Plus, Clock, Eye, Package, Minus, CheckSquare, Square, AlertTriangle, LogOut, LayoutGrid, Bike, Phone, MessageCircle, MapPin, ClipboardList, CheckCircle, Loader2, Printer, Split } from 'lucide-react';
+import { DollarSign, History, ShoppingCart, Wallet, Receipt, Lock, RefreshCcw, LogOut, LayoutGrid, Bike, User, Eye, XCircle, Banknote, Zap, CreditCard, Split, CheckSquare, Loader2 } from 'lucide-react';
 import { CloseRegisterModal } from '../components/modals/CloseRegisterModal';
 import { CashBleedModal } from '../components/modals/CashBleedModal';
 import { Modal } from '../components/Modal';
 
+// Sub-Componentes
+import { CashierDeliveryView } from '../components/cashier/CashierDeliveryView';
+import { CashierPOSView } from '../components/cashier/CashierPOSView';
+import { Clock } from 'lucide-react';
+
 export const CashierDashboard: React.FC = () => {
-  const { state: restState } = useRestaurant();
-  const { state: invState } = useInventory(); 
   const { state: orderState, dispatch: orderDispatch } = useOrder();
   const { state: finState, openRegister, refreshTransactions, voidTransaction } = useFinance();
   const { showAlert, showConfirm } = useUI();
@@ -34,61 +35,27 @@ export const CashierDashboard: React.FC = () => {
   const [closeModalOpen, setCloseModalOpen] = useState(false);
   const [voidModalOpen, setVoidModalOpen] = useState(false);
   const [cashPaymentModalOpen, setCashPaymentModalOpen] = useState(false);
-  
-  const [itemModalOpen, setItemModalOpen] = useState(false);
-  const [selectedItemForCart, setSelectedItemForCart] = useState<InventoryItem | null>(null);
-  const [itemQty, setItemQty] = useState(1);
-  const [itemNotes, setItemNotes] = useState('');
-  const [selectedExtras, setSelectedExtras] = useState<InventoryItem[]>([]);
 
   const [transactionToVoid, setTransactionToVoid] = useState<string | null>(null);
   const [voidPin, setVoidPin] = useState('');
-  const [processingSale, setProcessingSale] = useState(false);
   
-  // PDV States
-  const [posCart, setPosCart] = useState<{ item: InventoryItem; quantity: number; notes: string; extras: InventoryItem[] }[]>([]);
-  const [posSearch, setPosSearch] = useState('');
-  const [customerName, setCustomerName] = useState('');
+  // PDV States para Pagamento de Mesa
   const [cashReceived, setCashReceived] = useState('');
-  const [pendingCashAction, setPendingCashAction] = useState<{ type: 'TABLE' | 'POS', total: number } | null>(null);
+  const [pendingCashAction, setPendingCashAction] = useState<{ type: 'TABLE', total: number } | null>(null);
 
   // States para Separação de Pedidos (Split Order)
   const [splitMode, setSplitMode] = useState(false);
   const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
 
-  // DELIVERY States
-  const [deliveryCart, setDeliveryCart] = useState<{ item: InventoryItem; quantity: number; notes: string; extras: InventoryItem[] }[]>([]);
-  
-  // Obtem métodos de pagamento configurados
-  const configuredPaymentMethods = restState.businessInfo?.paymentMethods?.filter(pm => pm.isActive) || [];
-
-  const [deliveryForm, setDeliveryForm] = useState<DeliveryInfo>({ 
-      customerName: '', phone: '', address: '', platform: 'PHONE', methodId: '', deliveryFee: 0, changeFor: 0, paymentMethod: '', paymentStatus: 'PENDING' 
-  });
-  const [deliverySearch, setDeliverySearch] = useState('');
-  
-  // Fetch delivery methods ensuring they are valid
-  const deliveryMethods = restState.businessInfo?.deliverySettings?.filter(m => m.isActive) || [];
-
   const occupiedTables = orderState.tables.filter(t => t.status !== TableStatus.AVAILABLE);
   const selectedTable = orderState.tables.find(t => t.id === selectedTableId);
   const tableOrders = orderState.orders.filter(o => o.tableId === selectedTableId && !o.isPaid);
   
-  // Calcula Total baseado na seleção (se estiver em splitMode)
   const ordersToPay = (splitMode && selectedOrderIds.length > 0)
     ? tableOrders.filter(o => selectedOrderIds.includes(o.id))
     : tableOrders;
 
   const totalAmount = ordersToPay.reduce((sum, order) => sum + order.items.reduce((s, i) => s + (i.productPrice * i.quantity), 0), 0);
-
-  const activeDeliveryOrders = orderState.orders.filter(o => o.type === 'DELIVERY' && !o.isPaid && o.status !== 'CANCELLED');
-
-  // Inicializa o método de pagamento padrão se houver
-  useEffect(() => {
-      if (configuredPaymentMethods.length > 0 && !deliveryForm.paymentMethod) {
-          setDeliveryForm(prev => ({ ...prev, paymentMethod: configuredPaymentMethods[0].name }));
-      }
-  }, [configuredPaymentMethods]);
 
   const handleManualRefresh = async () => {
       setIsRefreshing(true);
@@ -100,286 +67,37 @@ export const CashierDashboard: React.FC = () => {
       showConfirm({ title: "Sair do Caixa?", message: "Isso fará logout do sistema.", type: 'WARNING', confirmText: "Sair", onConfirm: logout });
   };
 
-  // Resetar split mode ao trocar de mesa
-  useEffect(() => {
-    setSplitMode(false);
-    setSelectedOrderIds([]);
-  }, [selectedTableId]);
-
-  const toggleOrderSelection = (orderId: string) => {
-    setSelectedOrderIds(prev => 
-        prev.includes(orderId) 
-            ? prev.filter(id => id !== orderId) 
-            : [...prev, orderId]
-    );
-  };
-
-  // --- FUNÇÃO DE ABERTURA DE CAIXA ---
   const handleOpenRegister = async (e: React.FormEvent) => {
       e.preventDefault();
       const amount = parseFloat(openRegisterAmount);
-      
-      if (isNaN(amount) || amount < 0) {
-          return showAlert({ title: "Valor Inválido", message: "Informe um valor inicial válido (pode ser 0).", type: 'WARNING' });
-      }
+      if (isNaN(amount) || amount < 0) return showAlert({ title: "Valor Inválido", message: "Informe um valor inicial válido.", type: 'WARNING' });
 
       setOpeningLoading(true);
       try {
-          const operator = authState.currentUser?.name || 'Operador';
-          await openRegister(amount, operator);
+          await openRegister(amount, authState.currentUser?.name || 'Operador');
           setOpenRegisterAmount('');
       } catch (error: any) {
-          console.error(error);
-          showAlert({ title: "Erro ao Abrir", message: error.message || "Falha ao abrir caixa. Verifique permissões.", type: 'ERROR' });
-      } finally {
-          setOpeningLoading(false);
-      }
+          showAlert({ title: "Erro ao Abrir", message: error.message || "Falha ao abrir caixa.", type: 'ERROR' });
+      } finally { setOpeningLoading(false); }
   };
 
-  // --- Lógica Comum de Carrinho (PDV e Delivery) ---
-  const handleAddToCart = () => {
-      if (!selectedItemForCart) return;
-      
-      const newItem = {
-          item: selectedItemForCart,
-          quantity: itemQty,
-          notes: itemNotes,
-          extras: selectedExtras
-      };
-
-      if (activeTab === 'DELIVERY') {
-          setDeliveryCart([...deliveryCart, newItem]);
-      } else {
-          setPosCart([...posCart, newItem]);
-      }
-
-      setItemModalOpen(false);
-      setSelectedItemForCart(null);
+  const toggleOrderSelection = (orderId: string) => {
+    setSelectedOrderIds(prev => prev.includes(orderId) ? prev.filter(id => id !== orderId) : [...prev, orderId]);
   };
 
-  const openItemModal = (item: InventoryItem) => {
-      setSelectedItemForCart(item);
-      setItemQty(1);
-      setItemNotes('');
-      setSelectedExtras([]);
-      setItemModalOpen(true);
-  };
-
-  const toggleExtra = (extra: InventoryItem) => {
-      if (selectedExtras.find(e => e.id === extra.id)) {
-          setSelectedExtras(selectedExtras.filter(e => e.id !== extra.id));
-      } else {
-          setSelectedExtras([...selectedExtras, extra]);
-      }
-  };
-
-  // --- Lógica de Delivery ---
-  
-  const calculateDeliveryTotal = () => {
-      const subtotal = deliveryCart.reduce((acc, i) => acc + ((i.item.salePrice + i.extras.reduce((s,e)=>s+e.salePrice,0)) * i.quantity), 0);
-      return subtotal + (deliveryForm.deliveryFee || 0);
-  };
-
-  const selectDeliveryMethod = (method: DeliveryMethodConfig) => {
-      // Calcula taxa baseada na config
-      let fee = 0;
-      if (method.feeBehavior === 'ADD_TO_TOTAL') {
-          if (method.feeType === 'FIXED') fee = method.feeValue;
-          // Se for porcentagem, calcula sobre o subtotal (precisa recalcular se o carrinho mudar)
-          // Para simplificar aqui, assumimos fixo ou calculo no momento da seleção.
-          // Idealmente, usar useEffect para recalcular se o carrinho mudar.
-      }
-      
-      // Update form
-      setDeliveryForm(prev => ({
-          ...prev,
-          methodId: method.id,
-          platform: method.name,
-          deliveryFee: fee
-      }));
-  };
-
-  // Verifica se o método de pagamento selecionado é do tipo DINHEIRO
-  const isCashPaymentSelected = () => {
-      const method = configuredPaymentMethods.find(pm => pm.name === deliveryForm.paymentMethod);
-      return method?.type === 'CASH';
-  };
-
-  const handleDeliverySubmit = async () => {
-      if (deliveryCart.length === 0) return showAlert({ title: "Carrinho Vazio", message: "Adicione itens ao pedido.", type: 'WARNING' });
-      if (!deliveryForm.customerName) return showAlert({ title: "Dados Incompletos", message: "Informe o nome do cliente.", type: 'WARNING' });
-      if (!deliveryForm.methodId) return showAlert({ title: "Método de Entrega", message: "Selecione como será a entrega.", type: 'WARNING' });
-
-      setProcessingSale(true);
-      try {
-          const itemsPayload = deliveryCart.map(cartItem => {
-              return [
-                  { 
-                      inventoryItemId: cartItem.item.id, 
-                      quantity: cartItem.quantity, 
-                      notes: cartItem.notes, 
-                      salePrice: cartItem.item.salePrice,
-                      name: cartItem.item.name,
-                      type: cartItem.item.type === 'RESALE' ? 'BAR' : 'KITCHEN'
-                  },
-                  ...cartItem.extras.map(ex => ({
-                      inventoryItemId: ex.id,
-                      quantity: cartItem.quantity,
-                      notes: `[ADICIONAL] p/ ${cartItem.item.name}`,
-                      salePrice: ex.salePrice,
-                      name: ex.name,
-                      type: ex.type === 'RESALE' ? 'BAR' : 'KITCHEN'
-                  }))
-              ];
-          }).flat();
-
-          await orderDispatch({ 
-              type: 'PLACE_ORDER', 
-              orderType: 'DELIVERY', 
-              items: itemsPayload, 
-              deliveryInfo: deliveryForm 
-          });
-
-          setDeliveryCart([]);
-          setDeliveryForm({ 
-              customerName: '', phone: '', address: '', platform: 'PHONE', methodId: '', 
-              deliveryFee: 0, changeFor: 0, 
-              paymentMethod: configuredPaymentMethods[0]?.name || '', 
-              paymentStatus: 'PENDING' 
-          });
-          showAlert({ title: "Sucesso", message: "Pedido enviado para a cozinha!", type: 'SUCCESS' });
-      } catch (error) {
-          showAlert({ title: "Erro", message: "Falha ao criar pedido delivery.", type: 'ERROR' });
-      } finally {
-          setProcessingSale(false);
-      }
-  };
-
-  const handleDispatchDelivery = async (orderId: string) => {
-      const order = activeDeliveryOrders.find(o => o.id === orderId);
-      if (!order) return;
-      const total = order.items.reduce((acc, i) => acc + (i.productPrice * i.quantity), 0) + (order.deliveryInfo?.deliveryFee || 0);
-      
-      showConfirm({
-          title: "Despachar e Finalizar?",
-          message: `Confirma que o pedido saiu para entrega e o pagamento foi/será recebido? Total: R$ ${total.toFixed(2)}`,
-          onConfirm: async () => {
-              await orderDispatch({ 
-                  type: 'PROCESS_PAYMENT', 
-                  amount: total, 
-                  method: order.deliveryInfo?.paymentMethod || 'CASH', // Usa o método salvo no pedido
-                  orderId: order.id,
-                  cashierName: 'Delivery'
-              });
-              showAlert({ title: "Despachado", message: "Pedido finalizado e arquivado.", type: 'SUCCESS' });
-          }
-      });
-  };
-
-  const printDeliveryTicket = (orderData: { customer: DeliveryInfo, items: any[], subtotal: number, total: number }) => {
-      const { customer, items, subtotal, total } = orderData;
-      const date = new Date().toLocaleString();
-      
-      const printContent = `
-        <html>
-        <head>
-            <style>
-                body { font-family: 'Courier New', monospace; width: 80mm; margin: 0; padding: 5px; font-size: 12px; color: #000; }
-                .header { text-align: center; border-bottom: 1px dashed #000; padding-bottom: 5px; margin-bottom: 5px; }
-                .title { font-size: 16px; font-weight: bold; }
-                .info { margin-bottom: 5px; }
-                .items-table { width: 100%; border-collapse: collapse; margin-bottom: 5px; }
-                .items-table th { text-align: left; border-bottom: 1px solid #000; }
-                .items-table td { padding: 2px 0; }
-                .totals { text-align: right; border-top: 1px dashed #000; padding-top: 5px; }
-                .total-line { font-size: 14px; font-weight: bold; }
-                .payment-info { border: 1px solid #000; padding: 5px; margin-top: 5px; text-align: center; font-weight: bold; }
-            </style>
-        </head>
-        <body>
-            <div class="header">
-                <div class="title">${restState.theme.restaurantName}</div>
-                <div>DELIVERY / ENTREGA</div>
-                <div>${date}</div>
-            </div>
-            <div class="info">
-                <strong>Cliente:</strong> ${customer.customerName}<br/>
-                <strong>Tel:</strong> ${customer.phone}<br/>
-                <strong>Endereço:</strong> ${customer.address || 'Retirada'}<br/>
-                <strong>Plataforma:</strong> ${customer.platform}
-            </div>
-            <table class="items-table">
-                <thead><tr><th>Qtd</th><th>Item</th><th>Vl.Total</th></tr></thead>
-                <tbody>
-                    ${items.map(i => `
-                        <tr>
-                            <td>${i.quantity}x</td>
-                            <td>${i.item.name} ${i.extras.length > 0 ? '(+Adic)' : ''}</td>
-                            <td style="text-align:right">R$ ${( (i.item.salePrice + i.extras.reduce((s:any,e:any)=>s+e.salePrice,0)) * i.quantity ).toFixed(2)}</td>
-                        </tr>
-                        ${i.notes ? `<tr><td colspan="3" style="font-size:10px; font-style:italic">Obs: ${i.notes}</td></tr>` : ''}
-                    `).join('')}
-                </tbody>
-            </table>
-            <div class="totals">
-                <div>Subtotal: R$ ${subtotal.toFixed(2)}</div>
-                <div>Taxa Entrega: R$ ${(customer.deliveryFee || 0).toFixed(2)}</div>
-                <div class="total-line">TOTAL: R$ ${total.toFixed(2)}</div>
-            </div>
-            <div class="payment-info">
-                Forma Pagto: ${customer.paymentMethod || 'A COMBINAR'}<br/>
-                ${isCashPaymentSelected() && customer.changeFor ? `Troco p/ R$ ${customer.changeFor.toFixed(2)} -> R$ ${(customer.changeFor - total).toFixed(2)}` : ''}
-                ${customer.paymentStatus === 'PAID' ? '(JÁ PAGO)' : '(COBRAR NA ENTREGA)'}
-            </div>
-            <script>window.print(); window.close();</script>
-        </body>
-        </html>
-      `;
-      const win = window.open('', '', 'width=400,height=600');
-      if(win) {
-          win.document.write(printContent);
-          win.document.close();
-      }
-  };
-
-  const handlePrintCurrentDelivery = () => {
-      const subtotal = deliveryCart.reduce((acc, i) => acc + ((i.item.salePrice + i.extras.reduce((s,e)=>s+e.salePrice,0)) * i.quantity), 0);
-      printDeliveryTicket({
-          customer: deliveryForm,
-          items: deliveryCart,
-          subtotal,
-          total: subtotal + (deliveryForm.deliveryFee || 0)
-      });
-  };
-
-  // --- Lógica de Pagamento PDV/Mesa ---
   const handlePayment = async (method: string) => {
       if (!selectedTableId || totalAmount <= 0) return;
-      
       if (method === 'CASH') {
-          initiateCashPayment('TABLE', totalAmount);
+          setCashReceived('');
+          setPendingCashAction({ type: 'TABLE', total: totalAmount });
+          setCashPaymentModalOpen(true);
           return;
       }
-      
       showConfirm({
           title: "Confirmar Pagamento",
           message: `Deseja confirmar o recebimento de R$ ${totalAmount.toFixed(2)} via ${method}?`,
           onConfirm: () => finalizeTablePayment(method)
       });
-  };
-
-  const initiateCashPayment = (type: 'TABLE' | 'POS', total: number) => {
-      setCashReceived('');
-      setPendingCashAction({ type, total });
-      setCashPaymentModalOpen(true);
-  };
-
-  const confirmCashPayment = async () => {
-      if (!pendingCashAction) return;
-      setCashPaymentModalOpen(false);
-      if (pendingCashAction.type === 'TABLE') await finalizeTablePayment('CASH');
-      else await finalizePosSale('CASH');
-      setPendingCashAction(null);
   };
 
   const finalizeTablePayment = async (method: string) => {
@@ -391,45 +109,17 @@ export const CashierDashboard: React.FC = () => {
               amount: totalAmount, 
               method, 
               cashierName: 'Caixa',
-              // Passa os IDs selecionados se estiver em modo split
               specificOrderIds: (splitMode && selectedOrderIds.length > 0) ? selectedOrderIds : undefined
           });
           
           if (!splitMode || totalAmount >= tableOrders.reduce((sum, order) => sum + order.items.reduce((s, i) => s + (i.productPrice * i.quantity), 0), 0)) {
-              // Se pagou tudo, desseleciona a mesa
               setSelectedTableId(null);
           } else {
-              // Se pagou parcial, reseta seleção mas mantém na mesa
               setSplitMode(false);
               setSelectedOrderIds([]);
           }
-
           showAlert({ title: "Pagamento Realizado", message: "Pagamento registrado com sucesso.", type: 'SUCCESS' });
       } catch (error) { showAlert({ title: "Erro", message: "Falha ao processar pagamento.", type: 'ERROR' }); }
-  };
-
-  const handlePosSale = async (method: 'CASH' | 'CREDIT' | 'DEBIT' | 'PIX') => {
-      if (!finState.activeCashSession) return showAlert({ title: "Caixa Fechado", message: "Abra o caixa.", type: 'ERROR' });
-      if (posCart.length === 0) return showAlert({ title: "Carrinho Vazio", message: "Adicione produtos.", type: 'WARNING' });
-      const total = posCart.reduce((acc, cartItem) => acc + ((cartItem.item.salePrice + cartItem.extras.reduce((s, ex) => s + ex.salePrice, 0)) * cartItem.quantity), 0);
-      if (method === 'CASH') { initiateCashPayment('POS', total); return; }
-      await finalizePosSale(method);
-  };
-
-  const finalizePosSale = async (method: string) => {
-      setProcessingSale(true);
-      const total = posCart.reduce((acc, cartItem) => acc + ((cartItem.item.salePrice + cartItem.extras.reduce((s, ex) => s + ex.salePrice, 0)) * cartItem.quantity), 0);
-      try {
-          const itemsPayload: any[] = [];
-          posCart.forEach(cartItem => {
-              itemsPayload.push({ inventoryItemId: cartItem.item.id, quantity: cartItem.quantity, notes: cartItem.notes });
-              cartItem.extras.forEach(extra => itemsPayload.push({ inventoryItemId: extra.id, quantity: cartItem.quantity, notes: `[ADICIONAL] para ${cartItem.item.name}` }));
-          });
-          await orderDispatch({ type: 'PROCESS_POS_SALE', sale: { customerName: customerName.trim() || 'Consumidor Final', items: itemsPayload, totalAmount: total, method } });
-          setPosCart([]); setCustomerName('');
-          showAlert({ title: "Venda Registrada", message: `Venda de R$ ${total.toFixed(2)} realizada!`, type: 'SUCCESS' });
-          await refreshTransactions();
-      } catch (error: any) { showAlert({ title: "Erro na Venda", message: "Não foi possível salvar.", type: 'ERROR' }); } finally { setProcessingSale(false); }
   };
 
   const handleVoidSubmit = async (e: React.FormEvent) => {
@@ -442,7 +132,6 @@ export const CashierDashboard: React.FC = () => {
       } catch (error: any) { showAlert({ title: "Erro", message: error.message, type: 'ERROR' }); }
   };
 
-  // TELA DE CAIXA FECHADO
   if (!finState.activeCashSession) {
       return (
           <div className="h-full flex items-center justify-center bg-slate-950 p-4 font-sans">
@@ -451,28 +140,15 @@ export const CashierDashboard: React.FC = () => {
                   <div className="bg-blue-50 p-6 rounded-full w-24 h-24 flex items-center justify-center mx-auto mb-8 shadow-inner"><Lock size={48} className="text-blue-600" /></div>
                   <h2 className="text-3xl font-black mb-2 text-slate-800 uppercase tracking-tighter">Frente de Caixa</h2>
                   <p className="text-gray-400 mb-8 font-medium">Informe o fundo de reserva para iniciar o turno.</p>
-                  
                   <form onSubmit={handleOpenRegister}>
                       <div className="mb-8">
                           <label className="block text-[10px] font-black text-gray-400 mb-3 uppercase tracking-widest">Saldo em Dinheiro (Gaveta)</label>
                           <div className="relative">
                               <span className="absolute left-4 top-5 font-black text-2xl text-gray-300">R$</span>
-                              <input 
-                                  type="number" 
-                                  step="0.01" 
-                                  className="border-2 border-gray-100 p-6 rounded-3xl w-full text-center text-4xl font-black text-blue-600 focus:outline-none focus:border-blue-500 transition-all shadow-inner bg-gray-50" 
-                                  placeholder="0.00" 
-                                  value={openRegisterAmount} 
-                                  onChange={e => setOpenRegisterAmount(e.target.value)} 
-                                  autoFocus 
-                                  required 
-                                  disabled={openingLoading}
-                              />
+                              <input type="number" step="0.01" className="border-2 border-gray-100 p-6 rounded-3xl w-full text-center text-4xl font-black text-blue-600 focus:outline-none focus:border-blue-500 transition-all shadow-inner bg-gray-50" placeholder="0.00" value={openRegisterAmount} onChange={e => setOpenRegisterAmount(e.target.value)} autoFocus required disabled={openingLoading}/>
                           </div>
                       </div>
-                      <Button type="submit" disabled={openingLoading} className="w-full py-5 text-xl font-black rounded-3xl shadow-2xl shadow-blue-200">
-                          {openingLoading ? <Loader2 className="animate-spin" /> : 'ABRIR CAIXA AGORA'}
-                      </Button>
+                      <Button type="submit" disabled={openingLoading} className="w-full py-5 text-xl font-black rounded-3xl shadow-2xl shadow-blue-200">{openingLoading ? <Loader2 className="animate-spin" /> : 'ABRIR CAIXA AGORA'}</Button>
                   </form>
               </div>
           </div>
@@ -513,164 +189,10 @@ export const CashierDashboard: React.FC = () => {
 
           <main className="flex-1 p-3 md:p-6 overflow-hidden">
                   
-                  {/* VIEW: DELIVERY (LAYOUT OTIMIZADO 3 COLUNAS) */}
-                  {activeTab === 'DELIVERY' && (
-                      <div className="flex flex-col xl:flex-row gap-4 h-full overflow-hidden">
-                          
-                          {/* Coluna 1: Produtos (Catálogo) */}
-                          <div className="xl:w-[30%] flex flex-col bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden h-full">
-                              <div className="p-4 border-b bg-gray-50/50">
-                                  <div className="relative group">
-                                      <Search className="absolute left-4 top-3 text-gray-400" size={18}/>
-                                      <input className="w-full pl-10 pr-4 py-2.5 rounded-xl border bg-white text-sm focus:border-blue-500 outline-none" placeholder="Buscar produto..." value={deliverySearch} onChange={e => setDeliverySearch(e.target.value)} />
-                                  </div>
-                              </div>
-                              <div className="flex-1 overflow-y-auto p-3 grid grid-cols-2 gap-3 content-start custom-scrollbar">
-                                  {invState.inventory.filter(i => 
-                                      !i.isExtra && 
-                                      i.type !== 'INGREDIENT' && 
-                                      i.name.toLowerCase().includes(deliverySearch.toLowerCase())
-                                  ).map(item => (
-                                      <button key={item.id} onClick={() => openItemModal(item)} className="bg-gray-50 p-3 rounded-xl border border-transparent hover:border-blue-300 hover:shadow-md transition-all text-left flex flex-col justify-between h-24">
-                                          <div className="font-bold text-slate-800 text-xs line-clamp-2">{item.name}</div>
-                                          <div className="text-blue-600 font-black text-sm mt-1">R$ {item.salePrice.toFixed(2)}</div>
-                                      </button>
-                                  ))}
-                              </div>
-                          </div>
+                  {activeTab === 'DELIVERY' && <CashierDeliveryView />}
+                  
+                  {activeTab === 'PDV' && <CashierPOSView />}
 
-                          {/* Coluna 2: Pedido (Formulário + Carrinho) */}
-                          <div className="xl:w-[40%] flex flex-col gap-4 h-full overflow-hidden">
-                              
-                              {/* Bloco Superior: Dados do Cliente */}
-                              <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 shrink-0">
-                                  <h3 className="font-black text-slate-700 uppercase tracking-tight mb-3 flex items-center gap-2 text-xs"><User size={14}/> Cliente</h3>
-                                  <div className="space-y-2">
-                                      <div className="flex gap-2">
-                                          <input className="flex-1 border p-2 rounded-lg bg-gray-50 text-xs font-bold" placeholder="Nome" value={deliveryForm.customerName} onChange={e => setDeliveryForm({...deliveryForm, customerName: e.target.value})} />
-                                          <input className="w-1/3 border p-2 rounded-lg bg-gray-50 text-xs font-bold" placeholder="Telefone" value={deliveryForm.phone} onChange={e => setDeliveryForm({...deliveryForm, phone: e.target.value})} />
-                                      </div>
-                                      <input className="w-full border p-2 rounded-lg bg-gray-50 text-xs font-bold" placeholder="Endereço Completo" value={deliveryForm.address} onChange={e => setDeliveryForm({...deliveryForm, address: e.target.value})} />
-                                      
-                                      {/* Métodos de Entrega Compactos */}
-                                      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-                                          {deliveryMethods.map(m => (
-                                              <button key={m.id} onClick={() => selectDeliveryMethod(m)} className={`px-3 py-1.5 rounded-lg text-[10px] font-black border uppercase whitespace-nowrap transition-all ${deliveryForm.methodId === m.id ? 'bg-orange-500 text-white border-orange-500' : 'bg-white text-gray-500 border-gray-200'}`}>{m.name}</button>
-                                          ))}
-                                      </div>
-                                  </div>
-                              </div>
-
-                              {/* Bloco Central: Carrinho */}
-                              <div className="flex-1 bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col">
-                                  <div className="p-3 border-b bg-gray-50/50 flex justify-between items-center">
-                                      <span className="text-xs font-black text-gray-500 uppercase tracking-widest">Itens ({deliveryCart.length})</span>
-                                      <button onClick={() => setDeliveryCart([])} className="text-[10px] text-red-500 font-bold uppercase hover:underline">Limpar</button>
-                                  </div>
-                                  <div className="flex-1 overflow-y-auto p-2 space-y-2 custom-scrollbar">
-                                      {deliveryCart.map((item, idx) => (
-                                          <div key={idx} className="flex justify-between items-center p-2 rounded-lg bg-gray-50 border border-transparent hover:border-gray-200 group">
-                                              <div className="flex-1 min-w-0">
-                                                  <div className="text-xs font-bold text-slate-800 truncate">{item.quantity}x {item.item.name}</div>
-                                                  {item.extras.length > 0 && <div className="text-[9px] text-orange-600 truncate">+ {item.extras.map(e => e.name).join(', ')}</div>}
-                                                  {item.notes && <div className="text-[9px] text-gray-400 italic truncate">"{item.notes}"</div>}
-                                              </div>
-                                              <div className="flex items-center gap-2">
-                                                  <span className="text-xs font-bold text-blue-600">R$ {((item.item.salePrice + item.extras.reduce((s,e)=>s+e.salePrice,0)) * item.quantity).toFixed(2)}</span>
-                                                  <button onClick={() => setDeliveryCart(deliveryCart.filter((_, i) => i !== idx))} className="text-red-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={14}/></button>
-                                              </div>
-                                          </div>
-                                      ))}
-                                      {deliveryCart.length === 0 && <div className="text-center py-10 text-gray-300 text-xs uppercase font-bold">Carrinho Vazio</div>}
-                                  </div>
-                              </div>
-
-                              {/* Bloco Inferior: Pagamento e Total */}
-                              <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 shrink-0 space-y-3">
-                                  <div className="grid grid-cols-3 gap-2">
-                                      <div className="col-span-1"><label className="text-[9px] font-bold text-gray-400 uppercase">Taxa</label><input type="number" className="w-full border p-1.5 rounded-lg text-xs" value={deliveryForm.deliveryFee} onChange={e => setDeliveryForm({...deliveryForm, deliveryFee: parseFloat(e.target.value)})} /></div>
-                                      <div className="col-span-1">
-                                          <label className="text-[9px] font-bold text-gray-400 uppercase">Pagamento</label>
-                                          <select 
-                                              className="w-full border p-1.5 rounded-lg text-xs bg-white text-slate-800 font-medium" 
-                                              value={deliveryForm.paymentMethod} 
-                                              onChange={e => setDeliveryForm({...deliveryForm, paymentMethod: e.target.value})}
-                                          >
-                                              <option value="">Selecione...</option>
-                                              {configuredPaymentMethods.map(pm => (
-                                                  <option key={pm.id} value={pm.name}>{pm.name}</option>
-                                              ))}
-                                              {configuredPaymentMethods.length === 0 && (
-                                                  <>
-                                                      <option value="CASH">Dinheiro</option>
-                                                      <option value="CARD_MACHINE">Maquininha</option>
-                                                      <option value="ONLINE">Online</option>
-                                                  </>
-                                              )}
-                                          </select>
-                                      </div>
-                                      {/* Troco aparece apenas se o método selecionado for tipo 'CASH' */}
-                                      {isCashPaymentSelected() && (
-                                          <div className="col-span-1">
-                                              <label className="text-[9px] font-bold text-gray-400 uppercase">Troco</label>
-                                              <input type="number" className="w-full border p-1.5 rounded-lg text-xs" placeholder="0.00" value={deliveryForm.changeFor || ''} onChange={e => setDeliveryForm({...deliveryForm, changeFor: parseFloat(e.target.value)})} />
-                                          </div>
-                                      )}
-                                  </div>
-                                  
-                                  <div className="pt-2 border-t flex items-center justify-between">
-                                      <span className="text-2xl font-black text-slate-800">R$ {calculateDeliveryTotal().toFixed(2)}</span>
-                                      <div className="flex gap-2">
-                                          <Button variant="secondary" onClick={handlePrintCurrentDelivery} disabled={deliveryCart.length === 0} className="w-10 h-10 p-0 flex items-center justify-center rounded-xl bg-gray-100" title="Imprimir"><Printer size={18}/></Button>
-                                          <Button onClick={handleDeliverySubmit} disabled={processingSale} className="h-10 px-6 rounded-xl bg-orange-600 hover:bg-orange-500 text-white shadow-lg text-xs font-black uppercase tracking-wide">ENVIAR</Button>
-                                      </div>
-                                  </div>
-                              </div>
-                          </div>
-
-                          {/* Coluna 3: Monitor de Entregas */}
-                          <div className="xl:w-[30%] bg-slate-100 p-4 rounded-2xl border border-slate-200 overflow-hidden flex flex-col h-full">
-                              <h3 className="font-black text-slate-700 uppercase tracking-tight mb-3 ml-1 text-xs">Em Andamento ({activeDeliveryOrders.length})</h3>
-                              <div className="flex-1 overflow-y-auto space-y-2 custom-scrollbar pr-1">
-                                  {activeDeliveryOrders.map(order => {
-                                      const total = order.items.reduce((acc, i) => acc + (i.productPrice * i.quantity), 0);
-                                      const kitchenItems = order.items.filter(i => i.productType === 'KITCHEN');
-                                      const isReady = kitchenItems.length === 0 || kitchenItems.every(i => i.status === OrderStatus.READY);
-
-                                      return (
-                                          <div key={order.id} className={`bg-white p-3 rounded-xl shadow-sm border-l-4 transition-all ${isReady ? 'border-l-emerald-500' : 'border-l-orange-400'}`}>
-                                              <div className="flex justify-between items-start mb-1">
-                                                  <div className="flex-1 min-w-0">
-                                                      <h4 className="font-bold text-slate-800 text-sm truncate">{order.deliveryInfo?.customerName}</h4>
-                                                      <div className="text-[10px] text-gray-500 font-bold uppercase flex items-center gap-1 mt-0.5">
-                                                          <span className="bg-gray-100 px-1.5 py-0.5 rounded">{order.deliveryInfo?.platform}</span>
-                                                          <span>#{order.id.slice(0,4)}</span>
-                                                      </div>
-                                                  </div>
-                                                  <div className="text-right">
-                                                      <div className="font-black text-slate-800 text-sm">R$ {total.toFixed(2)}</div>
-                                                  </div>
-                                              </div>
-                                              <div className="text-[10px] text-gray-500 mb-2 truncate flex items-center gap-1"><MapPin size={10}/> {order.deliveryInfo?.address || 'Retirada'}</div>
-                                              {isReady ? (
-                                                  <button onClick={() => handleDispatchDelivery(order.id)} className="w-full py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-bold text-[10px] uppercase shadow-sm flex items-center justify-center gap-1">
-                                                      <CheckCircle size={12}/> Despachar
-                                                  </button>
-                                              ) : (
-                                                  <div className="w-full py-1.5 bg-orange-100 text-orange-700 rounded-lg font-bold text-[10px] uppercase text-center border border-orange-200">
-                                                      Preparando
-                                                  </div>
-                                              )}
-                                          </div>
-                                      );
-                                  })}
-                                  {activeDeliveryOrders.length === 0 && <div className="text-center py-10 text-gray-400 text-xs font-bold uppercase">Sem pedidos ativos</div>}
-                              </div>
-                          </div>
-                      </div>
-                  )}
-
-                  {/* Restante das Views (PDV, Active, History, Manage) mantidas idênticas, apenas encapsuladas no switch do activeTab */}
                   {activeTab === 'ACTIVE' && (
                       <div className="flex flex-col lg:flex-row gap-6 h-full overflow-hidden">
                           <div className="lg:w-1/3 flex flex-col h-full bg-white rounded-[2rem] shadow-xl border border-gray-100 overflow-hidden">
@@ -700,67 +222,35 @@ export const CashierDashboard: React.FC = () => {
                                           </div>
                                       </div>
                                       
-                                      {/* LISTA DE PEDIDOS */}
                                       <div className="flex-1 overflow-y-auto p-6 space-y-4">
-                                          {/* Modo Split: Botão de Voltar */}
                                           {splitMode && (
                                               <div className="flex items-center justify-between bg-orange-50 p-3 rounded-xl mb-4 border border-orange-100">
-                                                  <div className="flex items-center gap-2 text-orange-700 font-bold text-sm">
-                                                      <Split size={16}/> Selecione os pedidos para pagar
-                                                  </div>
+                                                  <div className="flex items-center gap-2 text-orange-700 font-bold text-sm"><Split size={16}/> Selecione os pedidos para pagar</div>
                                                   <button onClick={() => { setSplitMode(false); setSelectedOrderIds([]); }} className="text-xs font-bold text-gray-500 hover:text-gray-800">Cancelar Seleção</button>
                                               </div>
                                           )}
-
-                                          {/* Renderiza pedidos agrupados para facilitar seleção */}
                                           {tableOrders.map(order => {
                                               const orderTotal = order.items.reduce((s, i) => s + (i.productPrice * i.quantity), 0);
                                               const isSelected = selectedOrderIds.includes(order.id);
                                               
                                               return (
-                                                <div 
-                                                    key={order.id} 
-                                                    onClick={() => splitMode && toggleOrderSelection(order.id)}
-                                                    className={`border rounded-2xl overflow-hidden transition-all ${splitMode ? 'cursor-pointer hover:border-blue-400' : ''} ${isSelected ? 'ring-2 ring-blue-500 border-blue-500 bg-blue-50' : 'border-gray-100'}`}
-                                                >
+                                                <div key={order.id} onClick={() => splitMode && toggleOrderSelection(order.id)} className={`border rounded-2xl overflow-hidden transition-all ${splitMode ? 'cursor-pointer hover:border-blue-400' : ''} ${isSelected ? 'ring-2 ring-blue-500 border-blue-500 bg-blue-50' : 'border-gray-100'}`}>
                                                     <div className="bg-gray-50 p-3 flex justify-between items-center border-b border-gray-100">
                                                         <div className="flex items-center gap-2">
-                                                            {splitMode && (
-                                                                <div className={`w-5 h-5 rounded border-2 flex items-center justify-center bg-white ${isSelected ? 'border-blue-500 bg-blue-500 text-white' : 'border-gray-300'}`}>
-                                                                    {isSelected && <CheckSquare size={14}/>}
-                                                                </div>
-                                                            )}
+                                                            {splitMode && (<div className={`w-5 h-5 rounded border-2 flex items-center justify-center bg-white ${isSelected ? 'border-blue-500 bg-blue-500 text-white' : 'border-gray-300'}`}>{isSelected && <CheckSquare size={14}/>}</div>)}
                                                             <span className="text-xs font-black text-gray-500 uppercase tracking-widest">Pedido #{order.id.slice(0,4)}</span>
                                                             <span className="text-[10px] text-gray-400 ml-2">{new Date(order.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
                                                         </div>
                                                         <span className="font-bold text-slate-700">R$ {orderTotal.toFixed(2)}</span>
                                                     </div>
-                                                    <div className="p-3">
-                                                        <table className="w-full text-left">
-                                                            <tbody className="divide-y divide-gray-50">
-                                                                {order.items.map((item, idx) => (
-                                                                    <tr key={idx} className="">
-                                                                        <td className="py-2 px-2 font-black text-slate-400 text-sm">{item.quantity}x</td>
-                                                                        <td className="py-2 font-bold text-slate-700 text-sm">{item.productName}</td>
-                                                                        <td className="py-2 text-right text-slate-400 text-sm">R$ {(item.productPrice * item.quantity).toFixed(2)}</td>
-                                                                    </tr>
-                                                                ))}
-                                                            </tbody>
-                                                        </table>
-                                                    </div>
+                                                    <div className="p-3"><table className="w-full text-left"><tbody className="divide-y divide-gray-50">{order.items.map((item, idx) => (<tr key={idx} className=""><td className="py-2 px-2 font-black text-slate-400 text-sm">{item.quantity}x</td><td className="py-2 font-bold text-slate-700 text-sm">{item.productName}</td><td className="py-2 text-right text-slate-400 text-sm">R$ {(item.productPrice * item.quantity).toFixed(2)}</td></tr>))}</tbody></table></div>
                                                 </div>
                                               );
                                           })}
                                       </div>
 
                                       <div className="p-6 bg-gray-50 border-t grid grid-cols-2 lg:grid-cols-4 gap-3 shrink-0">
-                                          {/* Se não estiver em modo split e houver mais de 1 pedido, mostra botão de dividir */}
-                                          {!splitMode && tableOrders.length > 1 && (
-                                              <button onClick={() => setSplitMode(true)} className="col-span-2 lg:col-span-4 flex items-center justify-center gap-2 bg-white border-2 border-orange-200 text-orange-600 hover:bg-orange-50 p-3 rounded-2xl font-black uppercase text-xs tracking-widest mb-2 transition-all">
-                                                  <Split size={16}/> Dividir Conta / Selecionar Pedidos
-                                              </button>
-                                          )}
-
+                                          {!splitMode && tableOrders.length > 1 && (<button onClick={() => setSplitMode(true)} className="col-span-2 lg:col-span-4 flex items-center justify-center gap-2 bg-white border-2 border-orange-200 text-orange-600 hover:bg-orange-50 p-3 rounded-2xl font-black uppercase text-xs tracking-widest mb-2 transition-all"><Split size={16}/> Dividir Conta / Selecionar Pedidos</button>)}
                                           <button onClick={() => handlePayment('CASH')} className="flex flex-col items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white p-4 rounded-2xl font-black shadow-lg shadow-emerald-600/20 transition-all hover:scale-[1.02] active:scale-95"><Banknote size={20}/><span className="text-[10px] uppercase tracking-widest">Dinheiro</span></button>
                                           <button onClick={() => handlePayment('PIX')} className="flex flex-col items-center gap-2 bg-slate-800 hover:bg-slate-700 text-white p-4 rounded-2xl font-black shadow-lg shadow-slate-900/20 transition-all hover:scale-[1.02] active:scale-95"><Zap size={20}/><span className="text-[10px] uppercase tracking-widest">Pix</span></button>
                                           <button onClick={() => handlePayment('DEBIT')} className="flex flex-col items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white p-4 rounded-2xl font-black shadow-lg shadow-blue-600/20 transition-all hover:scale-[1.02] active:scale-95"><CreditCard size={20}/><span className="text-[10px] uppercase tracking-widest">Débito</span></button>
@@ -774,129 +264,6 @@ export const CashierDashboard: React.FC = () => {
                       </div>
                   )}
 
-                  {activeTab === 'PDV' && (
-                      <div className="flex flex-col lg:flex-row gap-4 h-full overflow-hidden">
-                          {/* Coluna da Esquerda: Busca e Grid de Produtos */}
-                          <div className="lg:w-2/3 flex flex-col gap-4 h-full overflow-hidden animate-fade-in">
-                              <div className="relative shrink-0 group">
-                                  <Search className="absolute left-6 top-5 text-gray-400 group-focus-within:text-blue-600 transition-colors" size={22}/>
-                                  <input 
-                                    className="w-full pl-14 pr-6 py-4 rounded-2xl border-2 border-transparent bg-white shadow-sm focus:shadow-lg focus:border-blue-500 outline-none transition-all font-bold text-lg" 
-                                    placeholder="Buscar produto..." 
-                                    value={posSearch} 
-                                    onChange={e => setPosSearch(e.target.value)} 
-                                    autoFocus 
-                                  />
-                              </div>
-                              <div className="overflow-y-auto flex-1 content-start p-1 custom-scrollbar">
-                                  {/* GRID DE PRODUTOS */}
-                                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 pb-20">
-                                      {invState.inventory
-                                        .filter(item => 
-                                            item.type !== 'INGREDIENT' && 
-                                            !item.isExtra && 
-                                            item.name.toLowerCase().includes(posSearch.toLowerCase())
-                                        )
-                                        .map(item => (
-                                          <button 
-                                            key={item.id} 
-                                            onClick={() => openItemModal(item)} 
-                                            className="bg-white p-4 rounded-3xl shadow-sm border border-transparent hover:border-blue-300 hover:shadow-lg transition-all active:scale-95 flex flex-col justify-between h-36 group relative overflow-hidden"
-                                          >
-                                              <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-100 transition-opacity">
-                                                  <Plus size={20} className="text-blue-600"/>
-                                              </div>
-                                              <div className="text-left w-full">
-                                                  <div className="font-black text-slate-800 text-sm leading-tight line-clamp-2">{item.name}</div>
-                                                  <span className={`text-[9px] font-black uppercase tracking-widest mt-1 inline-block px-1.5 py-0.5 rounded ${item.type === 'COMPOSITE' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
-                                                      {item.type === 'COMPOSITE' ? 'Prato' : 'Revenda'}
-                                                  </span>
-                                              </div>
-                                              <div className="flex justify-between items-end w-full">
-                                                  <div className="font-black text-lg text-slate-900">R$ {item.salePrice.toFixed(2)}</div>
-                                                  {item.type !== 'COMPOSITE' && item.quantity <= item.minQuantity && (
-                                                      <div className="text-[10px] font-bold text-red-500 bg-red-50 px-2 py-1 rounded flex items-center gap-1">
-                                                          <AlertTriangle size={10} /> {item.quantity}
-                                                      </div>
-                                                  )}
-                                              </div>
-                                          </button>
-                                      ))}
-                                  </div>
-                              </div>
-                          </div>
-
-                          {/* Coluna da Direita: Carrinho e Checkout */}
-                          <div className="lg:w-1/3 bg-white rounded-[2rem] shadow-2xl border border-gray-200 flex flex-col h-full overflow-hidden animate-fade-in relative z-20">
-                              <div className="p-5 bg-slate-900 text-white shrink-0 flex items-center justify-between">
-                                  <div className="flex items-center gap-3">
-                                      <div className="bg-slate-800 p-2 rounded-xl"><ShoppingCart size={20} className="text-blue-400"/></div>
-                                      <div>
-                                          <h3 className="font-black text-lg uppercase tracking-tighter leading-none">Carrinho</h3>
-                                          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{posCart.length} Itens</p>
-                                      </div>
-                                  </div>
-                                  <button onClick={() => setPosCart([])} className="text-xs font-bold text-red-400 hover:text-white transition-colors bg-slate-800 px-3 py-1.5 rounded-lg">Limpar</button>
-                              </div>
-
-                              <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar bg-gray-50">
-                                  {posCart.map((cartItem, idx) => (
-                                      <div key={idx} className="bg-white p-3 rounded-2xl relative group border border-gray-100 shadow-sm flex gap-3 items-center">
-                                          <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center font-black text-slate-500 text-sm">
-                                              {cartItem.quantity}x
-                                          </div>
-                                          <div className="flex-1 min-w-0">
-                                              <div className="text-sm font-bold text-slate-800 uppercase truncate leading-tight">{cartItem.item.name}</div>
-                                              <div className="text-xs font-black text-blue-600">R$ {((cartItem.item.salePrice + cartItem.extras.reduce((s,e)=>s+e.salePrice,0)) * cartItem.quantity).toFixed(2)}</div>
-                                              {cartItem.extras.length > 0 && (
-                                                  <div className="flex flex-wrap gap-1 mt-1">
-                                                      {cartItem.extras.map(e => <span key={e.id} className="text-[9px] bg-orange-50 text-orange-700 px-1.5 rounded border border-orange-100 font-bold">+ {e.name}</span>)}
-                                                  </div>
-                                              )}
-                                          </div>
-                                          <button onClick={() => setPosCart(posCart.filter((_, i) => i !== idx))} className="text-red-300 hover:text-red-500 p-2 hover:bg-red-50 rounded-xl transition-all"><Trash2 size={16}/></button>
-                                      </div>
-                                  ))}
-                                  {posCart.length === 0 && (
-                                      <div className="h-full flex flex-col items-center justify-center text-gray-300 opacity-60 space-y-2">
-                                          <Package size={48} strokeWidth={1.5} />
-                                          <p className="font-bold uppercase text-xs">Caixa Livre</p>
-                                      </div>
-                                  )}
-                              </div>
-
-                              <div className="p-5 bg-white border-t border-gray-100 shrink-0 shadow-[0_-5px_20px_rgba(0,0,0,0.05)] z-20">
-                                  <div className="flex justify-between items-end mb-4">
-                                      <span className="text-xs font-black text-gray-400 uppercase tracking-widest mb-1">Total a Pagar</span>
-                                      <span className="text-4xl font-black text-slate-800 tracking-tighter leading-none">
-                                          R$ {posCart.reduce((acc, cartItem) => {
-                                              const itemTotal = cartItem.item.salePrice + cartItem.extras.reduce((sum, ex) => sum + ex.salePrice, 0);
-                                              return acc + (itemTotal * cartItem.quantity);
-                                          }, 0).toFixed(2)}
-                                      </span>
-                                  </div>
-                                  <input 
-                                      className="w-full bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-sm font-bold mb-4 outline-none focus:border-blue-500 focus:bg-white transition-all"
-                                      placeholder="Nome do Cliente (Opcional)"
-                                      value={customerName}
-                                      onChange={e => setCustomerName(e.target.value)}
-                                  />
-                                  <div className="grid grid-cols-2 gap-2">
-                                      <button onClick={() => handlePosSale('CASH')} className="py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl font-black text-sm uppercase shadow-lg shadow-emerald-600/20 active:scale-95 transition-all flex flex-col items-center justify-center gap-1">
-                                          <Banknote size={20} /> Dinheiro
-                                      </button>
-                                      <button onClick={() => handlePosSale('PIX')} className="py-4 bg-slate-800 hover:bg-slate-700 text-white rounded-2xl font-black text-sm uppercase shadow-lg shadow-slate-900/20 active:scale-95 transition-all flex flex-col items-center justify-center gap-1">
-                                          <Zap size={20} /> PIX
-                                      </button>
-                                      <button onClick={() => handlePosSale('DEBIT')} className="py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-black text-[10px] uppercase shadow-md shadow-blue-600/20 active:scale-95 transition-all">Débito</button>
-                                      <button onClick={() => handlePosSale('CREDIT')} className="py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl font-black text-[10px] uppercase shadow-md shadow-indigo-600/20 active:scale-95 transition-all">Crédito</button>
-                                  </div>
-                              </div>
-                          </div>
-                      </div>
-                  )}
-
-                  {/* VIEW: EXTRATO */}
                   {activeTab === 'HISTORY' && (
                       <div className="bg-white rounded-[2rem] shadow-xl border border-gray-100 overflow-hidden h-full flex flex-col animate-fade-in">
                           <div className="p-6 border-b bg-gray-50 flex justify-between items-center shrink-0"><h3 className="font-black text-slate-800 uppercase tracking-tighter text-xl">Extrato Diário</h3><Button size="sm" variant="outline" onClick={refreshTransactions} className="rounded-xl flex items-center gap-2"><RefreshCcw size={14} className={isRefreshing ? 'animate-spin' : ''}/> Sincronizar</Button></div>
@@ -915,9 +282,7 @@ export const CashierDashboard: React.FC = () => {
                                                       {t.cashierName && (
                                                           <div className="relative group">
                                                               <Eye size={20} className="text-gray-400 cursor-help" />
-                                                              <div className="absolute right-0 bottom-full mb-2 w-32 bg-slate-800 text-white text-[10px] font-bold p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 text-center">
-                                                                  Op: {t.cashierName}
-                                                              </div>
+                                                              <div className="absolute right-0 bottom-full mb-2 w-32 bg-slate-800 text-white text-[10px] font-bold p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 text-center">Op: {t.cashierName}</div>
                                                           </div>
                                                       )}
                                                       {t.status !== 'CANCELLED' && <button onClick={() => { setTransactionToVoid(t.id); setVoidModalOpen(true); }} className="text-red-300 hover:text-red-500 transition-all"><XCircle size={22}/></button>} 
@@ -932,7 +297,6 @@ export const CashierDashboard: React.FC = () => {
                       </div>
                   )}
 
-                  {/* VIEW: GESTÃO DE TURNO */}
                   {activeTab === 'MANAGE' && (
                       <div className="max-w-4xl mx-auto space-y-8 overflow-y-auto h-full pb-10 custom-scrollbar animate-fade-in">
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -969,91 +333,15 @@ export const CashierDashboard: React.FC = () => {
                   </div>
                   <div>
                       <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2 px-1">Valor Recebido</label>
-                      <input 
-                          type="number" step="0.01" autoFocus
-                          className="w-full border-2 p-5 rounded-2xl focus:border-emerald-500 outline-none text-center font-black text-3xl shadow-inner bg-emerald-50/30 text-emerald-700" 
-                          placeholder="0.00" 
-                          value={cashReceived} 
-                          onChange={e => setCashReceived(e.target.value)} 
-                      />
+                      <input type="number" step="0.01" autoFocus className="w-full border-2 p-5 rounded-2xl focus:border-emerald-500 outline-none text-center font-black text-3xl shadow-inner bg-emerald-50/30 text-emerald-700" placeholder="0.00" value={cashReceived} onChange={e => setCashReceived(e.target.value)} />
                   </div>
-                  
                   {parseFloat(cashReceived) >= (pendingCashAction?.total || 0) && (
                       <div className="bg-emerald-100 p-4 rounded-2xl text-center border border-emerald-200">
                           <p className="text-sm font-bold text-emerald-700 uppercase">Troco a Devolver</p>
                           <p className="text-3xl font-black text-emerald-800">R$ {(parseFloat(cashReceived) - (pendingCashAction?.total || 0)).toFixed(2)}</p>
                       </div>
                   )}
-
-                  <Button 
-                      onClick={confirmCashPayment} 
-                      disabled={!cashReceived || parseFloat(cashReceived) < (pendingCashAction?.total || 0)}
-                      className="w-full py-5 text-xl font-black rounded-2xl shadow-xl"
-                  >
-                      CONFIRMAR RECEBIMENTO
-                  </Button>
-              </div>
-          </Modal>
-
-          {/* NOVO MODAL: Adicionar Item com Adicionais */}
-          <Modal isOpen={itemModalOpen} onClose={() => setItemModalOpen(false)} title={selectedItemForCart?.name || "Adicionar Item"} variant="dialog" maxWidth="sm">
-              <div className="space-y-6">
-                  {/* Quantidade */}
-                  <div className="flex items-center justify-between bg-gray-50 p-3 rounded-2xl">
-                      <button onClick={() => setItemQty(Math.max(1, itemQty - 1))} className="p-3 bg-white shadow-sm rounded-xl hover:bg-red-50 text-red-500 transition-colors"><Minus size={20}/></button>
-                      <span className="text-3xl font-black text-slate-800">{itemQty}</span>
-                      <button onClick={() => setItemQty(itemQty + 1)} className="p-3 bg-white shadow-sm rounded-xl hover:bg-blue-50 text-blue-500 transition-colors"><Plus size={20}/></button>
-                  </div>
-
-                  {/* Lista de Adicionais */}
-                  <div className="space-y-2">
-                      <label className="text-xs font-black text-gray-400 uppercase tracking-widest px-1">Adicionais Disponíveis</label>
-                      <div className="max-h-48 overflow-y-auto space-y-2 custom-scrollbar pr-1">
-                          {invState.inventory
-                            .filter(i => 
-                                i.isExtra && 
-                                selectedItemForCart?.category && 
-                                (i.targetCategories || []).includes(selectedItemForCart.category || '')
-                            )
-                            .map(extra => {
-                              const isSelected = selectedExtras.some(e => e.id === extra.id);
-                              return (
-                                  <div key={extra.id} onClick={() => toggleExtra(extra)} className={`flex items-center justify-between p-3 rounded-xl border-2 cursor-pointer transition-all ${isSelected ? 'border-blue-500 bg-blue-50' : 'border-gray-100 hover:bg-gray-50'}`}>
-                                      <div className="flex items-center gap-3">
-                                          {isSelected ? <CheckSquare size={20} className="text-blue-600"/> : <Square size={20} className="text-gray-300"/>}
-                                          <span className="text-sm font-bold text-slate-700">{extra.name}</span>
-                                      </div>
-                                      <span className="text-xs font-bold text-slate-500">+ R$ {extra.salePrice.toFixed(2)}</span>
-                                  </div>
-                              );
-                          })}
-                          {invState.inventory.filter(i => i.isExtra && selectedItemForCart?.category && (i.targetCategories || []).includes(selectedItemForCart.category || '')).length === 0 && (
-                              <p className="text-xs text-center text-gray-400 py-2">Nenhum adicional disponível para esta categoria.</p>
-                          )}
-                      </div>
-                  </div>
-
-                  {/* Observações */}
-                  <div className="space-y-1">
-                      <label className="text-xs font-black text-gray-400 uppercase tracking-widest px-1">Observações</label>
-                      <textarea 
-                          className="w-full border-2 p-3 rounded-xl text-sm focus:border-blue-500 outline-none resize-none" 
-                          rows={2} 
-                          placeholder="Ex: Sem cebola, bem passado..."
-                          value={itemNotes}
-                          onChange={e => setItemNotes(e.target.value)}
-                      />
-                  </div>
-
-                  {/* Total Estimado no Modal */}
-                  <div className="pt-4 border-t flex justify-between items-center">
-                      <div className="text-xs font-bold text-gray-500 uppercase">Subtotal</div>
-                      <div className="text-2xl font-black text-blue-600">
-                          R$ {((selectedItemForCart ? selectedItemForCart.salePrice + selectedExtras.reduce((acc, ex) => acc + ex.salePrice, 0) : 0) * itemQty).toFixed(2)}
-                      </div>
-                  </div>
-
-                  <Button onClick={handleAddToCart} className="w-full py-4 text-lg font-black rounded-2xl shadow-xl">Adicionar ao Carrinho</Button>
+                  <Button onClick={() => { setCashPaymentModalOpen(false); if (pendingCashAction) finalizeTablePayment('CASH'); }} disabled={!cashReceived || parseFloat(cashReceived) < (pendingCashAction?.total || 0)} className="w-full py-5 text-xl font-black rounded-2xl shadow-xl">CONFIRMAR RECEBIMENTO</Button>
               </div>
           </Modal>
       </div>
