@@ -5,7 +5,7 @@ import { Routes, Route, Navigate, Link, useLocation, useNavigate } from 'react-r
 import { useRestaurant } from '../context/RestaurantContext';
 import { useAuth } from '../context/AuthProvider';
 import { 
-    Package, ShoppingCart, Truck, LogOut, Grid, ChefHat
+    Package, ShoppingCart, Truck, LogOut, Grid, ChefHat, ClipboardList, Archive
 } from 'lucide-react';
 
 // Importando Sub-páginas de Estoque
@@ -22,9 +22,9 @@ export const InventoryDashboard: React.FC = () => {
   // Definição das Abas do Módulo Estoque
   const tabs = [
     { path: '/inventory', label: 'Gestão de Itens', icon: Package, exact: true, featureKey: 'inventory_manage' },
+    { path: '/inventory/suppliers', label: 'Fornecedores', icon: Truck, featureKey: 'inventory_suppliers' },
     { path: '/inventory/purchases', label: 'Sugestão de Compras', icon: ShoppingCart, featureKey: 'inventory_purchases' },
-    // Fornecedores agora é gerido dentro de Gestão de Itens via modal, mas poderia ter aba própria
-    // { path: '/inventory/suppliers', label: 'Fornecedores', icon: Truck, featureKey: 'inventory_suppliers' },
+    { path: '/inventory/logs', label: 'Histórico & Logs', icon: ClipboardList, featureKey: 'inventory_manage' },
   ];
 
   // Filtra abas
@@ -57,7 +57,7 @@ export const InventoryDashboard: React.FC = () => {
                             {restState.theme.logoUrl ? (
                                 <img src={restState.theme.logoUrl} className="h-8 w-8 object-contain" />
                             ) : (
-                                <ChefHat size={24} />
+                                <Archive size={24} />
                             )}
                         </div>
                         <div>
@@ -120,8 +120,10 @@ export const InventoryDashboard: React.FC = () => {
         <main className="flex-1 overflow-y-auto bg-gray-50 relative p-4 md:p-8">
             <div className="max-w-[1920px] mx-auto h-full">
                 <Routes>
-                    <Route path="/" element={<AdminInventory />} />
+                    <Route path="/" element={<AdminInventory view="ITEMS" />} />
+                    <Route path="suppliers" element={<AdminInventory view="SUPPLIERS" />} />
                     <Route path="purchases" element={<AdminPurchaseSuggestions />} />
+                    <Route path="logs" element={<AdminInventory view="LOGS" />} />
 
                     {/* Fallback */}
                     <Route path="*" element={<Navigate to="" replace />} />
