@@ -90,7 +90,9 @@ const PricingCard: React.FC<{ plan: Plan, onClick: () => void }> = ({ plan, onCl
     const dynamicFeatures = [];
     if (plan.limits?.allowTableMgmt) dynamicFeatures.push("Gestão de Mesas & QR Code");
     if (plan.limits?.allowKds) dynamicFeatures.push("KDS (Tela de Cozinha)");
-    if (plan.limits?.allowCashier) dynamicFeatures.push("Frente de Caixa (PDV)");
+    if (plan.limits?.allowPos) dynamicFeatures.push("Frente de Caixa (PDV)");
+    if (plan.limits?.allowDelivery) dynamicFeatures.push("Módulo Delivery");
+    if (plan.limits?.allowCashControl) dynamicFeatures.push("Controle de Caixa");
     if (plan.limits?.allowInventory) dynamicFeatures.push("Controle de Estoque & Fichas");
     if (plan.limits?.allowPurchases) dynamicFeatures.push("Gestão de Compras");
     if (plan.limits?.allowExpenses) dynamicFeatures.push("Financeiro (DRE)");
@@ -146,7 +148,7 @@ export const LandingPage: React.FC = () => {
   };
 
   const displayPlans = state.plans.length > 0 ? state.plans : [
-      { id: '1', key: 'FREE', name: 'Plano Start', price: 'Grátis', features: ['Até 10 Mesas', 'Cardápio Digital'], is_popular: false, button_text: 'Começar Agora', period: 'sempre', limits: { maxTables:10, maxProducts:30, maxStaff:2, allowKds:false, allowCashier:false } }
+      { id: '1', key: 'FREE', name: 'Plano Start', price: 'Grátis', features: ['Até 10 Mesas', 'Cardápio Digital'], is_popular: false, button_text: 'Começar Agora', period: 'sempre', limits: { maxTables:10, maxProducts:30, maxStaff:2, allowKds:false, allowPos:false, allowDelivery:false, allowCashControl:false } }
   ];
 
   return (

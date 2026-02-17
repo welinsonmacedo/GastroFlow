@@ -76,7 +76,11 @@ export interface PlanLimits {
     maxProducts: number;
     maxStaff: number;
     allowKds: boolean;
-    allowCashier: boolean;
+    // Substituindo allowCashier por flags granulares
+    allowPos: boolean;       // Balcão
+    allowDelivery: boolean;  // Modulo Delivery
+    allowCashControl: boolean; // Abrir/Fechar Caixa, Sangria
+    
     allowReports?: boolean;
     allowInventory?: boolean;
     allowPurchases?: boolean;

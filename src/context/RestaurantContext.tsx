@@ -30,7 +30,22 @@ const initialState: RestaurantState = {
   tenantId: null,
   isValidTenant: false,
   isInactiveTenant: false,
-  planLimits: { maxTables: -1, maxProducts: -1, maxStaff: -1, allowKds: true, allowCashier: true, allowReports: true, allowInventory: true, allowPurchases: true, allowExpenses: true, allowStaff: true, allowTableMgmt: true, allowCustomization: true },
+  planLimits: { 
+      maxTables: -1, 
+      maxProducts: -1, 
+      maxStaff: -1, 
+      allowKds: true, 
+      allowPos: true, // Novo
+      allowDelivery: true, // Novo
+      allowCashControl: true, // Novo
+      allowReports: true, 
+      allowInventory: true, 
+      allowPurchases: true, 
+      allowExpenses: true, 
+      allowStaff: true, 
+      allowTableMgmt: true, 
+      allowCustomization: true 
+  },
   theme: { 
       primaryColor: '#22c55e', 
       backgroundColor: '#fff', 

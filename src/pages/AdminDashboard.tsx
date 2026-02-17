@@ -24,7 +24,7 @@ import { AdminPurchaseSuggestions } from './admin/AdminPurchaseSuggestions';
 import { AdminAccounting } from './admin/AdminAccounting';
 import { AccountingReport } from './admin/AccountingReport'; 
 import { AdminFinancialTips } from './admin/AdminFinancialTips';
-import { AdminBusinessIntelligence } from './admin/AdminBusinessIntelligence'; // Nova Importação
+import { AdminBusinessIntelligence } from './admin/AdminBusinessIntelligence'; 
 
 // --- COMPONENTE DE SIDEBAR (Exclusivo do Admin) ---
 const AdminSidebar = ({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: (v: boolean) => void }) => {
@@ -35,7 +35,6 @@ const AdminSidebar = ({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: (v: b
     const { showConfirm } = useUI();
     const { planLimits } = restState;
     
-    // Estado único para controlar qual seção está aberta (Accordion)
     const [openSection, setOpenSection] = useState<'APPS' | 'QR' | 'MANAGEMENT' | null>('APPS');
 
     if (!authState.currentUser) return null;
@@ -50,7 +49,7 @@ const AdminSidebar = ({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: (v: b
     const appLinks = [
         { to: "/waiter", icon: <Coffee size={20}/>, label: "Garçom", requires: null, roles: [Role.WAITER, Role.ADMIN] },
         { to: "/kitchen", icon: <Monitor size={20}/>, label: "Cozinha", requires: 'allowKds', roles: [Role.KITCHEN, Role.ADMIN] },
-        { to: "/cashier", icon: <DollarSign size={20}/>, label: "Caixa", requires: 'allowCashier', roles: [Role.CASHIER, Role.ADMIN] },
+        { to: "/cashier", icon: <DollarSign size={20}/>, label: "Caixa", requires: 'ANY_CASHIER', roles: [Role.CASHIER, Role.ADMIN] },
     ];
 
     // 2. Automação QR (Cardápio e Experiência do Cliente)
@@ -66,14 +65,22 @@ const AdminSidebar = ({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: (v: b
         { to: "/admin/inventory", icon: <Package size={20}/>, label: "Estoque", requires: 'allowInventory' },
         { to: "/admin/purchases", icon: <ShoppingCart size={20}/>, label: "Sugestão Compras", requires: 'allowInventory' }, 
         { to: "/admin/finance", icon: <DollarSign size={20}/>, label: "Financeiro", requires: 'allowExpenses' }, 
-        { to: "/admin/bi", icon: <TrendingUp size={20}/>, label: "Inteligência", requires: 'allowReports' }, // Novo Link
+        { to: "/admin/bi", icon: <TrendingUp size={20}/>, label: "Inteligência", requires: 'allowReports' }, 
         { to: "/admin/settings", icon: <Settings size={20}/>, label: "Configurações", requires: null },
     ];
 
     const filterLinks = (links: any[]) => links.filter(link => {
         // Checa limites do plano
         if (link.requires === 'allowKds' && !planLimits.allowKds) return false;
-        if (link.requires === 'allowCashier' && !planLimits.allowCashier) return false;
+        
+        // Verifica permissões de caixa combinadas
+        if (link.requires === 'ANY_CASHIER') {
+            if (!planLimits.allowPos && !planLimits.allowDelivery && !planLimits.allowCashControl) return false;
+        } else if (link.requires === 'allowCashier') {
+             // Fallback para código antigo se houver
+             if (!planLimits.allowPos && !planLimits.allowDelivery && !planLimits.allowCashControl) return false;
+        }
+
         if (link.requires === 'allowInventory' && !planLimits.allowInventory) return false;
         if (link.requires === 'allowExpenses' && (!planLimits.allowExpenses && !planLimits.allowPurchases)) return false;
         if (link.requires === 'allowTableMgmt' && !planLimits.allowTableMgmt) return false;
@@ -235,7 +242,7 @@ export const AdminDashboard: React.FC = () => {
                             <Route path="bi" element={<AdminBusinessIntelligence />} />
                         )}
                         
-                        {/* Rotas Auxiliares (mantidas para compatibilidade, mas acessadas via Financeiro) */}
+                        {/* Rotas Auxiliares */}
                         {planLimits.allowReports && (
                             <>
                                 <Route path="accounting" element={<AdminAccounting />} />

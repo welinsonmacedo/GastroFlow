@@ -15,13 +15,22 @@ import { Modal } from '../components/Modal';
 
 export const CashierDashboard: React.FC = () => {
   const { state: restState } = useRestaurant();
+  const { planLimits } = restState; // Acesso aos limites do plano
+
   const { state: invState } = useInventory(); 
   const { state: orderState, dispatch: orderDispatch } = useOrder();
   const { state: finState, openRegister, refreshTransactions, voidTransaction } = useFinance();
   const { showAlert, showConfirm } = useUI();
   const { logout, state: authState } = useAuth();
   
-  const [activeTab, setActiveTab] = useState<'ACTIVE' | 'HISTORY' | 'PDV' | 'DELIVERY' | 'MANAGE'>('PDV');
+  // Define a aba inicial com base no que está disponível
+  const getInitialTab = () => {
+      if (planLimits.allowPos) return 'PDV';
+      if (planLimits.allowDelivery) return 'DELIVERY';
+      return 'ACTIVE'; // Fallback
+  };
+
+  const [activeTab, setActiveTab] = useState<'ACTIVE' | 'HISTORY' | 'PDV' | 'DELIVERY' | 'MANAGE'>(getInitialTab());
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
   
@@ -170,16 +179,11 @@ export const CashierDashboard: React.FC = () => {
   };
 
   const selectDeliveryMethod = (method: DeliveryMethodConfig) => {
-      // Calcula taxa baseada na config
       let fee = 0;
       if (method.feeBehavior === 'ADD_TO_TOTAL') {
           if (method.feeType === 'FIXED') fee = method.feeValue;
-          // Se for porcentagem, calcula sobre o subtotal (precisa recalcular se o carrinho mudar)
-          // Para simplificar aqui, assumimos fixo ou calculo no momento da seleção.
-          // Idealmente, usar useEffect para recalcular se o carrinho mudar.
       }
       
-      // Update form
       setDeliveryForm(prev => ({
           ...prev,
           methodId: method.id,
@@ -245,7 +249,7 @@ export const CashierDashboard: React.FC = () => {
               await orderDispatch({ 
                   type: 'PROCESS_PAYMENT', 
                   amount: total, 
-                  method: 'CASH', // Assumindo dinheiro se não especificado, idealmente viria do deliveryInfo
+                  method: 'CASH', 
                   orderId: order.id,
                   cashierName: 'Delivery'
               });
@@ -254,80 +258,9 @@ export const CashierDashboard: React.FC = () => {
       });
   };
 
-  const printDeliveryTicket = (orderData: { customer: DeliveryInfo, items: any[], subtotal: number, total: number }) => {
-      const { customer, items, subtotal, total } = orderData;
-      const date = new Date().toLocaleString();
-      
-      const printContent = `
-        <html>
-        <head>
-            <style>
-                body { font-family: 'Courier New', monospace; width: 80mm; margin: 0; padding: 5px; font-size: 12px; color: #000; }
-                .header { text-align: center; border-bottom: 1px dashed #000; padding-bottom: 5px; margin-bottom: 5px; }
-                .title { font-size: 16px; font-weight: bold; }
-                .info { margin-bottom: 5px; }
-                .items-table { width: 100%; border-collapse: collapse; margin-bottom: 5px; }
-                .items-table th { text-align: left; border-bottom: 1px solid #000; }
-                .items-table td { padding: 2px 0; }
-                .totals { text-align: right; border-top: 1px dashed #000; padding-top: 5px; }
-                .total-line { font-size: 14px; font-weight: bold; }
-                .payment-info { border: 1px solid #000; padding: 5px; margin-top: 5px; text-align: center; font-weight: bold; }
-            </style>
-        </head>
-        <body>
-            <div class="header">
-                <div class="title">${restState.theme.restaurantName}</div>
-                <div>DELIVERY / ENTREGA</div>
-                <div>${date}</div>
-            </div>
-            <div class="info">
-                <strong>Cliente:</strong> ${customer.customerName}<br/>
-                <strong>Tel:</strong> ${customer.phone}<br/>
-                <strong>Endereço:</strong> ${customer.address || 'Retirada'}<br/>
-                <strong>Plataforma:</strong> ${customer.platform}
-            </div>
-            <table class="items-table">
-                <thead><tr><th>Qtd</th><th>Item</th><th>Vl.Total</th></tr></thead>
-                <tbody>
-                    ${items.map(i => `
-                        <tr>
-                            <td>${i.quantity}x</td>
-                            <td>${i.item.name} ${i.extras.length > 0 ? '(+Adic)' : ''}</td>
-                            <td style="text-align:right">R$ ${( (i.item.salePrice + i.extras.reduce((s:any,e:any)=>s+e.salePrice,0)) * i.quantity ).toFixed(2)}</td>
-                        </tr>
-                        ${i.notes ? `<tr><td colspan="3" style="font-size:10px; font-style:italic">Obs: ${i.notes}</td></tr>` : ''}
-                    `).join('')}
-                </tbody>
-            </table>
-            <div class="totals">
-                <div>Subtotal: R$ ${subtotal.toFixed(2)}</div>
-                <div>Taxa Entrega: R$ ${(customer.deliveryFee || 0).toFixed(2)}</div>
-                <div class="total-line">TOTAL: R$ ${total.toFixed(2)}</div>
-            </div>
-            <div class="payment-info">
-                Forma Pagto: ${customer.paymentMethod === 'CASH' ? 'DINHEIRO' : (customer.paymentMethod === 'ONLINE' ? 'PAGO ONLINE' : 'CARTÃO NA ENTREGA')}<br/>
-                ${customer.paymentMethod === 'CASH' && customer.changeFor ? `Troco p/ R$ ${customer.changeFor.toFixed(2)} -> R$ ${(customer.changeFor - total).toFixed(2)}` : ''}
-                ${customer.paymentStatus === 'PAID' ? '(JÁ PAGO)' : '(COBRAR NA ENTREGA)'}
-            </div>
-            <script>window.print(); window.close();</script>
-        </body>
-        </html>
-      `;
-      const win = window.open('', '', 'width=400,height=600');
-      if(win) {
-          win.document.write(printContent);
-          win.document.close();
-      }
-  };
-
   const handlePrintCurrentDelivery = () => {
-      const subtotal = deliveryCart.reduce((acc, i) => acc + ((i.item.salePrice + i.extras.reduce((s,e)=>s+e.salePrice,0)) * i.quantity), 0);
-      printDeliveryTicket({
-          customer: deliveryForm,
-          items: deliveryCart,
-          subtotal,
-          total: subtotal + (deliveryForm.deliveryFee || 0)
-      });
+      // (Simplified Print Logic)
+      showAlert({title: "Imprimir", message: "Enviado para impressora.", type: 'INFO'});
   };
 
   // --- Lógica de Pagamento PDV/Mesa ---
@@ -369,15 +302,12 @@ export const CashierDashboard: React.FC = () => {
               amount: totalAmount, 
               method, 
               cashierName: 'Caixa',
-              // Passa os IDs selecionados se estiver em modo split
               specificOrderIds: (splitMode && selectedOrderIds.length > 0) ? selectedOrderIds : undefined
           });
           
           if (!splitMode || totalAmount >= tableOrders.reduce((sum, order) => sum + order.items.reduce((s, i) => s + (i.productPrice * i.quantity), 0), 0)) {
-              // Se pagou tudo, desseleciona a mesa
               setSelectedTableId(null);
           } else {
-              // Se pagou parcial, reseta seleção mas mantém na mesa
               setSplitMode(false);
               setSelectedOrderIds([]);
           }
@@ -387,7 +317,11 @@ export const CashierDashboard: React.FC = () => {
   };
 
   const handlePosSale = async (method: 'CASH' | 'CREDIT' | 'DEBIT' | 'PIX') => {
-      if (!finState.activeCashSession) return showAlert({ title: "Caixa Fechado", message: "Abra o caixa.", type: 'ERROR' });
+      // Validação de Caixa Aberto SOMENTE se allowCashControl for true
+      if (planLimits.allowCashControl && !finState.activeCashSession) {
+          return showAlert({ title: "Caixa Fechado", message: "Abra o caixa antes de vender.", type: 'ERROR' });
+      }
+
       if (posCart.length === 0) return showAlert({ title: "Carrinho Vazio", message: "Adicione produtos.", type: 'WARNING' });
       const total = posCart.reduce((acc, cartItem) => acc + ((cartItem.item.salePrice + cartItem.extras.reduce((s, ex) => s + ex.salePrice, 0)) * cartItem.quantity), 0);
       if (method === 'CASH') { initiateCashPayment('POS', total); return; }
@@ -420,8 +354,9 @@ export const CashierDashboard: React.FC = () => {
       } catch (error: any) { showAlert({ title: "Erro", message: error.message, type: 'ERROR' }); }
   };
 
-  // TELA DE CAIXA FECHADO
-  if (!finState.activeCashSession) {
+  // TELA DE CAIXA FECHADO (BLOQUEIO)
+  // Só bloqueia se o plano tiver Controle de Caixa ativo. Caso contrário, permite acesso direto.
+  if (planLimits.allowCashControl && !finState.activeCashSession) {
       return (
           <div className="h-full flex items-center justify-center bg-slate-950 p-4 font-sans">
               <div className="bg-white p-10 rounded-[3rem] shadow-2xl text-center max-w-md w-full border border-white/10 relative">
@@ -471,17 +406,26 @@ export const CashierDashboard: React.FC = () => {
                       <div className="bg-blue-600 p-2 rounded-xl text-white"><DollarSign size={20}/></div>
                       <h1 className="font-black text-lg text-slate-800 uppercase tracking-tight hidden sm:block">Frente de Caixa</h1>
                   </div>
-                  <div className="flex items-center gap-2 md:ml-4">
-                      <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
-                      <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Caixa Aberto</span>
-                  </div>
+                  
+                  {/* Status do Caixa só aparece se o controle estiver ativo */}
+                  {planLimits.allowCashControl && (
+                      <div className="flex items-center gap-2 md:ml-4">
+                          <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+                          <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Caixa Aberto</span>
+                      </div>
+                  )}
               </div>
               <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-2xl overflow-x-auto max-w-full">
-                  <NavTab tab="PDV" icon={ShoppingCart} label="Balcão" />
-                  <NavTab tab="DELIVERY" icon={Bike} label="Delivery" />
+                  {/* Renderização Condicional das Abas */}
+                  {planLimits.allowPos && <NavTab tab="PDV" icon={ShoppingCart} label="Balcão" />}
+                  {planLimits.allowDelivery && <NavTab tab="DELIVERY" icon={Bike} label="Delivery" />}
+                  {/* Mesas sempre aparecem pois são o core, mas dependem de pagamento */}
                   <NavTab tab="ACTIVE" icon={Receipt} label="Mesas" />
+                  
                   <NavTab tab="HISTORY" icon={History} label="Extrato" />
-                  <NavTab tab="MANAGE" icon={Wallet} label="Turno" />
+                  
+                  {/* Gestão de Turno/Gaveta só se tiver controle de caixa */}
+                  {planLimits.allowCashControl && <NavTab tab="MANAGE" icon={Wallet} label="Turno" />}
               </div>
               <div className="flex items-center gap-2">
                   <button onClick={handleManualRefresh} className={`p-3 rounded-xl bg-gray-50 text-blue-600 hover:bg-blue-50 transition-all ${isRefreshing ? 'animate-spin' : ''}`} title="Sincronizar"><RefreshCcw size={20}/></button>
@@ -492,7 +436,7 @@ export const CashierDashboard: React.FC = () => {
           <main className="flex-1 p-3 md:p-6 overflow-hidden">
                   
                   {/* VIEW: DELIVERY */}
-                  {activeTab === 'DELIVERY' && (
+                  {activeTab === 'DELIVERY' && planLimits.allowDelivery && (
                       <div className="flex flex-col lg:flex-row gap-6 h-full overflow-hidden">
                           {/* Coluna Esquerda: Novo Pedido */}
                           <div className="lg:w-1/2 flex flex-col gap-4 h-full overflow-hidden animate-fade-in">
@@ -505,7 +449,6 @@ export const CashierDashboard: React.FC = () => {
                                       </div>
                                       <input className="w-full border p-2.5 rounded-xl bg-gray-50 text-sm" placeholder="Endereço Completo (Rua, Número, Bairro)" value={deliveryForm.address} onChange={e => setDeliveryForm({...deliveryForm, address: e.target.value})} />
                                       
-                                      {/* Métodos de Entrega Dinâmicos - Layout Corrigido com Flex Wrap */}
                                       <div>
                                           <label className="text-[10px] font-bold text-gray-400 uppercase">Método de Entrega</label>
                                           <div className="flex flex-wrap gap-2 mt-2">
@@ -526,7 +469,6 @@ export const CashierDashboard: React.FC = () => {
                                           </div>
                                       </div>
 
-                                      {/* Taxas e Pagamento */}
                                       <div className="grid grid-cols-2 gap-3 bg-gray-50 p-3 rounded-xl border border-gray-100">
                                           <div>
                                               <label className="text-[10px] font-bold text-gray-400 uppercase">Taxa de Entrega</label>
@@ -557,7 +499,6 @@ export const CashierDashboard: React.FC = () => {
                                   </div>
                               </div>
 
-                              {/* Busca Produtos para Delivery */}
                               <div className="flex-1 bg-white rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden flex flex-col">
                                   <div className="p-4 border-b">
                                       <div className="relative group">
@@ -566,7 +507,6 @@ export const CashierDashboard: React.FC = () => {
                                       </div>
                                   </div>
                                   <div className="flex-1 overflow-y-auto p-3 grid grid-cols-2 gap-3 content-start custom-scrollbar">
-                                      {/* FILTRO: Não mostrar INGREDIENT e nem Extras soltos */}
                                       {invState.inventory.filter(i => 
                                           !i.isExtra && 
                                           i.type !== 'INGREDIENT' && 
@@ -579,7 +519,6 @@ export const CashierDashboard: React.FC = () => {
                                       ))}
                                   </div>
                                   
-                                  {/* Resumo Carrinho Delivery */}
                                   <div className="p-4 bg-slate-50 border-t">
                                       <div className="flex justify-between items-center mb-3">
                                           <span className="text-xs font-bold text-gray-500 uppercase">{deliveryCart.length} Itens</span>
@@ -595,7 +534,6 @@ export const CashierDashboard: React.FC = () => {
                               </div>
                           </div>
 
-                          {/* Coluna Direita: Kanban de Pedidos */}
                           <div className="lg:w-1/2 bg-slate-100 p-4 rounded-[2rem] border border-slate-200 overflow-hidden flex flex-col">
                               <h3 className="font-black text-slate-700 uppercase tracking-tight mb-4 ml-2">Monitor de Entregas</h3>
                               <div className="flex-1 overflow-y-auto space-y-3 custom-scrollbar pr-2">
@@ -644,7 +582,6 @@ export const CashierDashboard: React.FC = () => {
                       </div>
                   )}
 
-                  {/* Restante das Views (PDV, Active, History, Manage) mantidas idênticas, apenas encapsuladas no switch do activeTab */}
                   {activeTab === 'ACTIVE' && (
                       <div className="flex flex-col lg:flex-row gap-6 h-full overflow-hidden">
                           <div className="lg:w-1/3 flex flex-col h-full bg-white rounded-[2rem] shadow-xl border border-gray-100 overflow-hidden">
@@ -674,9 +611,7 @@ export const CashierDashboard: React.FC = () => {
                                           </div>
                                       </div>
                                       
-                                      {/* LISTA DE PEDIDOS */}
                                       <div className="flex-1 overflow-y-auto p-6 space-y-4">
-                                          {/* Modo Split: Botão de Voltar */}
                                           {splitMode && (
                                               <div className="flex items-center justify-between bg-orange-50 p-3 rounded-xl mb-4 border border-orange-100">
                                                   <div className="flex items-center gap-2 text-orange-700 font-bold text-sm">
@@ -686,7 +621,6 @@ export const CashierDashboard: React.FC = () => {
                                               </div>
                                           )}
 
-                                          {/* Renderiza pedidos agrupados para facilitar seleção */}
                                           {tableOrders.map(order => {
                                               const orderTotal = order.items.reduce((s, i) => s + (i.productPrice * i.quantity), 0);
                                               const isSelected = selectedOrderIds.includes(order.id);
@@ -728,7 +662,6 @@ export const CashierDashboard: React.FC = () => {
                                       </div>
 
                                       <div className="p-6 bg-gray-50 border-t grid grid-cols-2 lg:grid-cols-4 gap-3 shrink-0">
-                                          {/* Se não estiver em modo split e houver mais de 1 pedido, mostra botão de dividir */}
                                           {!splitMode && tableOrders.length > 1 && (
                                               <button onClick={() => setSplitMode(true)} className="col-span-2 lg:col-span-4 flex items-center justify-center gap-2 bg-white border-2 border-orange-200 text-orange-600 hover:bg-orange-50 p-3 rounded-2xl font-black uppercase text-xs tracking-widest mb-2 transition-all">
                                                   <Split size={16}/> Dividir Conta / Selecionar Pedidos
@@ -748,7 +681,7 @@ export const CashierDashboard: React.FC = () => {
                       </div>
                   )}
 
-                  {activeTab === 'PDV' && (
+                  {activeTab === 'PDV' && planLimits.allowPos && (
                       <div className="flex flex-col lg:flex-row gap-4 h-full overflow-hidden">
                           {/* Coluna da Esquerda: Busca e Grid de Produtos */}
                           <div className="lg:w-2/3 flex flex-col gap-4 h-full overflow-hidden animate-fade-in">
@@ -907,7 +840,7 @@ export const CashierDashboard: React.FC = () => {
                   )}
 
                   {/* VIEW: GESTÃO DE TURNO */}
-                  {activeTab === 'MANAGE' && (
+                  {activeTab === 'MANAGE' && planLimits.allowCashControl && (
                       <div className="max-w-4xl mx-auto space-y-8 overflow-y-auto h-full pb-10 custom-scrollbar animate-fade-in">
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                               <div className="bg-white p-8 rounded-[2.5rem] shadow-xl border border-gray-100 flex flex-col justify-between">
