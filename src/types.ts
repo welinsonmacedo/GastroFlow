@@ -76,10 +76,11 @@ export interface PlanLimits {
     maxProducts: number;
     maxStaff: number;
     allowKds: boolean;
-    // Substituindo allowCashier por flags granulares
-    allowPos: boolean;       // Balcão
-    allowDelivery: boolean;  // Modulo Delivery
-    allowCashControl: boolean; // Abrir/Fechar Caixa, Sangria
+    
+    // Novas flags granulares substituindo allowCashier
+    allowPos: boolean;       // Balcão (PDV)
+    allowDelivery: boolean;  // Delivery
+    allowCashControl: boolean; // Turno/Gaveta
     
     allowReports?: boolean;
     allowInventory?: boolean;
@@ -122,8 +123,8 @@ export interface RestaurantBusinessInfo {
     orderGracePeriodMinutes?: number;
     adminPin?: string;
     deliverySettings?: DeliveryMethodConfig[]; 
-    paymentMethods?: PaymentMethodConfig[]; // Novas configurações de pagamento
-    expenseCategories?: ExpenseCategory[]; // Novas categorias de despesa
+    paymentMethods?: PaymentMethodConfig[]; 
+    expenseCategories?: ExpenseCategory[]; 
 }
 
 export interface RestaurantTenant {
