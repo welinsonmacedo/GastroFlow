@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { useRestaurant } from '../context/RestaurantContext';
 import { useAuth } from '../context/AuthProvider';
 import { SystemModule } from '../types';
-import { ChefHat, Coffee, Truck, ShoppingBag, ArrowRight, LogOut, Grid } from 'lucide-react';
+import { ChefHat, Coffee, Truck, ShoppingBag, ArrowRight, LogOut, Grid, Briefcase } from 'lucide-react';
 import { Button } from '../components/Button';
 
 const ModuleCard = ({ 
@@ -30,7 +30,7 @@ const ModuleCard = ({
         {/* Hover Effect Background */}
         <div className={`absolute inset-0 opacity-0 group-hover:opacity-5 transition-opacity duration-500 ${colorClass.replace('text-', 'bg-')}`}></div>
         
-        <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-6 shadow-lg transition-transform group-hover:rotate-6 ${colorClass.replace('text-', 'bg-').replace('600', '100')} ${colorClass}`}>
+        <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-6 shadow-lg transition-transform group-hover:rotate-6 ${colorClass.replace('text-', 'bg-').replace('600', '100').replace('500', '100')} ${colorClass}`}>
             <Icon size={32} />
         </div>
         
@@ -48,18 +48,18 @@ export const ModuleSelector: React.FC = () => {
     const { logout, state: authState } = useAuth();
     const navigate = useNavigate();
 
-    const allowed = state.allowedModules || ['RESTAURANT'];
+    const allowed = state.allowedModules || ['RESTAURANT', 'MANAGER'];
     const tenantName = state.theme.restaurantName;
 
     const handleSelect = (module: SystemModule) => {
         setActiveModule(module);
         
         if (module === 'RESTAURANT') {
-            navigate('/admin'); // Vai para o Dashboard padrão do restaurante
+            navigate('/waiter'); // Vai direto para operação (Garçom/Mesas)
+        } else if (module === 'MANAGER') {
+            navigate('/admin'); // Vai para o painel administrativo (Backoffice)
         } else {
-            // Futuramente outras rotas
-            alert("Módulo em desenvolvimento. Redirecionando para Dashboard padrão.");
-            navigate('/admin');
+            alert("Módulo em desenvolvimento.");
         }
     };
 
@@ -102,16 +102,29 @@ export const ModuleSelector: React.FC = () => {
                         Escolha seu Ambiente
                     </h2>
                     <p className="text-slate-400 text-lg">
-                        O Flux Eat é modular. Selecione abaixo a área de operação que deseja gerenciar agora.
+                        Selecione o módulo que deseja acessar agora.
                     </p>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 max-w-7xl w-full">
+                    
+                    {/* Módulo Gestor (Admin) */}
+                    {(allowed.includes('MANAGER') || authState.currentUser?.role === 'ADMIN') && (
+                        <ModuleCard 
+                            type="MANAGER"
+                            title="Gestor"
+                            desc="Backoffice completo. Financeiro, Estoque, Relatórios, Configurações e BI."
+                            icon={Briefcase}
+                            colorClass="text-purple-500"
+                            onClick={() => handleSelect('MANAGER')}
+                        />
+                    )}
+
                     {allowed.includes('RESTAURANT') && (
                         <ModuleCard 
                             type="RESTAURANT"
                             title="Restaurante"
-                            desc="Gestão completa de mesas, cozinha (KDS), garçons e atendimento a la carte."
+                            desc="Operação de salão. Mapa de mesas, KDS (Cozinha) e Caixa."
                             icon={ChefHat}
                             colorClass="text-blue-600"
                             onClick={() => handleSelect('RESTAURANT')}
@@ -122,7 +135,7 @@ export const ModuleSelector: React.FC = () => {
                         <ModuleCard 
                             type="SNACKBAR"
                             title="Lanchonete"
-                            desc="Foco em velocidade. Balcão rápido, senhas de painel e produção expressa."
+                            desc="Foco em velocidade. Balcão rápido e senhas."
                             icon={Coffee}
                             colorClass="text-orange-500"
                             onClick={() => handleSelect('SNACKBAR')}
@@ -133,7 +146,7 @@ export const ModuleSelector: React.FC = () => {
                         <ModuleCard 
                             type="DISTRIBUTOR"
                             title="Distribuidora"
-                            desc="Gestão de rotas de entrega, grandes volumes, estoque de bebidas e consignado."
+                            desc="Gestão de rotas, volumes e estoque de bebidas."
                             icon={Truck}
                             colorClass="text-emerald-500"
                             onClick={() => handleSelect('DISTRIBUTOR')}
@@ -144,9 +157,9 @@ export const ModuleSelector: React.FC = () => {
                         <ModuleCard 
                             type="COMMERCE"
                             title="Comércio"
-                            desc="Ponto de venda genérico para varejo, com controle de estoque e caixa simples."
+                            desc="Ponto de venda genérico para varejo."
                             icon={ShoppingBag}
-                            colorClass="text-purple-600"
+                            colorClass="text-pink-600"
                             onClick={() => handleSelect('COMMERCE')}
                         />
                     )}
