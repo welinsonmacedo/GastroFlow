@@ -4,10 +4,11 @@ import { useRestaurant } from '../../context/RestaurantContext';
 import { useFinance } from '../../context/FinanceContext';
 import { useUI } from '../../context/UIContext';
 import { Button } from '../../components/Button';
+import { Modal } from '../../components/Modal'; // Importando Modal Genérico para ações locais
 import { ExpenseFormModal } from '../../components/modals/ExpenseFormModal';
 import { CashBleedModal } from '../../components/modals/CashBleedModal';
 import { Expense } from '../../types';
-import { Plus, CheckSquare, Trash2, Wallet, CreditCard, Banknote, ArrowDown, Repeat, XCircle, PieChart, FileText, Lightbulb, LayoutDashboard } from 'lucide-react';
+import { Plus, CheckSquare, Trash2, Wallet, CreditCard, Banknote, ArrowDown, Repeat, PieChart, FileText, Lightbulb, LayoutDashboard, List, Edit, Lock, Calendar } from 'lucide-react';
 
 // Importando os componentes das outras páginas para uso nas abas
 import { AdminAccounting } from './AdminAccounting';
@@ -15,16 +16,25 @@ import { AccountingReport } from './AccountingReport';
 import { AdminFinancialTips } from './AdminFinancialTips';
 
 export const AdminFinance: React.FC = () => {
-  const { state: finState, payExpense, deleteExpense, voidTransaction } = useFinance();
+  const { state: restState } = useRestaurant();
+  const { state: finState, updateExpense, deleteExpense } = useFinance();
   const { showConfirm, showAlert } = useUI();
   
   // State for Tabs
-  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'DRE' | 'REPORT' | 'TIPS'>('OVERVIEW');
+  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'EXPENSES' | 'DRE' | 'REPORT' | 'TIPS'>('OVERVIEW');
 
-  // State for Modals (Overview Tab)
+  // State for Modals
   const [editingExpense, setEditingExpense] = useState<Partial<Expense> | null>(null);
   const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
   const [isBleedModalOpen, setIsBleedModalOpen] = useState(false);
+
+  // States para Ações Sensíveis (Baixa e Exclusão)
+  const [payModal, setPayModal] = useState<{ isOpen: boolean, expense: Expense | null }>({ isOpen: false, expense: null });
+  const [paymentMethod, setPaymentMethod] = useState<'BANK' | 'CASH'>('BANK');
+  const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
+
+  const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean, expenseId: string | null }>({ isOpen: false, expenseId: null });
+  const [adminPin, setAdminPin] = useState('');
 
   // --- Calculations (Overview Tab) ---
   const activeTransactions = finState.transactions.filter(t => t.status !== 'CANCELLED');
@@ -57,19 +67,59 @@ export const AdminFinance: React.FC = () => {
 
   // --- Handlers ---
 
-  const handlePayExpense = (id: string) => {
-      showConfirm({
-          title: "Dar Baixa",
-          message: "Confirmar pagamento desta conta?",
-          onConfirm: async () => {
-              await payExpense(id);
-              showAlert({ title: "Sucesso", message: "Pagamento registrado.", type: 'SUCCESS' });
-          }
-      });
+  // 1. Abrir Modal de Pagamento
+  const openPayModal = (expense: Expense) => {
+      setPayModal({ isOpen: true, expense });
+      setPaymentMethod(expense.paymentMethod || 'BANK');
+      setPaymentDate(new Date().toISOString().split('T')[0]);
   };
 
-  const handleDeleteExpense = (id: string) => {
-        showConfirm({ title: 'Excluir', message: 'Remover despesa?', onConfirm: async () => await deleteExpense(id) });
+  // 2. Confirmar Pagamento
+  const handleConfirmPay = async () => {
+      if (!payModal.expense) return;
+      try {
+          // Usamos updateExpense para atualizar status, data e método de uma vez
+          await updateExpense({
+              ...payModal.expense,
+              isPaid: true,
+              paidDate: new Date(paymentDate),
+              paymentMethod: paymentMethod
+          });
+          showAlert({ title: "Sucesso", message: "Pagamento registrado.", type: 'SUCCESS' });
+          setPayModal({ isOpen: false, expense: null });
+      } catch (error) {
+          showAlert({ title: "Erro", message: "Erro ao registrar pagamento.", type: 'ERROR' });
+      }
+  };
+
+  // 3. Abrir Modal de Exclusão
+  const openDeleteModal = (id: string) => {
+      setDeleteModal({ isOpen: true, expenseId: id });
+      setAdminPin('');
+  };
+
+  // 4. Confirmar Exclusão com Senha
+  const handleConfirmDelete = async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!deleteModal.expenseId) return;
+
+      if (adminPin !== restState.businessInfo?.adminPin) {
+          return showAlert({ title: "Acesso Negado", message: "Senha mestra incorreta.", type: 'ERROR' });
+      }
+
+      try {
+          await deleteExpense(deleteModal.expenseId);
+          setDeleteModal({ isOpen: false, expenseId: null });
+          setAdminPin('');
+          showAlert({ title: "Excluído", message: "Despesa removida com sucesso.", type: 'SUCCESS' });
+      } catch (error) {
+          showAlert({ title: "Erro", message: "Erro ao excluir despesa.", type: 'ERROR' });
+      }
+  };
+
+  const handleEditExpense = (expense: Expense) => {
+      setEditingExpense(expense);
+      setIsExpenseModalOpen(true);
   };
 
   const StatBox = ({ title, value, icon: Icon, color, subtext }: any) => (
@@ -105,16 +155,11 @@ export const AdminFinance: React.FC = () => {
                     <h2 className="text-2xl font-bold text-gray-800">Central Financeira</h2>
                     <p className="text-sm text-gray-500">Gestão completa de caixa, despesas e contabilidade.</p>
                 </div>
-                {activeTab === 'OVERVIEW' && (
-                     <div className="flex gap-2">
-                        <Button onClick={() => setIsBleedModalOpen(true)} variant="secondary" className="bg-red-50 text-red-600 border-red-100 hover:bg-red-100"><ArrowDown size={16}/> Saída Manual (Dinheiro)</Button>
-                        <Button onClick={() => { setEditingExpense(null); setIsExpenseModalOpen(true); }}><Plus size={16}/> Nova Despesa</Button>
-                    </div>
-                )}
             </div>
 
             <div className="flex overflow-x-auto gap-2">
-                <TabButton id="OVERVIEW" label="Visão Geral & Despesas" icon={LayoutDashboard} />
+                <TabButton id="OVERVIEW" label="Visão Geral" icon={LayoutDashboard} />
+                <TabButton id="EXPENSES" label="Despesas" icon={List} />
                 <TabButton id="DRE" label="DRE Gerencial" icon={PieChart} />
                 <TabButton id="REPORT" label="Relatório Contábil" icon={FileText} />
                 <TabButton id="TIPS" label="Dicas Inteligentes" icon={Lightbulb} />
@@ -123,8 +168,14 @@ export const AdminFinance: React.FC = () => {
 
         {/* --- Content Area --- */}
         <div className="min-h-[500px]">
+            
+            {/* VIEW: OVERVIEW */}
             {activeTab === 'OVERVIEW' && (
                 <div className="space-y-8 animate-fade-in">
+                    <div className="flex justify-end">
+                        <Button onClick={() => setIsBleedModalOpen(true)} variant="secondary" className="bg-red-50 text-red-600 border-red-100 hover:bg-red-100"><ArrowDown size={16}/> Saída Manual (Dinheiro)</Button>
+                    </div>
+
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                         <StatBox 
                             title="Caixa Atual (Gaveta)" 
@@ -155,12 +206,21 @@ export const AdminFinance: React.FC = () => {
                             subtext="Contas a Pagar/Pagas"
                         />
                     </div>
-                    
-                    <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
-                        <div className="p-6 border-b flex justify-between items-center bg-gray-50">
+                </div>
+            )}
+
+            {/* VIEW: EXPENSES */}
+            {activeTab === 'EXPENSES' && (
+                <div className="space-y-6 animate-fade-in">
+                    <div className="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border">
+                        <div>
                             <h3 className="font-bold text-lg text-gray-800">Contas a Pagar e Despesas</h3>
-                            <span className="text-xs font-bold bg-white border px-2 py-1 rounded text-gray-500">{finState.expenses.length} registros</span>
+                            <p className="text-xs text-gray-500">Gerencie pagamentos a fornecedores e custos operacionais.</p>
                         </div>
+                        <Button onClick={() => { setEditingExpense(null); setIsExpenseModalOpen(true); }}><Plus size={16}/> Nova Despesa</Button>
+                    </div>
+
+                    <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
                         <div className="overflow-x-auto">
                             <table className="w-full text-left">
                                 <thead className="bg-white border-b text-xs font-black text-gray-400 uppercase tracking-widest">
@@ -168,7 +228,7 @@ export const AdminFinance: React.FC = () => {
                                         <th className="p-4">Vencimento</th>
                                         <th className="p-4">Descrição</th>
                                         <th className="p-4">Categoria</th>
-                                        <th className="p-4">Método</th>
+                                        <th className="p-4">Origem Pagto.</th>
                                         <th className="p-4 text-right">Valor</th>
                                         <th className="p-4 text-center">Status</th>
                                         <th className="p-4 text-right">Ações</th>
@@ -176,32 +236,40 @@ export const AdminFinance: React.FC = () => {
                                 </thead>
                                 <tbody className="divide-y text-sm">
                                     {finState.expenses.map(expense => (
-                                        <tr key={expense.id} className={`hover:bg-gray-50 transition-colors ${expense.isPaid ? 'opacity-60 bg-gray-50' : ''}`}>
+                                        <tr key={expense.id} className={`hover:bg-gray-50 transition-colors ${expense.isPaid ? 'bg-gray-50/50' : ''}`}>
                                             <td className="p-4 flex flex-col">
-                                                <span className="font-bold text-slate-700">{new Date(expense.dueDate).toLocaleDateString()}</span>
+                                                <span className={`font-bold ${expense.isPaid ? 'text-slate-500' : (new Date(expense.dueDate) < new Date() ? 'text-red-600' : 'text-slate-700')}`}>
+                                                    {new Date(expense.dueDate).toLocaleDateString()}
+                                                </span>
                                                 {expense.isRecurring && <span className="text-[10px] text-blue-600 flex items-center gap-1 font-bold"><Repeat size={10}/> Recorrente</span>}
                                             </td>
                                             <td className="p-4 font-medium">{expense.description}</td>
                                             <td className="p-4 text-gray-500">{expense.category}</td>
                                             <td className="p-4">
                                                 {expense.paymentMethod === 'CASH' ? 
-                                                    <span className="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-1 rounded font-black uppercase">Dinheiro</span> : 
-                                                    <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-1 rounded font-black uppercase">Banco</span>
+                                                    <span className="text-[10px] bg-emerald-50 text-emerald-700 px-2 py-1 rounded font-bold border border-emerald-100 uppercase">Dinheiro</span> : 
+                                                    <span className="text-[10px] bg-blue-50 text-blue-700 px-2 py-1 rounded font-bold border border-blue-100 uppercase">Banco</span>
                                                 }
                                             </td>
-                                            <td className="p-4 text-right font-black text-red-600">- R$ {expense.amount.toFixed(2)}</td>
+                                            <td className="p-4 text-right font-black text-slate-700">- R$ {expense.amount.toFixed(2)}</td>
                                             <td className="p-4 text-center">
                                                 {expense.isPaid ? 
-                                                    <span className="bg-green-100 text-green-700 px-2 py-1 rounded text-[10px] font-black uppercase border border-green-200">Pago</span> : 
+                                                    <div className="flex flex-col items-center">
+                                                        <span className="bg-green-100 text-green-700 px-2 py-1 rounded text-[10px] font-black uppercase border border-green-200">Pago</span>
+                                                        <span className="text-[10px] text-gray-400 mt-1">{expense.paidDate ? new Date(expense.paidDate).toLocaleDateString() : '-'}</span>
+                                                    </div> : 
                                                     <span className="bg-yellow-100 text-yellow-700 px-2 py-1 rounded text-[10px] font-black uppercase border border-yellow-200">Pendente</span>
                                                 }
                                             </td>
                                             <td className="p-4 text-right">
                                                 <div className="flex items-center justify-end gap-2">
                                                     {!expense.isPaid && (
-                                                        <button onClick={() => handlePayExpense(expense.id)} className="text-green-600 p-2 rounded hover:bg-green-50 transition-colors" title="Marcar como Pago"><CheckSquare size={18}/></button>
+                                                        <>
+                                                            <button onClick={() => handleEditExpense(expense)} className="text-blue-600 p-2 rounded hover:bg-blue-50 transition-colors" title="Editar"><Edit size={18}/></button>
+                                                            <button onClick={() => openPayModal(expense)} className="text-green-600 p-2 rounded hover:bg-green-50 transition-colors" title="Dar Baixa (Pagar)"><CheckSquare size={18}/></button>
+                                                        </>
                                                     )}
-                                                    <button onClick={() => handleDeleteExpense(expense.id)} className="text-red-500 hover:bg-red-50 p-2 rounded transition-colors"><Trash2 size={18}/></button>
+                                                    <button onClick={() => openDeleteModal(expense.id)} className="text-red-500 hover:bg-red-50 p-2 rounded transition-colors" title="Excluir"><Trash2 size={18}/></button>
                                                 </div>
                                             </td>
                                         </tr>
@@ -219,8 +287,63 @@ export const AdminFinance: React.FC = () => {
             {activeTab === 'TIPS' && <AdminFinancialTips />}
         </div>
 
-        {/* Modals are rendered conditionally but controlled by state to preserve data if needed, 
-            though they are only triggered from OVERVIEW tab */}
+        {/* --- MODAIS LOCAIS PARA CONFIRMAÇÃO --- */}
+
+        {/* Modal de Confirmação de Pagamento */}
+        <Modal isOpen={payModal.isOpen} onClose={() => setPayModal({ isOpen: false, expense: null })} title="Confirmar Pagamento" variant="dialog" maxWidth="sm">
+            <div className="space-y-4">
+                <div className="bg-blue-50 p-3 rounded-lg border border-blue-100 text-sm text-blue-800">
+                    <p className="font-bold">Deseja dar baixa em:</p>
+                    <p>{payModal.expense?.description}</p>
+                    <p className="text-lg font-black mt-1">R$ {payModal.expense?.amount.toFixed(2)}</p>
+                </div>
+
+                <div>
+                    <label className="block text-xs font-bold mb-1 text-gray-600">Origem do Pagamento</label>
+                    <select className="w-full border p-2.5 rounded-lg text-sm bg-white" value={paymentMethod} onChange={e => setPaymentMethod(e.target.value as any)}>
+                        <option value="BANK">Conta Bancária</option>
+                        <option value="CASH">Dinheiro (Caixa)</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label className="block text-xs font-bold mb-1 text-gray-600">Data do Pagamento</label>
+                    <input type="date" className="w-full border p-2.5 rounded-lg text-sm" value={paymentDate} onChange={e => setPaymentDate(e.target.value)} />
+                </div>
+
+                <Button onClick={handleConfirmPay} className="w-full py-3">Confirmar Baixa</Button>
+            </div>
+        </Modal>
+
+        {/* Modal de Exclusão com Senha */}
+        <Modal isOpen={deleteModal.isOpen} onClose={() => setDeleteModal({ isOpen: false, expenseId: null })} title="Excluir Despesa" variant="dialog" maxWidth="sm">
+            <form onSubmit={handleConfirmDelete} className="space-y-4">
+                <div className="bg-red-50 p-3 rounded-lg border border-red-100 text-sm text-red-800 flex items-start gap-2">
+                    <Lock size={16} className="shrink-0 mt-0.5"/>
+                    <p>Esta ação é irreversível. Insira a senha mestra para continuar.</p>
+                </div>
+                
+                <div>
+                    <label className="block text-xs font-bold mb-1 text-gray-600">Senha Mestra (Admin)</label>
+                    <input 
+                        type="password" 
+                        autoFocus 
+                        className="w-full border p-2.5 rounded-lg text-center tracking-[0.5em] font-mono text-lg" 
+                        placeholder="****" 
+                        value={adminPin} 
+                        onChange={e => setAdminPin(e.target.value)} 
+                        maxLength={4}
+                    />
+                </div>
+
+                <div className="flex gap-2">
+                    <Button type="button" variant="secondary" onClick={() => setDeleteModal({ isOpen: false, expenseId: null })} className="flex-1">Cancelar</Button>
+                    <Button type="submit" variant="danger" className="flex-1">Confirmar Exclusão</Button>
+                </div>
+            </form>
+        </Modal>
+
+        {/* Modais Globais */}
         <ExpenseFormModal 
             isOpen={isExpenseModalOpen} 
             onClose={() => setIsExpenseModalOpen(false)} 
