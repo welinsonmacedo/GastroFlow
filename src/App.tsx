@@ -16,6 +16,7 @@ import { WaiterApp } from './pages/WaiterApp';
 import { KitchenDisplay } from './pages/KitchenDisplay';
 import { CashierDashboard } from './pages/CashierDashboard';
 import { AdminDashboard } from './pages/AdminDashboard';
+import { SettingsDashboard } from './pages/SettingsDashboard'; // Novo Módulo
 import { SuperAdminDashboard } from './pages/SuperAdminDashboard';
 import { LandingPage } from './pages/LandingPage';
 import { Login } from './pages/Login';
@@ -25,7 +26,7 @@ import { OwnerLogin } from './pages/OwnerLogin';
 import { PrivacyPolicy } from './pages/PrivacyPolicy';
 import { TermsOfService } from './pages/TermsOfService';
 import { ManualPage } from './pages/ManualPage';
-import { ModuleSelector } from './pages/ModuleSelector'; // Nova
+import { ModuleSelector } from './pages/ModuleSelector';
 
 import { InstallPWA } from './components/InstallPWA';
 import { 
@@ -99,8 +100,8 @@ const TenantNavigation = ({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: (
     // Estado para controlar os dropdowns
     const [isAppsOpen, setIsAppsOpen] = useState(true);
 
-    // Se estiver em rota de ADMIN (Gestor) ou cliente/login, não mostra essa sidebar
-    if (location.pathname.startsWith('/admin') || location.pathname.startsWith('/client') || location.pathname === '/login' || location.pathname === '/manual' || location.pathname === '/modules') {
+    // Se estiver em rotas de módulos completos, não mostra essa sidebar
+    if (location.pathname.startsWith('/admin') || location.pathname.startsWith('/settings') || location.pathname.startsWith('/client') || location.pathname === '/login' || location.pathname === '/manual' || location.pathname === '/modules') {
         return null;
     }
 
@@ -249,7 +250,7 @@ const TenantApp = () => {
         return <div className="h-screen flex items-center justify-center text-gray-500">Restaurante não encontrado. Verifique o link.</div>;
     }
 
-    // Verifica se deve mostrar o header mobile da navegação (apenas se não for admin e não for client/login)
+    // Verifica se deve mostrar o header mobile da navegação (apenas se não for módulo completo e não for client/login)
     const isOperationalRoute = ['/waiter', '/kitchen', '/cashier'].some(r => location.pathname.startsWith(r));
 
     return (
@@ -289,6 +290,9 @@ const TenantApp = () => {
                         
                         {/* Painel Administrativo (Gestor) */}
                         <Route path="/admin/*" element={<ProtectedRestaurantRoute allowedRoles={[Role.ADMIN]} requiredRoute="/admin"><AdminDashboard /></ProtectedRestaurantRoute>} />
+
+                        {/* Painel de Configurações (Novo Módulo) */}
+                        <Route path="/settings/*" element={<ProtectedRestaurantRoute allowedRoles={[Role.ADMIN]} requiredRoute="/settings"><SettingsDashboard /></ProtectedRestaurantRoute>} />
                         
                         <Route path="*" element={<Navigate to={`/login${window.location.search}`} replace />} />
                     </Routes>

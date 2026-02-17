@@ -2,24 +2,20 @@
 import React, { useState, useEffect } from 'react';
 import { useRestaurant } from '../../context/RestaurantContext';
 import { useUI } from '../../context/UIContext';
-import { useStaff } from '../../context/StaffContext';
 import { Button } from '../../components/Button';
-import { Building2, MapPin, Phone, Loader2, Share2, Clock, ShieldAlert, Lock, Save, SlidersHorizontal, ShieldCheck, Bike, Plus, Trash2, Edit, Users, UserPlus, Link as LinkIcon, Check, CheckSquare, CreditCard, Tag, DollarSign } from 'lucide-react';
-import { RestaurantBusinessInfo, DeliveryMethodConfig, User, Role, PaymentMethodConfig, ExpenseCategory } from '../../types';
+import { Building2, MapPin, Phone, Loader2, Share2, Clock, Lock, Save, SlidersHorizontal, ShieldCheck, Bike, Plus, Trash2, Edit, CreditCard, Tag, DollarSign } from 'lucide-react';
+import { RestaurantBusinessInfo, DeliveryMethodConfig, PaymentMethodConfig, ExpenseCategory } from '../../types';
 import { Modal } from '../../components/Modal';
-import { StaffFormModal } from '../../components/modals/StaffFormModal';
-import { getTenantSlug } from '../../utils/tenant';
 
 export const AdminSettings: React.FC = () => {
   const { state, dispatch } = useRestaurant();
-  const { state: staffState, deleteUser } = useStaff();
   const { showAlert, showConfirm } = useUI();
   
   // Acessa limites do plano
   const { planLimits } = state;
 
-  // Controle das Abas
-  const [activeSettingsTab, setActiveSettingsTab] = useState<'BUSINESS' | 'RULES' | 'SECURITY' | 'DELIVERY' | 'TEAM' | 'FINANCE_CONFIG'>('BUSINESS');
+  // Controle das Abas Internas (Team removido daqui)
+  const [activeSettingsTab, setActiveSettingsTab] = useState<'BUSINESS' | 'RULES' | 'SECURITY' | 'DELIVERY' | 'FINANCE_CONFIG'>('BUSINESS');
   
   // Business Info State
   const [businessForm, setBusinessForm] = useState<RestaurantBusinessInfo>({
@@ -46,11 +42,6 @@ export const AdminSettings: React.FC = () => {
   
   // Estado para nova Categoria de Despesa
   const [newCategoryName, setNewCategoryName] = useState('');
-
-  // States para Gestão de Equipe
-  const [isStaffModalOpen, setIsStaffModalOpen] = useState(false);
-  const [editingUser, setEditingUser] = useState<User | null>(null);
-  const [copiedInviteId, setCopiedInviteId] = useState<string | null>(null);
 
   useEffect(() => {
       if (state.businessInfo) {
@@ -193,21 +184,6 @@ export const AdminSettings: React.FC = () => {
       });
   };
 
-  // --- HELPERS EQUIPE ---
-  const copyInviteLink = (userEmail?: string, userId?: string) => {
-      if (!userEmail) return showAlert({ title: "Atenção", message: "Este usuário não tem email cadastrado.", type: 'WARNING' });
-      const slug = state.tenantSlug || getTenantSlug();
-      const link = `${window.location.origin}/login?restaurant=${slug}&email=${encodeURIComponent(userEmail)}&register=true`;
-      
-      navigator.clipboard.writeText(link).then(() => {
-          if (userId) {
-              setCopiedInviteId(userId);
-              setTimeout(() => setCopiedInviteId(null), 2000);
-          }
-          showAlert({ title: "Link Copiado!", message: "Envie este link para o funcionário criar a senha.", type: 'SUCCESS' });
-      });
-  };
-
   // --- HELPERS GERAIS ---
   const formatCNPJ = (val: string) => val.replace(/\D/g, '').replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5").slice(0, 18);
   const formatPhone = (val: string) => val.replace(/\D/g, '').replace(/^(\d{2})(\d{5})(\d{4})/, "($1) $2-$3").slice(0, 15);
@@ -244,8 +220,8 @@ export const AdminSettings: React.FC = () => {
     <div className="max-w-4xl mx-auto animate-fade-in pb-10">
         
         <header className="mb-8">
-            <h2 className="text-2xl font-bold text-gray-800">Configurações do Sistema</h2>
-            <p className="text-gray-500">Gerencie dados cadastrais, segurança, equipe e regras de negócio.</p>
+            <h2 className="text-2xl font-bold text-gray-800">Dados Gerais</h2>
+            <p className="text-gray-500">Informações cadastrais, regras e métodos.</p>
         </header>
 
         {/* Navigation Tabs */}
@@ -260,10 +236,6 @@ export const AdminSettings: React.FC = () => {
                 <button onClick={() => setActiveSettingsTab('FINANCE_CONFIG')} className={`px-6 py-3 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${activeSettingsTab === 'FINANCE_CONFIG' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}><DollarSign size={18} /> Financeiro</button>
             )}
             
-            {planLimits.allowStaff && (
-                <button onClick={() => setActiveSettingsTab('TEAM')} className={`px-6 py-3 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${activeSettingsTab === 'TEAM' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}><Users size={18} /> Equipe</button>
-            )}
-
             <button onClick={() => setActiveSettingsTab('RULES')} className={`px-6 py-3 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${activeSettingsTab === 'RULES' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}><SlidersHorizontal size={18} /> Regras</button>
             <button onClick={() => setActiveSettingsTab('SECURITY')} className={`px-6 py-3 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${activeSettingsTab === 'SECURITY' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}><ShieldCheck size={18} /> Segurança</button>
         </div>
@@ -438,83 +410,6 @@ export const AdminSettings: React.FC = () => {
                 </div>
             )}
 
-            {/* TAB: GESTÃO DE EQUIPE */}
-            {activeSettingsTab === 'TEAM' && (
-                <div className="space-y-6 animate-fade-in">
-                    <div className="flex justify-between items-center bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                        <div>
-                            <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2"><Users className="text-purple-600"/> Equipe</h2>
-                            <p className="text-sm text-gray-500">Gerencie usuários e permissões de acesso.</p>
-                        </div>
-                        <Button onClick={() => { 
-                            setEditingUser(null); 
-                            setIsStaffModalOpen(true);
-                        }}>
-                            <UserPlus size={16}/> Novo Usuário
-                        </Button>
-                    </div>
-                    
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                        <table className="w-full text-left text-sm">
-                            <thead className="bg-gray-50 text-gray-600 uppercase text-xs border-b">
-                                <tr>
-                                    <th className="p-4">Nome</th>
-                                    <th className="p-4">Cargo</th>
-                                    <th className="p-4">Acesso (PIN)</th>
-                                    <th className="p-4">Email</th>
-                                    <th className="p-4 text-center">Status</th>
-                                    <th className="p-4 text-right">Ações</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100">
-                                {staffState.users.map(user => {
-                                    const isPending = !user.auth_user_id;
-                                    return (
-                                        <tr key={user.id} className="hover:bg-gray-50 transition-colors">
-                                            <td className="p-4 font-bold text-gray-800">{user.name}</td>
-                                            <td className="p-4">
-                                                <span className={`px-2 py-1 rounded text-xs font-bold
-                                                    ${user.role === 'ADMIN' ? 'bg-purple-100 text-purple-700' : ''}
-                                                    ${user.role === 'WAITER' ? 'bg-orange-100 text-orange-700' : ''}
-                                                    ${user.role === 'KITCHEN' ? 'bg-red-100 text-red-700' : ''}
-                                                    ${user.role === 'CASHIER' ? 'bg-green-100 text-green-700' : ''}
-                                                `}>
-                                                    {user.role}
-                                                </span>
-                                            </td>
-                                            <td className="p-4 font-mono text-gray-500">****</td>
-                                            <td className="p-4 text-gray-600">{user.email || '-'}</td>
-                                            <td className="p-4 text-center">
-                                                {isPending ? (
-                                                    <button 
-                                                        onClick={() => copyInviteLink(user.email, user.id)}
-                                                        className={`flex items-center gap-1 mx-auto text-xs px-2 py-1 rounded border transition-all ${copiedInviteId === user.id ? 'bg-green-100 text-green-700 border-green-200' : 'bg-yellow-50 text-yellow-700 border-yellow-200 hover:bg-yellow-100'}`}
-                                                    >
-                                                        {copiedInviteId === user.id ? <Check size={12}/> : <LinkIcon size={12}/>}
-                                                        {copiedInviteId === user.id ? 'Copiado!' : 'Copiar Convite'}
-                                                    </button>
-                                                ) : (
-                                                    <span className="text-green-600 text-xs font-bold flex items-center justify-center gap-1"><CheckSquare size={14}/> Ativo</span>
-                                                )}
-                                            </td>
-                                            <td className="p-4 text-right">
-                                                <div className="flex items-center justify-end gap-2">
-                                                    <button onClick={() => { 
-                                                        setEditingUser(user); 
-                                                        setIsStaffModalOpen(true);
-                                                    }} className="text-blue-600 hover:bg-blue-50 p-2 rounded transition-colors" title="Editar"><Edit size={16}/></button>
-                                                    <button onClick={() => showConfirm({ title: 'Excluir Usuário', message: 'Confirma a exclusão? O acesso será revogado.', onConfirm: () => deleteUser(user.id) })} className="text-red-600 hover:bg-red-50 p-2 rounded transition-colors" title="Excluir"><Trash2 size={16}/></button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            )}
-
             {/* TAB: REGRAS DE NEGÓCIO */}
             {activeSettingsTab === 'RULES' && (
                 <div className="bg-white p-8 rounded-2xl shadow-sm border-2 border-blue-100 overflow-hidden relative animate-fade-in">
@@ -640,13 +535,6 @@ export const AdminSettings: React.FC = () => {
                 <Button onClick={handleSavePaymentMethod} className="w-full mt-4">Salvar Pagamento</Button>
             </div>
         </Modal>
-
-        {/* Modal de Staff */}
-        <StaffFormModal 
-            isOpen={isStaffModalOpen} 
-            onClose={() => setIsStaffModalOpen(false)} 
-            userToEdit={editingUser} 
-        />
     </div>
   );
 };

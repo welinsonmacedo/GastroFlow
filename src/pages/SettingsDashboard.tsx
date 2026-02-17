@@ -5,48 +5,32 @@ import { Routes, Route, Navigate, Link, useLocation, useNavigate } from 'react-r
 import { useRestaurant } from '../context/RestaurantContext';
 import { useAuth } from '../context/AuthProvider';
 import { 
-    LayoutDashboard, Utensils, Package, QrCode, 
-    DollarSign, TrendingUp, FileText, 
-    LogOut, Grid, ChefHat
+    Settings, Palette, Users, SlidersHorizontal, LogOut, Grid, ChefHat
 } from 'lucide-react';
 
 // Importando Sub-páginas
-import { AdminOverview } from './admin/AdminOverview';
-import { AdminProducts } from './admin/AdminProducts';
-import { AdminInventory } from './admin/AdminInventory';
-import { AdminTables } from './admin/AdminTables';
-import { AdminFinance } from './admin/AdminFinance';
-import { AdminAccounting } from './admin/AdminAccounting';
-import { AccountingReport } from './admin/AccountingReport'; 
-import { AdminFinancialTips } from './admin/AdminFinancialTips';
-import { AdminBusinessIntelligence } from './admin/AdminBusinessIntelligence'; 
-import { AdminReports } from './admin/AdminReports';
+import { AdminSettings } from './admin/AdminSettings';
+import { AdminMenuAppearance } from './admin/AdminMenuAppearance'; 
+import { AdminStaff } from './admin/AdminStaff';
 
-export const AdminDashboard: React.FC = () => {
+export const SettingsDashboard: React.FC = () => {
   const { state: restState } = useRestaurant();
   const { state: authState, logout } = useAuth();
   const { planLimits } = restState;
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Definição das Abas do Gestor (Operação e Financeiro)
-  // Configurações, Aparência e Equipe movidos para o Módulo de Configurações
+  // Definição das Abas do Módulo Configurações
   const tabs = [
-    { path: '/admin', label: 'Visão Geral', icon: LayoutDashboard, exact: true },
-    { path: '/admin/products', label: 'Cardápio', icon: Utensils },
-    { path: '/admin/tables', label: 'Mesas & QR', icon: QrCode, required: 'allowTableMgmt' },
-    { path: '/admin/inventory', label: 'Estoque', icon: Package, required: 'allowInventory' },
-    { path: '/admin/finance', label: 'Financeiro', icon: DollarSign, required: 'allowExpenses' }, 
-    { path: '/admin/bi', label: 'Inteligência', icon: TrendingUp, required: 'allowReports' },
-    { path: '/admin/reports', label: 'Relatórios', icon: FileText, required: 'allowReports' },
+    { path: '/settings', label: 'Geral & Regras', icon: SlidersHorizontal, exact: true },
+    { path: '/settings/appearance', label: 'Aparência & Marca', icon: Palette, required: 'allowCustomization' },
+    { path: '/settings/staff', label: 'Equipe & Acessos', icon: Users, required: 'allowStaff' },
   ];
 
   // Filtra abas baseadas no plano
   const visibleTabs = tabs.filter(tab => {
-      if (tab.required === 'allowTableMgmt' && !planLimits.allowTableMgmt) return false;
-      if (tab.required === 'allowInventory' && !planLimits.allowInventory) return false;
-      if (tab.required === 'allowExpenses' && (!planLimits.allowExpenses && !planLimits.allowPurchases)) return false;
-      if (tab.required === 'allowReports' && !planLimits.allowReports) return false;
+      if (tab.required === 'allowCustomization' && !planLimits.allowCustomization) return false;
+      if (tab.required === 'allowStaff' && !planLimits.allowStaff) return false;
       return true;
   });
 
@@ -74,8 +58,8 @@ export const AdminDashboard: React.FC = () => {
                         <div>
                             <h1 className="font-bold text-lg leading-none tracking-tight">{restState.theme.restaurantName}</h1>
                             <div className="flex items-center gap-2 mt-1">
-                                <span className="text-[10px] font-bold bg-purple-600 px-2 py-0.5 rounded text-white uppercase tracking-widest">
-                                    Módulo Gestor
+                                <span className="text-[10px] font-bold bg-gray-600 px-2 py-0.5 rounded text-white uppercase tracking-widest">
+                                    Configurações
                                 </span>
                                 <span className="text-[10px] text-slate-400">
                                     {authState.currentUser?.name}
@@ -114,11 +98,11 @@ export const AdminDashboard: React.FC = () => {
                                 className={`
                                     flex items-center gap-2 px-5 py-3 text-sm font-bold border-b-2 transition-all whitespace-nowrap
                                     ${isActive 
-                                        ? 'border-purple-500 text-white bg-white/5 rounded-t-lg' 
+                                        ? 'border-gray-400 text-white bg-white/5 rounded-t-lg' 
                                         : 'border-transparent text-slate-400 hover:text-white hover:bg-white/5 rounded-t-lg'}
                                 `}
                             >
-                                <tab.icon size={18} className={isActive ? 'text-purple-400' : ''} />
+                                <tab.icon size={18} className={isActive ? 'text-gray-300' : ''} />
                                 {tab.label}
                             </Link>
                         );
@@ -131,38 +115,9 @@ export const AdminDashboard: React.FC = () => {
         <main className="flex-1 overflow-y-auto bg-gray-50 relative p-4 md:p-8">
             <div className="max-w-[1920px] mx-auto h-full">
                 <Routes>
-                    <Route path="/" element={<AdminOverview />} />
-                    <Route path="products" element={<AdminProducts />} />
-                    
-                    {planLimits.allowInventory && (
-                        <Route path="inventory" element={<AdminInventory />} />
-                    )}
-
-                    {planLimits.allowTableMgmt && <Route path="tables" element={<AdminTables />} />}
-                    
-                    {/* Rota unificada de Financeiro */}
-                    {(planLimits.allowExpenses || planLimits.allowPurchases || planLimits.allowReports) && (
-                        <Route path="finance" element={<AdminFinance />} />
-                    )}
-                    
-                    {/* BI */}
-                    {planLimits.allowReports && (
-                        <Route path="bi" element={<AdminBusinessIntelligence />} />
-                    )}
-
-                    {/* Relatórios Completos */}
-                    {planLimits.allowReports && (
-                        <Route path="reports" element={<AdminReports />} />
-                    )}
-                    
-                    {/* Rotas Auxiliares (mantidas para compatibilidade interna) */}
-                    {planLimits.allowReports && (
-                        <>
-                            <Route path="accounting" element={<AdminAccounting />} />
-                            <Route path="report" element={<AccountingReport />} /> 
-                            <Route path="tips" element={<AdminFinancialTips />} />
-                        </>
-                    )}
+                    <Route path="/" element={<AdminSettings />} />
+                    {planLimits.allowCustomization && <Route path="appearance" element={<AdminMenuAppearance />} />}
+                    {planLimits.allowStaff && <Route path="staff" element={<AdminStaff />} />}
 
                     {/* Fallback */}
                     <Route path="*" element={<Navigate to="" replace />} />

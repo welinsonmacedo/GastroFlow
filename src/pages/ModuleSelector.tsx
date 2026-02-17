@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { useRestaurant } from '../context/RestaurantContext';
 import { useAuth } from '../context/AuthProvider';
 import { SystemModule } from '../types';
-import { ChefHat, Coffee, Truck, ShoppingBag, ArrowRight, LogOut, Grid, Briefcase } from 'lucide-react';
+import { ChefHat, Coffee, Truck, ShoppingBag, ArrowRight, LogOut, Grid, Briefcase, Settings } from 'lucide-react';
 import { Button } from '../components/Button';
 
 const ModuleCard = ({ 
@@ -48,7 +48,7 @@ export const ModuleSelector: React.FC = () => {
     const { logout, state: authState } = useAuth();
     const navigate = useNavigate();
 
-    const allowed = state.allowedModules || ['RESTAURANT', 'MANAGER'];
+    const allowed = state.allowedModules || ['RESTAURANT', 'MANAGER', 'CONFIG'];
     const tenantName = state.theme.restaurantName;
 
     const handleSelect = (module: SystemModule) => {
@@ -58,6 +58,8 @@ export const ModuleSelector: React.FC = () => {
             navigate('/waiter'); // Vai direto para operação (Garçom/Mesas)
         } else if (module === 'MANAGER') {
             navigate('/admin'); // Vai para o painel administrativo (Backoffice)
+        } else if (module === 'CONFIG') {
+            navigate('/settings'); // Vai para configurações
         } else {
             alert("Módulo em desenvolvimento.");
         }
@@ -113,10 +115,22 @@ export const ModuleSelector: React.FC = () => {
                         <ModuleCard 
                             type="MANAGER"
                             title="Gestor"
-                            desc="Backoffice completo. Financeiro, Estoque, Relatórios, Configurações e BI."
+                            desc="Backoffice. Financeiro, Estoque, Relatórios e BI."
                             icon={Briefcase}
                             colorClass="text-purple-500"
                             onClick={() => handleSelect('MANAGER')}
+                        />
+                    )}
+
+                    {/* Módulo Configurações */}
+                    {(allowed.includes('CONFIG') || authState.currentUser?.role === 'ADMIN') && (
+                        <ModuleCard 
+                            type="CONFIG"
+                            title="Configurações"
+                            desc="Dados da empresa, equipe, regras, delivery e aparência."
+                            icon={Settings}
+                            colorClass="text-gray-500"
+                            onClick={() => handleSelect('CONFIG')}
                         />
                     )}
 
