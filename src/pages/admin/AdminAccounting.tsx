@@ -4,6 +4,7 @@ import { useRestaurant } from '../../context/RestaurantContext';
 import { useUI } from '../../context/UIContext';
 import { Button } from '../../components/Button';
 import { supabase } from '../../lib/supabase';
+import { DREReportPrint } from '../../components/reports/DREReportPrint';
 import { 
     Loader2, RefreshCcw, Printer, Filter, Settings, 
     TrendingUp, TrendingDown, DollarSign, PieChart, 
@@ -13,7 +14,6 @@ import {
 export const AdminAccounting: React.FC = () => {
   const { state } = useRestaurant();
   const { showAlert } = useUI();
-  const printRef = useRef<HTMLDivElement>(null);
   
   // --- ESTADOS ---
   const [dateStart, setDateStart] = useState(new Date(new Date().setDate(1)).toISOString().split('T')[0]); 
@@ -212,15 +212,15 @@ export const AdminAccounting: React.FC = () => {
   const profitPerc = data.grossRevenue > 0 ? (data.netIncome / data.grossRevenue) * 100 : 0;
 
   const Row = ({ label, value, type = 'normal', indent = false, isNegative = false, description = '' }: any) => (
-    <div className={`flex justify-between py-2.5 print:py-1 ${indent ? 'pl-8' : ''} ${type === 'total' ? 'border-t-2 border-slate-800 font-black text-slate-900 bg-slate-50 mt-2 px-2 print:bg-transparent print:border-black' : 'border-b border-slate-100 text-slate-600 print:border-slate-300'}`}>
+    <div className={`flex justify-between py-2.5 ${indent ? 'pl-8' : ''} ${type === 'total' ? 'border-t-2 border-slate-800 font-black text-slate-900 bg-slate-50 mt-2 px-2' : 'border-b border-slate-100 text-slate-600'}`}>
         <div className="flex items-center gap-2 group relative">
-            <span className={type === 'total' ? 'uppercase tracking-tight text-sm print:text-black' : 'font-medium text-sm print:text-black'}>{label}</span>
+            <span className={type === 'total' ? 'uppercase tracking-tight text-sm' : 'font-medium text-sm'}>{label}</span>
         </div>
         <div className="flex items-center gap-4">
-            <span className={`font-mono font-bold ${isNegative ? 'text-red-500 print:text-black' : 'text-slate-800 print:text-black'}`}>
+            <span className={`font-mono font-bold ${isNegative ? 'text-red-500' : 'text-slate-800'}`}>
                 {isNegative && value > 0 ? '-' : ''} {formatCurrency(Math.abs(value))}
             </span>
-            <span className="text-[10px] w-12 text-right font-mono text-slate-400 print:text-black">{getAV(value)}</span>
+            <span className="text-[10px] w-12 text-right font-mono text-slate-400">{getAV(value)}</span>
         </div>
     </div>
   );
@@ -242,10 +242,12 @@ export const AdminAccounting: React.FC = () => {
   );
 
   return (
-    <div className="space-y-6 animate-fade-in pb-20 print:p-0 print:bg-white">
+    <>
+    {/* CONTEÚDO PARA TELA (DASHBOARD) - OCULTO NA IMPRESSÃO */}
+    <div className="space-y-6 animate-fade-in pb-20 print:hidden">
         
-        {/* HEADER & CONTROLES (Oculto na Impressão) */}
-        <div className="flex flex-col gap-4 print:hidden">
+        {/* HEADER & CONTROLES */}
+        <div className="flex flex-col gap-4">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-200 gap-4">
                 <div>
                     <h2 className="text-2xl font-black text-slate-800 flex items-center gap-2">
@@ -319,12 +321,12 @@ export const AdminAccounting: React.FC = () => {
             )}
         </div>
 
-        {/* --- RELATÓRIO VISUAL --- */}
+        {/* --- RELATÓRIO VISUAL (TELA) --- */}
         {data.hasData ? (
-            <div ref={printRef} className="print:w-full print:max-w-none space-y-6">
+            <div className="space-y-6">
                 
                 {/* 1. Dashboard de KPIs (Executivo) */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 print:grid-cols-4 print:gap-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     <KPICard 
                         title="Receita Líquida" 
                         value={formatCurrency(data.netRevenue)} 
@@ -356,14 +358,14 @@ export const AdminAccounting: React.FC = () => {
                 </div>
 
                 {/* 2. Demonstração Vertical Detalhada */}
-                <div className="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden print:shadow-none print:border-2 print:border-black">
-                    <div className="bg-slate-900 text-white p-6 print:bg-white print:text-black print:border-b-2 print:border-black flex justify-between items-center">
+                <div className="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
+                    <div className="bg-slate-900 text-white p-6 flex justify-between items-center">
                         <div>
                             <h1 className="text-xl font-black uppercase tracking-widest">Relatório DRE {config.accountingMethod === 'CASH' ? '(Caixa)' : '(Competência)'}</h1>
-                            <p className="text-xs text-slate-400 font-bold uppercase print:text-slate-600">{state.theme.restaurantName}</p>
+                            <p className="text-xs text-slate-400 font-bold uppercase">{state.theme.restaurantName}</p>
                         </div>
                         <div className="text-right">
-                            <p className="text-xs text-slate-400 font-mono print:text-black">Período</p>
+                            <p className="text-xs text-slate-400 font-mono">Período</p>
                             <p className="font-bold text-sm">{new Date(dateStart).toLocaleDateString()} a {new Date(dateEnd).toLocaleDateString()}</p>
                         </div>
                     </div>
@@ -372,8 +374,8 @@ export const AdminAccounting: React.FC = () => {
                         {/* SEÇÃO 1: RECEITA */}
                         {visibility.revenue && (
                             <>
-                                <h3 className="text-xs font-black text-blue-600 uppercase tracking-widest mb-4 flex items-center gap-2 print:text-black print:border-b print:mt-4">
-                                    <DollarSign size={14} className="print:hidden"/> 1. Receita e Deduções
+                                <h3 className="text-xs font-black text-blue-600 uppercase tracking-widest mb-4 flex items-center gap-2">
+                                    <DollarSign size={14} /> 1. Receita e Deduções
                                 </h3>
                                 <Row label="(+) Receita Bruta de Vendas" value={data.grossRevenue} />
                                 <Row label="    Vendas Mesas / Salão" value={data.saloonSales} indent />
@@ -387,8 +389,8 @@ export const AdminAccounting: React.FC = () => {
                         {/* SEÇÃO 2: CMV */}
                         {visibility.cmv && (
                             <>
-                                <h3 className="text-xs font-black text-orange-600 uppercase tracking-widest mb-4 mt-12 flex items-center gap-2 print:text-black print:border-b print:mt-6">
-                                    <TrendingDown size={14} className="print:hidden"/> 2. Custos Variáveis (CMV)
+                                <h3 className="text-xs font-black text-orange-600 uppercase tracking-widest mb-4 mt-12 flex items-center gap-2">
+                                    <TrendingDown size={14} /> 2. Custos Variáveis (CMV)
                                 </h3>
                                 <Row label="(-) Custo de Mercadoria Vendida" value={data.cmv} isNegative />
                                 <Row label="(=) LUCRO BRUTO" value={data.grossProfit} type="total" />
@@ -398,15 +400,15 @@ export const AdminAccounting: React.FC = () => {
                         {/* SEÇÃO 3: OPERACIONAIS */}
                         {visibility.expenses && (
                             <>
-                                <h3 className="text-xs font-black text-purple-600 uppercase tracking-widest mb-4 mt-12 flex items-center gap-2 print:text-black print:border-b print:mt-6">
-                                    <FileText size={14} className="print:hidden"/> 3. Despesas Operacionais
+                                <h3 className="text-xs font-black text-purple-600 uppercase tracking-widest mb-4 mt-12 flex items-center gap-2">
+                                    <FileText size={14} /> 3. Despesas Operacionais
                                 </h3>
                                 <Row label="(-) Pessoal / Folha" value={data.expenses.personnel} indent isNegative />
                                 <Row label="(-) Fixas (Aluguel/Sistema)" value={data.expenses.fixed} indent isNegative />
                                 <Row label="(-) Variáveis / Gerais" value={data.expenses.variable} indent isNegative />
                                 
                                 {/* Expansão Detalhada */}
-                                <div className="pl-8 mt-2 border-l-2 border-gray-100 ml-4 print:border-none">
+                                <div className="pl-8 mt-2 border-l-2 border-gray-100 ml-4">
                                     {Object.entries(data.expenses.byCategory).map(([cat, val]: any) => {
                                         if (!['Pessoal', 'Salário', 'Pró-labore', 'Impostos', 'Taxas Bancárias', 'Aluguel', 'Internet', 'Sistema'].includes(cat)) {
                                             return <Row key={cat} label={`• ${cat}`} value={val} indent isNegative />;
@@ -422,8 +424,8 @@ export const AdminAccounting: React.FC = () => {
                         {/* SEÇÃO 4: RESULTADO */}
                         {visibility.financial && (
                             <>
-                                <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 mt-12 flex items-center gap-2 print:text-black print:border-b print:mt-6">
-                                    <TrendingUp size={14} className="print:hidden"/> 4. Resultado Final
+                                <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 mt-12 flex items-center gap-2">
+                                    <TrendingUp size={14} /> 4. Resultado Final
                                 </h3>
                                 <Row label="(-) Despesas Financeiras / Bancárias" value={data.expenses.financial} isNegative />
                                 <Row label="(=) LUCRO LÍQUIDO FINAL" value={data.netIncome} type="total" />
@@ -431,21 +433,15 @@ export const AdminAccounting: React.FC = () => {
                         )}
 
                         {/* Banner de Resultado Final */}
-                        <div className={`mt-16 p-8 rounded-[2.5rem] flex flex-col md:flex-row items-center justify-between border-4 print:mt-8 print:border-2 print:p-4 print:rounded-xl ${data.netIncome >= 0 ? 'bg-emerald-50 border-emerald-200 print:bg-white print:border-black' : 'bg-red-50 border-red-200 print:bg-white print:border-black'}`}>
-                            <div className="text-center md:text-left mb-6 md:mb-0 print:text-left">
-                                <h4 className={`text-2xl font-black uppercase tracking-tighter print:text-black ${data.netIncome >= 0 ? 'text-emerald-800' : 'text-red-800'}`}>{data.netIncome >= 0 ? 'Resultado Positivo' : 'Prejuízo Apurado'}</h4>
-                                <p className="text-slate-500 font-medium print:text-black">Lucro real após todas as baixas e despesas.</p>
+                        <div className={`mt-16 p-8 rounded-[2.5rem] flex flex-col md:flex-row items-center justify-between border-4 ${data.netIncome >= 0 ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'}`}>
+                            <div className="text-center md:text-left mb-6 md:mb-0">
+                                <h4 className={`text-2xl font-black uppercase tracking-tighter ${data.netIncome >= 0 ? 'text-emerald-800' : 'text-red-800'}`}>{data.netIncome >= 0 ? 'Resultado Positivo' : 'Prejuízo Apurado'}</h4>
+                                <p className="text-slate-500 font-medium">Lucro real após todas as baixas e despesas.</p>
                             </div>
                             <div className="text-center md:text-right">
-                                <div className={`text-5xl font-black print:text-3xl print:text-black ${data.netIncome >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>R$ {data.netIncome.toFixed(2)}</div>
+                                <div className={`text-5xl font-black ${data.netIncome >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>R$ {data.netIncome.toFixed(2)}</div>
                             </div>
                         </div>
-                    </div>
-                    
-                    {/* Rodapé do Relatório */}
-                    <div className="bg-slate-50 p-4 border-t border-slate-200 text-center text-[10px] text-slate-400 print:bg-white">
-                        <p>Documento gerado eletronicamente pelo sistema GastroFlow em {new Date().toLocaleString()}.</p>
-                        <p>Os valores apresentados são gerenciais e não substituem a contabilidade fiscal oficial.</p>
                     </div>
                 </div>
             </div>
@@ -458,5 +454,18 @@ export const AdminAccounting: React.FC = () => {
             </div>
         )}
     </div>
+
+    {/* CONTEÚDO EXCLUSIVO PARA IMPRESSÃO */}
+    <div className="hidden print:block">
+        <DREReportPrint 
+            data={data}
+            dateStart={dateStart}
+            dateEnd={dateEnd}
+            businessInfo={state.businessInfo}
+            theme={state.theme}
+            config={config}
+        />
+    </div>
+    </>
   );
 };

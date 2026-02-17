@@ -257,7 +257,6 @@ export const ClientApp: React.FC = () => {
                     </div>
                 )}
                 
-                {/* O Modal antigo foi removido e substituído por ClientProductModal importado */}
                 <ClientProductModal 
                     isOpen={!!selectedProduct} 
                     onClose={() => setSelectedProduct(null)} 

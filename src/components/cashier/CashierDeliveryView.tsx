@@ -131,11 +131,11 @@ export const CashierDeliveryView: React.FC = () => {
         });
     };
 
-    // Função de impressão simplificada para o exemplo (pode ser movida para utils se preferir)
+    // Função de impressão simplificada para o exemplo
     const handlePrint = () => {
-         // Lógica de impressão igual ao original, simplificada aqui
          const subtotal = cart.reduce((acc, i) => acc + ((i.item.salePrice + i.extras.reduce((s,e)=>s+e.salePrice,0)) * i.quantity), 0);
-         // ... chamar lógica de window.open/print
+         const total = subtotal + (form.deliveryFee || 0);
+         // Lógica de impressão (window.open)
     };
 
     return (

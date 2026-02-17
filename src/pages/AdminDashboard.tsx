@@ -20,11 +20,10 @@ import { AdminTables } from './admin/AdminTables';
 import { AdminFinance } from './admin/AdminFinance';
 import { AdminSettings } from './admin/AdminSettings';
 import { AdminMenuAppearance } from './admin/AdminMenuAppearance'; 
-import { AdminPurchaseSuggestions } from './admin/AdminPurchaseSuggestions'; 
 import { AdminAccounting } from './admin/AdminAccounting';
 import { AccountingReport } from './admin/AccountingReport'; 
 import { AdminFinancialTips } from './admin/AdminFinancialTips';
-import { AdminBusinessIntelligence } from './admin/AdminBusinessIntelligence'; // Nova Importação
+import { AdminBusinessIntelligence } from './admin/AdminBusinessIntelligence'; 
 
 // --- COMPONENTE DE SIDEBAR (Exclusivo do Admin) ---
 const AdminSidebar = ({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: (v: boolean) => void }) => {
@@ -64,9 +63,8 @@ const AdminSidebar = ({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: (v: b
     const managementLinks = [
         { to: "/admin", icon: <LayoutDashboard size={20}/>, label: "Visão Geral", requires: null },
         { to: "/admin/inventory", icon: <Package size={20}/>, label: "Estoque", requires: 'allowInventory' },
-        { to: "/admin/purchases", icon: <ShoppingCart size={20}/>, label: "Sugestão Compras", requires: 'allowInventory' }, 
         { to: "/admin/finance", icon: <DollarSign size={20}/>, label: "Financeiro", requires: 'allowExpenses' }, 
-        { to: "/admin/bi", icon: <TrendingUp size={20}/>, label: "Inteligência", requires: 'allowReports' }, // Novo Link
+        { to: "/admin/bi", icon: <TrendingUp size={20}/>, label: "Inteligência", requires: 'allowReports' },
         { to: "/admin/settings", icon: <Settings size={20}/>, label: "Configurações", requires: null },
     ];
 
@@ -217,10 +215,7 @@ export const AdminDashboard: React.FC = () => {
                         <Route path="products" element={<AdminProducts />} />
                         
                         {planLimits.allowInventory && (
-                            <>
-                                <Route path="inventory" element={<AdminInventory />} />
-                                <Route path="purchases" element={<AdminPurchaseSuggestions />} /> 
-                            </>
+                            <Route path="inventory" element={<AdminInventory />} />
                         )}
 
                         {planLimits.allowTableMgmt && <Route path="tables" element={<AdminTables />} />}

@@ -10,10 +10,9 @@ interface ClientProductModalProps {
     onClose: () => void;
     product: Product | null;
     onAddToCart: (item: { product: Product; quantity: number; notes: string; extras: Product[] }) => void;
-    themePrimaryColor?: string;
 }
 
-export const ClientProductModal: React.FC<ClientProductModalProps> = ({ isOpen, onClose, product, onAddToCart, themePrimaryColor = '#22c55e' }) => {
+export const ClientProductModal: React.FC<ClientProductModalProps> = ({ isOpen, onClose, product, onAddToCart }) => {
     const { state: menuState } = useMenu();
     const [quantity, setQuantity] = useState(1);
     const [notes, setNotes] = useState('');
@@ -36,10 +35,8 @@ export const ClientProductModal: React.FC<ClientProductModalProps> = ({ isOpen, 
     const handleConfirm = () => {
         let finalNote = notes;
         
-        // Lógica de timing para bebidas (simplificada aqui, pode ser expandida se precisar saber se tem comida no carrinho pai)
         if (isDrink) {
             const timingText = drinkTiming === 'IMMEDIATE' ? '[IMEDIATA]' : '[COM COMIDA]';
-            // Se o usuário digitou algo, anexa. Se não, usa só a tag.
             finalNote = finalNote ? `${timingText} ${finalNote}` : timingText;
         }
 

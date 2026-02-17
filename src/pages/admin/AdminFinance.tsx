@@ -8,12 +8,13 @@ import { Modal } from '../../components/Modal'; // Importando Modal Genérico pa
 import { ExpenseFormModal } from '../../components/modals/ExpenseFormModal';
 import { CashBleedModal } from '../../components/modals/CashBleedModal';
 import { Expense } from '../../types';
-import { Plus, CheckSquare, Trash2, Wallet, CreditCard, Banknote, ArrowDown, Repeat, PieChart, FileText, Lightbulb, LayoutDashboard, List, Edit, Lock, Calendar } from 'lucide-react';
+import { Plus, CheckSquare, Trash2, Wallet, CreditCard, Banknote, ArrowDown, Repeat, PieChart, FileText, Lightbulb, LayoutDashboard, List, Edit, Lock, Calendar, ShoppingCart, Filter, History, Clock } from 'lucide-react';
 
 // Importando os componentes das outras páginas para uso nas abas
 import { AdminAccounting } from './AdminAccounting';
 import { AccountingReport } from './AccountingReport';
 import { AdminFinancialTips } from './AdminFinancialTips';
+import { AdminPurchaseSuggestions } from './AdminPurchaseSuggestions'; // Nova importação
 
 export const AdminFinance: React.FC = () => {
   const { state: restState } = useRestaurant();
@@ -21,7 +22,12 @@ export const AdminFinance: React.FC = () => {
   const { showConfirm, showAlert } = useUI();
   
   // State for Tabs
-  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'EXPENSES' | 'DRE' | 'REPORT' | 'TIPS'>('OVERVIEW');
+  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'EXPENSES' | 'PURCHASES' | 'DRE' | 'REPORT' | 'TIPS'>('OVERVIEW');
+
+  // State for Expenses Filter
+  const [expenseViewMode, setExpenseViewMode] = useState<'MONTH' | 'RECURRING' | 'HISTORY'>('MONTH');
+  const [historyStart, setHistoryStart] = useState(new Date(new Date().setDate(1)).toISOString().split('T')[0]);
+  const [historyEnd, setHistoryEnd] = useState(new Date().toISOString().split('T')[0]);
 
   // State for Modals
   const [editingExpense, setEditingExpense] = useState<Partial<Expense> | null>(null);
@@ -64,6 +70,33 @@ export const AdminFinance: React.FC = () => {
   const currentMonthExpenses = finState.expenses
       .filter(e => new Date(e.dueDate).getMonth() === new Date().getMonth())
       .reduce((acc, e) => acc + e.amount, 0);
+
+  // --- Filtering Logic for Expenses Tab ---
+  const filteredExpenses = finState.expenses.filter(expense => {
+      const dueDate = new Date(expense.dueDate);
+      const today = new Date();
+
+      if (expenseViewMode === 'RECURRING') {
+          return expense.isRecurring;
+      }
+      
+      if (expenseViewMode === 'MONTH') {
+          // Filtra pelo mês e ano atual
+          return dueDate.getMonth() === today.getMonth() && dueDate.getFullYear() === today.getFullYear();
+      }
+
+      if (expenseViewMode === 'HISTORY') {
+          const start = new Date(historyStart);
+          const end = new Date(historyEnd);
+          end.setHours(23, 59, 59, 999); // Garante que pegue o dia final inteiro
+          
+          // Se foi pago, usa a data de pagamento, se não, usa vencimento
+          const dateToCheck = expense.isPaid && expense.paidDate ? new Date(expense.paidDate) : dueDate;
+          return dateToCheck >= start && dateToCheck <= end;
+      }
+
+      return true;
+  }).sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
 
   // --- Handlers ---
 
@@ -160,6 +193,7 @@ export const AdminFinance: React.FC = () => {
             <div className="flex overflow-x-auto gap-2">
                 <TabButton id="OVERVIEW" label="Visão Geral" icon={LayoutDashboard} />
                 <TabButton id="EXPENSES" label="Despesas" icon={List} />
+                {restState.planLimits.allowInventory && <TabButton id="PURCHASES" label="Sugestão de Compras" icon={ShoppingCart} />}
                 <TabButton id="DRE" label="DRE Gerencial" icon={PieChart} />
                 <TabButton id="REPORT" label="Relatório Contábil" icon={FileText} />
                 <TabButton id="TIPS" label="Dicas Inteligentes" icon={Lightbulb} />
@@ -212,13 +246,33 @@ export const AdminFinance: React.FC = () => {
             {/* VIEW: EXPENSES */}
             {activeTab === 'EXPENSES' && (
                 <div className="space-y-6 animate-fade-in">
-                    <div className="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border">
+                    
+                    {/* Toolbar de Ações e Filtros */}
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-4 rounded-xl shadow-sm border gap-4">
                         <div>
-                            <h3 className="font-bold text-lg text-gray-800">Contas a Pagar e Despesas</h3>
-                            <p className="text-xs text-gray-500">Gerencie pagamentos a fornecedores e custos operacionais.</p>
+                            <h3 className="font-bold text-lg text-gray-800">Contas a Pagar</h3>
+                            <p className="text-xs text-gray-500">Gerencie pagamentos e custos.</p>
                         </div>
-                        <Button onClick={() => { setEditingExpense(null); setIsExpenseModalOpen(true); }}><Plus size={16}/> Nova Despesa</Button>
+                        <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
+                            <div className="flex bg-gray-100 p-1 rounded-lg">
+                                <button onClick={() => setExpenseViewMode('MONTH')} className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-1 ${expenseViewMode === 'MONTH' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500'}`}><Calendar size={14}/> Mês Atual</button>
+                                <button onClick={() => setExpenseViewMode('RECURRING')} className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-1 ${expenseViewMode === 'RECURRING' ? 'bg-white text-purple-600 shadow-sm' : 'text-gray-500'}`}><Repeat size={14}/> Recorrentes</button>
+                                <button onClick={() => setExpenseViewMode('HISTORY')} className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-1 ${expenseViewMode === 'HISTORY' ? 'bg-white text-orange-600 shadow-sm' : 'text-gray-500'}`}><History size={14}/> Histórico</button>
+                            </div>
+                            <Button onClick={() => { setEditingExpense(null); setIsExpenseModalOpen(true); }}><Plus size={16}/> Nova Despesa</Button>
+                        </div>
                     </div>
+
+                    {/* Filtro de Data para Histórico */}
+                    {expenseViewMode === 'HISTORY' && (
+                        <div className="bg-white p-3 rounded-xl shadow-sm border flex items-center gap-3 animate-fade-in">
+                            <Filter size={16} className="text-gray-400"/>
+                            <span className="text-xs font-bold text-gray-500 uppercase">Filtrar Período:</span>
+                            <input type="date" className="border rounded p-1 text-sm bg-gray-50" value={historyStart} onChange={e => setHistoryStart(e.target.value)} />
+                            <span className="text-gray-400 font-bold">-</span>
+                            <input type="date" className="border rounded p-1 text-sm bg-gray-50" value={historyEnd} onChange={e => setHistoryEnd(e.target.value)} />
+                        </div>
+                    )}
 
                     <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
                         <div className="overflow-x-auto">
@@ -235,7 +289,7 @@ export const AdminFinance: React.FC = () => {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y text-sm">
-                                    {finState.expenses.map(expense => (
+                                    {filteredExpenses.map(expense => (
                                         <tr key={expense.id} className={`hover:bg-gray-50 transition-colors ${expense.isPaid ? 'bg-gray-50/50' : ''}`}>
                                             <td className="p-4 flex flex-col">
                                                 <span className={`font-bold ${expense.isPaid ? 'text-slate-500' : (new Date(expense.dueDate) < new Date() ? 'text-red-600' : 'text-slate-700')}`}>
@@ -274,13 +328,16 @@ export const AdminFinance: React.FC = () => {
                                             </td>
                                         </tr>
                                     ))}
-                                    {finState.expenses.length === 0 && <tr><td colSpan={7} className="p-10 text-center text-gray-400 italic">Nenhuma despesa registrada.</td></tr>}
+                                    {filteredExpenses.length === 0 && <tr><td colSpan={7} className="p-10 text-center text-gray-400 italic">Nenhuma despesa encontrada neste filtro.</td></tr>}
                                 </tbody>
                             </table>
                         </div>
                     </div>
                 </div>
             )}
+            
+            {/* VIEW: PURCHASES */}
+            {activeTab === 'PURCHASES' && <AdminPurchaseSuggestions />}
 
             {activeTab === 'DRE' && <AdminAccounting />}
             {activeTab === 'REPORT' && <AccountingReport />}
