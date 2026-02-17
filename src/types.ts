@@ -233,6 +233,10 @@ export interface RestaurantTheme {
   bannerUrl?: string;
   restaurantName: string;
   viewMode?: 'LIST' | 'GRID';
+  // Novas opções de personalização
+  fontFamily?: 'Inter' | 'Roboto' | 'Playfair Display' | 'Montserrat';
+  borderRadius?: 'none' | 'sm' | 'md' | 'lg' | 'full';
+  buttonStyle?: 'fill' | 'outline' | 'minimal';
 }
 
 export interface Supplier {
