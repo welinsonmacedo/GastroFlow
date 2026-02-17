@@ -8,6 +8,7 @@ import { DeliveryInfo, DeliveryMethodConfig, InventoryItem, OrderStatus } from '
 import { Button } from '../Button';
 import { Search, User, Trash2, Printer, CheckCircle, MapPin, Loader2 } from 'lucide-react';
 import { AddToCartModal } from '../modals/AddToCartModal';
+import { printHtml, getReceiptStyles } from '../../utils/printHelper';
 
 export const CashierDeliveryView: React.FC = () => {
     const { state: restState } = useRestaurant();
@@ -131,11 +132,50 @@ export const CashierDeliveryView: React.FC = () => {
         });
     };
 
-    // Função de impressão simplificada para o exemplo
     const handlePrint = () => {
-         const subtotal = cart.reduce((acc, i) => acc + ((i.item.salePrice + i.extras.reduce((s,e)=>s+e.salePrice,0)) * i.quantity), 0);
-         const total = subtotal + (form.deliveryFee || 0);
-         // Lógica de impressão (window.open)
+        const subtotal = cart.reduce((acc, i) => acc + ((i.item.salePrice + i.extras.reduce((s,e)=>s+e.salePrice,0)) * i.quantity), 0);
+        const total = subtotal + (form.deliveryFee || 0);
+        
+        const html = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Cupom Delivery</title>
+                ${getReceiptStyles()}
+            </head>
+            <body>
+                <div class="header">
+                    <span class="title">${restState.theme.restaurantName}</span>
+                    <span class="subtitle">DELIVERY / BALCÃO</span>
+                </div>
+                <div style="margin-bottom: 15px; font-size: 13px;">
+                    <strong>Cliente:</strong> ${form.customerName}<br/>
+                    <strong>Telefone:</strong> ${form.phone || '-'}<br/>
+                    <strong>Endereço:</strong> ${form.address || 'Retirada'}<br/>
+                    <strong>Método:</strong> ${form.platform} (${form.paymentMethod})
+                </div>
+                <div style="border-bottom: 1px dashed #000; margin-bottom: 10px;"></div>
+                ${cart.map(i => `
+                    <div class="item-row">
+                        <span>${i.quantity}x ${i.item.name}</span>
+                        <span>${(i.item.salePrice * i.quantity).toFixed(2)}</span>
+                    </div>
+                    ${i.extras.map(e => `<div class="extras">+ ${e.name} (${e.salePrice.toFixed(2)})</div>`).join('')}
+                    ${i.notes ? `<div class="note">${i.notes}</div>` : ''}
+                `).join('')}
+                <div class="total">
+                    <div style="font-size: 12px; font-weight: normal;">Subtotal: ${subtotal.toFixed(2)}</div>
+                    <div style="font-size: 12px; font-weight: normal;">Taxa: ${form.deliveryFee.toFixed(2)}</div>
+                    <div style="margin-top: 5px;">TOTAL: R$ ${total.toFixed(2)}</div>
+                    ${isCash() && form.changeFor ? `<div style="font-size: 12px;">Troco para: ${form.changeFor.toFixed(2)}</div>` : ''}
+                </div>
+                <div class="footer">
+                    ${new Date().toLocaleString()}
+                </div>
+            </body>
+            </html>
+        `;
+        printHtml(html);
     };
 
     return (

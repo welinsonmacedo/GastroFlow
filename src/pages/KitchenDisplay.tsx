@@ -4,7 +4,8 @@ import { useRestaurant } from '../context/RestaurantContext';
 import { useMenu } from '../context/MenuContext';
 import { useOrder } from '../context/OrderContext';
 import { OrderStatus, ProductType, OrderItem } from '../types';
-import { Clock, ChefHat, CheckCircle, AlertTriangle, Volume2, Zap, Plus, Printer, RefreshCcw, Bike, Phone, MessageCircle, ArrowRight } from 'lucide-react';
+import { Clock, ChefHat, CheckCircle, AlertTriangle, Volume2, Zap, Plus, Printer, RefreshCcw, Bike, ArrowRight } from 'lucide-react';
+import { printHtml, getReceiptStyles } from '../utils/printHelper';
 
 const KITCHEN_SOUND_URL = "https://assets.mixkit.co/active_storage/sfx/571/571-preview.mp3";
 
@@ -125,36 +126,32 @@ export const KitchenDisplay: React.FC = () => {
       const date = new Date(order.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       const title = order.type === 'DELIVERY' ? `DELIVERY - ${order.deliveryInfo?.platform || 'Telefone'}` : `MESA ${table?.number || '?'}`;
 
-      const printContent = `
+      const html = `
         <!DOCTYPE html>
         <html>
         <head>
-            <style>
-                body { font-family: 'Courier New', monospace; width: 80mm; margin: 0; padding: 5px; color: #000; }
-                .header { text-align: center; border-bottom: 2px dashed #000; padding-bottom: 10px; margin-bottom: 10px; }
-                .item-row { display: flex; font-size: 1.2em; font-weight: bold; margin-bottom: 5px; }
-                .note { font-weight: bold; background: #000; color: #fff; padding: 2px; display: inline-block; }
-            </style>
+            <title>Cozinha</title>
+            ${getReceiptStyles()}
         </head>
         <body>
             <div class="header">
-                <div style="font-size: 1.5em; font-weight: bold;">${title}</div>
-                <div>Pedido #${order.id.slice(0,4)} • ${date}</div>
-                ${order.deliveryInfo ? `<div>${order.deliveryInfo.customerName}</div>` : ''}
+                <span class="title">${title}</span>
+                <span class="subtitle">Pedido #${order.id.slice(0,4)} • ${date}</span>
+                ${order.deliveryInfo ? `<div class="subtitle">${order.deliveryInfo.customerName}</div>` : ''}
             </div>
             ${groupedItems.map(({ main, extras }) => `
-                <div style="margin-bottom: 10px;">
-                    <div class="item-row"><span>${main.quantity}x ${main.productName}</span></div>
+                <div style="margin-bottom: 10px; border-bottom: 1px dotted #ccc; padding-bottom: 5px;">
+                    <div class="item-row">
+                        <span>${main.quantity}x ${main.productName}</span>
+                    </div>
                     ${main.notes ? `<div class="note">OBS: ${main.notes}</div>` : ''}
-                    ${extras.map(e => `<div style="margin-left: 20px;">+ ${e.quantity}x ${e.productName}</div>`).join('')}
+                    ${extras.map(e => `<div class="extras">+ ${e.quantity}x ${e.productName}</div>`).join('')}
                 </div>
             `).join('')}
-            <script>window.onload = function() { window.print(); window.close(); }</script>
         </body>
         </html>
       `;
-      const printWindow = window.open('', '_blank');
-      if (printWindow) { printWindow.document.write(printContent); printWindow.document.close(); }
+      printHtml(html);
   };
 
   if (!orderState.audioUnlocked) {

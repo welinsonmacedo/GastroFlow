@@ -6,6 +6,7 @@ import { useUI } from '../../context/UIContext';
 import { Button } from '../../components/Button';
 import { QRCodeGenerator } from '../../components/QRCodeGenerator';
 import { Plus, Printer, Trash2, Copy, Check, ExternalLink } from 'lucide-react';
+import { printHtml } from '../../utils/printHelper';
 
 export const AdminTables: React.FC = () => {
   const { state } = useRestaurant();
@@ -39,12 +40,9 @@ export const AdminTables: React.FC = () => {
 
     const targetUrl = getTableUrl(tableId);
     const encodedUrl = encodeURIComponent(targetUrl);
-    // Increased size for better print quality
     const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodedUrl}&bgcolor=ffffff`;
     
-    const printWindow = window.open('', '_blank');
-    if (printWindow) {
-      printWindow.document.write(`
+    const html = `
         <!DOCTYPE html>
         <html>
           <head>
@@ -66,83 +64,30 @@ export const AdminTables: React.FC = () => {
                 padding: 40px;
                 border-radius: 20px;
                 text-align: center;
-                width: 320px;
+                width: 300px;
                 display: flex;
                 flex-direction: column;
                 align-items: center;
               }
-              .welcome {
-                font-size: 16px;
-                text-transform: uppercase;
-                letter-spacing: 2px;
-                color: #555;
-                margin-bottom: 5px;
-              }
-              .restaurant-name {
-                font-size: 24px;
-                font-weight: 900;
-                margin-bottom: 20px;
-                line-height: 1.2;
-              }
-              .table-wrapper {
-                background: #000;
-                color: #fff;
-                padding: 5px 20px;
-                border-radius: 50px;
-                margin-bottom: 10px;
-              }
-              .table-label {
-                font-size: 12px;
-                font-weight: 700;
-                text-transform: uppercase;
-              }
-              .table-number {
-                font-size: 48px;
-                font-weight: 900;
-                line-height: 1;
-                margin: 10px 0;
-              }
-              .qr-img {
-                width: 220px;
-                height: 220px;
-                margin: 10px 0;
-              }
-              .instruction {
-                font-size: 14px;
-                font-weight: 500;
-                color: #333;
-                margin-top: 10px;
-              }
-              @media print {
-                body { height: auto; display: block; }
-                .card { margin: 20px auto; page-break-inside: avoid; border: 2px solid #000; }
-              }
+              .welcome { font-size: 16px; text-transform: uppercase; letter-spacing: 2px; color: #555; margin-bottom: 5px; }
+              .restaurant-name { font-size: 24px; font-weight: 900; margin-bottom: 20px; line-height: 1.2; }
+              .table-number { font-size: 48px; font-weight: 900; line-height: 1; margin: 10px 0; }
+              .qr-img { width: 200px; height: 200px; margin: 10px 0; }
+              .instruction { font-size: 14px; font-weight: 500; color: #333; margin-top: 10px; }
             </style>
           </head>
           <body>
             <div class="card">
               <div class="welcome">Seja Bem-vindo!</div>
               <div class="restaurant-name">${restaurantName}</div>
-              
               <div class="table-number">Mesa ${tableNumber}</div>
-              
               <img src="${qrImageUrl}" class="qr-img" />
-              
               <div class="instruction">Aponte a câmera do seu celular<br/>para acessar o cardápio e pedir.</div>
             </div>
-            <script>
-              window.onload = function() {
-                setTimeout(function() {
-                  window.print();
-                  window.close();
-                }, 500);
-              }
-            </script>
           </body>
         </html>
-      `);
-      printWindow.document.close();
-    }
+    `;
+    printHtml(html);
   };
 
   return (
@@ -160,13 +105,7 @@ export const AdminTables: React.FC = () => {
                 <div key={table.id} className="bg-white p-4 rounded-xl shadow-sm border flex flex-col items-center relative group hover:shadow-md transition-shadow">
                     <div className="w-full flex justify-between items-center mb-2">
                         <h3 className="font-bold text-lg text-gray-700">Mesa {table.number}</h3>
-                        <button 
-                            onClick={() => handleOpenLink(table.id)}
-                            className="text-gray-400 hover:text-blue-600 p-1" 
-                            title="Abrir Link em Nova Aba"
-                        >
-                            <ExternalLink size={14} />
-                        </button>
+                        <button onClick={() => handleOpenLink(table.id)} className="text-gray-400 hover:text-blue-600 p-1" title="Abrir Link"><ExternalLink size={14} /></button>
                     </div>
                     
                     <div className="mb-4 bg-white p-2 rounded border">
@@ -174,18 +113,12 @@ export const AdminTables: React.FC = () => {
                     </div>
                     
                     <div className="flex flex-col w-full gap-2">
-                        <Button 
-                            variant="outline" 
-                            size="sm" 
-                            onClick={() => handleCopyLink(table.id)} 
-                            className={`w-full flex items-center justify-center gap-2 ${copiedId === table.id ? 'text-green-600 border-green-200 bg-green-50' : ''}`}
-                        >
-                            {copiedId === table.id ? <Check size={16}/> : <Copy size={16}/>}
-                            {copiedId === table.id ? 'Copiado' : 'Copiar Link'}
+                        <Button variant="outline" size="sm" onClick={() => handleCopyLink(table.id)} className={`w-full flex items-center justify-center gap-2 ${copiedId === table.id ? 'text-green-600 border-green-200 bg-green-50' : ''}`}>
+                            {copiedId === table.id ? <Check size={16}/> : <Copy size={16}/>} {copiedId === table.id ? 'Copiado' : 'Copiar Link'}
                         </Button>
                         <div className="flex gap-2 w-full">
                             <Button variant="secondary" size="sm" onClick={() => handlePrint(table.id)} className="flex-1" title="Imprimir QR"><Printer size={16}/></Button>
-                            <Button variant="danger" size="sm" onClick={() => showConfirm({ title: 'Excluir Mesa', message: 'Tem certeza? O QR Code antigo deixará de funcionar.', onConfirm: () => orderDispatch({ type: 'DELETE_TABLE', tableId: table.id }) })} className="flex-1" title="Excluir"><Trash2 size={16}/></Button>
+                            <Button variant="danger" size="sm" onClick={() => showConfirm({ title: 'Excluir Mesa', message: 'Tem certeza?', onConfirm: () => orderDispatch({ type: 'DELETE_TABLE', tableId: table.id }) })} className="flex-1" title="Excluir"><Trash2 size={16}/></Button>
                         </div>
                     </div>
                 </div>

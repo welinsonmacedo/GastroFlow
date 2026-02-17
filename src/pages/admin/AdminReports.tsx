@@ -5,10 +5,11 @@ import { useUI } from '../../context/UIContext';
 import { supabase } from '../../lib/supabase';
 import { Button } from '../../components/Button';
 import { 
-    FileText, Download, Printer, Filter, Calendar, 
+    FileText, Download, Printer, Calendar, 
     ArrowUpCircle, ArrowDownCircle, Package, RefreshCcw, 
-    Search, Table as TableIcon, ListPlus 
+    Search, ListPlus 
 } from 'lucide-react';
+import { printHtml, getReportStyles } from '../../utils/printHelper';
 
 type ReportTab = 'REVENUE' | 'EXPENSES' | 'FINANCE' | 'INVENTORY';
 
@@ -20,7 +21,7 @@ export const AdminReports: React.FC = () => {
     const [dateStart, setDateStart] = useState(new Date(new Date().setDate(1)).toISOString().split('T')[0]);
     const [dateEnd, setDateEnd] = useState(new Date().toISOString().split('T')[0]);
     const [activeTab, setActiveTab] = useState<ReportTab>('REVENUE');
-    const [isDetailed, setIsDetailed] = useState(false); // Novo estado para detalhamento
+    const [isDetailed, setIsDetailed] = useState(false);
     const [loading, setLoading] = useState(false);
     
     // Dados
@@ -38,145 +39,40 @@ export const AdminReports: React.FC = () => {
 
         try {
             if (activeTab === 'REVENUE') {
-                const { data: trans, error } = await supabase
-                    .from('transactions')
-                    .select('*')
-                    .eq('tenant_id', state.tenantId)
-                    .gte('created_at', start)
-                    .lte('created_at', end)
-                    .neq('status', 'CANCELLED')
-                    .order('created_at', { ascending: false });
-                
+                const { data: trans, error } = await supabase.from('transactions').select('*').eq('tenant_id', state.tenantId).gte('created_at', start).lte('created_at', end).neq('status', 'CANCELLED').order('created_at', { ascending: false });
                 if (error) throw error;
-                
-                const mappedData = (trans || []).map((t: any) => ({
-                    ...t,
-                    amount: Number(t.amount) || 0
-                }));
-
+                const mappedData = (trans || []).map((t: any) => ({ ...t, amount: Number(t.amount) || 0 }));
                 setData(mappedData);
-                setSummary({
-                    total: mappedData.reduce((acc, t) => acc + t.amount, 0),
-                    count: mappedData.length
-                });
+                setSummary({ total: mappedData.reduce((acc, t) => acc + t.amount, 0), count: mappedData.length });
             }
             else if (activeTab === 'EXPENSES') {
-                const { data: exps, error } = await supabase
-                    .from('expenses')
-                    .select('*')
-                    .eq('tenant_id', state.tenantId)
-                    .gte('due_date', dateStart)
-                    .lte('due_date', dateEnd)
-                    .order('due_date', { ascending: false });
-
+                const { data: exps, error } = await supabase.from('expenses').select('*').eq('tenant_id', state.tenantId).gte('due_date', dateStart).lte('due_date', dateEnd).order('due_date', { ascending: false });
                 if (error) throw error;
-
-                const mappedData = (exps || []).map((e: any) => ({
-                    ...e,
-                    amount: Number(e.amount) || 0
-                }));
-
+                const mappedData = (exps || []).map((e: any) => ({ ...e, amount: Number(e.amount) || 0 }));
                 setData(mappedData);
-                setSummary({
-                    total: mappedData.reduce((acc, e) => acc + e.amount, 0),
-                    paid: mappedData.filter((e: any) => e.is_paid).reduce((acc, e) => acc + e.amount, 0),
-                    pending: mappedData.filter((e: any) => !e.is_paid).reduce((acc, e) => acc + e.amount, 0)
-                });
+                setSummary({ total: mappedData.reduce((acc, e) => acc + e.amount, 0), paid: mappedData.filter((e: any) => e.is_paid).reduce((acc, e) => acc + e.amount, 0), pending: mappedData.filter((e: any) => !e.is_paid).reduce((acc, e) => acc + e.amount, 0) });
             }
             else if (activeTab === 'FINANCE') {
-                // Busca combinada para fluxo financeiro (Caixa)
-                
-                // 1. SAÍDAS (Despesas) - Comum para ambos os modos
-                const { data: exps } = await supabase.from('expenses')
-                    .select('paid_date, amount, description, category')
-                    .eq('tenant_id', state.tenantId)
-                    .eq('is_paid', true)
-                    .gte('paid_date', dateStart)
-                    .lte('paid_date', dateEnd);
-
-                const expenseItems = (exps || []).map((e: any) => ({
-                    date: e.paid_date, 
-                    type: 'OUT', 
-                    description: `[DESPESA] ${e.description}`, 
-                    details: e.category,
-                    amount: Number(e.amount) || 0,
-                    qty: 1
-                }));
-
+                const { data: exps } = await supabase.from('expenses').select('paid_date, amount, description, category').eq('tenant_id', state.tenantId).eq('is_paid', true).gte('paid_date', dateStart).lte('paid_date', dateEnd);
+                const expenseItems = (exps || []).map((e: any) => ({ date: e.paid_date, type: 'OUT', description: `[DESPESA] ${e.description}`, details: e.category, amount: Number(e.amount) || 0, qty: 1 }));
                 let incomeItems = [];
-
                 if (isDetailed) {
-                    // MODO DETALHADO: Busca Itens vendidos (Produtos) ao invés de transações consolidadas
-                    const { data: items } = await supabase
-                        .from('order_items')
-                        .select(`
-                            created_at, 
-                            product_name, 
-                            product_price, 
-                            quantity, 
-                            orders!inner(customer_name, is_paid, status)
-                        `)
-                        .eq('tenant_id', state.tenantId)
-                        .eq('orders.is_paid', true)
-                        .neq('orders.status', 'CANCELLED')
-                        .gte('created_at', start)
-                        .lte('created_at', end);
-
-                    incomeItems = (items || []).map((i: any) => ({
-                        date: i.created_at,
-                        type: 'IN',
-                        description: i.product_name, // Nome do produto
-                        details: i.orders?.customer_name || 'Consumidor', // Nome do cliente
-                        amount: (Number(i.product_price) * Number(i.quantity)) || 0,
-                        qty: Number(i.quantity) || 0
-                    }));
-
+                    const { data: items } = await supabase.from('order_items').select(`created_at, product_name, product_price, quantity, orders!inner(customer_name, is_paid, status)`).eq('tenant_id', state.tenantId).eq('orders.is_paid', true).neq('orders.status', 'CANCELLED').gte('created_at', start).lte('created_at', end);
+                    incomeItems = (items || []).map((i: any) => ({ date: i.created_at, type: 'IN', description: i.product_name, details: i.orders?.customer_name || 'Consumidor', amount: (Number(i.product_price) * Number(i.quantity)) || 0, qty: Number(i.quantity) || 0 }));
                 } else {
-                    // MODO RESUMIDO: Busca Transações (Totais por venda)
-                    const { data: trans } = await supabase.from('transactions')
-                        .select('created_at, amount, method, items_summary')
-                        .eq('tenant_id', state.tenantId)
-                        .gte('created_at', start)
-                        .lte('created_at', end)
-                        .neq('status', 'CANCELLED');
-
-                    incomeItems = (trans || []).map((t: any) => ({ 
-                        date: t.created_at, 
-                        type: 'IN', 
-                        description: `Venda (${t.method})`, 
-                        details: t.items_summary || '',
-                        amount: Number(t.amount) || 0,
-                        qty: 1
-                    }));
+                    const { data: trans } = await supabase.from('transactions').select('created_at, amount, method, items_summary').eq('tenant_id', state.tenantId).gte('created_at', start).lte('created_at', end).neq('status', 'CANCELLED');
+                    incomeItems = (trans || []).map((t: any) => ({ date: t.created_at, type: 'IN', description: `Venda (${t.method})`, details: t.items_summary || '', amount: Number(t.amount) || 0, qty: 1 }));
                 }
-
                 const flow = [...incomeItems, ...expenseItems].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
                 setData(flow);
-                
                 const totalIn = flow.filter(i => i.type === 'IN').reduce((acc, i) => acc + i.amount, 0);
                 const totalOut = flow.filter(i => i.type === 'OUT').reduce((acc, i) => acc + i.amount, 0);
-
                 setSummary({ totalIn, totalOut, balance: totalIn - totalOut });
             }
             else if (activeTab === 'INVENTORY') {
-                const { data: logs, error } = await supabase
-                    .from('inventory_logs')
-                    .select('*, inventory_items(name, unit)')
-                    .eq('tenant_id', state.tenantId)
-                    .gte('created_at', start)
-                    .lte('created_at', end)
-                    .order('created_at', { ascending: false });
-                
+                const { data: logs, error } = await supabase.from('inventory_logs').select('*, inventory_items(name, unit)').eq('tenant_id', state.tenantId).gte('created_at', start).lte('created_at', end).order('created_at', { ascending: false });
                 if (error) throw error;
-                
-                const formattedLogs = logs?.map((l: any) => ({
-                    ...l,
-                    quantity: Number(l.quantity) || 0,
-                    itemName: l.inventory_items?.name || 'Item Removido',
-                    unit: l.inventory_items?.unit || '-'
-                }));
-
+                const formattedLogs = logs?.map((l: any) => ({ ...l, quantity: Number(l.quantity) || 0, itemName: l.inventory_items?.name || 'Item Removido', unit: l.inventory_items?.unit || '-' }));
                 setData(formattedLogs || []);
             }
         } catch (error) {
@@ -187,57 +83,65 @@ export const AdminReports: React.FC = () => {
         }
     };
 
-    useEffect(() => {
-        fetchData();
-    }, [activeTab, state.tenantId, isDetailed]); // Recarrega se mudar o checkbox
+    useEffect(() => { fetchData(); }, [activeTab, state.tenantId, isDetailed]);
 
     const handleExportCSV = () => {
         if (data.length === 0) return showAlert({ title: "Vazio", message: "Sem dados para exportar.", type: "WARNING" });
-
-        let headers = "";
-        let rows = "";
-
-        if (activeTab === 'REVENUE') {
-            headers = "Data;Metodo;Resumo;Valor\n";
-            rows = data.map(i => `${new Date(i.created_at).toLocaleString()};${i.method};${i.items_summary};${i.amount.toFixed(2).replace('.', ',')}`).join("\n");
-        } else if (activeTab === 'EXPENSES') {
-            headers = "Vencimento;Descricao;Categoria;Valor;Status;Pago Em\n";
-            rows = data.map(i => `${new Date(i.due_date).toLocaleDateString()};${i.description};${i.category};${i.amount.toFixed(2).replace('.', ',')};${i.is_paid ? 'PAGO' : 'PENDENTE'};${i.paid_date ? new Date(i.paid_date).toLocaleDateString() : '-'}`).join("\n");
-        } else if (activeTab === 'FINANCE') {
-            // Ajusta headers para modo detalhado
-            headers = isDetailed 
-                ? "Data;Tipo;Produto/Descricao;Cliente/Categoria;Qtd;Valor Entrada;Valor Saida\n"
-                : "Data;Tipo;Descricao;Detalhes;Valor Entrada;Valor Saida\n";
-            
-            rows = data.map(i => {
-                const date = new Date(i.date).toLocaleString();
-                const desc = i.description.replace(/;/g, ',');
-                const det = (i.details || '').replace(/;/g, ',');
-                const valIn = i.type === 'IN' ? i.amount.toFixed(2).replace('.', ',') : '0,00';
-                const valOut = i.type === 'OUT' ? i.amount.toFixed(2).replace('.', ',') : '0,00';
-                
-                return isDetailed 
-                    ? `${date};${i.type === 'IN' ? 'RECEITA' : 'DESPESA'};${desc};${det};${i.qty};${valIn};${valOut}`
-                    : `${date};${i.type === 'IN' ? 'RECEITA' : 'DESPESA'};${desc};${det};${valIn};${valOut}`;
-            }).join("\n");
-
-        } else if (activeTab === 'INVENTORY') {
-            headers = "Data;Item;Operacao;Qtd;Motivo;Usuario\n";
-            rows = data.map(i => `${new Date(i.created_at).toLocaleString()};${i.itemName};${i.type === 'IN' ? 'ENTRADA' : (i.type === 'OUT' ? 'SAIDA' : (i.type === 'SALE' ? 'VENDA' : 'PERDA'))};${i.quantity};${i.reason};${i.user_name}`).join("\n");
-        }
-
-        const csvContent = "data:text/csv;charset=utf-8," + headers + rows;
-        const encodedUri = encodeURI(csvContent);
+        let headers = "", rows = "";
+        if (activeTab === 'REVENUE') { headers = "Data;Metodo;Resumo;Valor\n"; rows = data.map(i => `${new Date(i.created_at).toLocaleString()};${i.method};${i.items_summary};${i.amount.toFixed(2).replace('.', ',')}`).join("\n"); }
+        else if (activeTab === 'EXPENSES') { headers = "Vencimento;Descricao;Categoria;Valor;Status\n"; rows = data.map(i => `${new Date(i.due_date).toLocaleDateString()};${i.description};${i.category};${i.amount.toFixed(2).replace('.', ',')};${i.is_paid ? 'PAGO' : 'PENDENTE'}`).join("\n"); }
+        else if (activeTab === 'FINANCE') { headers = "Data;Tipo;Descricao;Detalhes;Valor\n"; rows = data.map(i => `${new Date(i.date).toLocaleString()};${i.type};${i.description};${i.details};${i.amount.toFixed(2).replace('.', ',')}`).join("\n"); }
+        else if (activeTab === 'INVENTORY') { headers = "Data;Item;Operacao;Qtd;Motivo\n"; rows = data.map(i => `${new Date(i.created_at).toLocaleString()};${i.itemName};${i.type};${i.quantity};${i.reason}`).join("\n"); }
+        const encodedUri = encodeURI("data:text/csv;charset=utf-8," + headers + rows);
         const link = document.createElement("a");
         link.setAttribute("href", encodedUri);
-        link.setAttribute("download", `relatorio_${activeTab.toLowerCase()}_${dateStart}.csv`);
+        link.setAttribute("download", `relatorio_${activeTab}.csv`);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
     };
 
     const handlePrint = () => {
-        window.print();
+        if (data.length === 0) return showAlert({ title: "Vazio", message: "Sem dados para imprimir.", type: "WARNING" });
+
+        let tableRows = '';
+        data.forEach(item => {
+            if (activeTab === 'REVENUE') {
+                tableRows += `<tr><td>${new Date(item.created_at).toLocaleString()}</td><td>${item.items_summary}</td><td>${item.method}</td><td class="text-right">R$ ${item.amount.toFixed(2)}</td></tr>`;
+            } else if (activeTab === 'EXPENSES') {
+                tableRows += `<tr><td>${new Date(item.due_date).toLocaleDateString()}</td><td>${item.description}</td><td>${item.category}</td><td class="text-right">R$ ${item.amount.toFixed(2)}</td></tr>`;
+            } else if (activeTab === 'FINANCE') {
+                tableRows += `<tr><td>${new Date(item.date).toLocaleString()}</td><td>${item.description}</td><td>${item.type}</td><td class="text-right">R$ ${item.amount.toFixed(2)}</td></tr>`;
+            } else if (activeTab === 'INVENTORY') {
+                tableRows += `<tr><td>${new Date(item.created_at).toLocaleString()}</td><td>${item.itemName}</td><td>${item.type}</td><td class="text-right">${item.quantity} ${item.unit}</td></tr>`;
+            }
+        });
+
+        const html = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Relatório ${activeTab}</title>
+                ${getReportStyles()}
+            </head>
+            <body>
+                <h1>Relatório: ${activeTab}</h1>
+                <h2>Período: ${new Date(dateStart).toLocaleDateString()} a ${new Date(dateEnd).toLocaleDateString()}</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            ${activeTab === 'REVENUE' ? '<th>Data</th><th>Resumo</th><th>Método</th><th class="text-right">Valor</th>' : ''}
+                            ${activeTab === 'EXPENSES' ? '<th>Vencimento</th><th>Descrição</th><th>Categoria</th><th class="text-right">Valor</th>' : ''}
+                            ${activeTab === 'FINANCE' ? '<th>Data</th><th>Descrição</th><th>Tipo</th><th class="text-right">Valor</th>' : ''}
+                            ${activeTab === 'INVENTORY' ? '<th>Data</th><th>Item</th><th>Operação</th><th class="text-right">Qtd</th>' : ''}
+                        </tr>
+                    </thead>
+                    <tbody>${tableRows}</tbody>
+                </table>
+            </body>
+            </html>
+        `;
+        printHtml(html);
     };
 
     return (
@@ -280,7 +184,6 @@ export const AdminReports: React.FC = () => {
 
                     {/* Datas e Opções */}
                     <div className="flex flex-col md:flex-row gap-3 items-center">
-                        {/* Checkbox de Detalhes (Apenas para FINANCE) */}
                         {activeTab === 'FINANCE' && (
                             <label className={`flex items-center gap-2 text-xs font-bold px-3 py-2 rounded-lg cursor-pointer border transition-all ${isDetailed ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-gray-50 border-gray-200 text-gray-500'}`}>
                                 <input type="checkbox" className="hidden" checked={isDetailed} onChange={e => setIsDetailed(e.target.checked)} />
@@ -328,13 +231,6 @@ export const AdminReports: React.FC = () => {
 
             {/* Tabela de Dados */}
             <div className="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden print:shadow-none print:border-black">
-                {/* Header para Impressão */}
-                <div className="hidden print:block p-8 border-b-2 border-black">
-                    <h1 className="text-2xl font-bold uppercase">Relatório: {activeTab} {activeTab === 'FINANCE' && isDetailed ? '(Detalhado)' : ''}</h1>
-                    <p>Período: {new Date(dateStart).toLocaleDateString()} a {new Date(dateEnd).toLocaleDateString()}</p>
-                    <p>Gerado em: {new Date().toLocaleString()}</p>
-                </div>
-
                 <div className="overflow-x-auto">
                     <table className="w-full text-left text-sm">
                         <thead className="bg-slate-900 text-white uppercase text-xs font-bold tracking-widest print:bg-white print:text-black print:border-b-2 print:border-black">
@@ -342,17 +238,7 @@ export const AdminReports: React.FC = () => {
                                 <th className="p-4">Data</th>
                                 {activeTab === 'REVENUE' && <><th className="p-4">Resumo</th><th className="p-4">Método</th><th className="p-4 text-right">Valor</th></>}
                                 {activeTab === 'EXPENSES' && <><th className="p-4">Descrição</th><th className="p-4">Categoria</th><th className="p-4">Status</th><th className="p-4 text-right">Valor</th></>}
-                                
-                                {activeTab === 'FINANCE' && (
-                                    <>
-                                        <th className="p-4">{isDetailed ? 'Produto / Descrição' : 'Descrição'}</th>
-                                        {isDetailed && <th className="p-4">Cliente / Detalhes</th>}
-                                        {isDetailed && <th className="p-4 text-center">Qtd</th>}
-                                        <th className="p-4 text-center">Tipo</th>
-                                        <th className="p-4 text-right">Valor</th>
-                                    </>
-                                )}
-
+                                {activeTab === 'FINANCE' && <><th className="p-4">Descrição</th><th className="p-4 text-center">Tipo</th><th className="p-4 text-right">Valor</th></>}
                                 {activeTab === 'INVENTORY' && <><th className="p-4">Item</th><th className="p-4">Motivo</th><th className="p-4 text-center">Tipo</th><th className="p-4 text-right">Qtd</th></>}
                             </tr>
                         </thead>
@@ -365,65 +251,13 @@ export const AdminReports: React.FC = () => {
                                             : activeTab === 'FINANCE' ? new Date(item.date).toLocaleString() 
                                             : new Date(item.due_date).toLocaleDateString()}
                                     </td>
-
-                                    {activeTab === 'REVENUE' && (
-                                        <>
-                                            <td className="p-4 font-medium">{item.items_summary}</td>
-                                            <td className="p-4"><span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded text-[10px] font-bold uppercase border border-blue-100 print:border-0 print:bg-transparent print:text-black">{item.method}</span></td>
-                                            <td className="p-4 text-right font-bold text-slate-700 print:text-black">R$ {item.amount.toFixed(2)}</td>
-                                        </>
-                                    )}
-
-                                    {activeTab === 'EXPENSES' && (
-                                        <>
-                                            <td className="p-4 font-medium">{item.description}</td>
-                                            <td className="p-4 text-slate-500">{item.category}</td>
-                                            <td className="p-4">
-                                                {item.is_paid ? <span className="text-green-600 font-bold text-xs">PAGO</span> : <span className="text-yellow-600 font-bold text-xs">PENDENTE</span>}
-                                            </td>
-                                            <td className="p-4 text-right font-bold text-red-600 print:text-black">- R$ {item.amount.toFixed(2)}</td>
-                                        </>
-                                    )}
-
-                                    {activeTab === 'FINANCE' && (
-                                        <>
-                                            <td className="p-4 font-medium">{item.description}</td>
-                                            
-                                            {isDetailed && (
-                                                <>
-                                                    <td className="p-4 text-xs text-slate-500">{item.details}</td>
-                                                    <td className="p-4 text-center font-mono text-xs">{item.qty > 1 ? item.qty : ''}</td>
-                                                </>
-                                            )}
-
-                                            <td className="p-4 text-center">
-                                                <span className={`px-2 py-1 rounded text-xs font-bold ${item.type === 'IN' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'} print:bg-transparent print:text-black`}>
-                                                    {item.type === 'IN' ? 'ENTRADA' : 'SAÍDA'}
-                                                </span>
-                                            </td>
-                                            <td className={`p-4 text-right font-bold ${item.type === 'IN' ? 'text-green-600' : 'text-red-600'} print:text-black`}>
-                                                {item.type === 'OUT' ? '- ' : ''} R$ {(item.amount || 0).toFixed(2)}
-                                            </td>
-                                        </>
-                                    )}
-
-                                    {activeTab === 'INVENTORY' && (
-                                        <>
-                                            <td className="p-4 font-bold text-slate-700">{item.itemName}</td>
-                                            <td className="p-4 text-slate-500 text-xs italic">{item.reason} ({item.user_name})</td>
-                                            <td className="p-4 text-center">
-                                                 <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${item.type === 'IN' ? 'bg-green-100 text-green-700' : item.type === 'OUT' ? 'bg-red-100 text-red-700' : item.type === 'SALE' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100' } print:bg-transparent print:text-black`}>
-                                                    {item.type === 'IN' ? 'Entrada' : item.type === 'OUT' ? 'Saída' : item.type === 'SALE' ? 'Venda' : 'Perda'}
-                                                 </span>
-                                            </td>
-                                            <td className="p-4 text-right font-mono font-bold">{item.quantity} {item.unit}</td>
-                                        </>
-                                    )}
+                                    {activeTab === 'REVENUE' && (<><td className="p-4 font-medium">{item.items_summary}</td><td className="p-4"><span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded text-[10px] font-bold uppercase border border-blue-100">{item.method}</span></td><td className="p-4 text-right font-bold text-slate-700">R$ {item.amount.toFixed(2)}</td></>)}
+                                    {activeTab === 'EXPENSES' && (<><td className="p-4 font-medium">{item.description}</td><td className="p-4 text-slate-500">{item.category}</td><td className="p-4">{item.is_paid ? <span className="text-green-600 font-bold text-xs">PAGO</span> : <span className="text-yellow-600 font-bold text-xs">PENDENTE</span>}</td><td className="p-4 text-right font-bold text-red-600">- R$ {item.amount.toFixed(2)}</td></>)}
+                                    {activeTab === 'FINANCE' && (<><td className="p-4 font-medium">{item.description}</td><td className="p-4 text-center"><span className={`px-2 py-1 rounded text-xs font-bold ${item.type === 'IN' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{item.type === 'IN' ? 'ENTRADA' : 'SAÍDA'}</span></td><td className={`p-4 text-right font-bold ${item.type === 'IN' ? 'text-green-600' : 'text-red-600'}`}>{item.type === 'OUT' ? '- ' : ''} R$ {(item.amount || 0).toFixed(2)}</td></>)}
+                                    {activeTab === 'INVENTORY' && (<><td className="p-4 font-bold text-slate-700">{item.itemName}</td><td className="p-4 text-slate-500 text-xs italic">{item.reason}</td><td className="p-4 text-center"><span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${item.type === 'IN' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{item.type === 'IN' ? 'Entrada' : 'Saída'}</span></td><td className="p-4 text-right font-mono font-bold">{item.quantity} {item.unit}</td></>)}
                                 </tr>
                             ))}
-                            {data.length === 0 && (
-                                <tr><td colSpan={isDetailed && activeTab === 'FINANCE' ? 6 : 5} className="p-10 text-center text-gray-400">Nenhum registro encontrado no período.</td></tr>
-                            )}
+                            {data.length === 0 && <tr><td colSpan={5} className="p-10 text-center text-gray-400">Nenhum registro encontrado no período.</td></tr>}
                         </tbody>
                     </table>
                 </div>
