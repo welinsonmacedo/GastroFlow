@@ -9,7 +9,7 @@ import { Role } from '../types';
 import { 
     ChefHat, Coffee, Monitor, DollarSign, Settings, LogOut, User as UserIcon, 
     Menu, LayoutDashboard, Utensils, Package, QrCode, Palette, 
-    ChevronDown, ChevronUp, ShoppingCart
+    ChevronDown, ChevronUp, ShoppingCart, Smartphone
 } from 'lucide-react';
 
 // Importando Sub-páginas
@@ -21,6 +21,9 @@ import { AdminFinance } from './admin/AdminFinance';
 import { AdminSettings } from './admin/AdminSettings';
 import { AdminMenuAppearance } from './admin/AdminMenuAppearance'; 
 import { AdminPurchaseSuggestions } from './admin/AdminPurchaseSuggestions'; 
+import { AdminAccounting } from './admin/AdminAccounting';
+import { AccountingReport } from './admin/AccountingReport'; 
+import { AdminFinancialTips } from './admin/AdminFinancialTips';
 
 // --- COMPONENTE DE SIDEBAR (Exclusivo do Admin) ---
 const AdminSidebar = ({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: (v: boolean) => void }) => {
@@ -31,8 +34,10 @@ const AdminSidebar = ({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: (v: b
     const { showConfirm } = useUI();
     const { planLimits } = restState;
     
+    // Estados dos grupos do menu
     const [isAppsOpen, setIsAppsOpen] = useState(true);
-    const [isAdminOpen, setIsAdminOpen] = useState(true);
+    const [isQrOpen, setIsQrOpen] = useState(true);
+    const [isManagementOpen, setIsManagementOpen] = useState(true);
 
     if (!authState.currentUser) return null;
 
@@ -45,16 +50,19 @@ const AdminSidebar = ({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: (v: b
         { to: "/cashier", icon: <DollarSign size={20}/>, label: "Caixa", requires: 'allowCashier', roles: [Role.CASHIER, Role.ADMIN] },
     ];
 
-    // 2. Módulos Administrativos (Gestão)
-    const adminLinks = [
+    // 2. Automação QR (Cardápio e Experiência do Cliente)
+    const qrLinks = [
+        { to: "/admin/products", icon: <Utensils size={20}/>, label: "Cardápio Digital", requires: null },
+        { to: "/admin/appearance", icon: <Palette size={20}/>, label: "Aparência & Marca", requires: 'allowCustomization' },
+        { to: "/admin/tables", icon: <QrCode size={20}/>, label: "Mesas & QR", requires: 'allowTableMgmt' },
+    ];
+
+    // 3. Gestão (Backoffice)
+    const managementLinks = [
         { to: "/admin", icon: <LayoutDashboard size={20}/>, label: "Visão Geral", requires: null },
-        { to: "/admin/products", icon: <Utensils size={20}/>, label: "Cardápio", requires: null },
         { to: "/admin/inventory", icon: <Package size={20}/>, label: "Estoque", requires: 'allowInventory' },
         { to: "/admin/purchases", icon: <ShoppingCart size={20}/>, label: "Sugestão Compras", requires: 'allowInventory' }, 
-        // Apenas um link financeiro agora
         { to: "/admin/finance", icon: <DollarSign size={20}/>, label: "Financeiro", requires: 'allowExpenses' }, 
-        { to: "/admin/tables", icon: <QrCode size={20}/>, label: "Mesas & QR", requires: 'allowTableMgmt' },
-        { to: "/admin/appearance", icon: <Palette size={20}/>, label: "Aparência", requires: 'allowCustomization' },
         { to: "/admin/settings", icon: <Settings size={20}/>, label: "Configurações", requires: null },
     ];
 
@@ -78,7 +86,8 @@ const AdminSidebar = ({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: (v: b
     });
 
     const visibleAppLinks = filterLinks(appLinks);
-    const visibleAdminLinks = filterLinks(adminLinks);
+    const visibleQrLinks = filterLinks(qrLinks);
+    const visibleManagementLinks = filterLinks(managementLinks);
 
     const handleLogoutClick = () => {
         showConfirm({
@@ -126,6 +135,7 @@ const AdminSidebar = ({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: (v: b
                 </div>
 
                 <nav className="flex-1 overflow-y-auto py-6 px-4 space-y-4 custom-scrollbar">
+                    {/* APPS */}
                     {visibleAppLinks.length > 0 && (
                         <div className="space-y-1">
                             <button onClick={() => setIsAppsOpen(!isAppsOpen)} className="w-full flex items-center justify-between px-2 mb-2 text-[10px] font-black text-slate-500 uppercase tracking-widest hover:text-slate-300 transition-colors">
@@ -137,13 +147,26 @@ const AdminSidebar = ({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: (v: b
                         </div>
                     )}
 
-                    {visibleAdminLinks.length > 0 && (
+                    {/* AUTOMAÇÃO QR (NOVA ABA) */}
+                    {visibleQrLinks.length > 0 && (
                         <div className="space-y-1 pt-2 border-t border-slate-800">
-                            <button onClick={() => setIsAdminOpen(!isAdminOpen)} className="w-full flex items-center justify-between px-2 mb-2 mt-4 text-[10px] font-black text-slate-500 uppercase tracking-widest hover:text-slate-300 transition-colors">
-                                <span>Gestão</span> {isAdminOpen ? <ChevronUp size={14}/> : <ChevronDown size={14}/>}
+                            <button onClick={() => setIsQrOpen(!isQrOpen)} className="w-full flex items-center justify-between px-2 mb-2 mt-4 text-[10px] font-black text-slate-500 uppercase tracking-widest hover:text-slate-300 transition-colors">
+                                <span className="flex items-center gap-1"><Smartphone size={10} /> Automação QR</span> {isQrOpen ? <ChevronUp size={14}/> : <ChevronDown size={14}/>}
                             </button>
-                            <div className={`space-y-1 overflow-hidden transition-all ${isAdminOpen ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0'}`}>
-                                {visibleAdminLinks.map(link => <NavItem key={link.to} link={link} />)}
+                            <div className={`space-y-1 overflow-hidden transition-all ${isQrOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
+                                {visibleQrLinks.map(link => <NavItem key={link.to} link={link} />)}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* GESTÃO */}
+                    {visibleManagementLinks.length > 0 && (
+                        <div className="space-y-1 pt-2 border-t border-slate-800">
+                            <button onClick={() => setIsManagementOpen(!isManagementOpen)} className="w-full flex items-center justify-between px-2 mb-2 mt-4 text-[10px] font-black text-slate-500 uppercase tracking-widest hover:text-slate-300 transition-colors">
+                                <span>Gestão</span> {isManagementOpen ? <ChevronUp size={14}/> : <ChevronDown size={14}/>}
+                            </button>
+                            <div className={`space-y-1 overflow-hidden transition-all ${isManagementOpen ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                                {visibleManagementLinks.map(link => <NavItem key={link.to} link={link} />)}
                             </div>
                         </div>
                     )}
@@ -208,6 +231,15 @@ export const AdminDashboard: React.FC = () => {
                             <Route path="finance" element={<AdminFinance />} />
                         )}
                         
+                        {/* Rotas Auxiliares (mantidas para compatibilidade, mas acessadas via Financeiro) */}
+                        {planLimits.allowReports && (
+                            <>
+                                <Route path="accounting" element={<AdminAccounting />} />
+                                <Route path="report" element={<AccountingReport />} /> 
+                                <Route path="tips" element={<AdminFinancialTips />} />
+                            </>
+                        )}
+
                         {/* Rotas de Configuração */}
                         {planLimits.allowCustomization && <Route path="appearance" element={<AdminMenuAppearance />} />}
                         <Route path="settings" element={<AdminSettings />} />
