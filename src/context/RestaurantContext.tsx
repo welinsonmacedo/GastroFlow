@@ -30,22 +30,7 @@ const initialState: RestaurantState = {
   tenantId: null,
   isValidTenant: false,
   isInactiveTenant: false,
-  planLimits: { 
-      maxTables: -1, 
-      maxProducts: -1, 
-      maxStaff: -1, 
-      allowKds: true, 
-      allowPos: true, // Novo
-      allowDelivery: true, // Novo
-      allowCashControl: true, // Novo
-      allowReports: true, 
-      allowInventory: true, 
-      allowPurchases: true, 
-      allowExpenses: true, 
-      allowStaff: true, 
-      allowTableMgmt: true, 
-      allowCustomization: true 
-  },
+  planLimits: { maxTables: -1, maxProducts: -1, maxStaff: -1, allowKds: true, allowCashier: true, allowReports: true, allowInventory: true, allowPurchases: true, allowExpenses: true, allowStaff: true, allowTableMgmt: true, allowCustomization: true },
   theme: { 
       primaryColor: '#22c55e', 
       backgroundColor: '#fff', 
@@ -57,6 +42,7 @@ const initialState: RestaurantState = {
       buttonStyle: 'fill'
   },
   businessInfo: {
+      // Valores padrão para evitar undefined
       paymentMethods: [
           { id: '1', name: 'Dinheiro', type: 'CASH', feePercentage: 0, isActive: true },
           { id: '2', name: 'PIX', type: 'PIX', feePercentage: 0, isActive: true },
@@ -110,6 +96,7 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     if (!tenant) { localDispatch({ type: 'TENANT_NOT_FOUND' }); return; }
     if (tenant.status === 'INACTIVE') { localDispatch({ type: 'TENANT_INACTIVE' }); return; }
 
+    // Busca os limites do plano no banco de dados
     let fetchedLimits = initialState.planLimits;
     if (tenant.plan) {
         const { data: planData } = await supabase.from('plans').select('limits').eq('key', tenant.plan).maybeSingle();
@@ -118,9 +105,11 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         }
     }
     
+    // Mescla businessInfo do banco com os defaults (para garantir que paymentMethods e expenseCategories existam)
     const mergedBusinessInfo = {
         ...initialState.businessInfo,
         ...(tenant.business_info || {}),
+        // Garante arrays se vierem null do banco
         paymentMethods: (tenant.business_info?.paymentMethods) || initialState.businessInfo.paymentMethods,
         expenseCategories: (tenant.business_info?.expenseCategories) || initialState.businessInfo.expenseCategories
     };
