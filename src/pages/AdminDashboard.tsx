@@ -8,8 +8,8 @@ import { useUI } from '../context/UIContext';
 import { Role } from '../types';
 import { 
     ChefHat, Coffee, Monitor, DollarSign, Settings, LogOut, User as UserIcon, 
-    Menu, LayoutDashboard, Utensils, Package, QrCode, PieChart, Users, Palette, 
-    ChevronDown, ChevronUp, FileText, ShoppingCart
+    Menu, LayoutDashboard, Utensils, Package, QrCode, Palette, 
+    ChevronDown, ChevronUp, ShoppingCart
 } from 'lucide-react';
 
 // Importando Sub-páginas
@@ -17,14 +17,10 @@ import { AdminOverview } from './admin/AdminOverview';
 import { AdminProducts } from './admin/AdminProducts';
 import { AdminInventory } from './admin/AdminInventory';
 import { AdminTables } from './admin/AdminTables';
-import { AdminStaff } from './admin/AdminStaff';
 import { AdminFinance } from './admin/AdminFinance';
-import { AdminAccounting } from './admin/AdminAccounting';
 import { AdminSettings } from './admin/AdminSettings';
 import { AdminMenuAppearance } from './admin/AdminMenuAppearance'; 
 import { AdminPurchaseSuggestions } from './admin/AdminPurchaseSuggestions'; 
-import { AdminFinancialTips } from './admin/AdminFinancialTips';
-import { AccountingReport } from './admin/AccountingReport'; 
 
 // --- COMPONENTE DE SIDEBAR (Exclusivo do Admin) ---
 const AdminSidebar = ({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: (v: boolean) => void }) => {
@@ -54,12 +50,10 @@ const AdminSidebar = ({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: (v: b
         { to: "/admin", icon: <LayoutDashboard size={20}/>, label: "Visão Geral", requires: null },
         { to: "/admin/products", icon: <Utensils size={20}/>, label: "Cardápio", requires: null },
         { to: "/admin/inventory", icon: <Package size={20}/>, label: "Estoque", requires: 'allowInventory' },
-        { to: "/admin/purchases", icon: <ShoppingCart size={20}/>, label: "Sugestão Compras", requires: 'allowInventory' }, // NOVO LINK
+        { to: "/admin/purchases", icon: <ShoppingCart size={20}/>, label: "Sugestão Compras", requires: 'allowInventory' }, 
+        // Apenas um link financeiro agora
         { to: "/admin/finance", icon: <DollarSign size={20}/>, label: "Financeiro", requires: 'allowExpenses' }, 
         { to: "/admin/tables", icon: <QrCode size={20}/>, label: "Mesas & QR", requires: 'allowTableMgmt' },
-        { to: "/admin/staff", icon: <Users size={20}/>, label: "Equipe", requires: 'allowStaff' },
-        { to: "/admin/accounting", icon: <PieChart size={20}/>, label: "DRE Gerencial", requires: 'allowReports' },
-        { to: "/admin/report", icon: <FileText size={20}/>, label: "Relat. Contábil", requires: 'allowReports' }, 
         { to: "/admin/appearance", icon: <Palette size={20}/>, label: "Aparência", requires: 'allowCustomization' },
         { to: "/admin/settings", icon: <Settings size={20}/>, label: "Configurações", requires: null },
     ];
@@ -208,21 +202,12 @@ export const AdminDashboard: React.FC = () => {
                         )}
 
                         {planLimits.allowTableMgmt && <Route path="tables" element={<AdminTables />} />}
-                        {planLimits.allowStaff && <Route path="staff" element={<AdminStaff />} />}
-
-                        {/* Rotas Financeiras */}
-                        {(planLimits.allowExpenses || planLimits.allowPurchases) && (
+                        
+                        {/* Rota unificada de Financeiro */}
+                        {(planLimits.allowExpenses || planLimits.allowPurchases || planLimits.allowReports) && (
                             <Route path="finance" element={<AdminFinance />} />
                         )}
                         
-                        {planLimits.allowReports && (
-                            <>
-                                <Route path="accounting" element={<AdminAccounting />} />
-                                <Route path="report" element={<AccountingReport />} /> 
-                                <Route path="tips" element={<AdminFinancialTips />} />
-                            </>
-                        )}
-
                         {/* Rotas de Configuração */}
                         {planLimits.allowCustomization && <Route path="appearance" element={<AdminMenuAppearance />} />}
                         <Route path="settings" element={<AdminSettings />} />

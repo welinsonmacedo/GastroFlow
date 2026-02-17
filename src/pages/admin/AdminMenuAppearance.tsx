@@ -311,7 +311,7 @@ export const AdminMenuAppearance: React.FC = () => {
                         <Smartphone size={14} className="text-blue-400" />
                         <span className="text-[10px] font-bold uppercase tracking-widest text-blue-100">Live Preview</span>
                     </div>
-                    <h2 className="text-2xl font-black tracking-tight">Resultado Final</h2>
+                  
                 </div>
                 
                 <div className="transform transition-transform hover:scale-[1.01] duration-500">

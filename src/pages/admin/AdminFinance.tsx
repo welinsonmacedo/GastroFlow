@@ -7,29 +7,33 @@ import { Button } from '../../components/Button';
 import { ExpenseFormModal } from '../../components/modals/ExpenseFormModal';
 import { CashBleedModal } from '../../components/modals/CashBleedModal';
 import { Expense } from '../../types';
-import { Plus, CheckSquare, Trash2, Wallet, CreditCard, Banknote, ArrowDown, Repeat, XCircle } from 'lucide-react';
+import { Plus, CheckSquare, Trash2, Wallet, CreditCard, Banknote, ArrowDown, Repeat, XCircle, PieChart, FileText, Lightbulb, LayoutDashboard } from 'lucide-react';
+
+// Importando os componentes das outras páginas para uso nas abas
+import { AdminAccounting } from './AdminAccounting';
+import { AccountingReport } from './AccountingReport';
+import { AdminFinancialTips } from './AdminFinancialTips';
 
 export const AdminFinance: React.FC = () => {
-  const { state: finState, payExpense, deleteExpense, voidTransaction } = useFinance(); // Adicionado voidTransaction se precisar usar aqui
+  const { state: finState, payExpense, deleteExpense, voidTransaction } = useFinance();
   const { showConfirm, showAlert } = useUI();
   
-  // State for Modals
+  // State for Tabs
+  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'DRE' | 'REPORT' | 'TIPS'>('OVERVIEW');
+
+  // State for Modals (Overview Tab)
   const [editingExpense, setEditingExpense] = useState<Partial<Expense> | null>(null);
   const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
   const [isBleedModalOpen, setIsBleedModalOpen] = useState(false);
 
-  // --- Calculations ---
-  // Apenas transações NÃO canceladas
+  // --- Calculations (Overview Tab) ---
   const activeTransactions = finState.transactions.filter(t => t.status !== 'CANCELLED');
 
-  // 1. Receitas
   const pixSales = activeTransactions.filter(t => t.method === 'PIX').reduce((acc, t) => acc + t.amount, 0);
   const cardSales = activeTransactions.filter(t => ['CREDIT', 'DEBIT', 'CARD'].includes(t.method)).reduce((acc, t) => acc + t.amount, 0);
 
-  // 2. Gaveta (Sessão Atual)
   const activeSessionInitial = finState.activeCashSession?.initialAmount || 0;
   
-  // Vendas em dinheiro da sessão atual (Excluindo canceladas)
   const sessionCashSales = activeTransactions
       .filter(t => t.method === 'CASH' && finState.activeCashSession && new Date(t.timestamp) >= finState.activeCashSession.openedAt)
       .reduce((acc, t) => acc + t.amount, 0);
@@ -41,14 +45,12 @@ export const AdminFinance: React.FC = () => {
       .filter(m => m.type === 'SUPPLY')
       .reduce((acc, m) => acc + m.amount, 0);
   
-  // Despesas pagas em DINHEIRO
   const cashExpensesToday = finState.expenses
       .filter(e => e.isPaid && e.paymentMethod === 'CASH' && new Date(e.paidDate!).toDateString() === new Date().toDateString())
       .reduce((acc, e) => acc + e.amount, 0);
 
   const drawerBalance = activeSessionInitial + sessionCashSales + sessionSupplies - sessionBleeds - cashExpensesToday;
 
-  // 3. Despesas Totais (Mês Atual)
   const currentMonthExpenses = finState.expenses
       .filter(e => new Date(e.dueDate).getMonth() === new Date().getMonth())
       .reduce((acc, e) => acc + e.amount, 0);
@@ -83,109 +85,142 @@ export const AdminFinance: React.FC = () => {
       </div>
   );
 
+  const TabButton = ({ id, label, icon: Icon }: any) => (
+      <button 
+          onClick={() => setActiveTab(id)}
+          className={`px-6 py-3 rounded-t-xl font-bold text-sm flex items-center gap-2 transition-all border-b-2 ${activeTab === id ? 'text-blue-600 border-blue-600 bg-blue-50/50' : 'text-slate-500 border-transparent hover:text-slate-700 hover:bg-gray-50'}`}
+      >
+          <Icon size={18} />
+          {label}
+      </button>
+  );
+
   return (
-    <div className="space-y-8 animate-fade-in pb-10">
+    <div className="space-y-6 animate-fade-in pb-10">
         
-        {/* --- Header & Dashboard --- */}
-        <div className="flex flex-col gap-6">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        {/* --- Header Navigation --- */}
+        <div className="bg-white border-b border-gray-200 px-6 pt-4 rounded-xl shadow-sm">
+            <div className="flex justify-between items-center mb-4">
                 <div>
-                    <h2 className="text-2xl font-bold text-gray-800">Gestão Financeira</h2>
-                    <p className="text-sm text-gray-500">Fluxo de caixa e controle de contas.</p>
+                    <h2 className="text-2xl font-bold text-gray-800">Central Financeira</h2>
+                    <p className="text-sm text-gray-500">Gestão completa de caixa, despesas e contabilidade.</p>
                 </div>
-                <div className="flex gap-2">
-                    <Button onClick={() => setIsBleedModalOpen(true)} variant="secondary" className="bg-red-50 text-red-600 border-red-100 hover:bg-red-100"><ArrowDown size={16}/> Saída Manual (Dinheiro)</Button>
-                    <Button onClick={() => { setEditingExpense(null); setIsExpenseModalOpen(true); }}><Plus size={16}/> Nova Despesa</Button>
-                </div>
+                {activeTab === 'OVERVIEW' && (
+                     <div className="flex gap-2">
+                        <Button onClick={() => setIsBleedModalOpen(true)} variant="secondary" className="bg-red-50 text-red-600 border-red-100 hover:bg-red-100"><ArrowDown size={16}/> Saída Manual (Dinheiro)</Button>
+                        <Button onClick={() => { setEditingExpense(null); setIsExpenseModalOpen(true); }}><Plus size={16}/> Nova Despesa</Button>
+                    </div>
+                )}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <StatBox 
-                    title="Caixa Atual (Gaveta)" 
-                    value={`R$ ${drawerBalance.toFixed(2)}`} 
-                    icon={Wallet} 
-                    color="text-emerald-600"
-                    subtext={finState.activeCashSession ? "Caixa Aberto" : "Caixa Fechado"}
-                />
-                <StatBox 
-                    title="Vendas Pix" 
-                    value={`R$ ${pixSales.toFixed(2)}`} 
-                    icon={Banknote} 
-                    color="text-blue-600"
-                    subtext="Acumulado"
-                />
-                <StatBox 
-                    title="Vendas Cartão" 
-                    value={`R$ ${cardSales.toFixed(2)}`} 
-                    icon={CreditCard} 
-                    color="text-purple-600"
-                    subtext="Crédito/Débito"
-                />
-                <StatBox 
-                    title="Despesas do Mês" 
-                    value={`R$ ${currentMonthExpenses.toFixed(2)}`} 
-                    icon={ArrowDown} 
-                    color="text-red-600"
-                    subtext="Contas a Pagar/Pagas"
-                />
-            </div>
-        </div>
-        
-        {/* --- Expenses Table --- */}
-        <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
-            <div className="p-6 border-b flex justify-between items-center">
-                <h3 className="font-bold text-lg text-gray-800">Contas e Despesas</h3>
-                <span className="text-xs font-bold bg-gray-100 px-2 py-1 rounded text-gray-500">{finState.expenses.length} registros</span>
-            </div>
-            <div className="overflow-x-auto">
-                <table className="w-full text-left">
-                    <thead className="bg-gray-50 border-b text-sm text-gray-600">
-                        <tr>
-                            <th className="p-4">Vencimento</th>
-                            <th className="p-4">Descrição</th>
-                            <th className="p-4">Categoria</th>
-                            <th className="p-4">Método</th>
-                            <th className="p-4 text-right">Valor</th>
-                            <th className="p-4 text-center">Status</th>
-                            <th className="p-4 text-right">Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y text-sm">
-                        {finState.expenses.map(expense => (
-                            <tr key={expense.id} className={`hover:bg-gray-50 transition-colors ${expense.isPaid ? 'opacity-60 bg-gray-50' : ''}`}>
-                                <td className="p-4 flex flex-col">
-                                    <span>{new Date(expense.dueDate).toLocaleDateString()}</span>
-                                    {expense.isRecurring && <span className="text-[10px] text-blue-600 flex items-center gap-1 font-bold"><Repeat size={10}/> Recorrente</span>}
-                                </td>
-                                <td className="p-4 font-medium">{expense.description}</td>
-                                <td className="p-4 text-gray-500">{expense.category}</td>
-                                <td className="p-4">
-                                    {expense.paymentMethod === 'CASH' ? 
-                                        <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-1 rounded font-bold">Dinheiro</span> : 
-                                        <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded font-bold">Banco</span>
-                                    }
-                                </td>
-                                <td className="p-4 text-right font-bold text-red-600">- R$ {expense.amount.toFixed(2)}</td>
-                                <td className="p-4 text-center">
-                                    {expense.isPaid ? 
-                                        <span className="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-bold border border-green-200">PAGO</span> : 
-                                        <span className="bg-yellow-100 text-yellow-700 px-2 py-1 rounded text-xs font-bold border border-yellow-200">PENDENTE</span>
-                                    }
-                                </td>
-                                <td className="p-4 text-right">
-                                    {!expense.isPaid && (
-                                        <button onClick={() => handlePayExpense(expense.id)} className="text-green-600 p-2 rounded hover:bg-green-50 mr-2 transition-colors" title="Marcar como Pago"><CheckSquare size={18}/></button>
-                                    )}
-                                    <button onClick={() => handleDeleteExpense(expense.id)} className="text-red-500 hover:bg-red-50 p-2 rounded transition-colors"><Trash2 size={18}/></button>
-                                </td>
-                            </tr>
-                        ))}
-                        {finState.expenses.length === 0 && <tr><td colSpan={7} className="p-8 text-center text-gray-400">Nenhum despesa registrada.</td></tr>}
-                    </tbody>
-                </table>
+            <div className="flex overflow-x-auto gap-2">
+                <TabButton id="OVERVIEW" label="Visão Geral & Despesas" icon={LayoutDashboard} />
+                <TabButton id="DRE" label="DRE Gerencial" icon={PieChart} />
+                <TabButton id="REPORT" label="Relatório Contábil" icon={FileText} />
+                <TabButton id="TIPS" label="Dicas Inteligentes" icon={Lightbulb} />
             </div>
         </div>
 
+        {/* --- Content Area --- */}
+        <div className="min-h-[500px]">
+            {activeTab === 'OVERVIEW' && (
+                <div className="space-y-8 animate-fade-in">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <StatBox 
+                            title="Caixa Atual (Gaveta)" 
+                            value={`R$ ${drawerBalance.toFixed(2)}`} 
+                            icon={Wallet} 
+                            color="text-emerald-600"
+                            subtext={finState.activeCashSession ? "Caixa Aberto" : "Caixa Fechado"}
+                        />
+                        <StatBox 
+                            title="Vendas Pix" 
+                            value={`R$ ${pixSales.toFixed(2)}`} 
+                            icon={Banknote} 
+                            color="text-blue-600"
+                            subtext="Acumulado"
+                        />
+                        <StatBox 
+                            title="Vendas Cartão" 
+                            value={`R$ ${cardSales.toFixed(2)}`} 
+                            icon={CreditCard} 
+                            color="text-purple-600"
+                            subtext="Crédito/Débito"
+                        />
+                        <StatBox 
+                            title="Despesas do Mês" 
+                            value={`R$ ${currentMonthExpenses.toFixed(2)}`} 
+                            icon={ArrowDown} 
+                            color="text-red-600"
+                            subtext="Contas a Pagar/Pagas"
+                        />
+                    </div>
+                    
+                    <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+                        <div className="p-6 border-b flex justify-between items-center bg-gray-50">
+                            <h3 className="font-bold text-lg text-gray-800">Contas a Pagar e Despesas</h3>
+                            <span className="text-xs font-bold bg-white border px-2 py-1 rounded text-gray-500">{finState.expenses.length} registros</span>
+                        </div>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left">
+                                <thead className="bg-white border-b text-xs font-black text-gray-400 uppercase tracking-widest">
+                                    <tr>
+                                        <th className="p-4">Vencimento</th>
+                                        <th className="p-4">Descrição</th>
+                                        <th className="p-4">Categoria</th>
+                                        <th className="p-4">Método</th>
+                                        <th className="p-4 text-right">Valor</th>
+                                        <th className="p-4 text-center">Status</th>
+                                        <th className="p-4 text-right">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y text-sm">
+                                    {finState.expenses.map(expense => (
+                                        <tr key={expense.id} className={`hover:bg-gray-50 transition-colors ${expense.isPaid ? 'opacity-60 bg-gray-50' : ''}`}>
+                                            <td className="p-4 flex flex-col">
+                                                <span className="font-bold text-slate-700">{new Date(expense.dueDate).toLocaleDateString()}</span>
+                                                {expense.isRecurring && <span className="text-[10px] text-blue-600 flex items-center gap-1 font-bold"><Repeat size={10}/> Recorrente</span>}
+                                            </td>
+                                            <td className="p-4 font-medium">{expense.description}</td>
+                                            <td className="p-4 text-gray-500">{expense.category}</td>
+                                            <td className="p-4">
+                                                {expense.paymentMethod === 'CASH' ? 
+                                                    <span className="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-1 rounded font-black uppercase">Dinheiro</span> : 
+                                                    <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-1 rounded font-black uppercase">Banco</span>
+                                                }
+                                            </td>
+                                            <td className="p-4 text-right font-black text-red-600">- R$ {expense.amount.toFixed(2)}</td>
+                                            <td className="p-4 text-center">
+                                                {expense.isPaid ? 
+                                                    <span className="bg-green-100 text-green-700 px-2 py-1 rounded text-[10px] font-black uppercase border border-green-200">Pago</span> : 
+                                                    <span className="bg-yellow-100 text-yellow-700 px-2 py-1 rounded text-[10px] font-black uppercase border border-yellow-200">Pendente</span>
+                                                }
+                                            </td>
+                                            <td className="p-4 text-right">
+                                                <div className="flex items-center justify-end gap-2">
+                                                    {!expense.isPaid && (
+                                                        <button onClick={() => handlePayExpense(expense.id)} className="text-green-600 p-2 rounded hover:bg-green-50 transition-colors" title="Marcar como Pago"><CheckSquare size={18}/></button>
+                                                    )}
+                                                    <button onClick={() => handleDeleteExpense(expense.id)} className="text-red-500 hover:bg-red-50 p-2 rounded transition-colors"><Trash2 size={18}/></button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {finState.expenses.length === 0 && <tr><td colSpan={7} className="p-10 text-center text-gray-400 italic">Nenhuma despesa registrada.</td></tr>}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {activeTab === 'DRE' && <AdminAccounting />}
+            {activeTab === 'REPORT' && <AccountingReport />}
+            {activeTab === 'TIPS' && <AdminFinancialTips />}
+        </div>
+
+        {/* Modals are rendered conditionally but controlled by state to preserve data if needed, 
+            though they are only triggered from OVERVIEW tab */}
         <ExpenseFormModal 
             isOpen={isExpenseModalOpen} 
             onClose={() => setIsExpenseModalOpen(false)} 
