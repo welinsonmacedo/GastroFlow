@@ -9,7 +9,7 @@ import { Role } from '../types';
 import { 
     ChefHat, Coffee, Monitor, DollarSign, Settings, LogOut, User as UserIcon, 
     Menu, LayoutDashboard, Utensils, Package, QrCode, Palette, 
-    ChevronDown, ChevronUp, ShoppingCart, Smartphone, Database, Wifi, TrendingUp
+    ChevronDown, ChevronUp, ShoppingCart, Smartphone, Database, Wifi, TrendingUp, FileText
 } from 'lucide-react';
 
 // Importando Sub-páginas
@@ -24,6 +24,7 @@ import { AdminAccounting } from './admin/AdminAccounting';
 import { AccountingReport } from './admin/AccountingReport'; 
 import { AdminFinancialTips } from './admin/AdminFinancialTips';
 import { AdminBusinessIntelligence } from './admin/AdminBusinessIntelligence'; 
+import { AdminReports } from './admin/AdminReports'; // Nova importação
 
 // --- COMPONENTE DE SIDEBAR (Exclusivo do Admin) ---
 const AdminSidebar = ({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: (v: boolean) => void }) => {
@@ -65,6 +66,7 @@ const AdminSidebar = ({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: (v: b
         { to: "/admin/inventory", icon: <Package size={20}/>, label: "Estoque", requires: 'allowInventory' },
         { to: "/admin/finance", icon: <DollarSign size={20}/>, label: "Financeiro", requires: 'allowExpenses' }, 
         { to: "/admin/bi", icon: <TrendingUp size={20}/>, label: "Inteligência", requires: 'allowReports' },
+        { to: "/admin/reports", icon: <FileText size={20}/>, label: "Relatórios", requires: 'allowReports' }, // Novo Link
         { to: "/admin/settings", icon: <Settings size={20}/>, label: "Configurações", requires: null },
     ];
 
@@ -131,12 +133,7 @@ const AdminSidebar = ({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: (v: b
                 ${isOpen ? 'translate-x-0' : '-translate-x-full'}
                 md:translate-x-0 md:w-6 md:hover:w-64 md:overflow-hidden group
             `}>
-                {/* 
-                   Wrapper interno com largura fixa para evitar que o conteúdo "quebre" 
-                   enquanto a sidebar expande/recolhe 
-                */}
                 <div className="w-64 h-full flex flex-col">
-                    {/* Cabeçalho Minimalista: Apenas Logo */}
                     <div className="p-6 border-b border-slate-800 flex items-center justify-center shrink-0">
                         <div className="bg-green-600 p-3 rounded-xl text-white shadow-lg shadow-green-500/20">
                             {restState.theme.logoUrl ? <img src={restState.theme.logoUrl} className="h-8 w-8 object-contain" /> : <ChefHat size={32} />}
@@ -181,7 +178,6 @@ const AdminSidebar = ({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: (v: b
                         )}
                     </nav>
 
-                    {/* Rodapé Minimalista: Status BD + Logout */}
                     <div className="p-4 border-t border-slate-800 bg-slate-950/50 shrink-0">
                          <div className="flex flex-col gap-3">
                             <div className="flex items-center justify-center gap-2 bg-slate-900 py-2 rounded-lg border border-slate-800 whitespace-nowrap">
@@ -209,10 +205,6 @@ export const AdminDashboard: React.FC = () => {
     <div className="flex h-screen bg-gray-50 overflow-hidden">
         <AdminSidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
 
-        {/* 
-            md:ml-6 compensa a largura da sidebar recolhida (w-6 = 1.5rem = 24px)
-            Isso garante que o conteúdo não fique escondido atrás da faixa preta lateral.
-        */}
         <div className="flex-1 flex flex-col overflow-hidden relative w-full md:ml-6 transition-all duration-300">
             <div className="md:hidden bg-white border-b p-4 flex items-center justify-between shrink-0 sticky top-0 z-30 shadow-sm">
                 <div className="flex items-center gap-2 font-bold text-slate-800">
@@ -244,6 +236,11 @@ export const AdminDashboard: React.FC = () => {
                         {/* Nova Rota: Business Intelligence */}
                         {planLimits.allowReports && (
                             <Route path="bi" element={<AdminBusinessIntelligence />} />
+                        )}
+
+                        {/* Nova Rota: Relatórios Completos */}
+                        {planLimits.allowReports && (
+                            <Route path="reports" element={<AdminReports />} />
                         )}
                         
                         {/* Rotas Auxiliares (mantidas para compatibilidade, mas acessadas via Financeiro) */}
