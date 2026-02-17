@@ -5,7 +5,8 @@ import { Routes, Route, Navigate, Link, useLocation, useNavigate } from 'react-r
 import { useRestaurant } from '../context/RestaurantContext';
 import { useAuth } from '../context/AuthProvider';
 import { 
-    Coffee, Monitor, DollarSign, LogOut, Grid, ChefHat, Lock
+    Coffee, Monitor, DollarSign, LogOut, Grid, ChefHat, Lock,
+    QrCode, Utensils, Palette
 } from 'lucide-react';
 import { Role } from '../types';
 
@@ -13,6 +14,11 @@ import { Role } from '../types';
 import { WaiterApp } from './WaiterApp';
 import { KitchenDisplay } from './KitchenDisplay';
 import { CashierDashboard } from './CashierDashboard';
+
+// Importando Componentes de Gestão (Reutilizados do Admin)
+import { AdminTables } from './admin/AdminTables';
+import { AdminProducts } from './admin/AdminProducts';
+import { AdminMenuAppearance } from './admin/AdminMenuAppearance';
 
 export const RestaurantDashboard: React.FC = () => {
   const { state: restState } = useRestaurant();
@@ -31,7 +37,7 @@ export const RestaurantDashboard: React.FC = () => {
         icon: Coffee, 
         roles: [Role.ADMIN, Role.WAITER, Role.CASHIER], 
         required: null,
-        featureKey: 'restaurant_waiter' // Feature específica
+        featureKey: 'restaurant_waiter'
     },
     { 
         path: '/restaurant/kitchen', 
@@ -49,6 +55,31 @@ export const RestaurantDashboard: React.FC = () => {
         required: 'allowCashier',
         featureKey: 'restaurant_cashier'
     },
+    // Novas Abas Adicionadas
+    { 
+        path: '/restaurant/tables', 
+        label: 'Cadastro Mesas', 
+        icon: QrCode, 
+        roles: [Role.ADMIN],
+        required: 'allowTableMgmt',
+        featureKey: 'admin_tables'
+    },
+    { 
+        path: '/restaurant/menu', 
+        label: 'Cardápio', 
+        icon: Utensils, 
+        roles: [Role.ADMIN],
+        required: null,
+        featureKey: 'admin_products'
+    },
+    { 
+        path: '/restaurant/appearance', 
+        label: 'Aparência', 
+        icon: Palette, 
+        roles: [Role.ADMIN],
+        required: 'allowCustomization',
+        featureKey: 'config_appearance'
+    },
   ];
 
   // Filtra abas
@@ -56,6 +87,8 @@ export const RestaurantDashboard: React.FC = () => {
       // 1. Checa Limites do Plano
       if (tab.required === 'allowKds' && !planLimits.allowKds) return false;
       if (tab.required === 'allowCashier' && !planLimits.allowCashier) return false;
+      if (tab.required === 'allowTableMgmt' && !planLimits.allowTableMgmt) return false;
+      if (tab.required === 'allowCustomization' && !planLimits.allowCustomization) return false;
       
       // 2. Checa Features Granulares (NOVO)
       // Se allowedFeatures estiver vazio (legado), assume que todas estão ativas se o plano permitir
@@ -161,8 +194,8 @@ export const RestaurantDashboard: React.FC = () => {
         </header>
 
         {/* CONTEÚDO PRINCIPAL */}
-        <main className="flex-1 overflow-hidden bg-gray-50 relative">
-            <div className="h-full w-full">
+        <main className="flex-1 overflow-y-auto bg-gray-50 relative p-4 md:p-8">
+            <div className="h-full w-full max-w-[1920px] mx-auto">
                 <Routes>
                     <Route path="waiter" element={<WaiterApp />} />
                     
@@ -172,6 +205,17 @@ export const RestaurantDashboard: React.FC = () => {
 
                     {planLimits.allowCashier && (
                         <Route path="cashier" element={<CashierDashboard />} />
+                    )}
+
+                    {/* Novas Rotas para Admin dentro do Módulo Restaurante */}
+                    {planLimits.allowTableMgmt && (
+                        <Route path="tables" element={<AdminTables />} />
+                    )}
+
+                    <Route path="menu" element={<AdminProducts />} />
+                    
+                    {planLimits.allowCustomization && (
+                        <Route path="appearance" element={<AdminMenuAppearance />} />
                     )}
 
                     {/* Fallback */}

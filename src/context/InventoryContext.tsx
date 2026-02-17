@@ -154,7 +154,7 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       const payload = {
           tenant_id: tenantId, 
           name: item.name, 
-          barcode: item.barcode, // Adicionado
+          barcode: item.barcode, 
           unit: item.unit, 
           quantity: item.quantity || 0,
           min_quantity: item.minQuantity || 0, 
@@ -197,7 +197,7 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       
       const payload = {
           name: item.name, 
-          barcode: item.barcode, // Adicionado
+          barcode: item.barcode, 
           unit: item.unit, 
           min_quantity: item.minQuantity || 0,
           cost_price: item.costPrice || 0, 
@@ -305,10 +305,17 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       try {
           const itemsTotal = purchase.items.reduce((acc, i) => acc + i.totalPrice, 0);
           
+          // Soma de todos os impostos
+          const totalTaxes = (purchase.taxes.icms || 0) + 
+                             (purchase.taxes.ipi || 0) + 
+                             (purchase.taxes.st || 0) + 
+                             (purchase.taxes.freight || 0) + 
+                             (purchase.taxes.others || 0);
+
           for (const item of purchase.items) {
               let effectiveUnitCost = item.unitPrice;
-              if (purchase.distributeTax && purchase.taxAmount > 0 && itemsTotal > 0) {
-                  const taxShare = (item.totalPrice / itemsTotal) * purchase.taxAmount;
+              if (purchase.distributeTax && totalTaxes > 0 && itemsTotal > 0) {
+                  const taxShare = (item.totalPrice / itemsTotal) * totalTaxes;
                   effectiveUnitCost = (item.totalPrice + taxShare) / item.quantity;
               }
 
@@ -322,15 +329,17 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
               await supabase.from('inventory_logs').insert({
                   tenant_id: tenantId, item_id: item.inventoryItemId, type: 'IN', quantity: item.quantity, 
-                  reason: `Compra Nota ${purchase.invoiceNumber}`, user_name: 'Admin'
+                  reason: `Compra NF ${purchase.invoiceNumber} (Série ${purchase.series || '-'})`, user_name: 'Admin'
               });
           }
 
           const supplierName = state.suppliers.find(s => s.id === purchase.supplierId)?.name || 'Fornecedor';
+          const desc = `Compra NF ${purchase.invoiceNumber} - Série ${purchase.series || '0'} (${supplierName})`;
+          
           await supabase.from('expenses').insert({
               tenant_id: tenantId,
-              description: `Compra Nota ${purchase.invoiceNumber} (${supplierName})`,
-              amount: purchase.totalAmount,
+              description: desc,
+              amount: purchase.totalAmount, // Inclui impostos
               category: 'Fornecedor',
               due_date: purchase.date,
               is_paid: false,

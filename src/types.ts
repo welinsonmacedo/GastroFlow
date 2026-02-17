@@ -294,13 +294,23 @@ export interface PurchaseInstallment {
     amount: number;
 }
 
+export interface PurchaseTaxes {
+    icms: number;
+    ipi: number;
+    st: number;
+    freight: number;
+    others: number;
+}
+
 export interface PurchaseEntry {
     supplierId: string;
     invoiceNumber: string;
+    series?: string; // Nova Série
+    accessKey?: string; // Nova Chave
     date: Date;
     items: PurchaseItemInput[];
     totalAmount: number;
-    taxAmount: number;
+    taxes: PurchaseTaxes; // Novo objeto de impostos
     distributeTax: boolean;
     installments: PurchaseInstallment[];
 }
