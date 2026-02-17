@@ -8,8 +8,8 @@ import { Modal } from '../../components/Modal'; // Importando Modal Genérico pa
 import { ExpenseFormModal } from '../../components/modals/ExpenseFormModal';
 import { CashBleedModal } from '../../components/modals/CashBleedModal';
 import { supabase } from '../../lib/supabase';
-import { Expense, CashSession } from '../../types';
-import { Plus, CheckSquare, Trash2, Wallet, CreditCard, Banknote, ArrowDown, Repeat, PieChart, FileText, Lightbulb, LayoutDashboard, List, Edit, Lock, Calendar, ShoppingCart, Filter, History, Clock, DollarSign, Building2, Archive, User } from 'lucide-react';
+import { Expense, CashSession, Transaction, CashMovement } from '../../types';
+import { Plus, CheckSquare, Trash2, Wallet, CreditCard, Banknote, ArrowDown, Repeat, PieChart, FileText, Lightbulb, LayoutDashboard, List, Edit, Lock, Calendar, ShoppingCart, Filter, History, Clock, DollarSign, Building2, Archive, User, ArrowUp, ChevronRight } from 'lucide-react';
 
 // Importando os componentes das outras páginas para uso nas abas
 import { AdminAccounting } from './AdminAccounting';
@@ -46,6 +46,11 @@ export const AdminFinance: React.FC = () => {
   // State para Histórico de Caixas
   const [sessionsHistory, setSessionsHistory] = useState<CashSession[]>([]);
   const [loadingSessions, setLoadingSessions] = useState(false);
+  
+  // State para Detalhes da Sessão (Modal)
+  const [selectedSession, setSelectedSession] = useState<CashSession | null>(null);
+  const [sessionDetails, setSessionDetails] = useState<{ transactions: Transaction[], movements: CashMovement[] } | null>(null);
+  const [loadingDetails, setLoadingDetails] = useState(false);
 
   // --- Fetch Sessions History ---
   useEffect(() => {
@@ -76,6 +81,67 @@ export const AdminFinance: React.FC = () => {
           fetchSessions();
       }
   }, [activeTab, restState.tenantId]);
+
+  // --- Handle View Session Details ---
+  const handleViewSession = async (session: CashSession) => {
+      setSelectedSession(session);
+      setSessionDetails(null);
+      setLoadingDetails(true);
+
+      try {
+          const startTime = session.openedAt.toISOString();
+          const endTime = session.closedAt ? session.closedAt.toISOString() : new Date().toISOString();
+
+          // 1. Buscar Transações (Vendas) neste período
+          const { data: transData } = await supabase
+              .from('transactions')
+              .select('*')
+              .eq('tenant_id', restState.tenantId)
+              .gte('created_at', startTime)
+              .lte('created_at', endTime)
+              .order('created_at', { ascending: false });
+
+          const mappedTrans = (transData || []).map((t: any) => ({
+              id: t.id,
+              tableId: t.table_id || '',
+              tableNumber: t.table_number || 0,
+              amount: t.amount,
+              method: t.method,
+              timestamp: new Date(t.created_at),
+              itemsSummary: t.items_summary || '',
+              cashierName: t.cashier_name || '',
+              status: t.status || 'COMPLETED'
+          }));
+
+          // 2. Buscar Movimentações (Sangrias/Suprimentos) desta sessão
+          const { data: moveData } = await supabase
+              .from('cash_movements')
+              .select('*')
+              .eq('session_id', session.id)
+              .order('created_at', { ascending: false });
+            
+          const mappedMoves = (moveData || []).map((m: any) => ({
+              id: m.id,
+              sessionId: m.session_id,
+              type: m.type,
+              amount: m.amount,
+              reason: m.reason,
+              timestamp: new Date(m.created_at),
+              userName: m.user_name
+          }));
+
+          setSessionDetails({
+              transactions: mappedTrans,
+              movements: mappedMoves
+          });
+
+      } catch (error) {
+          console.error("Erro ao buscar detalhes da sessão:", error);
+          showAlert({ title: "Erro", message: "Não foi possível carregar os detalhes.", type: "ERROR" });
+      } finally {
+          setLoadingDetails(false);
+      }
+  };
 
   // --- Calculations (Overview Tab) ---
   const activeTransactions = finState.transactions.filter(t => t.status !== 'CANCELLED');
@@ -305,7 +371,7 @@ export const AdminFinance: React.FC = () => {
                 <div className="space-y-6 animate-fade-in">
                     <div className="bg-white p-4 rounded-xl shadow-sm border mb-4">
                         <h3 className="font-bold text-lg text-gray-800">Histórico de Turnos</h3>
-                        <p className="text-xs text-gray-500">Registro de todas as aberturas e fechamentos de caixa.</p>
+                        <p className="text-xs text-gray-500">Registro de todas as aberturas e fechamentos de caixa. Clique para ver detalhes.</p>
                     </div>
 
                     <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
@@ -318,16 +384,21 @@ export const AdminFinance: React.FC = () => {
                                     <th className="p-4">Operador</th>
                                     <th className="p-4 text-right">Fundo Inicial</th>
                                     <th className="p-4 text-right">Valor Final (Contado)</th>
+                                    <th className="p-4"></th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y text-sm">
                                 {loadingSessions ? (
-                                    <tr><td colSpan={6} className="p-8 text-center text-gray-400">Carregando histórico...</td></tr>
+                                    <tr><td colSpan={7} className="p-8 text-center text-gray-400">Carregando histórico...</td></tr>
                                 ) : sessionsHistory.length === 0 ? (
-                                    <tr><td colSpan={6} className="p-8 text-center text-gray-400">Nenhum caixa registrado.</td></tr>
+                                    <tr><td colSpan={7} className="p-8 text-center text-gray-400">Nenhum caixa registrado.</td></tr>
                                 ) : (
                                     sessionsHistory.map(session => (
-                                        <tr key={session.id} className="hover:bg-gray-50 transition-colors">
+                                        <tr 
+                                            key={session.id} 
+                                            className="hover:bg-gray-50 transition-colors cursor-pointer"
+                                            onClick={() => handleViewSession(session)}
+                                        >
                                             <td className="p-4">
                                                 <span className={`text-[10px] font-black px-2 py-1 rounded-lg uppercase border ${session.status === 'OPEN' ? 'bg-green-100 text-green-700 border-green-200' : 'bg-gray-100 text-gray-600 border-gray-200'}`}>
                                                     {session.status === 'OPEN' ? 'Aberto' : 'Fechado'}
@@ -351,6 +422,9 @@ export const AdminFinance: React.FC = () => {
                                                     ? `R$ ${session.finalAmount.toFixed(2)}` 
                                                     : '-'
                                                 }
+                                            </td>
+                                            <td className="p-4 text-center">
+                                                <ChevronRight size={16} className="text-gray-400" />
                                             </td>
                                         </tr>
                                     ))
@@ -516,6 +590,77 @@ export const AdminFinance: React.FC = () => {
                     <Button type="submit" variant="danger" className="flex-1">Confirmar Exclusão</Button>
                 </div>
             </form>
+        </Modal>
+
+        {/* Modal Detalhes da Sessão */}
+        <Modal isOpen={!!selectedSession} onClose={() => setSelectedSession(null)} title="Detalhes da Sessão" variant="dialog" maxWidth="lg">
+            <div className="h-full flex flex-col max-h-[80vh]">
+                {loadingDetails ? (
+                    <div className="flex justify-center items-center py-20">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                    </div>
+                ) : (
+                    <div className="space-y-6 overflow-y-auto pr-1">
+                         {/* Header Resumo */}
+                         <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                                 <div>
+                                     <p className="text-[10px] font-bold text-gray-500 uppercase">Abertura</p>
+                                     <p className="font-bold text-slate-800">{selectedSession?.openedAt.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
+                                 </div>
+                                 <div>
+                                     <p className="text-[10px] font-bold text-gray-500 uppercase">Fechamento</p>
+                                     <p className="font-bold text-slate-800">{selectedSession?.closedAt ? selectedSession.closedAt.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'Em Aberto'}</p>
+                                 </div>
+                                 <div>
+                                     <p className="text-[10px] font-bold text-gray-500 uppercase">Fundo</p>
+                                     <p className="font-bold text-slate-800">R$ {selectedSession?.initialAmount.toFixed(2)}</p>
+                                 </div>
+                                 <div>
+                                    <p className="text-[10px] font-bold text-gray-500 uppercase">Final (Contado)</p>
+                                    <p className="font-bold text-slate-800">{selectedSession?.finalAmount ? `R$ ${selectedSession.finalAmount.toFixed(2)}` : '-'}</p>
+                                 </div>
+                             </div>
+                         </div>
+
+                         {/* Seção Transações e Movimentos (Timeline Unificada) */}
+                         <div>
+                             <h4 className="font-black text-sm text-gray-800 uppercase tracking-widest mb-3 border-b pb-2">Extrato de Operações</h4>
+                             <div className="space-y-2">
+                                 {/* Lista combinada de vendas e movimentações */}
+                                 {((sessionDetails?.transactions || []).map((t: any) => ({...t, _type: 'SALE'}))
+                                     .concat((sessionDetails?.movements || []).map((m: any) => ({...m, _type: m.type})))
+                                 ).sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+                                  .map((item: any) => (
+                                     <div key={item.id} className={`flex justify-between items-center p-3 rounded-lg border-l-4 ${
+                                         item._type === 'SALE' ? 'bg-white border-green-500' : 
+                                         item._type === 'BLEED' ? 'bg-red-50 border-red-500' : 'bg-blue-50 border-blue-500'
+                                     } shadow-sm`}>
+                                         <div>
+                                             <p className="text-xs font-bold text-gray-800 flex items-center gap-2">
+                                                 {item._type === 'SALE' ? 'Venda' : (item._type === 'BLEED' ? 'Sangria' : 'Suprimento')}
+                                                 <span className="text-[10px] text-gray-400 font-normal">{item.timestamp.toLocaleTimeString()}</span>
+                                             </p>
+                                             <p className="text-[10px] text-gray-500">
+                                                 {item._type === 'SALE' 
+                                                     ? `${item.itemsSummary} (${item.method})` 
+                                                     : `${item.reason} - ${item.userName}`
+                                                 }
+                                             </p>
+                                         </div>
+                                         <span className={`font-mono font-bold text-sm ${item._type === 'BLEED' ? 'text-red-600' : 'text-green-600'}`}>
+                                             {item._type === 'BLEED' ? '-' : '+'} R$ {item.amount.toFixed(2)}
+                                         </span>
+                                     </div>
+                                 ))}
+                                 {(!sessionDetails?.transactions.length && !sessionDetails?.movements.length) && (
+                                     <p className="text-center py-6 text-gray-400 italic text-sm">Nenhuma operação registrada nesta sessão.</p>
+                                 )}
+                             </div>
+                         </div>
+                    </div>
+                )}
+            </div>
         </Modal>
 
         {/* Modais Globais */}
