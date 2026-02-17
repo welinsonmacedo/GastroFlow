@@ -3,6 +3,7 @@ import React, { createContext, useContext, useEffect, useState, useCallback } fr
 import { User } from '../types';
 import { supabase } from '../lib/supabase';
 import { useRestaurant } from './RestaurantContext';
+import { useUI } from './UIContext';
 
 interface StaffState {
   users: User[];
@@ -20,7 +21,8 @@ const StaffContext = createContext<StaffContextType | undefined>(undefined);
 
 export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { state: restState } = useRestaurant();
-  const { tenantId } = restState;
+  const { tenantId, planLimits } = restState;
+  const { showAlert } = useUI();
   const [state, setState] = useState<StaffState>({ users: [], isLoading: true });
 
   const fetchStaff = useCallback(async () => {
@@ -47,6 +49,12 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const addUser = async (user: Partial<User>) => {
       if(!tenantId) return;
+
+      if (planLimits.maxStaff !== -1 && state.users.length >= planLimits.maxStaff) {
+          showAlert({ title: "Limite Atingido", message: `Seu plano permite no máximo ${planLimits.maxStaff} membros na equipe. Atualize seu plano para adicionar mais.`, type: 'WARNING' });
+          return;
+      }
+
       await supabase.from('staff').insert({ 
           tenant_id: tenantId, name: user.name, role: user.role, 
           pin: user.pin, email: user.email, allowed_routes: user.allowedRoutes 

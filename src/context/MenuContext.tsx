@@ -3,6 +3,7 @@ import React, { createContext, useContext, useEffect, useState, useCallback } fr
 import { Product } from '../types';
 import { supabase } from '../lib/supabase';
 import { useRestaurant } from './RestaurantContext';
+import { useUI } from './UIContext';
 
 interface MenuState {
   products: Product[];
@@ -21,7 +22,8 @@ const MenuContext = createContext<MenuContextType | undefined>(undefined);
 
 export const MenuProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { state: restState } = useRestaurant();
-  const { tenantId } = restState;
+  const { tenantId, planLimits } = restState;
+  const { showAlert } = useUI();
   
   const [state, setState] = useState<MenuState>({ products: [], isLoading: true });
 
@@ -62,6 +64,12 @@ export const MenuProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const addProduct = async (product: Partial<Product>) => {
       if(!tenantId) return;
+
+      if (planLimits.maxProducts !== -1 && state.products.length >= planLimits.maxProducts) {
+          showAlert({ title: "Limite Atingido", message: `Seu plano permite no máximo ${planLimits.maxProducts} produtos. Atualize seu plano para adicionar mais.`, type: 'WARNING' });
+          return;
+      }
+
       const { error } = await supabase.from('products').insert({
           tenant_id: tenantId, 
           name: product.name, price: product.price, cost_price: product.costPrice,

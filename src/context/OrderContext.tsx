@@ -4,6 +4,7 @@ import { Table, Order, ServiceCall, OrderStatus, OrderType, DeliveryInfo } from 
 import { supabase } from '../lib/supabase';
 import { useRestaurant } from './RestaurantContext';
 import { useMenu } from './MenuContext';
+import { useUI } from './UIContext';
 
 interface OrderState {
   tables: Table[];
@@ -66,8 +67,9 @@ const OrderContext = createContext<OrderContextType | undefined>(undefined);
 
 export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { state: restState } = useRestaurant();
-  const { tenantId } = restState;
+  const { tenantId, planLimits } = restState;
   const { state: menuState } = useMenu();
+  const { showAlert } = useUI();
 
   const [state, localDispatch] = useReducer(orderReducer, {
       tables: [], orders: [], serviceCalls: [], audioUnlocked: false
@@ -241,6 +243,18 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       fetchData();
   };
 
+  const addTable = async () => {
+      if (!tenantId) return;
+
+      if (planLimits.maxTables !== -1 && state.tables.length >= planLimits.maxTables) {
+          showAlert({ title: "Limite Atingido", message: `Seu plano permite no máximo ${planLimits.maxTables} mesas. Atualize seu plano para adicionar mais.`, type: 'WARNING' });
+          return;
+      }
+
+      await supabase.from('restaurant_tables').insert({ tenant_id: tenantId, number: state.tables.length + 1, status: 'AVAILABLE' });
+      fetchData();
+  };
+
   const dispatch = async (action: any) => {
       switch (action.type) {
           case 'PLACE_ORDER': 
@@ -251,7 +265,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           // Passa os specificOrderIds se existirem
           case 'PROCESS_PAYMENT': await processPayment(action.tableId, action.amount, action.method, action.cashierName, action.orderId, action.specificOrderIds); break;
           case 'UPDATE_ITEM_STATUS': await updateItemStatus(action.orderId, action.itemId, action.status); break;
-          case 'ADD_TABLE': await supabase.from('restaurant_tables').insert({ tenant_id: tenantId, number: state.tables.length + 1, status: 'AVAILABLE' }); fetchData(); break;
+          case 'ADD_TABLE': await addTable(); break;
           case 'DELETE_TABLE': await supabase.from('restaurant_tables').delete().eq('id', action.tableId); fetchData(); break;
           case 'OPEN_TABLE': await supabase.from('restaurant_tables').update({ status: 'OCCUPIED', customer_name: action.customerName, access_code: action.accessCode }).eq('id', action.tableId); fetchData(); break;
           case 'CLOSE_TABLE': await supabase.from('restaurant_tables').update({ status: 'AVAILABLE', customer_name: null, access_code: null }).eq('id', action.tableId); fetchData(); break;

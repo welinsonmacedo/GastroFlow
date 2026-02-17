@@ -71,6 +71,15 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     if (!tenant) { localDispatch({ type: 'TENANT_NOT_FOUND' }); return; }
     if (tenant.status === 'INACTIVE') { localDispatch({ type: 'TENANT_INACTIVE' }); return; }
 
+    // Busca os limites do plano no banco de dados
+    let fetchedLimits = initialState.planLimits;
+    if (tenant.plan) {
+        const { data: planData } = await supabase.from('plans').select('limits').eq('key', tenant.plan).maybeSingle();
+        if (planData && planData.limits) {
+            fetchedLimits = planData.limits;
+        }
+    }
+
     localDispatch({
         type: 'INIT_DATA',
         payload: {
@@ -78,6 +87,7 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             tenantSlug: tenant.slug,
             theme: tenant.theme_config || initialState.theme,
             businessInfo: tenant.business_info || {},
+            planLimits: fetchedLimits
         }
     });
   }, []);
