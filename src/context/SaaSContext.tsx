@@ -26,7 +26,7 @@ type SaaSAction =
   | { type: 'SET_PLANS'; payload: Plan[] }
   | { type: 'CREATE_TENANT'; payload: { name: string; slug: string; ownerName: string; email: string; plan: PlanType } }
   | { type: 'UPDATE_TENANT'; payload: { id: string; name: string; slug: string; ownerName: string; email: string } }
-  | { type: 'UPDATE_TENANT_MODULES'; tenantId: string; modules: SystemModule[] }
+  | { type: 'UPDATE_TENANT_MODULES'; tenantId: string; modules: SystemModule[]; features: string[] }
   | { type: 'CREATE_TENANT_ADMIN'; payload: { tenantId: string; name: string; email: string; pin: string; password?: string } }
   | { type: 'ADD_TENANT_TO_LIST'; tenant: RestaurantTenant }
   | { type: 'TOGGLE_STATUS'; tenantId: string }
@@ -116,7 +116,7 @@ const saasReducer = (state: SaaSState, action: SaaSAction): SaaSState => {
           ...state,
           tenants: state.tenants.map(t => 
               t.id === action.tenantId
-                  ? { ...t, allowedModules: action.modules }
+                  ? { ...t, allowedModules: action.modules, allowedFeatures: action.features }
                   : t
           )
       };
@@ -201,7 +201,8 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
                         joinedAt: new Date(t.created_at),
                         requestCount: 0, 
                         businessInfo: t.business_info || {},
-                        allowedModules: t.allowed_modules || ['RESTAURANT']
+                        allowedModules: t.allowed_modules || ['RESTAURANT'],
+                        allowedFeatures: t.allowed_features || []
                     }));
                     dispatch({ type: 'SET_TENANTS', payload: mapped });
                     fetchTenantStats(mapped.map(t => t.id));
@@ -313,7 +314,8 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
                         joinedAt: new Date(newTenant.created_at),
                         requestCount: 0,
                         businessInfo: {},
-                        allowedModules: ['RESTAURANT']
+                        allowedModules: ['RESTAURANT'],
+                        allowedFeatures: []
                     }
                 });
             }
@@ -343,13 +345,14 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (action.type === 'UPDATE_TENANT_MODULES') {
         try {
             const { error } = await supabase.from('tenants').update({
-                allowed_modules: action.modules
+                allowed_modules: action.modules,
+                allowed_features: action.features
             }).eq('id', action.tenantId);
             
             if (error) throw error;
             
             dispatch(action);
-            showAlert({ title: "Sucesso", message: "Módulos atualizados!", type: 'SUCCESS' });
+            showAlert({ title: "Sucesso", message: "Módulos e permissões atualizados!", type: 'SUCCESS' });
         } catch (error) {
             console.error(error);
             showAlert({ title: "Erro", message: "Erro ao atualizar módulos.", type: 'ERROR' });

@@ -17,51 +17,60 @@ import { CashierDashboard } from './CashierDashboard';
 export const RestaurantDashboard: React.FC = () => {
   const { state: restState } = useRestaurant();
   const { state: authState, logout } = useAuth();
-  const { planLimits } = restState;
+  const { planLimits, allowedFeatures } = restState; // Pega features
   const location = useLocation();
   const navigate = useNavigate();
 
   const userRole = authState.currentUser?.role;
 
-  // Definição das Abas Operacionais
+  // Definição das Abas Operacionais com Feature Key
   const tabs = [
     { 
         path: '/restaurant/waiter', 
         label: 'Salão & Mesas', 
         icon: Coffee, 
-        roles: [Role.ADMIN, Role.WAITER, Role.CASHIER], // Caixa também pode ver mesas
-        required: null 
+        roles: [Role.ADMIN, Role.WAITER, Role.CASHIER], 
+        required: null,
+        featureKey: 'restaurant_waiter' // Feature específica
     },
     { 
         path: '/restaurant/kitchen', 
         label: 'Cozinha (KDS)', 
         icon: Monitor, 
         roles: [Role.ADMIN, Role.KITCHEN],
-        required: 'allowKds' 
+        required: 'allowKds',
+        featureKey: 'restaurant_kds'
     },
     { 
         path: '/restaurant/cashier', 
         label: 'Caixa & Delivery', 
         icon: DollarSign, 
         roles: [Role.ADMIN, Role.CASHIER],
-        required: 'allowCashier' 
+        required: 'allowCashier',
+        featureKey: 'restaurant_cashier'
     },
   ];
 
-  // Filtra abas baseadas no plano e na permissão do usuário
+  // Filtra abas
   const visibleTabs = tabs.filter(tab => {
-      // Checa Limites do Plano
+      // 1. Checa Limites do Plano
       if (tab.required === 'allowKds' && !planLimits.allowKds) return false;
       if (tab.required === 'allowCashier' && !planLimits.allowCashier) return false;
       
-      // Checa Permissão do Usuário
-      if (userRole === Role.ADMIN) return true; // Admin vê tudo que o plano permite
+      // 2. Checa Features Granulares (NOVO)
+      // Se allowedFeatures estiver vazio (legado), assume que todas estão ativas se o plano permitir
+      if (allowedFeatures && allowedFeatures.length > 0) {
+          if (!allowedFeatures.includes(tab.featureKey)) return false;
+      }
+      
+      // 3. Checa Permissão do Usuário
+      if (userRole === Role.ADMIN) return true; 
       if (tab.roles && userRole && !tab.roles.includes(userRole)) return false;
       
       return true;
   });
 
-  // Redireciona para a primeira aba disponível se estiver na raiz
+  // Redireciona
   useEffect(() => {
       if (location.pathname === '/restaurant' && visibleTabs.length > 0) {
           navigate(visibleTabs[0].path, { replace: true });
@@ -86,11 +95,9 @@ export const RestaurantDashboard: React.FC = () => {
   return (
     <div className="flex flex-col h-screen bg-gray-50 overflow-hidden font-sans">
         
-        {/* TOP BAR / HEADER - Azul Royal para Operação */}
+        {/* TOP BAR / HEADER */}
         <header className="bg-blue-700 text-white shadow-lg shrink-0 z-30">
             <div className="max-w-[1920px] mx-auto">
-                
-                {/* Linha Superior: Identidade e Ações */}
                 <div className="px-6 py-4 flex justify-between items-center border-b border-blue-600">
                     <div className="flex items-center gap-4">
                         <div className="bg-white/10 p-2 rounded-xl backdrop-blur-md border border-white/10">
@@ -129,7 +136,6 @@ export const RestaurantDashboard: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Linha Inferior: Abas de Navegação */}
                 <div className="px-6 flex gap-1 overflow-x-auto scrollbar-hide pt-2">
                     {visibleTabs.map(tab => {
                         const isActive = location.pathname.startsWith(tab.path);

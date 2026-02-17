@@ -12,6 +12,7 @@ interface RestaurantState {
   isInactiveTenant: boolean;
   planLimits: PlanLimits;
   allowedModules: SystemModule[];
+  allowedFeatures: string[]; // Adicionado
   activeModule: SystemModule | null;
   theme: RestaurantTheme;
   businessInfo: RestaurantBusinessInfo;
@@ -35,6 +36,7 @@ const initialState: RestaurantState = {
   isInactiveTenant: false,
   planLimits: { maxTables: -1, maxProducts: -1, maxStaff: -1, allowKds: true, allowCashier: true, allowReports: true, allowInventory: true, allowPurchases: true, allowExpenses: true, allowStaff: true, allowTableMgmt: true, allowCustomization: true },
   allowedModules: ['RESTAURANT'],
+  allowedFeatures: [], // Inicializa vazio
   activeModule: null,
   theme: { 
       primaryColor: '#22c55e', 
@@ -79,6 +81,7 @@ const restaurantReducer = (state: RestaurantState, action: Action): RestaurantSt
             theme: action.payload.theme_config || state.theme,
             businessInfo: action.payload.business_info || state.businessInfo,
             allowedModules: action.payload.allowed_modules || state.allowedModules,
+            allowedFeatures: action.payload.allowed_features || state.allowedFeatures,
             isInactiveTenant: action.payload.status === 'INACTIVE'
         };
     default: return state;
@@ -98,7 +101,7 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const slug = getTenantSlug();
     if (!slug) { localDispatch({ type: 'SET_LOADING', isLoading: false }); return; }
 
-    const { data: tenant } = await supabase.from('tenants').select('id, slug, status, theme_config, business_info, plan, allowed_modules').eq('slug', slug).maybeSingle();
+    const { data: tenant } = await supabase.from('tenants').select('id, slug, status, theme_config, business_info, plan, allowed_modules, allowed_features').eq('slug', slug).maybeSingle();
     
     if (!tenant) { localDispatch({ type: 'TENANT_NOT_FOUND' }); return; }
     if (tenant.status === 'INACTIVE') { localDispatch({ type: 'TENANT_INACTIVE' }); return; }
@@ -132,6 +135,7 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             businessInfo: mergedBusinessInfo,
             planLimits: fetchedLimits,
             allowedModules: tenant.allowed_modules || ['RESTAURANT'],
+            allowedFeatures: tenant.allowed_features || [], // Carrega do banco
             activeModule: initialActiveModule
         }
     });

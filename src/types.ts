@@ -134,7 +134,8 @@ export interface RestaurantTenant {
   plan: PlanType;
   joinedAt: Date;
   requestCount?: number;
-  allowedModules?: SystemModule[]; // Novo campo
+  allowedModules?: SystemModule[]; 
+  allowedFeatures?: string[]; // Novo campo para abas específicas
   businessInfo?: RestaurantBusinessInfo;
 }
 
@@ -161,7 +162,7 @@ export type InventoryType = 'INGREDIENT' | 'RESALE' | 'COMPOSITE';
 export interface InventoryItem {
     id: string;
     name: string;
-    barcode?: string; // Novo campo
+    barcode?: string; 
     unit: string;
     quantity: number;
     minQuantity: number;

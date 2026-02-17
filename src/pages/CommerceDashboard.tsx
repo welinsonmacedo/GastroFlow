@@ -19,7 +19,7 @@ import { CommercePOS } from './commerce/CommercePOS';
 export const CommerceDashboard: React.FC = () => {
   const { state: restState } = useRestaurant();
   const { state: authState, logout } = useAuth();
-  const { planLimits } = restState;
+  const { planLimits, allowedFeatures } = restState;
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -32,38 +32,49 @@ export const CommerceDashboard: React.FC = () => {
         label: 'PDV (Caixa)', 
         icon: ShoppingCart, 
         roles: [Role.ADMIN, Role.CASHIER],
-        required: 'allowCashier' 
+        required: 'allowCashier',
+        featureKey: 'commerce_pos'
     },
     { 
         path: '/commerce/inventory', 
         label: 'Estoque & Produtos', 
         icon: Package, 
-        roles: [Role.ADMIN, Role.KITCHEN], // Kitchen role can manage stock in this context
-        required: 'allowInventory' 
+        roles: [Role.ADMIN, Role.KITCHEN],
+        required: 'allowInventory',
+        featureKey: 'commerce_inventory'
     },
     { 
         path: '/commerce/finance', 
         label: 'Financeiro', 
         icon: DollarSign, 
         roles: [Role.ADMIN],
-        required: 'allowExpenses' 
+        required: 'allowExpenses',
+        featureKey: 'commerce_finance'
     },
     { 
         path: '/commerce/reports', 
         label: 'Relatórios', 
         icon: BarChart3, 
         roles: [Role.ADMIN],
-        required: 'allowReports' 
+        required: 'allowReports',
+        featureKey: 'commerce_reports'
     },
   ];
 
   // Filtra abas
   const visibleTabs = tabs.filter(tab => {
+      // 1. Plano
       if (tab.required === 'allowCashier' && !planLimits.allowCashier) return false;
       if (tab.required === 'allowInventory' && !planLimits.allowInventory) return false;
       if (tab.required === 'allowExpenses' && !planLimits.allowExpenses) return false;
       if (tab.required === 'allowReports' && !planLimits.allowReports) return false;
       
+      // 2. Features Granulares
+      if (allowedFeatures && allowedFeatures.length > 0) {
+          if (!allowedFeatures.includes(tab.featureKey)) return false;
+      }
+      
+      // 3. Permissão Usuário
       if (userRole === Role.ADMIN) return true;
       if (tab.roles && userRole && !tab.roles.includes(userRole)) return false;
       
@@ -95,7 +106,7 @@ export const CommerceDashboard: React.FC = () => {
   return (
     <div className="flex flex-col h-screen bg-gray-50 overflow-hidden font-sans">
         
-        {/* TOP BAR / HEADER - Indigo para Comércio */}
+        {/* TOP BAR / HEADER */}
         <header className="bg-indigo-700 text-white shadow-lg shrink-0 z-30">
             <div className="max-w-[1920px] mx-auto">
                 

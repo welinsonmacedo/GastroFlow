@@ -18,23 +18,28 @@ import { AdminTables } from './admin/AdminTables';
 export const AdminDashboard: React.FC = () => {
   const { state: restState } = useRestaurant();
   const { state: authState, logout } = useAuth();
-  const { planLimits } = restState;
+  const { planLimits, allowedFeatures } = restState;
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Definição das Abas do Gestor (Focado em Operação e Estoque)
-  // Financeiro, DRE, BI e Relatórios foram movidos para o Módulo Financeiro
+  // Definição das Abas do Gestor
   const tabs = [
-    { path: '/admin', label: 'Visão Geral', icon: LayoutDashboard, exact: true },
-    { path: '/admin/products', label: 'Cardápio', icon: Utensils },
-    { path: '/admin/tables', label: 'Mesas & QR', icon: QrCode, required: 'allowTableMgmt' },
-    { path: '/admin/inventory', label: 'Estoque', icon: Package, required: 'allowInventory' },
+    { path: '/admin', label: 'Visão Geral', icon: LayoutDashboard, exact: true, featureKey: 'admin_overview' },
+    { path: '/admin/products', label: 'Cardápio', icon: Utensils, featureKey: 'admin_products' },
+    { path: '/admin/tables', label: 'Mesas & QR', icon: QrCode, required: 'allowTableMgmt', featureKey: 'admin_tables' },
+    { path: '/admin/inventory', label: 'Estoque', icon: Package, required: 'allowInventory', featureKey: 'admin_inventory' },
   ];
 
-  // Filtra abas baseadas no plano
+  // Filtra abas
   const visibleTabs = tabs.filter(tab => {
       if (tab.required === 'allowTableMgmt' && !planLimits.allowTableMgmt) return false;
       if (tab.required === 'allowInventory' && !planLimits.allowInventory) return false;
+      
+      // Checagem de features granulares
+      if (allowedFeatures && allowedFeatures.length > 0) {
+          if (!allowedFeatures.includes(tab.featureKey)) return false;
+      }
+
       return true;
   });
 
@@ -49,7 +54,7 @@ export const AdminDashboard: React.FC = () => {
         <header className="bg-slate-900 text-white shadow-lg shrink-0 z-30">
             <div className="max-w-[1920px] mx-auto">
                 
-                {/* Linha Superior: Identidade e Ações */}
+                {/* Linha Superior */}
                 <div className="px-6 py-4 flex justify-between items-center border-b border-slate-800">
                     <div className="flex items-center gap-4">
                         <div className="bg-white/10 p-2 rounded-xl backdrop-blur-md border border-white/10">
@@ -88,7 +93,7 @@ export const AdminDashboard: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Linha Inferior: Abas de Navegação */}
+                {/* Linha Inferior */}
                 <div className="px-6 flex gap-1 overflow-x-auto scrollbar-hide pt-2">
                     {visibleTabs.map(tab => {
                         const isActive = tab.exact 

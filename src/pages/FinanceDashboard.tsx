@@ -19,22 +19,28 @@ import { AdminFinancialTips } from './admin/AdminFinancialTips';
 export const FinanceDashboard: React.FC = () => {
   const { state: restState } = useRestaurant();
   const { state: authState, logout } = useAuth();
-  const { planLimits } = restState;
+  const { planLimits, allowedFeatures } = restState;
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Definição das Abas do Módulo Financeiro
+  // Definição das Abas do Módulo Financeiro com Feature Keys
   const tabs = [
-    { path: '/finance', label: 'Caixa & Despesas', icon: DollarSign, exact: true },
-    { path: '/finance/dre', label: 'DRE Gerencial', icon: PieChart, required: 'allowReports' },
-    { path: '/finance/bi', label: 'Inteligência (BI)', icon: TrendingUp, required: 'allowReports' },
-    { path: '/finance/reports', label: 'Relatórios', icon: FileText, required: 'allowReports' },
-    { path: '/finance/tips', label: 'Dicas & Insights', icon: Lightbulb, required: 'allowReports' },
+    { path: '/finance', label: 'Caixa & Despesas', icon: DollarSign, exact: true, featureKey: 'finance_expenses' },
+    { path: '/finance/dre', label: 'DRE Gerencial', icon: PieChart, required: 'allowReports', featureKey: 'finance_dre' },
+    { path: '/finance/bi', label: 'Inteligência (BI)', icon: TrendingUp, required: 'allowReports', featureKey: 'finance_bi' },
+    { path: '/finance/reports', label: 'Relatórios', icon: FileText, required: 'allowReports', featureKey: 'finance_reports' },
+    { path: '/finance/tips', label: 'Dicas & Insights', icon: Lightbulb, required: 'allowReports', featureKey: 'finance_tips' },
   ];
 
-  // Filtra abas baseadas no plano
+  // Filtra abas
   const visibleTabs = tabs.filter(tab => {
       if (tab.required === 'allowReports' && !planLimits.allowReports) return false;
+      
+      // Checagem de features
+      if (allowedFeatures && allowedFeatures.length > 0) {
+          if (!allowedFeatures.includes(tab.featureKey)) return false;
+      }
+
       return true;
   });
 
@@ -45,11 +51,11 @@ export const FinanceDashboard: React.FC = () => {
   return (
     <div className="flex flex-col h-screen bg-gray-50 overflow-hidden font-sans">
         
-        {/* TOP BAR / HEADER (Tema Verde/Emerald) */}
+        {/* TOP BAR / HEADER */}
         <header className="bg-emerald-900 text-white shadow-lg shrink-0 z-30">
             <div className="max-w-[1920px] mx-auto">
                 
-                {/* Linha Superior: Identidade e Ações */}
+                {/* Linha Superior */}
                 <div className="px-6 py-4 flex justify-between items-center border-b border-emerald-800">
                     <div className="flex items-center gap-4">
                         <div className="bg-white/10 p-2 rounded-xl backdrop-blur-md border border-white/10">
@@ -88,7 +94,7 @@ export const FinanceDashboard: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Linha Inferior: Abas de Navegação */}
+                {/* Linha Inferior */}
                 <div className="px-6 flex gap-1 overflow-x-auto scrollbar-hide pt-2">
                     {visibleTabs.map(tab => {
                         const isActive = tab.exact 

@@ -5,7 +5,7 @@ import { Routes, Route, Navigate, Link, useLocation, useNavigate } from 'react-r
 import { useRestaurant } from '../context/RestaurantContext';
 import { useAuth } from '../context/AuthProvider';
 import { 
-    Settings, Palette, Users, SlidersHorizontal, LogOut, Grid, ChefHat
+    Palette, Users, SlidersHorizontal, LogOut, Grid, ChefHat
 } from 'lucide-react';
 
 // Importando Sub-páginas
@@ -16,21 +16,27 @@ import { AdminStaff } from './admin/AdminStaff';
 export const SettingsDashboard: React.FC = () => {
   const { state: restState } = useRestaurant();
   const { state: authState, logout } = useAuth();
-  const { planLimits } = restState;
+  const { planLimits, allowedFeatures } = restState;
   const location = useLocation();
   const navigate = useNavigate();
 
   // Definição das Abas do Módulo Configurações
   const tabs = [
-    { path: '/settings', label: 'Geral & Regras', icon: SlidersHorizontal, exact: true },
-    { path: '/settings/appearance', label: 'Aparência & Marca', icon: Palette, required: 'allowCustomization' },
-    { path: '/settings/staff', label: 'Equipe & Acessos', icon: Users, required: 'allowStaff' },
+    { path: '/settings', label: 'Geral & Regras', icon: SlidersHorizontal, exact: true, featureKey: 'config_general' },
+    { path: '/settings/appearance', label: 'Aparência & Marca', icon: Palette, required: 'allowCustomization', featureKey: 'config_appearance' },
+    { path: '/settings/staff', label: 'Equipe & Acessos', icon: Users, required: 'allowStaff', featureKey: 'config_staff' },
   ];
 
-  // Filtra abas baseadas no plano
+  // Filtra abas
   const visibleTabs = tabs.filter(tab => {
       if (tab.required === 'allowCustomization' && !planLimits.allowCustomization) return false;
       if (tab.required === 'allowStaff' && !planLimits.allowStaff) return false;
+      
+      // Checa Features
+      if (allowedFeatures && allowedFeatures.length > 0) {
+          if (!allowedFeatures.includes(tab.featureKey)) return false;
+      }
+
       return true;
   });
 
@@ -45,7 +51,7 @@ export const SettingsDashboard: React.FC = () => {
         <header className="bg-slate-900 text-white shadow-lg shrink-0 z-30">
             <div className="max-w-[1920px] mx-auto">
                 
-                {/* Linha Superior: Identidade e Ações */}
+                {/* Linha Superior */}
                 <div className="px-6 py-4 flex justify-between items-center border-b border-slate-800">
                     <div className="flex items-center gap-4">
                         <div className="bg-white/10 p-2 rounded-xl backdrop-blur-md border border-white/10">
@@ -84,7 +90,7 @@ export const SettingsDashboard: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Linha Inferior: Abas de Navegação */}
+                {/* Linha Inferior */}
                 <div className="px-6 flex gap-1 overflow-x-auto scrollbar-hide pt-2">
                     {visibleTabs.map(tab => {
                         const isActive = tab.exact 
