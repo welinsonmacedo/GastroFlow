@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRestaurant } from '../../context/RestaurantContext';
 import { useFinance } from '../../context/FinanceContext';
 import { useUI } from '../../context/UIContext';
@@ -7,8 +7,9 @@ import { Button } from '../../components/Button';
 import { Modal } from '../../components/Modal'; // Importando Modal Genérico para ações locais
 import { ExpenseFormModal } from '../../components/modals/ExpenseFormModal';
 import { CashBleedModal } from '../../components/modals/CashBleedModal';
-import { Expense } from '../../types';
-import { Plus, CheckSquare, Trash2, Wallet, CreditCard, Banknote, ArrowDown, Repeat, PieChart, FileText, Lightbulb, LayoutDashboard, List, Edit, Lock, Calendar, ShoppingCart, Filter, History, Clock, DollarSign, Building2 } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
+import { Expense, CashSession } from '../../types';
+import { Plus, CheckSquare, Trash2, Wallet, CreditCard, Banknote, ArrowDown, Repeat, PieChart, FileText, Lightbulb, LayoutDashboard, List, Edit, Lock, Calendar, ShoppingCart, Filter, History, Clock, DollarSign, Building2, Archive, User } from 'lucide-react';
 
 // Importando os componentes das outras páginas para uso nas abas
 import { AdminAccounting } from './AdminAccounting';
@@ -22,7 +23,7 @@ export const AdminFinance: React.FC = () => {
   const { showConfirm, showAlert } = useUI();
   
   // State for Tabs
-  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'EXPENSES' | 'PURCHASES' | 'DRE' | 'REPORT' | 'TIPS'>('OVERVIEW');
+  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'SESSIONS' | 'EXPENSES' | 'PURCHASES' | 'DRE' | 'REPORT' | 'TIPS'>('OVERVIEW');
 
   // State for Expenses Filter
   const [expenseViewMode, setExpenseViewMode] = useState<'MONTH' | 'RECURRING' | 'HISTORY'>('MONTH');
@@ -41,6 +42,40 @@ export const AdminFinance: React.FC = () => {
 
   const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean, expenseId: string | null }>({ isOpen: false, expenseId: null });
   const [adminPin, setAdminPin] = useState('');
+
+  // State para Histórico de Caixas
+  const [sessionsHistory, setSessionsHistory] = useState<CashSession[]>([]);
+  const [loadingSessions, setLoadingSessions] = useState(false);
+
+  // --- Fetch Sessions History ---
+  useEffect(() => {
+      if (activeTab === 'SESSIONS' && restState.tenantId) {
+          const fetchSessions = async () => {
+              setLoadingSessions(true);
+              const { data } = await supabase
+                .from('cash_sessions')
+                .select('*')
+                .eq('tenant_id', restState.tenantId)
+                .order('opened_at', { ascending: false })
+                .limit(50); // Limite de 50 para performance inicial
+
+              if (data) {
+                  const mappedSessions = data.map((s: any) => ({
+                      id: s.id,
+                      openedAt: new Date(s.opened_at),
+                      initialAmount: s.initial_amount,
+                      status: s.status,
+                      operatorName: s.operator_name,
+                      closedAt: s.closed_at ? new Date(s.closed_at) : undefined,
+                      finalAmount: s.final_amount
+                  }));
+                  setSessionsHistory(mappedSessions);
+              }
+              setLoadingSessions(false);
+          };
+          fetchSessions();
+      }
+  }, [activeTab, restState.tenantId]);
 
   // --- Calculations (Overview Tab) ---
   const activeTransactions = finState.transactions.filter(t => t.status !== 'CANCELLED');
@@ -191,7 +226,7 @@ export const AdminFinance: React.FC = () => {
           className={`px-6 py-3 rounded-t-xl font-bold text-sm flex items-center gap-2 transition-all border-b-2 ${activeTab === id ? 'text-blue-600 border-blue-600 bg-blue-50/50' : 'text-slate-500 border-transparent hover:text-slate-700 hover:bg-gray-50'}`}
       >
           <Icon size={18} />
-          {label}
+          <span className="hidden md:inline">{label}</span>
       </button>
   );
 
@@ -209,6 +244,7 @@ export const AdminFinance: React.FC = () => {
 
             <div className="flex overflow-x-auto gap-2">
                 <TabButton id="OVERVIEW" label="Visão Geral" icon={LayoutDashboard} />
+                <TabButton id="SESSIONS" label="Histórico de Caixas" icon={Archive} />
                 <TabButton id="EXPENSES" label="Despesas" icon={List} />
                 {restState.planLimits.allowInventory && <TabButton id="PURCHASES" label="Sugestão de Compras" icon={ShoppingCart} />}
                 <TabButton id="DRE" label="DRE Gerencial" icon={PieChart} />
@@ -223,10 +259,7 @@ export const AdminFinance: React.FC = () => {
             {/* VIEW: OVERVIEW */}
             {activeTab === 'OVERVIEW' && (
                 <div className="space-y-8 animate-fade-in">
-                    <div className="flex justify-end">
-                        <Button onClick={() => setIsBleedModalOpen(true)} variant="secondary" className="bg-red-50 text-red-600 border-red-100 hover:bg-red-100"><ArrowDown size={16}/> Saída Manual (Dinheiro)</Button>
-                    </div>
-
+                    
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                         {/* 1. Valor Atual Esperado */}
                         <StatBox 
@@ -263,6 +296,67 @@ export const AdminFinance: React.FC = () => {
                             color="text-red-600"
                             subtext="Total a Pagar/Pago"
                         />
+                    </div>
+                </div>
+            )}
+
+            {/* VIEW: HISTÓRICO DE CAIXAS (SESSIONS) */}
+            {activeTab === 'SESSIONS' && (
+                <div className="space-y-6 animate-fade-in">
+                    <div className="bg-white p-4 rounded-xl shadow-sm border mb-4">
+                        <h3 className="font-bold text-lg text-gray-800">Histórico de Turnos</h3>
+                        <p className="text-xs text-gray-500">Registro de todas as aberturas e fechamentos de caixa.</p>
+                    </div>
+
+                    <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+                        <table className="w-full text-left">
+                            <thead className="bg-gray-50 border-b text-xs font-black text-gray-400 uppercase tracking-widest">
+                                <tr>
+                                    <th className="p-4">Status</th>
+                                    <th className="p-4">Abertura</th>
+                                    <th className="p-4">Fechamento</th>
+                                    <th className="p-4">Operador</th>
+                                    <th className="p-4 text-right">Fundo Inicial</th>
+                                    <th className="p-4 text-right">Valor Final (Contado)</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y text-sm">
+                                {loadingSessions ? (
+                                    <tr><td colSpan={6} className="p-8 text-center text-gray-400">Carregando histórico...</td></tr>
+                                ) : sessionsHistory.length === 0 ? (
+                                    <tr><td colSpan={6} className="p-8 text-center text-gray-400">Nenhum caixa registrado.</td></tr>
+                                ) : (
+                                    sessionsHistory.map(session => (
+                                        <tr key={session.id} className="hover:bg-gray-50 transition-colors">
+                                            <td className="p-4">
+                                                <span className={`text-[10px] font-black px-2 py-1 rounded-lg uppercase border ${session.status === 'OPEN' ? 'bg-green-100 text-green-700 border-green-200' : 'bg-gray-100 text-gray-600 border-gray-200'}`}>
+                                                    {session.status === 'OPEN' ? 'Aberto' : 'Fechado'}
+                                                </span>
+                                            </td>
+                                            <td className="p-4 text-gray-700 font-medium">
+                                                {session.openedAt.toLocaleString()}
+                                            </td>
+                                            <td className="p-4 text-gray-500">
+                                                {session.closedAt ? session.closedAt.toLocaleString() : '-'}
+                                            </td>
+                                            <td className="p-4 flex items-center gap-2">
+                                                <User size={14} className="text-gray-400"/>
+                                                <span className="font-bold text-slate-700">{session.operatorName}</span>
+                                            </td>
+                                            <td className="p-4 text-right font-mono text-slate-600">
+                                                R$ {session.initialAmount.toFixed(2)}
+                                            </td>
+                                            <td className="p-4 text-right font-mono font-bold text-slate-800">
+                                                {session.finalAmount !== undefined && session.finalAmount !== null 
+                                                    ? `R$ ${session.finalAmount.toFixed(2)}` 
+                                                    : '-'
+                                                }
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             )}

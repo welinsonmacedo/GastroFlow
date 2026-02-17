@@ -327,6 +327,8 @@ export interface CashSession {
   initialAmount: number;
   status: 'OPEN' | 'CLOSED';
   operatorName: string;
+  closedAt?: Date;
+  finalAmount?: number | null;
 }
 
 export interface CashMovement {
