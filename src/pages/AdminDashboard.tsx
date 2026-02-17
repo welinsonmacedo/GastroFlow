@@ -9,7 +9,7 @@ import { Role } from '../types';
 import { 
     ChefHat, Coffee, Monitor, DollarSign, Settings, LogOut, User as UserIcon, 
     Menu, LayoutDashboard, Utensils, Package, QrCode, Palette, 
-    ChevronDown, ChevronUp, ShoppingCart, Smartphone
+    ChevronDown, ChevronUp, ShoppingCart, Smartphone, Database, Wifi
 } from 'lucide-react';
 
 // Importando Sub-páginas
@@ -34,14 +34,16 @@ const AdminSidebar = ({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: (v: b
     const { showConfirm } = useUI();
     const { planLimits } = restState;
     
-    // Estados dos grupos do menu
-    const [isAppsOpen, setIsAppsOpen] = useState(true);
-    const [isQrOpen, setIsQrOpen] = useState(true);
-    const [isManagementOpen, setIsManagementOpen] = useState(true);
+    // Estado único para controlar qual seção está aberta (Accordion)
+    const [openSection, setOpenSection] = useState<'APPS' | 'QR' | 'MANAGEMENT' | null>('APPS');
 
     if (!authState.currentUser) return null;
 
     const role = authState.currentUser.role;
+
+    const toggleSection = (section: 'APPS' | 'QR' | 'MANAGEMENT') => {
+        setOpenSection(prev => prev === section ? null : section);
+    };
 
     // 1. Módulos Operacionais (Apps)
     const appLinks = [
@@ -123,14 +125,10 @@ const AdminSidebar = ({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: (v: b
             {isOpen && <div className="fixed inset-0 bg-black/50 z-40 md:hidden backdrop-blur-sm" onClick={() => setIsOpen(false)}></div>}
 
             <aside className={`fixed md:relative top-0 left-0 h-full w-64 bg-slate-900 text-white border-r border-slate-800 shadow-xl z-50 transition-transform duration-300 ease-in-out flex flex-col shrink-0 ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
-                <div className="p-6 border-b border-slate-800 flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                        <div className="bg-green-600 p-2 rounded-lg text-white shadow-lg shadow-green-500/20">
-                            {restState.theme.logoUrl ? <img src={restState.theme.logoUrl} className="h-6 w-6 object-contain" /> : <ChefHat size={24} />}
-                        </div>
-                        <div className="font-black text-lg tracking-tight truncate leading-none w-32">
-                            {restState.theme.restaurantName}
-                        </div>
+                {/* Cabeçalho Minimalista: Apenas Logo */}
+                <div className="p-6 border-b border-slate-800 flex items-center justify-center">
+                    <div className="bg-green-600 p-3 rounded-xl text-white shadow-lg shadow-green-500/20">
+                        {restState.theme.logoUrl ? <img src={restState.theme.logoUrl} className="h-8 w-8 object-contain" /> : <ChefHat size={32} />}
                     </div>
                 </div>
 
@@ -138,22 +136,22 @@ const AdminSidebar = ({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: (v: b
                     {/* APPS */}
                     {visibleAppLinks.length > 0 && (
                         <div className="space-y-1">
-                            <button onClick={() => setIsAppsOpen(!isAppsOpen)} className="w-full flex items-center justify-between px-2 mb-2 text-[10px] font-black text-slate-500 uppercase tracking-widest hover:text-slate-300 transition-colors">
-                                <span>Operação</span> {isAppsOpen ? <ChevronUp size={14}/> : <ChevronDown size={14}/>}
+                            <button onClick={() => toggleSection('APPS')} className="w-full flex items-center justify-between px-2 mb-2 text-[10px] font-black text-slate-500 uppercase tracking-widest hover:text-slate-300 transition-colors">
+                                <span>Operação</span> {openSection === 'APPS' ? <ChevronUp size={14}/> : <ChevronDown size={14}/>}
                             </button>
-                            <div className={`space-y-1 overflow-hidden transition-all ${isAppsOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
+                            <div className={`space-y-1 overflow-hidden transition-all duration-300 ${openSection === 'APPS' ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
                                 {visibleAppLinks.map(link => <NavItem key={link.to} link={link} />)}
                             </div>
                         </div>
                     )}
 
-                    {/* AUTOMAÇÃO QR (NOVA ABA) */}
+                    {/* AUTOMAÇÃO QR */}
                     {visibleQrLinks.length > 0 && (
                         <div className="space-y-1 pt-2 border-t border-slate-800">
-                            <button onClick={() => setIsQrOpen(!isQrOpen)} className="w-full flex items-center justify-between px-2 mb-2 mt-4 text-[10px] font-black text-slate-500 uppercase tracking-widest hover:text-slate-300 transition-colors">
-                                <span className="flex items-center gap-1"><Smartphone size={10} /> Automação QR</span> {isQrOpen ? <ChevronUp size={14}/> : <ChevronDown size={14}/>}
+                            <button onClick={() => toggleSection('QR')} className="w-full flex items-center justify-between px-2 mb-2 mt-4 text-[10px] font-black text-slate-500 uppercase tracking-widest hover:text-slate-300 transition-colors">
+                                <span className="flex items-center gap-1"><Smartphone size={10} /> Automação QR</span> {openSection === 'QR' ? <ChevronUp size={14}/> : <ChevronDown size={14}/>}
                             </button>
-                            <div className={`space-y-1 overflow-hidden transition-all ${isQrOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
+                            <div className={`space-y-1 overflow-hidden transition-all duration-300 ${openSection === 'QR' ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
                                 {visibleQrLinks.map(link => <NavItem key={link.to} link={link} />)}
                             </div>
                         </div>
@@ -162,29 +160,28 @@ const AdminSidebar = ({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: (v: b
                     {/* GESTÃO */}
                     {visibleManagementLinks.length > 0 && (
                         <div className="space-y-1 pt-2 border-t border-slate-800">
-                            <button onClick={() => setIsManagementOpen(!isManagementOpen)} className="w-full flex items-center justify-between px-2 mb-2 mt-4 text-[10px] font-black text-slate-500 uppercase tracking-widest hover:text-slate-300 transition-colors">
-                                <span>Gestão</span> {isManagementOpen ? <ChevronUp size={14}/> : <ChevronDown size={14}/>}
+                            <button onClick={() => toggleSection('MANAGEMENT')} className="w-full flex items-center justify-between px-2 mb-2 mt-4 text-[10px] font-black text-slate-500 uppercase tracking-widest hover:text-slate-300 transition-colors">
+                                <span>Gestão</span> {openSection === 'MANAGEMENT' ? <ChevronUp size={14}/> : <ChevronDown size={14}/>}
                             </button>
-                            <div className={`space-y-1 overflow-hidden transition-all ${isManagementOpen ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                            <div className={`space-y-1 overflow-hidden transition-all duration-300 ${openSection === 'MANAGEMENT' ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0'}`}>
                                 {visibleManagementLinks.map(link => <NavItem key={link.to} link={link} />)}
                             </div>
                         </div>
                     )}
                 </nav>
 
+                {/* Rodapé Minimalista: Status BD + Logout */}
                 <div className="p-4 border-t border-slate-800 bg-slate-950/50">
-                     <div className="flex items-center gap-3 mb-4 px-2">
-                        <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-green-500 border border-slate-700">
-                            <UserIcon size={20} />
+                     <div className="flex flex-col gap-3">
+                        <div className="flex items-center justify-center gap-2 bg-slate-900 py-2 rounded-lg border border-slate-800">
+                            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                            <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Sistema Online</span>
                         </div>
-                        <div className="overflow-hidden">
-                            <p className="text-sm font-bold text-white truncate">{authState.currentUser?.name}</p>
-                            <p className="text-xs text-slate-500 truncate capitalize">{authState.currentUser?.role?.toLowerCase()}</p>
-                        </div>
+
+                        <button onClick={handleLogoutClick} className="w-full flex items-center justify-center gap-2 text-red-400 hover:text-white hover:bg-red-500/10 py-3 rounded-lg transition-colors text-xs font-bold uppercase tracking-wider">
+                            <LogOut size={16} /> Sair
+                        </button>
                      </div>
-                     <button onClick={handleLogoutClick} className="w-full flex items-center justify-center gap-2 text-red-400 hover:text-white hover:bg-red-500/10 py-2 rounded-lg transition-colors text-xs font-bold uppercase tracking-wider">
-                        <LogOut size={16} /> Sair do Sistema
-                     </button>
                 </div>
             </aside>
         </>
