@@ -6,7 +6,7 @@ import { useInventory } from '../../context/InventoryContext';
 import { 
     TrendingUp, AlertTriangle, Target, Calendar, 
     ArrowUpRight, ArrowDownRight, PieChart, BarChart3, 
-    Zap, Award, TrendingDown, DollarSign, Activity, Filter
+    Zap, Award, TrendingDown, DollarSign, Activity, Filter, Package, FileText, Wallet
 } from 'lucide-react';
 
 export const AdminBusinessIntelligence: React.FC = () => {
@@ -63,7 +63,7 @@ export const AdminBusinessIntelligence: React.FC = () => {
         const estimatedDeductions = grossRevenue * 0.10; 
         const netRevenue = grossRevenue - estimatedDeductions;
 
-        // CMV Estimado com base nos pedidos do período filtrado
+        // CMV Estimado com base nos pedidos do período filtrado (Custos de Produtos)
         let estimatedCost = 0;
         
         // Precisamos filtrar as ordens que correspondem ao período selecionado
@@ -79,9 +79,22 @@ export const AdminBusinessIntelligence: React.FC = () => {
             o.items.forEach(i => { estimatedCost += (i.productCostPrice * i.quantity); });
         });
 
+        // Custos Operacionais (Despesas Pagas - Outros Custos)
+        const operatingExpenses = finState.expenses.filter(e => {
+            if (!e.isPaid || !e.paidDate) return false;
+            const d = new Date(e.paidDate);
+            const matchYear = d.getFullYear() === selectedYear;
+            const matchMonth = selectedMonth === 'ALL' ? true : d.getMonth() === parseInt(selectedMonth);
+            return matchYear && matchMonth;
+        }).reduce((acc, e) => acc + e.amount, 0);
+
         const cmvPercentage = grossRevenue > 0 ? (estimatedCost / grossRevenue) * 100 : 0;
+        const expensesPercentage = grossRevenue > 0 ? (operatingExpenses / grossRevenue) * 100 : 0;
         
-        // Comparativo com período anterior (Mês passado se filtro for mês, ou ano passado se filtro for ALL)
+        // Resultado Final (Bruto - CMV - Despesas)
+        const netResult = grossRevenue - estimatedCost - operatingExpenses;
+
+        // Comparativo com período anterior
         let prevRevenue = 0;
         if (selectedMonth !== 'ALL') {
             // Mês anterior
@@ -101,8 +114,18 @@ export const AdminBusinessIntelligence: React.FC = () => {
 
         const growth = prevRevenue > 0 ? ((grossRevenue - prevRevenue) / prevRevenue) * 100 : 100;
 
-        return { grossRevenue, netRevenue, prevRevenue, growth, cmvPercentage, estimatedCost };
-    }, [filteredData, orderState.orders, selectedYear, selectedMonth, finState.transactions]);
+        return { 
+            grossRevenue, 
+            netRevenue, 
+            prevRevenue, 
+            growth, 
+            cmvPercentage, 
+            estimatedCost, // Custo Produtos
+            operatingExpenses, // Outros Custos
+            expensesPercentage,
+            netResult
+        };
+    }, [filteredData, orderState.orders, finState.expenses, selectedYear, selectedMonth, finState.transactions]);
 
     // 4. Ranking & ABC
     const productPerformance = useMemo(() => {
@@ -174,7 +197,8 @@ export const AdminBusinessIntelligence: React.FC = () => {
     const alerts = [];
     if (executiveStats.cmvPercentage > 35) alerts.push({ type: 'danger', msg: `CMV Crítico: ${executiveStats.cmvPercentage.toFixed(1)}% (Meta: <35%)` });
     if (executiveStats.growth < 0) alerts.push({ type: 'warning', msg: `Queda de receita: ${Math.abs(executiveStats.growth).toFixed(1)}% vs período anterior` });
-    
+    if (executiveStats.netResult < 0) alerts.push({ type: 'danger', msg: `Operação no prejuízo: R$ ${executiveStats.netResult.toFixed(2)}` });
+
     return (
         <div className="space-y-6 animate-fade-in pb-20">
             {/* Header com Filtros */}
@@ -255,6 +279,51 @@ export const AdminBusinessIntelligence: React.FC = () => {
                                 {Math.abs(executiveStats.growth).toFixed(1)}%
                             </div>
                             <p className="text-[10px] text-gray-400 mt-1 font-bold">vs. período anterior</p>
+                        </div>
+                    </div>
+
+                    {/* NOVA SEÇÃO: DETALHAMENTO DE CUSTOS E RESULTADO */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {/* Custos de Produtos */}
+                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-orange-100">
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="bg-orange-50 p-2 rounded-lg text-orange-600"><Package size={20}/></div>
+                                <h4 className="text-sm font-bold text-gray-700 uppercase">Custos de Produtos (CMV)</h4>
+                            </div>
+                            <h3 className="text-3xl font-black text-slate-800 mb-2">R$ {executiveStats.estimatedCost.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</h3>
+                            <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden mb-2">
+                                <div className="bg-orange-500 h-full" style={{ width: `${Math.min(executiveStats.cmvPercentage, 100)}%` }}></div>
+                            </div>
+                            <p className="text-xs text-gray-500 font-bold">{executiveStats.cmvPercentage.toFixed(1)}% da Receita Bruta</p>
+                        </div>
+
+                        {/* Outros Custos */}
+                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-red-100">
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="bg-red-50 p-2 rounded-lg text-red-600"><FileText size={20}/></div>
+                                <h4 className="text-sm font-bold text-gray-700 uppercase">Custos Operacionais (Outros)</h4>
+                            </div>
+                            <h3 className="text-3xl font-black text-slate-800 mb-2">R$ {executiveStats.operatingExpenses.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</h3>
+                            <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden mb-2">
+                                <div className="bg-red-500 h-full" style={{ width: `${Math.min(executiveStats.expensesPercentage, 100)}%` }}></div>
+                            </div>
+                            <p className="text-xs text-gray-500 font-bold">{executiveStats.expensesPercentage.toFixed(1)}% da Receita Bruta</p>
+                        </div>
+
+                        {/* Resultado Final */}
+                        <div className={`p-6 rounded-2xl shadow-sm border-2 flex flex-col justify-between ${executiveStats.netResult >= 0 ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'}`}>
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className={`p-2 rounded-lg ${executiveStats.netResult >= 0 ? 'bg-emerald-200 text-emerald-800' : 'bg-red-200 text-red-800'}`}><Wallet size={20}/></div>
+                                <h4 className={`text-sm font-black uppercase ${executiveStats.netResult >= 0 ? 'text-emerald-800' : 'text-red-800'}`}>Resultado Operacional</h4>
+                            </div>
+                            <div>
+                                <h3 className={`text-4xl font-black mb-1 ${executiveStats.netResult >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>
+                                    R$ {executiveStats.netResult.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                </h3>
+                                <p className={`text-xs font-bold uppercase ${executiveStats.netResult >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                                    {executiveStats.netResult >= 0 ? 'LUCRO' : 'PREJUÍZO'}
+                                </p>
+                            </div>
                         </div>
                     </div>
 
