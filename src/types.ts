@@ -149,6 +149,17 @@ export interface User {
   allowedRoutes?: string[];
 }
 
+export interface SystemAccessLog {
+    id: string;
+    staff_id: string;
+    login_at: Date;
+    last_seen_at: Date;
+    logout_at?: Date;
+    device_info?: string;
+    staff_name?: string; // Join
+    staff_role?: string; // Join
+}
+
 export interface InventoryRecipeItem {
   ingredientId: string;
   ingredientName: string;

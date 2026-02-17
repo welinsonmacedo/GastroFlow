@@ -5,7 +5,7 @@ import { Routes, Route, Navigate, Link, useLocation, useNavigate } from 'react-r
 import { useRestaurant } from '../context/RestaurantContext';
 import { useAuth } from '../context/AuthProvider';
 import { 
-    LayoutDashboard, Utensils, QrCode, 
+    LayoutDashboard, Utensils, QrCode, Activity,
     LogOut, Grid, ChefHat
 } from 'lucide-react';
 
@@ -13,6 +13,7 @@ import {
 import { AdminOverview } from './admin/AdminOverview';
 import { AdminProducts } from './admin/AdminProducts';
 import { AdminTables } from './admin/AdminTables';
+import { AdminMonitoring } from './admin/AdminMonitoring';
 
 export const AdminDashboard: React.FC = () => {
   const { state: restState } = useRestaurant();
@@ -21,9 +22,10 @@ export const AdminDashboard: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Definição das Abas do Gestor (Estoque removido)
+  // Definição das Abas do Gestor
   const tabs = [
     { path: '/admin', label: 'Visão Geral', icon: LayoutDashboard, exact: true, featureKey: 'admin_overview' },
+    { path: '/admin/monitoring', label: 'Monitoramento', icon: Activity, featureKey: 'admin_overview' }, // Incluído na visão geral ou criar featureKey nova
     { path: '/admin/products', label: 'Cardápio', icon: Utensils, featureKey: 'admin_products' },
     { path: '/admin/tables', label: 'Mesas & QR', icon: QrCode, required: 'allowTableMgmt', featureKey: 'admin_tables' },
   ];
@@ -34,6 +36,7 @@ export const AdminDashboard: React.FC = () => {
       
       // Checagem de features granulares
       if (allowedFeatures && allowedFeatures.length > 0) {
+          // Se tiver admin_overview, permite monitoramento também por enquanto
           if (!allowedFeatures.includes(tab.featureKey)) return false;
       }
 
@@ -122,6 +125,7 @@ export const AdminDashboard: React.FC = () => {
             <div className="max-w-[1920px] mx-auto h-full">
                 <Routes>
                     <Route path="/" element={<AdminOverview />} />
+                    <Route path="monitoring" element={<AdminMonitoring />} />
                     <Route path="products" element={<AdminProducts />} />
                     {planLimits.allowTableMgmt && <Route path="tables" element={<AdminTables />} />}
                     
