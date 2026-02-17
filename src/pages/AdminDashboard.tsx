@@ -110,7 +110,7 @@ const AdminSidebar = ({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: (v: b
             <Link 
                 to={link.to} 
                 onClick={() => setIsOpen(false)}
-                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all group ${finalActive ? 'bg-green-600 text-white shadow-lg shadow-green-900/20' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all group whitespace-nowrap ${finalActive ? 'bg-green-600 text-white shadow-lg shadow-green-900/20' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}
             >
                 <div className={finalActive ? 'text-white' : 'text-slate-500 group-hover:text-white'}>
                     {link.icon}
@@ -124,64 +124,76 @@ const AdminSidebar = ({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: (v: b
         <>
             {isOpen && <div className="fixed inset-0 bg-black/50 z-40 md:hidden backdrop-blur-sm" onClick={() => setIsOpen(false)}></div>}
 
-            <aside className={`fixed md:relative top-0 left-0 h-full w-64 bg-slate-900 text-white border-r border-slate-800 shadow-xl z-50 transition-transform duration-300 ease-in-out flex flex-col shrink-0 ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
-                {/* Cabeçalho Minimalista: Apenas Logo */}
-                <div className="p-6 border-b border-slate-800 flex items-center justify-center">
-                    <div className="bg-green-600 p-3 rounded-xl text-white shadow-lg shadow-green-500/20">
-                        {restState.theme.logoUrl ? <img src={restState.theme.logoUrl} className="h-8 w-8 object-contain" /> : <ChefHat size={32} />}
+            <aside className={`
+                fixed top-0 left-0 h-full bg-slate-900 text-white border-r border-slate-800 shadow-xl z-50
+                transition-all duration-300 ease-in-out
+                w-64
+                ${isOpen ? 'translate-x-0' : '-translate-x-full'}
+                md:translate-x-0 md:w-6 md:hover:w-64 md:overflow-hidden group
+            `}>
+                {/* 
+                   Wrapper interno com largura fixa para evitar que o conteúdo "quebre" 
+                   enquanto a sidebar expande/recolhe 
+                */}
+                <div className="w-64 h-full flex flex-col">
+                    {/* Cabeçalho Minimalista: Apenas Logo */}
+                    <div className="p-6 border-b border-slate-800 flex items-center justify-center shrink-0">
+                        <div className="bg-green-600 p-3 rounded-xl text-white shadow-lg shadow-green-500/20">
+                            {restState.theme.logoUrl ? <img src={restState.theme.logoUrl} className="h-8 w-8 object-contain" /> : <ChefHat size={32} />}
+                        </div>
                     </div>
-                </div>
 
-                <nav className="flex-1 overflow-y-auto py-6 px-4 space-y-4 custom-scrollbar">
-                    {/* APPS */}
-                    {visibleAppLinks.length > 0 && (
-                        <div className="space-y-1">
-                            <button onClick={() => toggleSection('APPS')} className="w-full flex items-center justify-between px-2 mb-2 text-[10px] font-black text-slate-500 uppercase tracking-widest hover:text-slate-300 transition-colors">
-                                <span>Operação</span> {openSection === 'APPS' ? <ChevronUp size={14}/> : <ChevronDown size={14}/>}
-                            </button>
-                            <div className={`space-y-1 overflow-hidden transition-all duration-300 ${openSection === 'APPS' ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
-                                {visibleAppLinks.map(link => <NavItem key={link.to} link={link} />)}
+                    <nav className="flex-1 overflow-y-auto py-6 px-4 space-y-4 custom-scrollbar">
+                        {/* APPS */}
+                        {visibleAppLinks.length > 0 && (
+                            <div className="space-y-1">
+                                <button onClick={() => toggleSection('APPS')} className="w-full flex items-center justify-between px-2 mb-2 text-[10px] font-black text-slate-500 uppercase tracking-widest hover:text-slate-300 transition-colors whitespace-nowrap">
+                                    <span>Operação</span> {openSection === 'APPS' ? <ChevronUp size={14}/> : <ChevronDown size={14}/>}
+                                </button>
+                                <div className={`space-y-1 overflow-hidden transition-all duration-300 ${openSection === 'APPS' ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
+                                    {visibleAppLinks.map(link => <NavItem key={link.to} link={link} />)}
+                                </div>
                             </div>
-                        </div>
-                    )}
+                        )}
 
-                    {/* AUTOMAÇÃO QR */}
-                    {visibleQrLinks.length > 0 && (
-                        <div className="space-y-1 pt-2 border-t border-slate-800">
-                            <button onClick={() => toggleSection('QR')} className="w-full flex items-center justify-between px-2 mb-2 mt-4 text-[10px] font-black text-slate-500 uppercase tracking-widest hover:text-slate-300 transition-colors">
-                                <span className="flex items-center gap-1"><Smartphone size={10} /> Automação QR</span> {openSection === 'QR' ? <ChevronUp size={14}/> : <ChevronDown size={14}/>}
-                            </button>
-                            <div className={`space-y-1 overflow-hidden transition-all duration-300 ${openSection === 'QR' ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
-                                {visibleQrLinks.map(link => <NavItem key={link.to} link={link} />)}
+                        {/* AUTOMAÇÃO QR */}
+                        {visibleQrLinks.length > 0 && (
+                            <div className="space-y-1 pt-2 border-t border-slate-800">
+                                <button onClick={() => toggleSection('QR')} className="w-full flex items-center justify-between px-2 mb-2 mt-4 text-[10px] font-black text-slate-500 uppercase tracking-widest hover:text-slate-300 transition-colors whitespace-nowrap">
+                                    <span className="flex items-center gap-1"><Smartphone size={10} /> Automação QR</span> {openSection === 'QR' ? <ChevronUp size={14}/> : <ChevronDown size={14}/>}
+                                </button>
+                                <div className={`space-y-1 overflow-hidden transition-all duration-300 ${openSection === 'QR' ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
+                                    {visibleQrLinks.map(link => <NavItem key={link.to} link={link} />)}
+                                </div>
                             </div>
-                        </div>
-                    )}
+                        )}
 
-                    {/* GESTÃO */}
-                    {visibleManagementLinks.length > 0 && (
-                        <div className="space-y-1 pt-2 border-t border-slate-800">
-                            <button onClick={() => toggleSection('MANAGEMENT')} className="w-full flex items-center justify-between px-2 mb-2 mt-4 text-[10px] font-black text-slate-500 uppercase tracking-widest hover:text-slate-300 transition-colors">
-                                <span>Gestão</span> {openSection === 'MANAGEMENT' ? <ChevronUp size={14}/> : <ChevronDown size={14}/>}
-                            </button>
-                            <div className={`space-y-1 overflow-hidden transition-all duration-300 ${openSection === 'MANAGEMENT' ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0'}`}>
-                                {visibleManagementLinks.map(link => <NavItem key={link.to} link={link} />)}
+                        {/* GESTÃO */}
+                        {visibleManagementLinks.length > 0 && (
+                            <div className="space-y-1 pt-2 border-t border-slate-800">
+                                <button onClick={() => toggleSection('MANAGEMENT')} className="w-full flex items-center justify-between px-2 mb-2 mt-4 text-[10px] font-black text-slate-500 uppercase tracking-widest hover:text-slate-300 transition-colors whitespace-nowrap">
+                                    <span>Gestão</span> {openSection === 'MANAGEMENT' ? <ChevronUp size={14}/> : <ChevronDown size={14}/>}
+                                </button>
+                                <div className={`space-y-1 overflow-hidden transition-all duration-300 ${openSection === 'MANAGEMENT' ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                                    {visibleManagementLinks.map(link => <NavItem key={link.to} link={link} />)}
+                                </div>
                             </div>
-                        </div>
-                    )}
-                </nav>
+                        )}
+                    </nav>
 
-                {/* Rodapé Minimalista: Status BD + Logout */}
-                <div className="p-4 border-t border-slate-800 bg-slate-950/50">
-                     <div className="flex flex-col gap-3">
-                        <div className="flex items-center justify-center gap-2 bg-slate-900 py-2 rounded-lg border border-slate-800">
-                            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-                            <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Sistema Online</span>
-                        </div>
+                    {/* Rodapé Minimalista: Status BD + Logout */}
+                    <div className="p-4 border-t border-slate-800 bg-slate-950/50 shrink-0">
+                         <div className="flex flex-col gap-3">
+                            <div className="flex items-center justify-center gap-2 bg-slate-900 py-2 rounded-lg border border-slate-800 whitespace-nowrap">
+                                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0"></div>
+                                <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Sistema Online</span>
+                            </div>
 
-                        <button onClick={handleLogoutClick} className="w-full flex items-center justify-center gap-2 text-red-400 hover:text-white hover:bg-red-500/10 py-3 rounded-lg transition-colors text-xs font-bold uppercase tracking-wider">
-                            <LogOut size={16} /> Sair
-                        </button>
-                     </div>
+                            <button onClick={handleLogoutClick} className="w-full flex items-center justify-center gap-2 text-red-400 hover:text-white hover:bg-red-500/10 py-3 rounded-lg transition-colors text-xs font-bold uppercase tracking-wider whitespace-nowrap">
+                                <LogOut size={16} /> Sair
+                            </button>
+                         </div>
+                    </div>
                 </div>
             </aside>
         </>
@@ -197,7 +209,11 @@ export const AdminDashboard: React.FC = () => {
     <div className="flex h-screen bg-gray-50 overflow-hidden">
         <AdminSidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
 
-        <div className="flex-1 flex flex-col overflow-hidden relative w-full">
+        {/* 
+            md:ml-6 compensa a largura da sidebar recolhida (w-6 = 1.5rem = 24px)
+            Isso garante que o conteúdo não fique escondido atrás da faixa preta lateral.
+        */}
+        <div className="flex-1 flex flex-col overflow-hidden relative w-full md:ml-6 transition-all duration-300">
             <div className="md:hidden bg-white border-b p-4 flex items-center justify-between shrink-0 sticky top-0 z-30 shadow-sm">
                 <div className="flex items-center gap-2 font-bold text-slate-800">
                     {state.theme.logoUrl && <img src={state.theme.logoUrl} className="h-6 w-6 object-contain" />}
