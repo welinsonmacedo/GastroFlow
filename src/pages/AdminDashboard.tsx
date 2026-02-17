@@ -9,7 +9,7 @@ import { Role } from '../types';
 import { 
     ChefHat, Coffee, Monitor, DollarSign, Settings, LogOut, User as UserIcon, 
     Menu, LayoutDashboard, Utensils, Package, QrCode, Palette, 
-    ChevronDown, ChevronUp, ShoppingCart, Smartphone, Database, Wifi
+    ChevronDown, ChevronUp, ShoppingCart, Smartphone, Database, Wifi, TrendingUp
 } from 'lucide-react';
 
 // Importando Sub-páginas
@@ -24,6 +24,7 @@ import { AdminPurchaseSuggestions } from './admin/AdminPurchaseSuggestions';
 import { AdminAccounting } from './admin/AdminAccounting';
 import { AccountingReport } from './admin/AccountingReport'; 
 import { AdminFinancialTips } from './admin/AdminFinancialTips';
+import { AdminBusinessIntelligence } from './admin/AdminBusinessIntelligence'; // Nova Importação
 
 // --- COMPONENTE DE SIDEBAR (Exclusivo do Admin) ---
 const AdminSidebar = ({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: (v: boolean) => void }) => {
@@ -65,6 +66,7 @@ const AdminSidebar = ({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: (v: b
         { to: "/admin/inventory", icon: <Package size={20}/>, label: "Estoque", requires: 'allowInventory' },
         { to: "/admin/purchases", icon: <ShoppingCart size={20}/>, label: "Sugestão Compras", requires: 'allowInventory' }, 
         { to: "/admin/finance", icon: <DollarSign size={20}/>, label: "Financeiro", requires: 'allowExpenses' }, 
+        { to: "/admin/bi", icon: <TrendingUp size={20}/>, label: "Inteligência", requires: 'allowReports' }, // Novo Link
         { to: "/admin/settings", icon: <Settings size={20}/>, label: "Configurações", requires: null },
     ];
 
@@ -226,6 +228,11 @@ export const AdminDashboard: React.FC = () => {
                         {/* Rota unificada de Financeiro */}
                         {(planLimits.allowExpenses || planLimits.allowPurchases || planLimits.allowReports) && (
                             <Route path="finance" element={<AdminFinance />} />
+                        )}
+                        
+                        {/* Nova Rota: Business Intelligence */}
+                        {planLimits.allowReports && (
+                            <Route path="bi" element={<AdminBusinessIntelligence />} />
                         )}
                         
                         {/* Rotas Auxiliares (mantidas para compatibilidade, mas acessadas via Financeiro) */}
