@@ -39,23 +39,33 @@ export interface DeliveryMethodConfig {
     feeType: 'FIXED' | 'PERCENTAGE';
     feeValue: number;
     feeBehavior: 'ADD_TO_TOTAL' | 'DEDUCT_FROM_NET' | 'NONE'; 
-    // ADD_TO_TOTAL: Taxa de Entrega cobrada do cliente.
-    // DEDUCT_FROM_NET: Taxa de comissão do App (não aparece pro cliente, mas desconta no financeiro).
-    // NONE: Sem taxa (ex: Retirada).
     estimatedTimeMin?: number;
     estimatedTimeMax?: number;
     isActive: boolean;
+}
+
+export interface PaymentMethodConfig {
+    id: string;
+    name: string; // ex: "Visa Crédito", "Master Débito"
+    type: 'CREDIT' | 'DEBIT' | 'PIX' | 'CASH' | 'MEAL_VOUCHER';
+    feePercentage: number; // Taxa da maquininha (%)
+    isActive: boolean;
+}
+
+export interface ExpenseCategory {
+    id: string;
+    name: string; // ex: "Fornecedores", "Pessoal", "Aluguel"
 }
 
 export interface DeliveryInfo {
     customerName: string;
     phone: string;
     address: string;
-    methodId: string; // ID do DeliveryMethodConfig
-    platform: string; // Nome legado ou display name
-    deliveryFee: number; // Valor cobrado do cliente
-    changeFor?: number; // Troco para X
-    paymentMethod?: 'CASH' | 'CARD_MACHINE' | 'ONLINE'; // Máquina, Dinheiro ou Pago no App
+    methodId: string; 
+    platform: string; 
+    deliveryFee: number; 
+    changeFor?: number; 
+    paymentMethod?: 'CASH' | 'CARD_MACHINE' | 'ONLINE'; 
     paymentStatus?: 'PENDING' | 'PAID';
 }
 
@@ -107,7 +117,9 @@ export interface RestaurantBusinessInfo {
     website?: string;
     orderGracePeriodMinutes?: number;
     adminPin?: string;
-    deliverySettings?: DeliveryMethodConfig[]; // Novas configurações
+    deliverySettings?: DeliveryMethodConfig[]; 
+    paymentMethods?: PaymentMethodConfig[]; // Novas configurações de pagamento
+    expenseCategories?: ExpenseCategory[]; // Novas categorias de despesa
 }
 
 export interface RestaurantTenant {
@@ -233,7 +245,6 @@ export interface RestaurantTheme {
   bannerUrl?: string;
   restaurantName: string;
   viewMode?: 'LIST' | 'GRID';
-  // Novas opções de personalização
   fontFamily?: 'Inter' | 'Roboto' | 'Playfair Display' | 'Montserrat';
   borderRadius?: 'none' | 'sm' | 'md' | 'lg' | 'full';
   buttonStyle?: 'fill' | 'outline' | 'minimal';

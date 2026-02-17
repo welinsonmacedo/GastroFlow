@@ -41,7 +41,23 @@ const initialState: RestaurantState = {
       borderRadius: 'lg',
       buttonStyle: 'fill'
   },
-  businessInfo: {}, 
+  businessInfo: {
+      // Valores padrão para evitar undefined
+      paymentMethods: [
+          { id: '1', name: 'Dinheiro', type: 'CASH', feePercentage: 0, isActive: true },
+          { id: '2', name: 'PIX', type: 'PIX', feePercentage: 0, isActive: true },
+          { id: '3', name: 'Cartão de Crédito', type: 'CREDIT', feePercentage: 3.99, isActive: true },
+          { id: '4', name: 'Cartão de Débito', type: 'DEBIT', feePercentage: 1.99, isActive: true },
+      ],
+      expenseCategories: [
+          { id: '1', name: 'Fornecedor' },
+          { id: '2', name: 'Pessoal' },
+          { id: '3', name: 'Aluguel' },
+          { id: '4', name: 'Impostos' },
+          { id: '5', name: 'Manutenção' },
+          { id: '6', name: 'Outros' },
+      ]
+  }, 
 };
 
 const restaurantReducer = (state: RestaurantState, action: Action): RestaurantState => {
@@ -88,6 +104,15 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             fetchedLimits = planData.limits;
         }
     }
+    
+    // Mescla businessInfo do banco com os defaults (para garantir que paymentMethods e expenseCategories existam)
+    const mergedBusinessInfo = {
+        ...initialState.businessInfo,
+        ...(tenant.business_info || {}),
+        // Garante arrays se vierem null do banco
+        paymentMethods: (tenant.business_info?.paymentMethods) || initialState.businessInfo.paymentMethods,
+        expenseCategories: (tenant.business_info?.expenseCategories) || initialState.businessInfo.expenseCategories
+    };
 
     localDispatch({
         type: 'INIT_DATA',
@@ -95,7 +120,7 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             tenantId: tenant.id,
             tenantSlug: tenant.slug,
             theme: tenant.theme_config || initialState.theme,
-            businessInfo: tenant.business_info || {},
+            businessInfo: mergedBusinessInfo,
             planLimits: fetchedLimits
         }
     });

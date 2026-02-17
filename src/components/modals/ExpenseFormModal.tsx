@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Modal } from '../Modal';
 import { Button } from '../Button';
 import { useFinance } from '../../context/FinanceContext';
+import { useRestaurant } from '../../context/RestaurantContext'; // Para categorias dinâmicas
 import { useUI } from '../../context/UIContext';
 import { Expense } from '../../types';
 
@@ -14,15 +15,20 @@ interface ExpenseFormModalProps {
 
 export const ExpenseFormModal: React.FC<ExpenseFormModalProps> = ({ isOpen, onClose, expenseToEdit }) => {
   const { addExpense, updateExpense } = useFinance();
+  const { state: restState } = useRestaurant();
   const { showAlert } = useUI();
 
   // Use string for date input handling to avoid timezone issues during selection
   const [dateStr, setDateStr] = useState(new Date().toISOString().split('T')[0]);
-  const [recurrenceMonths, setRecurrenceMonths] = useState(2); // Padrão 2 meses se for recorrente
+  const [recurrenceMonths, setRecurrenceMonths] = useState(2); 
   
   const [form, setForm] = useState<Partial<Expense>>({
       description: '', amount: 0, category: 'Outros', isPaid: false, paymentMethod: 'BANK', isRecurring: false, supplierId: ''
   });
+
+  const categories = restState.businessInfo?.expenseCategories && restState.businessInfo.expenseCategories.length > 0
+    ? restState.businessInfo.expenseCategories.map(c => c.name)
+    : ['Fornecedor', 'Pessoal', 'Aluguel', 'Impostos', 'Manutenção', 'Outros'];
 
   useEffect(() => {
       if(isOpen) {
@@ -34,14 +40,14 @@ export const ExpenseFormModal: React.FC<ExpenseFormModalProps> = ({ isOpen, onCl
                       setDateStr(d.toISOString().split('T')[0]);
                   }
               }
-              setRecurrenceMonths(1); // Edição não gera parcelas novas
+              setRecurrenceMonths(1);
           } else {
-              setForm({ description: '', amount: 0, category: 'Outros', isPaid: false, paymentMethod: 'BANK', isRecurring: false, supplierId: '' });
+              setForm({ description: '', amount: 0, category: categories[0], isPaid: false, paymentMethod: 'BANK', isRecurring: false, supplierId: '' });
               setDateStr(new Date().toISOString().split('T')[0]);
               setRecurrenceMonths(2);
           }
       }
-  }, [isOpen, expenseToEdit]);
+  }, [isOpen, expenseToEdit, categories]);
 
   const handleSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
@@ -56,25 +62,19 @@ export const ExpenseFormModal: React.FC<ExpenseFormModalProps> = ({ isOpen, onCl
       }
 
       try {
-          // Data base (corrigida para meio-dia para evitar fuso)
           const baseDate = new Date(dateStr + 'T12:00:00');
 
-          // LÓGICA DE RECORRÊNCIA (GERAÇÃO DE PARCELAS)
-          // Apenas para NOVAS despesas que são marcadas como RECORRENTES
           if (!expenseToEdit && form.isRecurring && recurrenceMonths > 1) {
-              
               for (let i = 0; i < recurrenceMonths; i++) {
-                  // Clona a data base
                   const nextDate = new Date(baseDate);
-                  // Adiciona meses (0, 1, 2...)
                   nextDate.setMonth(baseDate.getMonth() + i);
 
                   const expenseData = {
                       ...form,
-                      description: `${form.description} (${i + 1}/${recurrenceMonths})`, // Adiciona (1/12) na descrição
+                      description: `${form.description} (${i + 1}/${recurrenceMonths})`,
                       amount: amount,
                       dueDate: nextDate,
-                      isPaid: i === 0 ? (form.isPaid || false) : false, // Apenas a primeira pode ser marcada como paga no ato
+                      isPaid: i === 0 ? (form.isPaid || false) : false, 
                       paymentMethod: form.paymentMethod || 'BANK',
                       supplierId: form.supplierId || undefined
                   } as Expense;
@@ -82,11 +82,8 @@ export const ExpenseFormModal: React.FC<ExpenseFormModalProps> = ({ isOpen, onCl
                   if (!expenseData.id) delete (expenseData as any).id;
                   await addExpense(expenseData);
               }
-              
               showAlert({ title: "Sucesso", message: `${recurrenceMonths} parcelas geradas com sucesso!`, type: 'SUCCESS' });
-
           } else {
-              // LÓGICA PADRÃO (Uma única despesa ou Edição)
               const expenseData = {
                   ...form,
                   amount: amount,
@@ -109,8 +106,7 @@ export const ExpenseFormModal: React.FC<ExpenseFormModalProps> = ({ isOpen, onCl
           onClose();
       } catch (error: any) {
           console.error(error);
-          const msg = error?.message || error?.error_description || JSON.stringify(error) || "Erro desconhecido";
-          showAlert({ title: "Erro ao Salvar", message: `Detalhe: ${msg}`, type: 'ERROR' });
+          showAlert({ title: "Erro ao Salvar", message: `Erro: ${error.message}`, type: 'ERROR' });
       }
   };
 
@@ -125,7 +121,7 @@ export const ExpenseFormModal: React.FC<ExpenseFormModalProps> = ({ isOpen, onCl
         <form onSubmit={handleSubmit} className="space-y-4">
             <div>
                 <label className="block text-xs font-bold mb-1 text-gray-600">Descrição</label>
-                <input required placeholder="Ex: Conta de Luz, Aluguel" className="w-full border p-2.5 rounded-lg text-sm" value={form.description} onChange={e => setForm({...form, description: e.target.value})} autoFocus />
+                <input required placeholder="Ex: Conta de Luz" className="w-full border p-2.5 rounded-lg text-sm" value={form.description} onChange={e => setForm({...form, description: e.target.value})} autoFocus />
             </div>
             
             <div className="grid grid-cols-2 gap-4">
@@ -134,7 +130,7 @@ export const ExpenseFormModal: React.FC<ExpenseFormModalProps> = ({ isOpen, onCl
                     <input required type="number" step="0.01" className="w-full border p-2.5 rounded-lg text-sm font-bold text-red-600" value={form.amount} onChange={e => setForm({...form, amount: parseFloat(e.target.value)})} />
                 </div>
                 <div>
-                    <label className="block text-xs font-bold mb-1 text-gray-600">Vencimento {form.isRecurring && !expenseToEdit ? '(1ª Parc)' : ''}</label>
+                    <label className="block text-xs font-bold mb-1 text-gray-600">Vencimento</label>
                     <input required type="date" className="w-full border p-2.5 rounded-lg text-sm" value={dateStr} onChange={e => setDateStr(e.target.value)} />
                 </div>
             </div>
@@ -143,17 +139,13 @@ export const ExpenseFormModal: React.FC<ExpenseFormModalProps> = ({ isOpen, onCl
                 <div>
                     <label className="block text-xs font-bold mb-1 text-gray-600">Categoria</label>
                     <select className="w-full border p-2.5 rounded-lg text-sm bg-white" value={form.category} onChange={e => setForm({...form, category: e.target.value})}>
-                        <option>Fornecedor</option>
-                        <option>Utilidades (Luz/Água)</option>
-                        <option>Aluguel</option>
-                        <option>Manutenção</option>
-                        <option>Pessoal</option>
-                        <option>Impostos</option>
-                        <option>Outros</option>
+                        {categories.map((cat, idx) => (
+                            <option key={idx} value={cat}>{cat}</option>
+                        ))}
                     </select>
                 </div>
                 <div>
-                    <label className="block text-xs font-bold mb-1 text-gray-600">Origem do Pagamento</label>
+                    <label className="block text-xs font-bold mb-1 text-gray-600">Origem</label>
                     <select className="w-full border p-2.5 rounded-lg text-sm bg-white" value={form.paymentMethod} onChange={e => setForm({...form, paymentMethod: e.target.value as any})}>
                         <option value="BANK">Conta Bancária</option>
                         <option value="CASH">Dinheiro (Caixa)</option>
@@ -166,32 +158,18 @@ export const ExpenseFormModal: React.FC<ExpenseFormModalProps> = ({ isOpen, onCl
                     <input type="checkbox" checked={form.isPaid} onChange={e => setForm({...form, isPaid: e.target.checked})} id="paid-check" className="rounded text-blue-600 w-4 h-4"/>
                     <label htmlFor="paid-check" className="text-sm cursor-pointer select-none font-medium">Já foi pago?</label>
                 </div>
-                
                 <div className="flex items-start gap-2 pt-2 border-t">
                     <input type="checkbox" checked={form.isRecurring} onChange={e => setForm({...form, isRecurring: e.target.checked})} id="recur-check" className="rounded text-blue-600 w-4 h-4 mt-0.5"/>
                     <div className="flex-1">
                         <label htmlFor="recur-check" className="text-sm cursor-pointer select-none font-bold text-gray-700">Repetir Despesa (Recorrente)</label>
-                        
-                        {/* Se for recorrente e estiver criando (não editando), mostra o input de quantidade */}
                         {form.isRecurring && !expenseToEdit && (
                             <div className="mt-2 animate-fade-in">
                                 <label className="block text-xs text-gray-500 mb-1">Repetir por quantos meses?</label>
                                 <div className="flex items-center gap-2">
-                                    <input 
-                                        type="number" 
-                                        min="2" 
-                                        max="60" 
-                                        className="w-20 border p-1.5 rounded text-center font-bold text-sm" 
-                                        value={recurrenceMonths} 
-                                        onChange={e => setRecurrenceMonths(parseInt(e.target.value))} 
-                                    />
-                                    <span className="text-xs text-gray-400">parcelas/meses</span>
+                                    <input type="number" min="2" max="60" className="w-20 border p-1.5 rounded text-center font-bold text-sm" value={recurrenceMonths} onChange={e => setRecurrenceMonths(parseInt(e.target.value))} />
+                                    <span className="text-xs text-gray-400">parcelas</span>
                                 </div>
-                                <p className="text-[10px] text-blue-600 mt-1">O sistema irá gerar <strong>{recurrenceMonths}</strong> despesas futuras automaticamente.</p>
                             </div>
-                        )}
-                        {expenseToEdit && form.isRecurring && (
-                             <p className="text-[10px] text-gray-400 mt-1">Edição de item recorrente altera apenas esta parcela.</p>
                         )}
                     </div>
                 </div>

@@ -4,8 +4,8 @@ import { useRestaurant } from '../../context/RestaurantContext';
 import { useUI } from '../../context/UIContext';
 import { useStaff } from '../../context/StaffContext';
 import { Button } from '../../components/Button';
-import { Building2, MapPin, Phone, Loader2, Share2, Clock, ShieldAlert, Lock, Save, SlidersHorizontal, ShieldCheck, Bike, Plus, Trash2, Edit, Users, UserPlus, Link as LinkIcon, Check, CheckSquare } from 'lucide-react';
-import { RestaurantBusinessInfo, DeliveryMethodConfig, User, Role } from '../../types';
+import { Building2, MapPin, Phone, Loader2, Share2, Clock, ShieldAlert, Lock, Save, SlidersHorizontal, ShieldCheck, Bike, Plus, Trash2, Edit, Users, UserPlus, Link as LinkIcon, Check, CheckSquare, CreditCard, Tag, DollarSign } from 'lucide-react';
+import { RestaurantBusinessInfo, DeliveryMethodConfig, User, Role, PaymentMethodConfig, ExpenseCategory } from '../../types';
 import { Modal } from '../../components/Modal';
 import { StaffFormModal } from '../../components/modals/StaffFormModal';
 import { getTenantSlug } from '../../utils/tenant';
@@ -16,7 +16,7 @@ export const AdminSettings: React.FC = () => {
   const { showAlert, showConfirm } = useUI();
   
   // Controle das Abas
-  const [activeSettingsTab, setActiveSettingsTab] = useState<'BUSINESS' | 'RULES' | 'SECURITY' | 'DELIVERY' | 'TEAM'>('BUSINESS');
+  const [activeSettingsTab, setActiveSettingsTab] = useState<'BUSINESS' | 'RULES' | 'SECURITY' | 'DELIVERY' | 'TEAM' | 'FINANCE_CONFIG'>('BUSINESS');
   
   // Business Info State
   const [businessForm, setBusinessForm] = useState<RestaurantBusinessInfo>({
@@ -24,6 +24,8 @@ export const AdminSettings: React.FC = () => {
       orderGracePeriodMinutes: 2,
       adminPin: '',
       deliverySettings: [],
+      paymentMethods: [],
+      expenseCategories: [],
       ...state.businessInfo
   });
   const [loadingCep, setLoadingCep] = useState(false);
@@ -34,6 +36,13 @@ export const AdminSettings: React.FC = () => {
   const [methodForm, setMethodForm] = useState<DeliveryMethodConfig>({
       id: '', name: '', type: 'OWN', feeType: 'FIXED', feeValue: 0, feeBehavior: 'ADD_TO_TOTAL', isActive: true, estimatedTimeMin: 30, estimatedTimeMax: 45
   });
+
+  // Modal de Payment Method (Nova)
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [paymentForm, setPaymentForm] = useState<PaymentMethodConfig>({ id: '', name: '', type: 'CREDIT', feePercentage: 0, isActive: true });
+  
+  // Estado para nova Categoria de Despesa (Inline)
+  const [newCategoryName, setNewCategoryName] = useState('');
 
   // States para Gestão de Equipe (Staff)
   const [isStaffModalOpen, setIsStaffModalOpen] = useState(false);
@@ -48,7 +57,9 @@ export const AdminSettings: React.FC = () => {
               address: state.businessInfo.address || prev.address,
               orderGracePeriodMinutes: state.businessInfo.orderGracePeriodMinutes ?? prev.orderGracePeriodMinutes,
               adminPin: state.businessInfo.adminPin ?? prev.adminPin,
-              deliverySettings: state.businessInfo.deliverySettings || []
+              deliverySettings: state.businessInfo.deliverySettings || [],
+              paymentMethods: state.businessInfo.paymentMethods || [],
+              expenseCategories: state.businessInfo.expenseCategories || []
           }));
       }
   }, [state.businessInfo]);
@@ -60,6 +71,8 @@ export const AdminSettings: React.FC = () => {
       showAlert({ title: 'Sucesso', message: 'Dados da empresa e configurações atualizados!', type: 'SUCCESS' });
   };
 
+  // --- DELIVERY ACTIONS ---
+
   const handleOpenDeliveryModal = (method?: DeliveryMethodConfig) => {
       if (method) {
           setEditingMethod(method);
@@ -68,14 +81,7 @@ export const AdminSettings: React.FC = () => {
           setEditingMethod(null);
           setMethodForm({
               id: Math.random().toString(36).substr(2, 9),
-              name: '',
-              type: 'OWN',
-              feeType: 'FIXED',
-              feeValue: 0,
-              feeBehavior: 'ADD_TO_TOTAL',
-              isActive: true,
-              estimatedTimeMin: 30, 
-              estimatedTimeMax: 45
+              name: '', type: 'OWN', feeType: 'FIXED', feeValue: 0, feeBehavior: 'ADD_TO_TOTAL', isActive: true, estimatedTimeMin: 30, estimatedTimeMax: 45
           });
       }
       setIsDeliveryModalOpen(true);
@@ -98,20 +104,88 @@ export const AdminSettings: React.FC = () => {
       await dispatch({ type: 'UPDATE_BUSINESS_INFO', info: newInfo });
       
       setIsDeliveryModalOpen(false);
-      showAlert({ title: "Salvo", message: "Método de entrega atualizado e disponível no caixa.", type: 'SUCCESS' });
+      showAlert({ title: "Salvo", message: "Método de entrega atualizado.", type: 'SUCCESS' });
   };
 
   const handleDeleteDeliveryMethod = (id: string) => {
       showConfirm({
           title: "Excluir Método",
-          message: "Tem certeza? Isso impedirá novos pedidos com este método.",
+          message: "Tem certeza?",
           onConfirm: async () => {
               const updated = (businessForm.deliverySettings || []).filter(m => m.id !== id);
               const newInfo = { ...businessForm, deliverySettings: updated };
-              
               setBusinessForm(newInfo);
               await dispatch({ type: 'UPDATE_BUSINESS_INFO', info: newInfo });
-              showAlert({ title: "Excluído", message: "Método removido.", type: 'SUCCESS' });
+          }
+      });
+  };
+
+  // --- PAYMENT METHOD ACTIONS ---
+
+  const handleOpenPaymentModal = (method?: PaymentMethodConfig) => {
+      if (method) {
+          setPaymentForm(method);
+      } else {
+          setPaymentForm({ id: Math.random().toString(36).substr(2, 9), name: '', type: 'CREDIT', feePercentage: 0, isActive: true });
+      }
+      setIsPaymentModalOpen(true);
+  };
+
+  const handleSavePaymentMethod = async () => {
+      if (!paymentForm.name) return showAlert({title: "Nome Obrigatório", message: "Informe um nome.", type: "WARNING"});
+      
+      let updatedMethods = [...(businessForm.paymentMethods || [])];
+      const existingIdx = updatedMethods.findIndex(m => m.id === paymentForm.id);
+
+      if (existingIdx >= 0) {
+          updatedMethods[existingIdx] = paymentForm;
+      } else {
+          updatedMethods.push(paymentForm);
+      }
+
+      const newInfo = { ...businessForm, paymentMethods: updatedMethods };
+      setBusinessForm(newInfo);
+      await dispatch({ type: 'UPDATE_BUSINESS_INFO', info: newInfo });
+      setIsPaymentModalOpen(false);
+      showAlert({ title: "Salvo", message: "Forma de pagamento atualizada.", type: 'SUCCESS' });
+  };
+
+  const handleDeletePaymentMethod = (id: string) => {
+      showConfirm({
+          title: "Excluir Pagamento",
+          message: "Tem certeza? Isso pode afetar o histórico se usado no futuro.",
+          onConfirm: async () => {
+              const updated = (businessForm.paymentMethods || []).filter(m => m.id !== id);
+              const newInfo = { ...businessForm, paymentMethods: updated };
+              setBusinessForm(newInfo);
+              await dispatch({ type: 'UPDATE_BUSINESS_INFO', info: newInfo });
+          }
+      });
+  };
+
+  // --- EXPENSE CATEGORY ACTIONS ---
+
+  const handleAddCategory = async () => {
+      if (!newCategoryName.trim()) return;
+      const newCat: ExpenseCategory = { id: Math.random().toString(36).substr(2, 9), name: newCategoryName.trim() };
+      const updatedCats = [...(businessForm.expenseCategories || []), newCat];
+      
+      const newInfo = { ...businessForm, expenseCategories: updatedCats };
+      setBusinessForm(newInfo);
+      await dispatch({ type: 'UPDATE_BUSINESS_INFO', info: newInfo });
+      setNewCategoryName('');
+      showAlert({ title: "Sucesso", message: "Categoria adicionada.", type: 'SUCCESS' });
+  };
+
+  const handleDeleteCategory = (id: string) => {
+       showConfirm({
+          title: "Excluir Categoria",
+          message: "Tem certeza?",
+          onConfirm: async () => {
+              const updated = (businessForm.expenseCategories || []).filter(c => c.id !== id);
+              const newInfo = { ...businessForm, expenseCategories: updated };
+              setBusinessForm(newInfo);
+              await dispatch({ type: 'UPDATE_BUSINESS_INFO', info: newInfo });
           }
       });
   };
@@ -132,7 +206,6 @@ export const AdminSettings: React.FC = () => {
   };
 
   // --- HELPERS GERAIS ---
-
   const formatCNPJ = (val: string) => val.replace(/\D/g, '').replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5").slice(0, 18);
   const formatPhone = (val: string) => val.replace(/\D/g, '').replace(/^(\d{2})(\d{5})(\d{4})/, "($1) $2-$3").slice(0, 15);
   const formatCEP = (val: string) => val.replace(/\D/g, '').replace(/^(\d{5})(\d{3})/, "$1-$2").slice(0, 9);
@@ -174,36 +247,12 @@ export const AdminSettings: React.FC = () => {
 
         {/* Navigation Tabs */}
         <div className="flex gap-1 mb-6 border-b border-gray-200 overflow-x-auto">
-            <button 
-                onClick={() => setActiveSettingsTab('BUSINESS')}
-                className={`px-6 py-3 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${activeSettingsTab === 'BUSINESS' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}
-            >
-                <Building2 size={18} /> Dados da Empresa
-            </button>
-            <button 
-                onClick={() => setActiveSettingsTab('DELIVERY')}
-                className={`px-6 py-3 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${activeSettingsTab === 'DELIVERY' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}
-            >
-                <Bike size={18} /> Config. Delivery
-            </button>
-            <button 
-                onClick={() => setActiveSettingsTab('TEAM')}
-                className={`px-6 py-3 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${activeSettingsTab === 'TEAM' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}
-            >
-                <Users size={18} /> Equipe
-            </button>
-            <button 
-                onClick={() => setActiveSettingsTab('RULES')}
-                className={`px-6 py-3 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${activeSettingsTab === 'RULES' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}
-            >
-                <SlidersHorizontal size={18} /> Regras de Negócio
-            </button>
-            <button 
-                onClick={() => setActiveSettingsTab('SECURITY')}
-                className={`px-6 py-3 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${activeSettingsTab === 'SECURITY' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}
-            >
-                <ShieldCheck size={18} /> Segurança
-            </button>
+            <button onClick={() => setActiveSettingsTab('BUSINESS')} className={`px-6 py-3 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${activeSettingsTab === 'BUSINESS' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}><Building2 size={18} /> Dados da Empresa</button>
+            <button onClick={() => setActiveSettingsTab('DELIVERY')} className={`px-6 py-3 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${activeSettingsTab === 'DELIVERY' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}><Bike size={18} /> Delivery</button>
+            <button onClick={() => setActiveSettingsTab('FINANCE_CONFIG')} className={`px-6 py-3 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${activeSettingsTab === 'FINANCE_CONFIG' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}><DollarSign size={18} /> Financeiro</button>
+            <button onClick={() => setActiveSettingsTab('TEAM')} className={`px-6 py-3 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${activeSettingsTab === 'TEAM' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}><Users size={18} /> Equipe</button>
+            <button onClick={() => setActiveSettingsTab('RULES')} className={`px-6 py-3 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${activeSettingsTab === 'RULES' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}><SlidersHorizontal size={18} /> Regras</button>
+            <button onClick={() => setActiveSettingsTab('SECURITY')} className={`px-6 py-3 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${activeSettingsTab === 'SECURITY' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}><ShieldCheck size={18} /> Segurança</button>
         </div>
 
         <div className="space-y-8">
@@ -216,82 +265,33 @@ export const AdminSettings: React.FC = () => {
 
                     <div className="space-y-6">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div>
-                                <label className="block text-xs font-bold mb-1">Razão Social</label>
-                                <input className="w-full border p-3 rounded-lg" value={businessForm.restaurantName || ''} onChange={e => setBusinessForm({...businessForm, restaurantName: e.target.value})} placeholder="Razão Social Ltda" />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-bold mb-1">Nome do Responsável</label>
-                                <input className="w-full border p-3 rounded-lg" value={businessForm.ownerName || ''} onChange={e => setBusinessForm({...businessForm, ownerName: e.target.value})} placeholder="Nome Completo" />
-                            </div>
+                            <div><label className="block text-xs font-bold mb-1">Razão Social</label><input className="w-full border p-3 rounded-lg" value={businessForm.restaurantName || ''} onChange={e => setBusinessForm({...businessForm, restaurantName: e.target.value})} placeholder="Razão Social Ltda" /></div>
+                            <div><label className="block text-xs font-bold mb-1">Nome do Responsável</label><input className="w-full border p-3 rounded-lg" value={businessForm.ownerName || ''} onChange={e => setBusinessForm({...businessForm, ownerName: e.target.value})} placeholder="Nome Completo" /></div>
                         </div>
-
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div>
-                                <label className="block text-xs font-bold mb-1">CNPJ</label>
-                                <input className="w-full border p-3 rounded-lg" value={businessForm.cnpj} onChange={e => setBusinessForm({...businessForm, cnpj: formatCNPJ(e.target.value)})} placeholder="00.000.000/0000-00" maxLength={18} />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-bold mb-1">Telefone / WhatsApp</label>
-                                <div className="relative">
-                                    <Phone size={16} className="absolute left-3 top-3.5 text-gray-400"/>
-                                    <input className="w-full pl-10 border p-3 rounded-lg" value={businessForm.phone} onChange={e => setBusinessForm({...businessForm, phone: formatPhone(e.target.value)})} placeholder="(00) 00000-0000" />
-                                </div>
-                            </div>
-                            <div className="md:col-span-2">
-                                <label className="block text-xs font-bold mb-1">E-mail Contato</label>
-                                <input type="email" className="w-full border p-3 rounded-lg" value={businessForm.email} onChange={e => setBusinessForm({...businessForm, email: e.target.value})} placeholder="contato@restaurante.com" />
-                            </div>
+                            <div><label className="block text-xs font-bold mb-1">CNPJ</label><input className="w-full border p-3 rounded-lg" value={businessForm.cnpj} onChange={e => setBusinessForm({...businessForm, cnpj: formatCNPJ(e.target.value)})} placeholder="00.000.000/0000-00" maxLength={18} /></div>
+                            <div><label className="block text-xs font-bold mb-1">Telefone / WhatsApp</label><div className="relative"><Phone size={16} className="absolute left-3 top-3.5 text-gray-400"/><input className="w-full pl-10 border p-3 rounded-lg" value={businessForm.phone} onChange={e => setBusinessForm({...businessForm, phone: formatPhone(e.target.value)})} placeholder="(00) 00000-0000" /></div></div>
+                            <div className="md:col-span-2"><label className="block text-xs font-bold mb-1">E-mail Contato</label><input type="email" className="w-full border p-3 rounded-lg" value={businessForm.email} onChange={e => setBusinessForm({...businessForm, email: e.target.value})} placeholder="contato@restaurante.com" /></div>
                         </div>
 
                         <div className="border-t pt-6">
                             <h3 className="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2"><MapPin size={16}/> Endereço</h3>
                             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                <div className="md:col-span-1">
-                                    <label className="block text-xs font-bold mb-1">CEP</label>
-                                    <div className="relative">
-                                        <input className={`w-full border p-3 rounded-lg ${loadingCep ? 'bg-gray-50' : ''}`} value={businessForm.address?.cep} onChange={e => setBusinessForm({...businessForm, address: {...businessForm.address!, cep: formatCEP(e.target.value)}})} onBlur={handleCepBlur} placeholder="00000-000" maxLength={9} />
-                                        {loadingCep && <Loader2 size={16} className="absolute right-3 top-3.5 animate-spin text-blue-500"/>}
-                                    </div>
-                                </div>
-                                <div className="md:col-span-2">
-                                    <label className="block text-xs font-bold mb-1">Rua</label>
-                                    <input className="w-full border p-3 rounded-lg bg-gray-50" value={businessForm.address?.street} onChange={e => setBusinessForm({...businessForm, address: {...businessForm.address!, street: e.target.value}})} />
-                                </div>
-                                <div className="md:col-span-1">
-                                    <label className="block text-xs font-bold mb-1">Número</label>
-                                    <input className="w-full border p-3 rounded-lg" value={businessForm.address?.number} onChange={e => setBusinessForm({...businessForm, address: {...businessForm.address!, number: e.target.value}})} />
-                                </div>
-                                <div className="md:col-span-1">
-                                    <label className="block text-xs font-bold mb-1">Complemento</label>
-                                    <input className="w-full border p-3 rounded-lg" value={businessForm.address?.complement} onChange={e => setBusinessForm({...businessForm, address: {...businessForm.address!, complement: e.target.value}})} />
-                                </div>
-                                <div className="md:col-span-1">
-                                    <label className="block text-xs font-bold mb-1">Bairro</label>
-                                    <input className="w-full border p-3 rounded-lg bg-gray-50" value={businessForm.address?.neighborhood} onChange={e => setBusinessForm({...businessForm, address: {...businessForm.address!, neighborhood: e.target.value}})} />
-                                </div>
-                                <div className="md:col-span-1">
-                                    <label className="block text-xs font-bold mb-1">Cidade</label>
-                                    <input className="w-full border p-3 rounded-lg bg-gray-50" value={businessForm.address?.city} onChange={e => setBusinessForm({...businessForm, address: {...businessForm.address!, city: e.target.value}})} />
-                                </div>
-                                <div className="md:col-span-1">
-                                    <label className="block text-xs font-bold mb-1">UF</label>
-                                    <input className="w-full border p-3 rounded-lg bg-gray-50" maxLength={2} value={businessForm.address?.state} onChange={e => setBusinessForm({...businessForm, address: {...businessForm.address!, state: e.target.value.toUpperCase()}})} />
-                                </div>
+                                <div className="md:col-span-1"><label className="block text-xs font-bold mb-1">CEP</label><div className="relative"><input className={`w-full border p-3 rounded-lg ${loadingCep ? 'bg-gray-50' : ''}`} value={businessForm.address?.cep} onChange={e => setBusinessForm({...businessForm, address: {...businessForm.address!, cep: formatCEP(e.target.value)}})} onBlur={handleCepBlur} placeholder="00000-000" maxLength={9} />{loadingCep && <Loader2 size={16} className="absolute right-3 top-3.5 animate-spin text-blue-500"/>}</div></div>
+                                <div className="md:col-span-2"><label className="block text-xs font-bold mb-1">Rua</label><input className="w-full border p-3 rounded-lg bg-gray-50" value={businessForm.address?.street} onChange={e => setBusinessForm({...businessForm, address: {...businessForm.address!, street: e.target.value}})} /></div>
+                                <div className="md:col-span-1"><label className="block text-xs font-bold mb-1">Número</label><input className="w-full border p-3 rounded-lg" value={businessForm.address?.number} onChange={e => setBusinessForm({...businessForm, address: {...businessForm.address!, number: e.target.value}})} /></div>
+                                <div className="md:col-span-1"><label className="block text-xs font-bold mb-1">Complemento</label><input className="w-full border p-3 rounded-lg" value={businessForm.address?.complement} onChange={e => setBusinessForm({...businessForm, address: {...businessForm.address!, complement: e.target.value}})} /></div>
+                                <div className="md:col-span-1"><label className="block text-xs font-bold mb-1">Bairro</label><input className="w-full border p-3 rounded-lg bg-gray-50" value={businessForm.address?.neighborhood} onChange={e => setBusinessForm({...businessForm, address: {...businessForm.address!, neighborhood: e.target.value}})} /></div>
+                                <div className="md:col-span-1"><label className="block text-xs font-bold mb-1">Cidade</label><input className="w-full border p-3 rounded-lg bg-gray-50" value={businessForm.address?.city} onChange={e => setBusinessForm({...businessForm, address: {...businessForm.address!, city: e.target.value}})} /></div>
+                                <div className="md:col-span-1"><label className="block text-xs font-bold mb-1">UF</label><input className="w-full border p-3 rounded-lg bg-gray-50" maxLength={2} value={businessForm.address?.state} onChange={e => setBusinessForm({...businessForm, address: {...businessForm.address!, state: e.target.value.toUpperCase()}})} /></div>
                             </div>
                         </div>
 
                         <div className="border-t pt-6">
                             <h3 className="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2"><Share2 size={16}/> Redes Sociais</h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-xs font-bold mb-1">Instagram</label>
-                                    <input className="w-full border p-3 rounded-lg" value={businessForm.instagram} onChange={e => setBusinessForm({...businessForm, instagram: e.target.value})} placeholder="@seu.restaurante" />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-bold mb-1">Website</label>
-                                    <input className="w-full border p-3 rounded-lg" value={businessForm.website} onChange={e => setBusinessForm({...businessForm, website: e.target.value})} placeholder="www.seusite.com.br" />
-                                </div>
+                                <div><label className="block text-xs font-bold mb-1">Instagram</label><input className="w-full border p-3 rounded-lg" value={businessForm.instagram} onChange={e => setBusinessForm({...businessForm, instagram: e.target.value})} placeholder="@seu.restaurante" /></div>
+                                <div><label className="block text-xs font-bold mb-1">Website</label><input className="w-full border p-3 rounded-lg" value={businessForm.website} onChange={e => setBusinessForm({...businessForm, website: e.target.value})} placeholder="www.seusite.com.br" /></div>
                             </div>
                         </div>
 
@@ -299,6 +299,76 @@ export const AdminSettings: React.FC = () => {
                             <Button onClick={handleSaveBusiness} className="w-full py-4 text-lg shadow-lg flex items-center justify-center gap-2">
                                 <Save size={20}/> Salvar Dados
                             </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* TAB: FINANCE CONFIGURATION (NEW) */}
+            {activeSettingsTab === 'FINANCE_CONFIG' && (
+                <div className="space-y-6 animate-fade-in">
+                    {/* Payment Methods */}
+                    <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-200">
+                        <div className="flex justify-between items-start mb-6">
+                            <div>
+                                <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2"><CreditCard className="text-blue-600"/> Formas de Pagamento e Taxas</h2>
+                                <p className="text-sm text-gray-500">Cadastre os métodos aceitos e suas respectivas taxas de operação.</p>
+                            </div>
+                            <Button onClick={() => handleOpenPaymentModal()}><Plus size={18}/> Novo Método</Button>
+                        </div>
+
+                        <div className="space-y-3">
+                            {(businessForm.paymentMethods || []).map((method) => (
+                                <div key={method.id} className="bg-gray-50 p-4 rounded-xl border border-gray-200 flex justify-between items-center group hover:border-blue-300 transition-all">
+                                    <div className="flex items-center gap-4">
+                                        <div className={`p-2 rounded-lg text-white ${method.type === 'CREDIT' ? 'bg-indigo-600' : (method.type === 'DEBIT' ? 'bg-blue-500' : (method.type === 'PIX' ? 'bg-emerald-600' : 'bg-gray-600'))}`}>
+                                            <CreditCard size={20}/>
+                                        </div>
+                                        <div>
+                                            <h4 className="font-bold text-slate-800">{method.name}</h4>
+                                            <div className="text-xs text-gray-500 flex items-center gap-2">
+                                                <span className="font-mono bg-blue-100 text-blue-700 px-1.5 rounded">{method.feePercentage}% taxa</span>
+                                                <span>• {method.type === 'CREDIT' ? 'Crédito' : (method.type === 'DEBIT' ? 'Débito' : (method.type === 'PIX' ? 'PIX' : (method.type === 'MEAL_VOUCHER' ? 'Voucher' : 'Dinheiro')))}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <button onClick={() => handleOpenPaymentModal(method)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"><Edit size={18}/></button>
+                                        <button onClick={() => handleDeletePaymentMethod(method.id)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"><Trash2 size={18}/></button>
+                                    </div>
+                                </div>
+                            ))}
+                            {(!businessForm.paymentMethods || businessForm.paymentMethods.length === 0) && (
+                                <p className="text-center py-6 text-gray-400 italic">Nenhum método de pagamento cadastrado.</p>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Expense Categories */}
+                    <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-200">
+                        <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2 mb-2"><Tag className="text-purple-600"/> Categorias de Despesas</h2>
+                        <p className="text-sm text-gray-500 mb-6">Categorias usadas para classificar contas a pagar e lançamentos no DRE.</p>
+
+                        <div className="flex gap-2 mb-4">
+                            <input 
+                                className="border p-2 rounded-lg flex-1 text-sm" 
+                                placeholder="Nova Categoria (ex: Marketing)" 
+                                value={newCategoryName} 
+                                onChange={e => setNewCategoryName(e.target.value)} 
+                            />
+                            <Button onClick={handleAddCategory} disabled={!newCategoryName} size="sm"><Plus size={16}/> Adicionar</Button>
+                        </div>
+
+                        <div className="flex flex-wrap gap-2">
+                            {(businessForm.expenseCategories || []).map((cat) => (
+                                <div key={cat.id} className="bg-gray-100 text-gray-700 px-3 py-1.5 rounded-lg text-sm font-bold border border-gray-200 flex items-center gap-2 group">
+                                    {cat.name}
+                                    <button onClick={() => handleDeleteCategory(cat.id)} className="text-gray-400 hover:text-red-500 transition-colors"><Trash2 size={14}/></button>
+                                </div>
+                            ))}
+                            {(!businessForm.expenseCategories || businessForm.expenseCategories.length === 0) && (
+                                <p className="text-gray-400 italic text-sm">Nenhuma categoria cadastrada.</p>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -440,7 +510,7 @@ export const AdminSettings: React.FC = () => {
                         </div>
                         <div>
                             <h2 className="text-xl font-bold text-gray-800">Tempo de Arrependimento</h2>
-                            <p className="text-sm text-gray-500 leading-relaxed">Janela de tempo após o pedido em que o cliente pode cancelar de forma autônoma. Durante este tempo, o pedido **NÃO** aparece na cozinha.</p>
+                            <p className="text-sm text-gray-500 leading-relaxed">Janela de tempo após o pedido em que o cliente pode cancelar de forma autônoma.</p>
                         </div>
                     </div>
 
@@ -458,21 +528,6 @@ export const AdminSettings: React.FC = () => {
                             value={businessForm.orderGracePeriodMinutes || 0}
                             onChange={e => setBusinessForm({...businessForm, orderGracePeriodMinutes: parseInt(e.target.value)})}
                         />
-                        <div className="flex justify-between mt-2 text-[10px] font-bold text-gray-400">
-                            <span>0 min (Envio Instantâneo)</span>
-                            <span>10 min (Segurança Máxima)</span>
-                        </div>
-                    </div>
-
-                    <div className="mt-4 p-4 bg-orange-50 rounded-xl border border-orange-100 flex gap-3">
-                        <ShieldAlert className="text-orange-500 shrink-0" size={20} />
-                        <p className="text-[11px] text-orange-800 font-medium italic">Recomendamos de 2 a 3 minutos para dar tempo ao cliente de corrigir erros sem impactar a velocidade da cozinha.</p>
-                    </div>
-                    
-                    <div className="pt-4 border-t border-gray-200 mt-6">
-                        <Button onClick={handleSaveBusiness} className="w-full py-4 text-lg shadow-lg flex items-center justify-center gap-2">
-                            <Save size={20}/> Salvar Regras
-                        </Button>
                     </div>
                 </div>
             )}
@@ -486,11 +541,11 @@ export const AdminSettings: React.FC = () => {
                         </div>
                         <div>
                             <h2 className="text-xl font-bold text-gray-800">Segurança</h2>
-                            <p className="text-sm text-gray-500 leading-relaxed">Configurações sensíveis e de proteção do sistema.</p>
+                            <p className="text-sm text-gray-500 leading-relaxed">Configurações sensíveis.</p>
                         </div>
                     </div>
                     <div className="bg-gray-50 p-6 rounded-2xl border border-gray-200">
-                        <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-2">Senha Mestra de Cancelamento</label>
+                        <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-2">Senha Mestra</label>
                         <input 
                             type="text" 
                             className="w-full border-2 p-3 rounded-xl focus:border-red-500 outline-none font-mono text-lg tracking-widest"
@@ -498,7 +553,6 @@ export const AdminSettings: React.FC = () => {
                             value={businessForm.adminPin || ''}
                             onChange={e => setBusinessForm({...businessForm, adminPin: e.target.value})}
                         />
-                        <p className="text-[10px] text-gray-400 mt-2">Esta senha será exigida para cancelar vendas no caixa. Mantenha em segredo.</p>
                     </div>
                     <div className="pt-4 border-t border-gray-200 mt-6">
                         <Button onClick={handleSaveBusiness} className="w-full py-4 text-lg shadow-lg flex items-center justify-center gap-2">
@@ -538,49 +592,37 @@ export const AdminSettings: React.FC = () => {
                         </div>
                     </div>
                 </div>
-
-                <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
-                    <h4 className="text-xs font-bold text-gray-600 uppercase mb-3">Configuração Financeira</h4>
-                    <div className="grid grid-cols-2 gap-4 mb-3">
-                        <div>
-                            <label className="block text-[10px] font-bold text-gray-500 mb-1">Tipo de Valor</label>
-                            <select className="w-full border p-2 rounded-lg bg-white text-sm" value={methodForm.feeType} onChange={e => setMethodForm({...methodForm, feeType: e.target.value as any})}>
-                                <option value="FIXED">Valor Fixo (R$)</option>
-                                <option value="PERCENTAGE">Porcentagem (%)</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label className="block text-[10px] font-bold text-gray-500 mb-1">Valor da Taxa</label>
-                            <input type="number" step="0.01" className="w-full border p-2 rounded-lg text-sm" value={methodForm.feeValue} onChange={e => setMethodForm({...methodForm, feeValue: parseFloat(e.target.value)})} />
-                        </div>
-                    </div>
-                    <div>
-                        <label className="block text-[10px] font-bold text-gray-500 mb-1">Comportamento da Taxa</label>
-                        <select className="w-full border p-2 rounded-lg bg-white text-sm" value={methodForm.feeBehavior} onChange={e => setMethodForm({...methodForm, feeBehavior: e.target.value as any})}>
-                            <option value="ADD_TO_TOTAL">Adicionar ao Total (Cobrar do Cliente)</option>
-                            <option value="DEDUCT_FROM_NET">Descontar do Repasse (Comissão App)</option>
-                            <option value="NONE">Apenas Informativo / Sem Taxa</option>
-                        </select>
-                        <p className="text-[10px] text-gray-400 mt-1 italic">
-                            {methodForm.feeBehavior === 'ADD_TO_TOTAL' && "O valor será somado à conta do cliente (Ex: Taxa de Entrega)."}
-                            {methodForm.feeBehavior === 'DEDUCT_FROM_NET' && "O valor será subtraído internamente no relatório financeiro (Ex: Taxa iFood)."}
-                            {methodForm.feeBehavior === 'NONE' && "Nenhum valor será adicionado ou descontado."}
-                        </p>
-                    </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                    <div>
-                        <label className="block text-xs font-bold text-gray-600 mb-1">Tempo Mínimo (min)</label>
-                        <input type="number" className="w-full border p-2.5 rounded-lg" value={methodForm.estimatedTimeMin} onChange={e => setMethodForm({...methodForm, estimatedTimeMin: parseInt(e.target.value)})} />
-                    </div>
-                    <div>
-                        <label className="block text-xs font-bold text-gray-600 mb-1">Tempo Máximo (min)</label>
-                        <input type="number" className="w-full border p-2.5 rounded-lg" value={methodForm.estimatedTimeMax} onChange={e => setMethodForm({...methodForm, estimatedTimeMax: parseInt(e.target.value)})} />
-                    </div>
-                </div>
-
                 <Button onClick={handleSaveDeliveryMethod} className="w-full mt-4">Salvar Método</Button>
+            </div>
+        </Modal>
+
+        {/* Modal de Forma de Pagamento (NOVO) */}
+        <Modal isOpen={isPaymentModalOpen} onClose={() => setIsPaymentModalOpen(false)} title="Forma de Pagamento" variant="dialog" maxWidth="sm">
+            <div className="space-y-4">
+                <div>
+                    <label className="block text-xs font-bold text-gray-600 mb-1">Nome da Forma</label>
+                    <input className="w-full border p-2.5 rounded-lg" placeholder="Ex: Visa Crédito" value={paymentForm.name} onChange={e => setPaymentForm({...paymentForm, name: e.target.value})} autoFocus />
+                </div>
+                <div>
+                    <label className="block text-xs font-bold text-gray-600 mb-1">Tipo da Transação</label>
+                    <select className="w-full border p-2.5 rounded-lg bg-white" value={paymentForm.type} onChange={e => setPaymentForm({...paymentForm, type: e.target.value as any})}>
+                        <option value="CREDIT">Cartão de Crédito</option>
+                        <option value="DEBIT">Cartão de Débito</option>
+                        <option value="PIX">PIX / Transferência</option>
+                        <option value="MEAL_VOUCHER">Vale Refeição</option>
+                        <option value="CASH">Dinheiro</option>
+                    </select>
+                </div>
+                <div>
+                    <label className="block text-xs font-bold text-gray-600 mb-1">Taxa da Maquininha (%)</label>
+                    <input type="number" step="0.01" className="w-full border p-2.5 rounded-lg" placeholder="Ex: 2.99" value={paymentForm.feePercentage} onChange={e => setPaymentForm({...paymentForm, feePercentage: parseFloat(e.target.value)})} />
+                    <p className="text-[10px] text-gray-400 mt-1">Essa taxa será descontada automaticamente nos relatórios.</p>
+                </div>
+                <div className="flex gap-2">
+                    <input type="checkbox" checked={paymentForm.isActive} onChange={e => setPaymentForm({...paymentForm, isActive: e.target.checked})} id="active-check" />
+                    <label htmlFor="active-check" className="text-sm font-bold text-gray-600">Ativo</label>
+                </div>
+                <Button onClick={handleSavePaymentMethod} className="w-full mt-4">Salvar Pagamento</Button>
             </div>
         </Modal>
 
