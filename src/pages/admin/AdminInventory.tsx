@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useInventory } from '../../context/InventoryContext';
 import { useUI } from '../../context/UIContext';
