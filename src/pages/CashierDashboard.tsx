@@ -26,11 +26,9 @@ export const CashierDashboard: React.FC = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
   
-  // Estado para abertura de caixa
   const [openRegisterAmount, setOpenRegisterAmount] = useState('');
   const [openingLoading, setOpeningLoading] = useState(false);
   
-  // Modais e Estados Gerais
   const [bleedModalOpen, setBleedModalOpen] = useState(false);
   const [closeModalOpen, setCloseModalOpen] = useState(false);
   const [voidModalOpen, setVoidModalOpen] = useState(false);
@@ -39,11 +37,9 @@ export const CashierDashboard: React.FC = () => {
   const [transactionToVoid, setTransactionToVoid] = useState<string | null>(null);
   const [voidPin, setVoidPin] = useState('');
   
-  // PDV States para Pagamento de Mesa
   const [cashReceived, setCashReceived] = useState('');
   const [pendingCashAction, setPendingCashAction] = useState<{ type: 'TABLE', total: number } | null>(null);
 
-  // States para Separação de Pedidos (Split Order)
   const [splitMode, setSplitMode] = useState(false);
   const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
 
@@ -163,18 +159,9 @@ export const CashierDashboard: React.FC = () => {
 
   return (
       <div className="h-full bg-gray-100 flex flex-col overflow-hidden font-sans">
-          <header className="bg-white border-b px-6 py-4 flex flex-col md:flex-row justify-between items-center gap-4 shrink-0 z-30">
-              <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-start">
-                  <div className="flex items-center gap-2">
-                      <div className="bg-blue-600 p-2 rounded-xl text-white"><DollarSign size={20}/></div>
-                      <h1 className="font-black text-lg text-slate-800 uppercase tracking-tight hidden sm:block">Frente de Caixa</h1>
-                  </div>
-                  <div className="flex items-center gap-2 md:ml-4">
-                      <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
-                      <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Caixa Aberto</span>
-                  </div>
-              </div>
-              <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-2xl overflow-x-auto max-w-full">
+          {/* Sub-Header para Navegação Local do Caixa */}
+          <div className="bg-white border-b px-4 py-3 flex flex-col md:flex-row justify-between items-center gap-4 shrink-0 z-20">
+              <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-xl overflow-x-auto max-w-full no-scrollbar">
                   <NavTab tab="PDV" icon={ShoppingCart} label="Balcão" />
                   <NavTab tab="DELIVERY" icon={Bike} label="Delivery" />
                   <NavTab tab="ACTIVE" icon={Receipt} label="Mesas" />
@@ -182,10 +169,10 @@ export const CashierDashboard: React.FC = () => {
                   <NavTab tab="MANAGE" icon={Wallet} label="Turno" />
               </div>
               <div className="flex items-center gap-2">
-                  <button onClick={handleManualRefresh} className={`p-3 rounded-xl bg-gray-50 text-blue-600 hover:bg-blue-50 transition-all ${isRefreshing ? 'animate-spin' : ''}`} title="Sincronizar"><RefreshCcw size={20}/></button>
-                  <button onClick={handleLogout} className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 rounded-xl font-bold hover:bg-red-100 transition-colors text-xs uppercase tracking-wider"><LogOut size={16}/> <span className="hidden sm:inline">Sair</span></button>
+                  <button onClick={handleManualRefresh} className={`p-2.5 rounded-xl bg-gray-50 text-blue-600 hover:bg-blue-50 transition-all ${isRefreshing ? 'animate-spin' : ''}`} title="Sincronizar"><RefreshCcw size={18}/></button>
+                  <div className="text-xs font-bold text-emerald-600 bg-emerald-50 px-3 py-2 rounded-lg border border-emerald-100 uppercase tracking-wide">Caixa Aberto</div>
               </div>
-          </header>
+          </div>
 
           <main className="flex-1 p-3 md:p-6 overflow-hidden">
                   

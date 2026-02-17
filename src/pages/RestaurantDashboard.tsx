@@ -1,0 +1,178 @@
+
+import React, { useEffect } from 'react';
+// @ts-ignore
+import { Routes, Route, Navigate, Link, useLocation, useNavigate } from 'react-router-dom';
+import { useRestaurant } from '../context/RestaurantContext';
+import { useAuth } from '../context/AuthProvider';
+import { 
+    Coffee, Monitor, DollarSign, LogOut, Grid, ChefHat, Lock
+} from 'lucide-react';
+import { Role } from '../types';
+
+// Importando Apps Operacionais
+import { WaiterApp } from './WaiterApp';
+import { KitchenDisplay } from './KitchenDisplay';
+import { CashierDashboard } from './CashierDashboard';
+
+export const RestaurantDashboard: React.FC = () => {
+  const { state: restState } = useRestaurant();
+  const { state: authState, logout } = useAuth();
+  const { planLimits } = restState;
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const userRole = authState.currentUser?.role;
+
+  // Definição das Abas Operacionais
+  const tabs = [
+    { 
+        path: '/restaurant/waiter', 
+        label: 'Salão & Mesas', 
+        icon: Coffee, 
+        roles: [Role.ADMIN, Role.WAITER, Role.CASHIER], // Caixa também pode ver mesas
+        required: null 
+    },
+    { 
+        path: '/restaurant/kitchen', 
+        label: 'Cozinha (KDS)', 
+        icon: Monitor, 
+        roles: [Role.ADMIN, Role.KITCHEN],
+        required: 'allowKds' 
+    },
+    { 
+        path: '/restaurant/cashier', 
+        label: 'Caixa & Delivery', 
+        icon: DollarSign, 
+        roles: [Role.ADMIN, Role.CASHIER],
+        required: 'allowCashier' 
+    },
+  ];
+
+  // Filtra abas baseadas no plano e na permissão do usuário
+  const visibleTabs = tabs.filter(tab => {
+      // Checa Limites do Plano
+      if (tab.required === 'allowKds' && !planLimits.allowKds) return false;
+      if (tab.required === 'allowCashier' && !planLimits.allowCashier) return false;
+      
+      // Checa Permissão do Usuário
+      if (userRole === Role.ADMIN) return true; // Admin vê tudo que o plano permite
+      if (tab.roles && userRole && !tab.roles.includes(userRole)) return false;
+      
+      return true;
+  });
+
+  // Redireciona para a primeira aba disponível se estiver na raiz
+  useEffect(() => {
+      if (location.pathname === '/restaurant' && visibleTabs.length > 0) {
+          navigate(visibleTabs[0].path, { replace: true });
+      }
+  }, [location.pathname, visibleTabs, navigate]);
+
+  const handleExitToModules = () => {
+      navigate('/modules');
+  };
+
+  if (visibleTabs.length === 0) {
+      return (
+          <div className="h-screen flex flex-col items-center justify-center text-slate-500 bg-gray-50">
+              <Lock size={48} className="mb-4 text-red-500"/>
+              <h2 className="text-xl font-bold">Acesso Restrito</h2>
+              <p>Você não tem permissão para acessar nenhuma função deste módulo.</p>
+              <button onClick={handleExitToModules} className="mt-4 text-blue-600 underline">Voltar</button>
+          </div>
+      );
+  }
+
+  return (
+    <div className="flex flex-col h-screen bg-gray-50 overflow-hidden font-sans">
+        
+        {/* TOP BAR / HEADER - Azul Royal para Operação */}
+        <header className="bg-blue-700 text-white shadow-lg shrink-0 z-30">
+            <div className="max-w-[1920px] mx-auto">
+                
+                {/* Linha Superior: Identidade e Ações */}
+                <div className="px-6 py-4 flex justify-between items-center border-b border-blue-600">
+                    <div className="flex items-center gap-4">
+                        <div className="bg-white/10 p-2 rounded-xl backdrop-blur-md border border-white/10">
+                            {restState.theme.logoUrl ? (
+                                <img src={restState.theme.logoUrl} className="h-8 w-8 object-contain" />
+                            ) : (
+                                <ChefHat size={24} />
+                            )}
+                        </div>
+                        <div>
+                            <h1 className="font-bold text-lg leading-none tracking-tight">{restState.theme.restaurantName}</h1>
+                            <div className="flex items-center gap-2 mt-1">
+                                <span className="text-[10px] font-bold bg-white/20 px-2 py-0.5 rounded text-white uppercase tracking-widest">
+                                    Módulo Restaurante
+                                </span>
+                                <span className="text-[10px] text-blue-100">
+                                    {authState.currentUser?.name}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                        <button 
+                            onClick={handleExitToModules}
+                            className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider bg-blue-800 hover:bg-blue-600 transition-colors border border-blue-600"
+                        >
+                            <Grid size={16} /> Módulos
+                        </button>
+                        <button 
+                            onClick={logout}
+                            className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider bg-red-500/20 text-red-100 hover:bg-red-500 hover:text-white transition-colors border border-red-500/20 hover:border-red-500"
+                        >
+                            <LogOut size={16} /> Sair
+                        </button>
+                    </div>
+                </div>
+
+                {/* Linha Inferior: Abas de Navegação */}
+                <div className="px-6 flex gap-1 overflow-x-auto scrollbar-hide pt-2">
+                    {visibleTabs.map(tab => {
+                        const isActive = location.pathname.startsWith(tab.path);
+                        
+                        return (
+                            <Link 
+                                key={tab.path}
+                                to={tab.path}
+                                className={`
+                                    flex items-center gap-2 px-5 py-3 text-sm font-bold border-b-2 transition-all whitespace-nowrap
+                                    ${isActive 
+                                        ? 'border-white text-white bg-white/10 rounded-t-lg' 
+                                        : 'border-transparent text-blue-200 hover:text-white hover:bg-white/5 rounded-t-lg'}
+                                `}
+                            >
+                                <tab.icon size={18} className={isActive ? 'text-white' : 'text-blue-300'} />
+                                {tab.label}
+                            </Link>
+                        );
+                    })}
+                </div>
+            </div>
+        </header>
+
+        {/* CONTEÚDO PRINCIPAL */}
+        <main className="flex-1 overflow-hidden bg-gray-50 relative">
+            <div className="h-full w-full">
+                <Routes>
+                    <Route path="waiter" element={<WaiterApp />} />
+                    
+                    {planLimits.allowKds && (
+                        <Route path="kitchen" element={<KitchenDisplay />} />
+                    )}
+
+                    {planLimits.allowCashier && (
+                        <Route path="cashier" element={<CashierDashboard />} />
+                    )}
+
+                    {/* Fallback */}
+                    <Route path="*" element={<Navigate to="waiter" replace />} />
+                </Routes>
+            </div>
+        </main>
+    </div>
+  );
+};

@@ -55,7 +55,7 @@ export const ModuleSelector: React.FC = () => {
         setActiveModule(module);
         
         if (module === 'RESTAURANT') {
-            navigate('/waiter'); // Vai direto para operação (Garçom/Mesas)
+            navigate('/restaurant'); // Atualizado: Vai para o Dashboard Restaurante
         } else if (module === 'MANAGER') {
             navigate('/admin'); // Vai para o painel administrativo (Backoffice)
         } else if (module === 'FINANCE') {
