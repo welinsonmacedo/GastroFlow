@@ -13,7 +13,8 @@ interface AdminInventoryProps {
 
 export const AdminInventory: React.FC<AdminInventoryProps> = ({ view }) => {
   return (
-    <div className="animate-fade-in w-full h-full flex flex-col">
+   <div className="animate-fade-in w-full h-full flex flex-col p-0">
+
         {view === 'ITEMS' && <InventoryItemsView />}
         {view === 'NEW_ITEM' && <InventoryNewItemView />}
         {view === 'ENTRY' && <InventoryEntryView />}
