@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Modal } from '../Modal';
 import { Button } from '../Button';
 import { useFinance } from '../../context/FinanceContext';
@@ -26,9 +26,12 @@ export const ExpenseFormModal: React.FC<ExpenseFormModalProps> = ({ isOpen, onCl
       description: '', amount: 0, category: 'Outros', isPaid: false, paymentMethod: 'BANK', isRecurring: false, supplierId: ''
   });
 
-  const categories = restState.businessInfo?.expenseCategories && restState.businessInfo.expenseCategories.length > 0
-    ? restState.businessInfo.expenseCategories.map(c => c.name)
-    : ['Fornecedor', 'Pessoal', 'Aluguel', 'Impostos', 'Manutenção', 'Outros'];
+  // MEMOIZATION FIX: Previne que 'categories' seja recriado a cada render, evitando loop no useEffect
+  const categories = useMemo(() => {
+      return restState.businessInfo?.expenseCategories && restState.businessInfo.expenseCategories.length > 0
+        ? restState.businessInfo.expenseCategories.map(c => c.name)
+        : ['Fornecedor', 'Pessoal', 'Aluguel', 'Impostos', 'Manutenção', 'Outros'];
+  }, [restState.businessInfo]);
 
   useEffect(() => {
       if(isOpen) {
@@ -42,12 +45,22 @@ export const ExpenseFormModal: React.FC<ExpenseFormModalProps> = ({ isOpen, onCl
               }
               setRecurrenceMonths(1);
           } else {
-              setForm({ description: '', amount: 0, category: categories[0], isPaid: false, paymentMethod: 'BANK', isRecurring: false, supplierId: '' });
+              // Inicializa com a primeira categoria disponível
+              setForm({ 
+                  description: '', 
+                  amount: 0, 
+                  category: categories[0], 
+                  isPaid: false, 
+                  paymentMethod: 'BANK', 
+                  isRecurring: false, 
+                  supplierId: '' 
+              });
               setDateStr(new Date().toISOString().split('T')[0]);
               setRecurrenceMonths(2);
           }
       }
-  }, [isOpen, expenseToEdit, categories]);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, expenseToEdit]); // Removido 'categories' das dependências para evitar reset durante digitação se o contexto atualizar
 
   const handleSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
@@ -121,24 +134,24 @@ export const ExpenseFormModal: React.FC<ExpenseFormModalProps> = ({ isOpen, onCl
         <form onSubmit={handleSubmit} className="space-y-4">
             <div>
                 <label className="block text-xs font-bold mb-1 text-gray-600">Descrição</label>
-                <input required placeholder="Ex: Conta de Luz" className="w-full border p-2.5 rounded-lg text-sm" value={form.description} onChange={e => setForm({...form, description: e.target.value})} autoFocus />
+                <input required placeholder="Ex: Conta de Luz" className="w-full border p-2.5 rounded-lg text-sm focus:border-blue-500 outline-none" value={form.description} onChange={e => setForm({...form, description: e.target.value})} autoFocus />
             </div>
             
             <div className="grid grid-cols-2 gap-4">
                 <div>
                     <label className="block text-xs font-bold mb-1 text-gray-600">Valor (R$)</label>
-                    <input required type="number" step="0.01" className="w-full border p-2.5 rounded-lg text-sm font-bold text-red-600" value={form.amount} onChange={e => setForm({...form, amount: parseFloat(e.target.value)})} />
+                    <input required type="number" step="0.01" className="w-full border p-2.5 rounded-lg text-sm font-bold text-red-600 focus:border-blue-500 outline-none" value={form.amount} onChange={e => setForm({...form, amount: parseFloat(e.target.value)})} />
                 </div>
                 <div>
                     <label className="block text-xs font-bold mb-1 text-gray-600">Vencimento</label>
-                    <input required type="date" className="w-full border p-2.5 rounded-lg text-sm" value={dateStr} onChange={e => setDateStr(e.target.value)} />
+                    <input required type="date" className="w-full border p-2.5 rounded-lg text-sm focus:border-blue-500 outline-none" value={dateStr} onChange={e => setDateStr(e.target.value)} />
                 </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
                 <div>
                     <label className="block text-xs font-bold mb-1 text-gray-600">Categoria</label>
-                    <select className="w-full border p-2.5 rounded-lg text-sm bg-white" value={form.category} onChange={e => setForm({...form, category: e.target.value})}>
+                    <select className="w-full border p-2.5 rounded-lg text-sm bg-white focus:border-blue-500 outline-none" value={form.category} onChange={e => setForm({...form, category: e.target.value})}>
                         {categories.map((cat, idx) => (
                             <option key={idx} value={cat}>{cat}</option>
                         ))}
@@ -146,7 +159,7 @@ export const ExpenseFormModal: React.FC<ExpenseFormModalProps> = ({ isOpen, onCl
                 </div>
                 <div>
                     <label className="block text-xs font-bold mb-1 text-gray-600">Origem</label>
-                    <select className="w-full border p-2.5 rounded-lg text-sm bg-white" value={form.paymentMethod} onChange={e => setForm({...form, paymentMethod: e.target.value as any})}>
+                    <select className="w-full border p-2.5 rounded-lg text-sm bg-white focus:border-blue-500 outline-none" value={form.paymentMethod} onChange={e => setForm({...form, paymentMethod: e.target.value as any})}>
                         <option value="BANK">Conta Bancária</option>
                         <option value="CASH">Dinheiro (Caixa)</option>
                     </select>
@@ -166,7 +179,7 @@ export const ExpenseFormModal: React.FC<ExpenseFormModalProps> = ({ isOpen, onCl
                             <div className="mt-2 animate-fade-in">
                                 <label className="block text-xs text-gray-500 mb-1">Repetir por quantos meses?</label>
                                 <div className="flex items-center gap-2">
-                                    <input type="number" min="2" max="60" className="w-20 border p-1.5 rounded text-center font-bold text-sm" value={recurrenceMonths} onChange={e => setRecurrenceMonths(parseInt(e.target.value))} />
+                                    <input type="number" min="2" max="60" className="w-20 border p-1.5 rounded text-center font-bold text-sm focus:border-blue-500 outline-none" value={recurrenceMonths} onChange={e => setRecurrenceMonths(parseInt(e.target.value))} />
                                     <span className="text-xs text-gray-400">parcelas</span>
                                 </div>
                             </div>
