@@ -3,13 +3,13 @@ import React, { useState } from 'react';
 import { useStaff } from '../../../context/StaffContext';
 import { useUI } from '../../../context/UIContext';
 import { Button } from '../../../components/Button';
-import { User, EmployeeStatus, ContractType, Role } from '../../../types';
-import { Edit, Trash2, UserPlus, Phone, Mail, Building2, DollarSign, Calendar, Tag, ShieldCheck, BadgeCheck } from 'lucide-react';
+import { User, EmployeeStatus } from '../../../types';
+import { Edit, Trash2, UserPlus, Building2, Calendar, BadgeCheck } from 'lucide-react';
 import { StaffFormModal } from '../../../components/modals/StaffFormModal';
 
 export const StaffList: React.FC = () => {
     const { state: staffState, deleteUser } = useStaff();
-    const { showConfirm, showAlert } = useUI();
+    const { showConfirm } = useUI();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingUser, setEditingUser] = useState<User | null>(null);
 
@@ -88,7 +88,7 @@ export const StaffList: React.FC = () => {
                 ))}
             </div>
 
-            <StaffFormModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} userToEdit={editingUser} />
+            <StaffFormModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} userToEdit={editingUser} variant="RH" />
         </div>
     );
 };

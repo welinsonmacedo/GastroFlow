@@ -48,17 +48,11 @@ export const AdminStaff: React.FC = () => {
   };
 
   const handleDeleteRole = (id: string) => {
-      // Verifica se há usuários usando este cargo
       const usersWithRole = staffState.users.filter(u => u.customRoleId === id);
       if (usersWithRole.length > 0) {
           return showAlert({ title: "Impossível Excluir", message: `Existem ${usersWithRole.length} usuários vinculados a este cargo. Remova-os primeiro.`, type: 'WARNING' });
       }
-
-      showConfirm({ 
-          title: "Excluir Cargo", 
-          message: "Confirma a exclusão deste cargo personalizado?", 
-          onConfirm: () => deleteRole(id) 
-      });
+      showConfirm({ title: "Excluir Cargo", message: "Confirma a exclusão deste cargo personalizado?", onConfirm: () => deleteRole(id) });
   };
 
   return (
@@ -76,7 +70,6 @@ export const AdminStaff: React.FC = () => {
             </div>
         </div>
 
-        {/* TAB: COLABORADORES (USERS) */}
         {activeTab === 'USERS' && (
             <>
                 <div className="bg-blue-50 p-4 rounded-xl border border-blue-200 flex items-start gap-3">
@@ -105,33 +98,23 @@ export const AdminStaff: React.FC = () => {
                             {staffState.users.map(user => {
                                 const isPending = !user.auth_user_id;
                                 const displayRole = user.customRoleName || user.role;
-                                
                                 return (
                                     <tr key={user.id} className="hover:bg-gray-50 transition-colors">
                                         <td className="p-4 font-bold text-gray-800">
                                             <div className="flex items-center gap-2">
-                                                <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-xs font-black text-slate-500">
-                                                    {user.name.charAt(0)}
-                                                </div>
+                                                <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-xs font-black text-slate-500">{user.name.charAt(0)}</div>
                                                 {user.name}
                                             </div>
                                         </td>
                                         <td className="p-4">
-                                            <span className={`px-2 py-1 rounded text-xs font-bold
-                                                ${user.role === 'ADMIN' ? 'bg-purple-100 text-purple-700' : 
-                                                  user.customRoleId ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'}
-                                            `}>
+                                            <span className={`px-2 py-1 rounded text-xs font-bold ${user.role === 'ADMIN' ? 'bg-purple-100 text-purple-700' : user.customRoleId ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'}`}>
                                                 {displayRole}
                                             </span>
                                         </td>
                                         <td className="p-4 text-gray-600">{user.email || 'Não configurado'}</td>
                                         <td className="p-4 text-center">
                                             {isPending ? (
-                                                <button 
-                                                    onClick={() => copyInviteLink(user.email, user.id)}
-                                                    disabled={!user.email}
-                                                    className={`flex items-center gap-1 mx-auto text-xs px-2 py-1 rounded border transition-all ${copiedInviteId === user.id ? 'bg-green-100 text-green-700 border-green-200' : 'bg-yellow-50 text-yellow-700 border-yellow-200 hover:bg-yellow-100 disabled:opacity-50'}`}
-                                                >
+                                                <button onClick={() => copyInviteLink(user.email, user.id)} disabled={!user.email} className={`flex items-center gap-1 mx-auto text-xs px-2 py-1 rounded border transition-all ${copiedInviteId === user.id ? 'bg-green-100 text-green-700 border-green-200' : 'bg-yellow-50 text-yellow-700 border-yellow-200 hover:bg-yellow-100 disabled:opacity-50'}`}>
                                                     {copiedInviteId === user.id ? <Check size={12}/> : <LinkIcon size={12}/>}
                                                     {copiedInviteId === user.id ? 'Copiado!' : 'Copiar Convite'}
                                                 </button>
@@ -142,88 +125,52 @@ export const AdminStaff: React.FC = () => {
                                         <td className="p-4 text-right">
                                             <div className="flex items-center justify-end gap-2">
                                                 <button onClick={() => handleEditAccess(user)} className="text-blue-600 hover:bg-blue-50 p-2 rounded transition-colors" title="Configurar Acesso"><Edit size={16}/></button>
-                                                <button onClick={() => showConfirm({ title: 'Remover Acesso', message: 'Isso revogará o acesso deste usuário ao sistema, mas manterá o registro no RH. Continuar?', onConfirm: () => deleteUser(user.id) })} className="text-red-600 hover:bg-red-50 p-2 rounded transition-colors" title="Revogar Acesso"><Trash2 size={16}/></button>
+                                                <button onClick={() => showConfirm({ title: 'Remover Acesso', message: 'Isso revogará o acesso deste usuário ao sistema. Continuar?', onConfirm: () => deleteUser(user.id) })} className="text-red-600 hover:bg-red-50 p-2 rounded transition-colors" title="Revogar Acesso"><Trash2 size={16}/></button>
                                             </div>
                                         </td>
                                     </tr>
                                 );
                             })}
-                            {staffState.users.length === 0 && (
-                                <tr>
-                                    <td colSpan={5} className="p-8 text-center text-gray-400">
-                                        Nenhum colaborador encontrado. Cadastre no RH.
-                                    </td>
-                                </tr>
-                            )}
                         </tbody>
                     </table>
                 </div>
             </>
         )}
 
-        {/* TAB: CARGOS (ROLES) */}
         {activeTab === 'ROLES' && (
             <>
                 <div className="flex justify-end mb-4">
-                    <Button onClick={() => { setEditingRole(null); setIsRoleModalOpen(true); }}>
-                        <Plus size={18}/> Novo Cargo Personalizado
-                    </Button>
+                    <Button onClick={() => { setEditingRole(null); setIsRoleModalOpen(true); }}><Plus size={18}/> Novo Cargo Personalizado</Button>
                 </div>
-
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {/* Lista de Cargos */}
                     {staffState.roles.map(role => (
                         <div key={role.id} className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm hover:border-blue-300 transition-all group relative">
                             <div className="absolute top-4 right-4 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                 <button onClick={() => { setEditingRole(role); setIsRoleModalOpen(true); }} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded"><Edit size={16}/></button>
                                 <button onClick={() => handleDeleteRole(role.id)} className="p-1.5 text-red-600 hover:bg-red-50 rounded"><Trash2 size={16}/></button>
                             </div>
-
                             <div className="mb-3">
-                                <h3 className="font-bold text-slate-800 text-lg flex items-center gap-2">
-                                    <Shield size={18} className="text-blue-500"/>
-                                    {role.name}
-                                </h3>
-                                <p className="text-xs text-gray-500 mt-1 line-clamp-2 min-h-[2.5em]">
-                                    {role.description || 'Sem descrição definida.'}
-                                </p>
+                                <h3 className="font-bold text-slate-800 text-lg flex items-center gap-2"><Shield size={18} className="text-blue-500"/> {role.name}</h3>
+                                <p className="text-xs text-gray-500 mt-1 line-clamp-2 min-h-[2.5em]">{role.description || 'Sem descrição definida.'}</p>
                             </div>
-
                             <div className="space-y-2">
                                 <div className="text-[10px] font-bold uppercase text-gray-400 tracking-wider">Módulos Permitidos</div>
                                 <div className="flex flex-wrap gap-1">
                                     {role.permissions?.allowed_modules.length > 0 ? (
-                                        role.permissions.allowed_modules.slice(0, 4).map(mod => (
-                                            <span key={mod} className="text-[10px] px-2 py-1 bg-gray-100 text-gray-700 rounded border border-gray-200">{mod}</span>
-                                        ))
-                                    ) : (
-                                        <span className="text-[10px] text-gray-400 italic">Nenhum módulo</span>
-                                    )}
+                                        role.permissions.allowed_modules.slice(0, 4).map(mod => <span key={mod} className="text-[10px] px-2 py-1 bg-gray-100 text-gray-700 rounded border border-gray-200">{mod}</span>)
+                                    ) : <span className="text-[10px] text-gray-400 italic">Nenhum módulo</span>}
                                     {role.permissions?.allowed_modules.length > 4 && <span className="text-[10px] px-2 py-1 text-gray-400">...</span>}
                                 </div>
                             </div>
                         </div>
                     ))}
-                    {staffState.roles.length === 0 && (
-                        <div className="col-span-full py-12 text-center text-gray-400 border-2 border-dashed border-gray-200 rounded-xl bg-gray-50">
-                            Nenhum cargo personalizado criado.
-                        </div>
-                    )}
+                    {staffState.roles.length === 0 && <div className="col-span-full py-12 text-center text-gray-400 border-2 border-dashed border-gray-200 rounded-xl bg-gray-50">Nenhum cargo personalizado criado.</div>}
                 </div>
             </>
         )}
 
-        <StaffFormModal 
-            isOpen={isUserModalOpen} 
-            onClose={() => setIsUserModalOpen(false)} 
-            userToEdit={editingUser} 
-        />
-
-        <RoleFormModal 
-            isOpen={isRoleModalOpen} 
-            onClose={() => setIsRoleModalOpen(false)} 
-            roleToEdit={editingRole}
-        />
+        <StaffFormModal isOpen={isUserModalOpen} onClose={() => setIsUserModalOpen(false)} userToEdit={editingUser} variant="ACCESS" />
+        <RoleFormModal isOpen={isRoleModalOpen} onClose={() => setIsRoleModalOpen(false)} roleToEdit={editingRole} />
     </div>
   );
 };
