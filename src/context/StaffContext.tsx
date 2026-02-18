@@ -53,7 +53,6 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               id: u.id, 
               name: u.name, 
               role: u.role, 
-              pin: u.pin, 
               email: u.email, 
               auth_user_id: u.auth_user_id, 
               allowedRoutes: u.allowed_routes || [],
@@ -115,11 +114,13 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           showAlert({ title: "Limite Atingido", message: `Seu plano permite no máximo ${planLimits.maxStaff} membros.`, type: 'WARNING' });
           return;
       }
+      // PIN REMOVIDO DA INSERÇÃO - CAMPO PIN NO BANCO DEVE SER NULLABLE OU TER DEFAULT
+      // Assumindo que pin ainda é not null no banco, enviamos um placeholder interno que não será usado para login
       await supabase.from('staff').insert({ 
           tenant_id: tenantId, 
           name: user.name, 
           role: user.role, 
-          pin: user.pin, 
+          pin: '0000', // Placeholder interno, acesso agora é via Auth
           email: user.email, 
           allowed_routes: user.allowedRoutes,
           department: user.department,
@@ -137,7 +138,6 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       await supabase.from('staff').update({ 
           name: user.name, 
           role: user.role, 
-          pin: user.pin, 
           email: user.email, 
           allowed_routes: user.allowedRoutes,
           department: user.department,

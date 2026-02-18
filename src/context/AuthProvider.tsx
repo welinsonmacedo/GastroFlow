@@ -97,7 +97,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                         id: staffData.id,
                         name: staffData.name,
                         role: staffData.role,
-                        pin: staffData.pin,
                         auth_user_id: staffData.auth_user_id,
                         email: staffData.email,
                         allowedRoutes: staffData.allowed_routes || []

@@ -82,7 +82,7 @@ export const Login: React.FC = () => {
 
               if (staffData) {
                   login({
-                      id: staffData.id, name: staffData.name, role: staffData.role, pin: staffData.pin,
+                      id: staffData.id, name: staffData.name, role: staffData.role,
                       email: staffData.email, auth_user_id: staffData.auth_user_id, allowedRoutes: staffData.allowed_routes || []
                   });
                   return;

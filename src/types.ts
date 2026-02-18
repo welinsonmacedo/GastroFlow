@@ -186,7 +186,6 @@ export interface User {
   name: string;
   email?: string;
   role: Role;
-  pin: string; 
   allowedRoutes?: string[];
   // RH Fields
   department?: string;

@@ -5,7 +5,7 @@ import { Button } from '../Button';
 import { useStaff } from '../../context/StaffContext';
 import { useUI } from '../../context/UIContext';
 import { User, Role } from '../../types';
-import { Info } from 'lucide-react';
+import { Info, Shield, Mail } from 'lucide-react';
 
 interface StaffFormModalProps {
   isOpen: boolean;
@@ -14,18 +14,14 @@ interface StaffFormModalProps {
 }
 
 export const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose, userToEdit }) => {
-  const { addUser, updateUser } = useStaff();
+  const { updateUser } = useStaff(); // Apenas update, criação é no RH
   const { showAlert } = useUI();
 
-  const [form, setForm] = useState<Partial<User>>({ name: '', role: Role.WAITER, pin: '', email: '', allowedRoutes: [] });
+  const [form, setForm] = useState<Partial<User>>({ name: '', role: Role.WAITER, email: '', allowedRoutes: [] });
 
   useEffect(() => {
-    if (isOpen) {
-        if (userToEdit) {
-            setForm(userToEdit);
-        } else {
-            setForm({ name: '', role: Role.WAITER, pin: '', email: '', allowedRoutes: [] });
-        }
+    if (isOpen && userToEdit) {
+        setForm(userToEdit);
     }
   }, [isOpen, userToEdit]);
 
@@ -41,68 +37,80 @@ export const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose,
 
   const handleSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
+      if (!userToEdit) return; // Segurança extra
+
       const routes = getRoutesForRole(form.role || Role.WAITER);
       const userToSave = { ...form, allowedRoutes: routes };
 
       try {
-          if(userToEdit) {
-              await updateUser({ ...userToEdit, ...userToSave } as User);
-          } else {
-              await addUser({ ...userToSave, id: Math.random().toString() } as User);
-          }
-          showAlert({ title: "Sucesso", message: "Usuário salvo!", type: 'SUCCESS' });
+          await updateUser({ ...userToEdit, ...userToSave } as User);
+          showAlert({ title: "Sucesso", message: "Permissões de acesso atualizadas!", type: 'SUCCESS' });
           onClose();
       } catch (error) {
-          showAlert({ title: "Erro", message: "Erro ao salvar usuário.", type: 'ERROR' });
+          showAlert({ title: "Erro", message: "Erro ao atualizar permissões.", type: 'ERROR' });
       }
   };
+
+  if (!userToEdit) return null;
 
   return (
     <Modal 
         isOpen={isOpen} 
         onClose={onClose}
-        title={userToEdit ? 'Editar Usuário' : 'Novo Membro da Equipe'}
+        title={`Configurar Acesso: ${userToEdit.name}`}
         variant="dialog"
         maxWidth="md"
     >
-        <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-                <label className="block text-xs font-bold mb-1 text-gray-600">Nome Completo</label>
-                <input required placeholder="Ex: Maria Silva" className="w-full border p-2.5 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none" value={form.name} onChange={e => setForm({...form, name: e.target.value})} autoFocus />
+        <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-4">
+                 <div className="flex items-center gap-3 mb-2">
+                     <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center font-bold text-slate-700 border">{userToEdit.name.charAt(0)}</div>
+                     <div>
+                         <p className="font-bold text-slate-800">{userToEdit.name}</p>
+                         <p className="text-xs text-slate-500">{userToEdit.department || 'Setor não informado'}</p>
+                     </div>
+                 </div>
             </div>
-            
+
             <div>
-                <label className="block text-xs font-bold mb-1 text-gray-600">Função / Cargo</label>
-                <select className="w-full border p-2.5 rounded-lg text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none" value={form.role} onChange={e => setForm({...form, role: e.target.value as Role})}>
+                <label className="block text-xs font-bold mb-2 text-slate-600 uppercase flex items-center gap-2">
+                    <Shield size={14}/> Cargo no Sistema
+                </label>
+                <select 
+                    className="w-full border-2 p-3 rounded-xl text-sm bg-white focus:border-blue-500 outline-none transition-all cursor-pointer" 
+                    value={form.role} 
+                    onChange={e => setForm({...form, role: e.target.value as Role})}
+                >
                     <option value="WAITER">Garçom (Pedidos e Mesas)</option>
-                    <option value="KITCHEN">Cozinha (KDS)</option>
-                    <option value="CASHIER">Caixa (Pagamentos)</option>
+                    <option value="KITCHEN">Cozinha (Tela KDS)</option>
+                    <option value="CASHIER">Caixa (Pagamentos e Fechamento)</option>
                     <option value="ADMIN">Gerente (Acesso Total)</option>
                 </select>
-                <p className="text-[10px] text-gray-400 mt-1">As permissões de acesso serão configuradas automaticamente com base no cargo.</p>
+                <p className="text-[10px] text-gray-400 mt-2 px-1">
+                    O cargo define quais módulos o colaborador poderá acessar após o login.
+                </p>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-                <div>
-                    <label className="block text-xs font-bold mb-1 text-gray-600">PIN de Acesso</label>
-                    <input required placeholder="4 dígitos" maxLength={4} className="w-full border p-2.5 rounded-lg text-sm font-mono text-center tracking-widest focus:ring-2 focus:ring-blue-500 outline-none" value={form.pin} onChange={e => setForm({...form, pin: e.target.value})} />
-                </div>
-                <div>
-                    <label className="block text-xs font-bold mb-1 text-gray-600">E-mail (Login)</label>
-                    <input required type="email" placeholder="usuario@email.com" className="w-full border p-2.5 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none" value={form.email} onChange={e => setForm({...form, email: e.target.value})} />
-                </div>
+            <div>
+                <label className="block text-xs font-bold mb-2 text-slate-600 uppercase flex items-center gap-2">
+                    <Mail size={14}/> E-mail de Login
+                </label>
+                <input 
+                    required 
+                    type="email" 
+                    placeholder="usuario@email.com" 
+                    className="w-full border-2 p-3 rounded-xl text-sm focus:border-blue-500 outline-none transition-all" 
+                    value={form.email} 
+                    onChange={e => setForm({...form, email: e.target.value})} 
+                />
+                <p className="text-[10px] text-gray-400 mt-2 px-1">
+                    Este e-mail será usado para enviar o convite de criação de senha.
+                </p>
             </div>
 
-            {!userToEdit && (
-                <div className="bg-blue-50 p-3 rounded-lg border border-blue-100 text-xs text-blue-800 flex gap-2">
-                    <Info size={16} className="shrink-0 mt-0.5"/>
-                    <p>Ao salvar, você poderá copiar um <strong>link de convite</strong> para enviar ao funcionário, permitindo que ele crie sua própria senha de acesso.</p>
-                </div>
-            )}
-
-            <div className="flex gap-2 pt-2">
+            <div className="flex gap-3 pt-4 border-t">
                 <Button type="button" variant="secondary" onClick={onClose} className="flex-1">Cancelar</Button>
-                <Button type="submit" className="flex-1">Salvar Usuário</Button>
+                <Button type="submit" className="flex-1 shadow-lg">Salvar Permissões</Button>
             </div>
         </form>
     </Modal>
