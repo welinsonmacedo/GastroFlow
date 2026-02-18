@@ -611,7 +611,7 @@ export const ClientApp: React.FC = () => {
                     </div>
                 )}
 
-                {/* MODAL ADD TO CART (ATUALIZADO COM ADICIONAIS) */}
+                {/* MODAL ADD TO CART (ATUALIZADO) */}
                 {selectedProduct && (
                     <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 animate-fade-in">
                         <div className={`bg-white shadow-2xl w-full max-w-sm overflow-hidden flex flex-col max-h-[90vh] ${radiusClass}`}>
@@ -648,7 +648,7 @@ export const ClientApp: React.FC = () => {
                                     </div>
                                 </div>
                                 
-                                {/* LÓGICA DE ADICIONAIS REIMPLEMENTADA */}
+                                {/* REGRAS DE NEGÓCIO: Bebidas não mostram adicionais, e adicionais apenas se houver vinculados */}
                                 {compatibleExtras.length > 0 && !isDrinkProduct(selectedProduct) && (
                                     <div className="border-t border-b border-gray-100 py-6 space-y-3">
                                         <label className="block text-xs font-black text-gray-400 uppercase tracking-wider flex items-center gap-1"><Plus size={12} className="text-green-500"/> Adicionais</label>
@@ -705,12 +705,14 @@ export const ClientApp: React.FC = () => {
             </main>
 
             {/* FLOATING BOTTOM NAVIGATION */}
-            <div className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-[90%] max-w-md bg-white/95 backdrop-blur-md border border-gray-200 shadow-2xl shadow-slate-300/50 flex justify-around p-2 items-center safe-area-bottom ${radiusClass === 'rounded-3xl' ? 'rounded-full' : 'rounded-3xl'}`}>
-                 <NavButton id="MENU" icon={Home} label="Cardápio" />
-                 <NavButton id="STATUS" icon={Clock} label="Pedidos" />
-                 <NavButton id="BILL" icon={Receipt} label="Conta" />
-                 <NavButton id="CART" icon={ShoppingCart} label="Cesta" badge={cart.length} />
-            </div>
+            {!selectedProduct && (
+                <div className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-[90%] max-w-md bg-white/95 backdrop-blur-md border border-gray-200 shadow-2xl shadow-slate-300/50 flex justify-around p-2 items-center safe-area-bottom ${radiusClass === 'rounded-3xl' ? 'rounded-full' : 'rounded-3xl'}`}>
+                     <NavButton id="MENU" icon={Home} label="Cardápio" />
+                     <NavButton id="STATUS" icon={Clock} label="Pedidos" />
+                     <NavButton id="BILL" icon={Receipt} label="Conta" />
+                     <NavButton id="CART" icon={ShoppingCart} label="Cesta" badge={cart.length} />
+                </div>
+            )}
 
             {/* Modal de Pagamento */}
             <Modal 
