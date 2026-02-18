@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { useRestaurant } from '../context/RestaurantContext';
 import { useAuth } from '../context/AuthProvider';
 import { SystemModule } from '../types';
-import { ChefHat, Coffee, Truck, ShoppingBag, ArrowRight, LogOut, Grid, Briefcase, Settings, DollarSign, Store, Package, Users } from 'lucide-react';
+import { ChefHat, Coffee, Truck, ShoppingBag, ArrowRight, LogOut, Grid, Briefcase, Settings, DollarSign, Store, Package, Users, Clock } from 'lucide-react';
 import { Button } from '../components/Button';
 
 const ModuleCard = ({ 
@@ -16,7 +16,7 @@ const ModuleCard = ({
     colorClass, 
     onClick 
 }: { 
-    type: SystemModule, 
+    type: SystemModule | 'TIME_CLOCK', 
     title: string, 
     desc: string, 
     icon: React.ElementType, 
@@ -49,6 +49,7 @@ export const ModuleSelector: React.FC = () => {
 
     const allowed = state.allowedModules || ['RESTAURANT', 'MANAGER', 'CONFIG', 'FINANCE', 'COMMERCE', 'INVENTORY', 'HR'];
     const tenantName = state.theme.restaurantName;
+    const { planLimits } = state;
 
     const handleSelect = (module: SystemModule) => {
         setActiveModule(module);
@@ -61,6 +62,10 @@ export const ModuleSelector: React.FC = () => {
         else if (module === 'INVENTORY') navigate('/inventory');
         else if (module === 'HR') navigate('/rh');
         else alert("Módulo em desenvolvimento.");
+    };
+
+    const handleTimeClock = () => {
+        navigate('/time-clock');
     };
 
     return (
@@ -100,6 +105,11 @@ export const ModuleSelector: React.FC = () => {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4 max-w-6xl w-full">
+                    {/* Bater Ponto - Acessível se o plano tiver RH */}
+                    {planLimits.allowHR && (
+                         <ModuleCard type="TIME_CLOCK" title="Bater Ponto" desc="Registro de entrada, saída e intervalos." icon={Clock} colorClass="text-cyan-400" onClick={handleTimeClock} />
+                    )}
+                    
                     {allowed.includes('RESTAURANT') && (
                         <ModuleCard type="RESTAURANT" title="Restaurante" desc="Salão, Mesas, KDS e Caixa Gastronômico." icon={ChefHat} colorClass="text-blue-600" onClick={() => handleSelect('RESTAURANT')} />
                     )}

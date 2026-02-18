@@ -28,7 +28,13 @@ interface StaffContextType {
   addShift: (shift: Partial<Shift>) => Promise<void>;
   deleteShift: (id: string) => Promise<void>;
   registerTime: (staffId: string, type: 'IN' | 'BREAK_START' | 'BREAK_END' | 'OUT', justification?: string) => Promise<void>;
+  
+  // Novas funções para gestão manual
+  addTimeEntry: (entry: Partial<TimeEntry>) => Promise<void>;
+  updateTimeEntry: (entry: TimeEntry) => Promise<void>;
+
   getPayroll: (month: number, year: number) => Promise<PayrollPreview[]>;
+  fetchData: () => Promise<void>;
 }
 
 const StaffContext = createContext<StaffContextType | undefined>(undefined);
@@ -53,7 +59,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           // Busca Staff com Join no Custom Role para pegar o nome do cargo
           supabase.from('staff').select('*, custom_roles(name)').eq('tenant_id', tenantId).order('name'),
           supabase.from('rh_shifts').select('*').eq('tenant_id', tenantId),
-          supabase.from('rh_time_entries').select('*').eq('tenant_id', tenantId).gte('entry_date', new Date(new Date().setDate(1)).toISOString().split('T')[0]),
+          supabase.from('rh_time_entries').select('*').eq('tenant_id', tenantId).gte('entry_date', new Date(new Date().setDate(1)).toISOString().split('T')[0]).order('entry_date', { ascending: false }),
           supabase.from('custom_roles').select('*').eq('tenant_id', tenantId)
       ]);
 
@@ -128,6 +134,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               breakStart: t.break_start ? new Date(t.break_start) : undefined,
               breakEnd: t.break_end ? new Date(t.break_end) : undefined,
               clockOut: t.clock_out ? new Date(t.clock_out) : undefined,
+              justification: t.justification,
               status: t.status
           }));
 
@@ -176,7 +183,6 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           pin: '0000', 
           email: user.email, 
           allowed_routes: user.allowedRoutes,
-          
           department: user.department,
           hire_date: user.hireDate?.toISOString().split('T')[0],
           contract_type: user.contractType,
@@ -185,8 +191,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           status: user.status,
           phone: user.phone,
           document_cpf: user.documentCpf,
-
-          // Extended
+          // Extended fields...
           birth_date: user.birthDate?.toISOString().split('T')[0],
           mothers_name: user.mothersName,
           fathers_name: user.fathersName,
@@ -223,7 +228,6 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           custom_role_id: user.customRoleId || null,
           email: user.email, 
           allowed_routes: user.allowedRoutes,
-
           department: user.department,
           hire_date: user.hireDate ? new Date(user.hireDate).toISOString().split('T')[0] : null,
           contract_type: user.contractType,
@@ -232,7 +236,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           status: user.status,
           phone: user.phone,
           document_cpf: user.documentCpf,
-
+          // Extended
           birth_date: user.birthDate ? new Date(user.birthDate).toISOString().split('T')[0] : null,
           mothers_name: user.mothersName,
           fathers_name: user.fathersName,
@@ -266,8 +270,6 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       await supabase.from('staff').delete().eq('id', userId);
   };
 
-  // --- Custom Roles Actions ---
-
   const addRole = async (role: Partial<CustomRole>) => {
       if(!tenantId) return;
       const { error } = await supabase.from('custom_roles').insert({
@@ -293,8 +295,6 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const { error } = await supabase.from('custom_roles').delete().eq('id', roleId);
       if (error) throw error;
   };
-
-  // --- HR Actions ---
 
   const addShift = async (shift: Partial<Shift>) => {
     if(!tenantId) return;
@@ -338,11 +338,52 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             tenant_id: tenantId, 
             staff_id: staffId, 
             entry_date: today,
-            status: 'PENDING'
+            status: 'PENDING',
+            entry_type: 'DIGITAL'
           };
           if (type === 'IN') insert.clock_in = now;
           await supabase.from('rh_time_entries').insert(insert);
       }
+      await fetchData();
+  };
+  
+  // --- Gestão Manual de Ponto (RH) ---
+
+  const addTimeEntry = async (entry: Partial<TimeEntry>) => {
+      if(!tenantId) return;
+      // Garante datas ISO para inserção
+      const payload = {
+          tenant_id: tenantId,
+          staff_id: entry.staffId,
+          entry_date: entry.entryDate instanceof Date ? entry.entryDate.toISOString().split('T')[0] : entry.entryDate,
+          clock_in: entry.clockIn ? entry.clockIn.toISOString() : null,
+          break_start: entry.breakStart ? entry.breakStart.toISOString() : null,
+          break_end: entry.breakEnd ? entry.breakEnd.toISOString() : null,
+          clock_out: entry.clockOut ? entry.clockOut.toISOString() : null,
+          justification: entry.justification,
+          entry_type: 'MANUAL',
+          status: 'APPROVED' // Manual geralmente já nasce aprovado
+      };
+
+      const { error } = await supabase.from('rh_time_entries').insert(payload);
+      if(error) throw error;
+      await fetchData();
+  };
+
+  const updateTimeEntry = async (entry: TimeEntry) => {
+      if(!tenantId) return;
+      const payload = {
+          clock_in: entry.clockIn ? entry.clockIn.toISOString() : null,
+          break_start: entry.breakStart ? entry.breakStart.toISOString() : null,
+          break_end: entry.breakEnd ? entry.breakEnd.toISOString() : null,
+          clock_out: entry.clockOut ? entry.clockOut.toISOString() : null,
+          justification: entry.justification,
+          status: entry.status
+      };
+
+      const { error } = await supabase.from('rh_time_entries').update(payload).eq('id', entry.id);
+      if(error) throw error;
+      await fetchData();
   };
 
   const getPayroll = async (month: number, year: number): Promise<PayrollPreview[]> => {
@@ -409,7 +450,8 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     <StaffContext.Provider value={{ 
         state, addUser, updateUser, deleteUser,
         addRole, updateRole, deleteRole,
-        addShift, deleteShift, registerTime, getPayroll
+        addShift, deleteShift, registerTime, getPayroll,
+        addTimeEntry, updateTimeEntry, fetchData
     }}>
       {children}
     </StaffContext.Provider>

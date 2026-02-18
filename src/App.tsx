@@ -18,7 +18,7 @@ import { SettingsDashboard } from './pages/SettingsDashboard';
 import { RestaurantDashboard } from './pages/RestaurantDashboard';
 import { CommerceDashboard } from './pages/CommerceDashboard'; 
 import { InventoryDashboard } from './pages/InventoryDashboard';
-import { StaffDashboard } from './pages/StaffDashboard'; // Novo
+import { StaffDashboard } from './pages/StaffDashboard'; 
 import { SuperAdminDashboard } from './pages/SuperAdminDashboard';
 import { LandingPage } from './pages/LandingPage';
 import { Login } from './pages/Login';
@@ -29,6 +29,7 @@ import { PrivacyPolicy } from './pages/PrivacyPolicy';
 import { TermsOfService } from './pages/TermsOfService';
 import { ManualPage } from './pages/ManualPage';
 import { ModuleSelector } from './pages/ModuleSelector';
+import { TimeClock } from './pages/TimeClock'; // Nova Importação
 
 import { InstallPWA } from './components/InstallPWA';
 import { SecurityGuard } from './components/SecurityGuard'; 
@@ -54,8 +55,11 @@ const ProtectedRestaurantRoute = ({ children, allowedRoles, requiredRoute, requi
         return <Navigate to={`/login${window.location.search}`} replace />;
     }
 
-    if (!restState.activeModule && restState.allowedModules.length > 0) {
-         return <Navigate to="/modules" replace />;
+    // Se a rota for /time-clock, não verifica modulo ativo
+    if (requiredRoute !== '/time-clock') {
+         if (!restState.activeModule && restState.allowedModules.length > 0) {
+             return <Navigate to="/modules" replace />;
+        }
     }
 
     if (requiredFeature && restState.planLimits) {
@@ -120,6 +124,9 @@ const TenantApp = () => {
                         
                         <Route path="/client/table/:tableId" element={<ClientApp />} />
                         <Route path="/modules" element={<ModuleSelector />} />
+                        
+                        {/* Rota para Bater Ponto - Acessível a todos logados */}
+                        <Route path="/time-clock" element={<ProtectedRestaurantRoute requiredRoute="/time-clock" requiredFeature="allowHR"><TimeClock /></ProtectedRestaurantRoute>} />
                         
                         <Route path="/restaurant/*" element={<ProtectedRestaurantRoute requiredRoute="/restaurant"><RestaurantDashboard /></ProtectedRestaurantRoute>} />
                         <Route path="/commerce/*" element={<ProtectedRestaurantRoute requiredRoute="/commerce"><CommerceDashboard /></ProtectedRestaurantRoute>} />
