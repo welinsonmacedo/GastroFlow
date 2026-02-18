@@ -210,6 +210,7 @@ export interface User {
   baseSalary?: number;
   benefitsTotal?: number;
   status?: EmployeeStatus;
+  shiftId?: string; // Novo campo
   phone?: string;
   documentCpf?: string;
 

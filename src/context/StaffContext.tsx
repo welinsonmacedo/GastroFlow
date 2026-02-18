@@ -81,6 +81,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               baseSalary: Number(u.base_salary) || 0,
               benefitsTotal: Number(u.benefits_total) || 0,
               status: u.status,
+              shiftId: u.shift_id, // Mapeia turno
               phone: u.phone,
               documentCpf: u.document_cpf,
 
@@ -175,7 +176,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           return;
       }
       
-      await supabase.from('staff').insert({ 
+      const { error } = await supabase.from('staff').insert({ 
           tenant_id: tenantId, 
           name: user.name, 
           role: user.role, 
@@ -189,6 +190,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           base_salary: user.baseSalary,
           benefits_total: user.benefitsTotal,
           status: user.status,
+          shift_id: user.shiftId || null,
           phone: user.phone,
           document_cpf: user.documentCpf,
           // Extended fields...
@@ -219,10 +221,16 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           bank_account_type: user.bankAccountType,
           pix_key: user.pixKey
       });
+
+      if (error) {
+          console.error("Erro ao adicionar usuário:", error);
+          throw new Error(error.message);
+      }
+      await fetchData();
   };
 
   const updateUser = async (user: User) => {
-      await supabase.from('staff').update({ 
+      const { error } = await supabase.from('staff').update({ 
           name: user.name, 
           role: user.role, 
           custom_role_id: user.customRoleId || null,
@@ -234,6 +242,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           base_salary: user.baseSalary,
           benefits_total: user.benefitsTotal,
           status: user.status,
+          shift_id: user.shiftId || null,
           phone: user.phone,
           document_cpf: user.documentCpf,
           // Extended
@@ -264,6 +273,12 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           bank_account_type: user.bankAccountType,
           pix_key: user.pixKey
       }).eq('id', user.id);
+
+      if (error) {
+        console.error("Erro ao atualizar usuário:", error);
+        throw new Error(error.message);
+      }
+      await fetchData();
   };
 
   const deleteUser = async (userId: string) => {

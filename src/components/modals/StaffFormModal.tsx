@@ -5,7 +5,7 @@ import { Button } from '../Button';
 import { useStaff } from '../../context/StaffContext';
 import { useUI } from '../../context/UIContext';
 import { User, Role, ContractType } from '../../types';
-import { Shield, Mail, User as UserIcon, Phone, FileText, Building2, DollarSign, Calendar, MapPin, Briefcase, CreditCard, Loader2 } from 'lucide-react';
+import { Shield, Mail, User as UserIcon, Phone, FileText, Building2, DollarSign, Calendar, MapPin, Briefcase, CreditCard, Loader2, Clock } from 'lucide-react';
 
 interface StaffFormModalProps {
   isOpen: boolean;
@@ -29,7 +29,7 @@ export const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose,
             setForm({ 
                 name: '', role: Role.WAITER, email: '', allowedRoutes: [], customRoleId: '',
                 department: '', phone: '', documentCpf: '', baseSalary: 0, contractType: 'CLT',
-                addressState: '', bankAccountType: 'CORRENTE'
+                addressState: '', bankAccountType: 'CORRENTE', shiftId: ''
             });
         }
     }
@@ -61,9 +61,12 @@ export const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose,
 
   const handleSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
+      
+      // Limpeza de campos opcionais que não podem ser string vazia
       const userToSave = { 
           ...form, 
           customRoleId: form.customRoleId || undefined,
+          shiftId: form.shiftId || undefined,
           baseSalary: Number(form.baseSalary) || 0,
           benefitsTotal: Number(form.benefitsTotal) || 0
       };
@@ -354,6 +357,24 @@ export const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose,
                                 <div className="relative">
                                     <DollarSign className="absolute left-3 top-2.5 text-gray-400" size={16}/>
                                     <input type="number" step="0.01" className="w-full border pl-9 p-2.5 rounded-xl text-sm bg-white font-bold text-slate-700" placeholder="0.00" value={form.baseSalary} onChange={e => setForm({...form, baseSalary: parseFloat(e.target.value)})} />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold mb-1 text-slate-600">Turno de Trabalho</label>
+                                <div className="relative">
+                                    <Clock className="absolute left-3 top-2.5 text-gray-400" size={16}/>
+                                    <select 
+                                        className="w-full border pl-9 p-2.5 rounded-xl text-sm bg-white cursor-pointer"
+                                        value={form.shiftId || ''}
+                                        onChange={e => setForm({...form, shiftId: e.target.value})}
+                                    >
+                                        <option value="">Selecione o Turno...</option>
+                                        {state.shifts.map(shift => (
+                                            <option key={shift.id} value={shift.id}>
+                                                {shift.name} ({shift.startTime} - {shift.endTime})
+                                            </option>
+                                        ))}
+                                    </select>
                                 </div>
                             </div>
                         </div>
