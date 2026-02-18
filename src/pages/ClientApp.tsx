@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 // @ts-ignore
 import { useParams } from 'react-router-dom';
@@ -85,6 +84,31 @@ export const ClientApp: React.FC = () => {
     const graceMinutes = state.businessInfo?.orderGracePeriodMinutes || 0;
     const tableOrders = orderState.orders.filter(o => o.tableId === tableId && !o.isPaid && o.status !== 'CANCELLED');
 
+    // --- Helpers de Estilo baseados no Tema ---
+    const getRadiusClass = (radius?: string) => {
+        switch(radius) {
+            case 'none': return 'rounded-none';
+            case 'sm': return 'rounded-sm';
+            case 'md': return 'rounded-md';
+            case 'lg': return 'rounded-2xl'; // Nosso padrão "arredondado"
+            case 'full': return 'rounded-3xl';
+            default: return 'rounded-2xl';
+        }
+    };
+    
+    const getFontFamily = (font?: string) => {
+        switch(font) {
+            case 'Roboto': return 'font-roboto'; // Requer configuração no index.html/css
+            case 'Playfair Display': return 'font-serif';
+            case 'Montserrat': return 'font-sans'; // Ajustar conforme imports reais
+            default: return 'font-sans';
+        }
+    };
+
+    const radiusClass = getRadiusClass(theme.borderRadius);
+    const fontClass = getFontFamily(theme.fontFamily);
+    const isOutlineBtn = theme.buttonStyle === 'outline';
+
     // Resetar estado do modal sempre que um produto for selecionado
     useEffect(() => {
         if (selectedProduct) {
@@ -143,7 +167,6 @@ export const ClientApp: React.FC = () => {
         if (!selectedProduct) return;
         
         let finalNote = modalNotes;
-        // Lógica específica para bebidas
         if (isDrinkProduct(selectedProduct)) {
             const timingText = drinkTiming === 'IMMEDIATE' ? '[IMEDIATA]' : '[COM COMIDA]';
             finalNote = timingText; 
@@ -169,7 +192,6 @@ export const ClientApp: React.FC = () => {
                 flattenedItems.push({ productId: extra.id, quantity: item.quantity, notes: `[ADICIONAL]` });
             });
         });
-        // Isso cria um NOVO pedido (Order ID único) a cada envio. Não junta com os anteriores.
         await orderDispatch({ type: 'PLACE_ORDER', tableId, items: flattenedItems });
         setCart([]);
         setView('STATUS');
@@ -177,8 +199,8 @@ export const ClientApp: React.FC = () => {
 
     if (state.isLoading || menuState.isLoading) {
         return (
-            <div className="h-full flex flex-col items-center justify-center bg-gray-50 text-gray-400 font-sans">
-                <Loader2 className="animate-spin mb-4 text-emerald-500" size={48} />
+            <div className={`h-full flex flex-col items-center justify-center bg-gray-50 text-gray-400 ${fontClass}`}>
+                <Loader2 className="animate-spin mb-4" size={48} style={{ color: theme.primaryColor }} />
                 <p className="font-black uppercase tracking-widest text-xs">Preparando Experiência...</p>
             </div>
         );
@@ -186,7 +208,7 @@ export const ClientApp: React.FC = () => {
 
     if (!table) {
         return (
-            <div className="h-full flex items-center justify-center bg-red-50 p-10 text-center flex-col gap-4 text-red-600 font-sans">
+            <div className={`h-full flex items-center justify-center bg-red-50 p-10 text-center flex-col gap-4 text-red-600 ${fontClass}`}>
                 <AlertCircle size={64} />
                 <h2 className="font-black text-2xl uppercase tracking-tighter">QR Code Inválido</h2>
                 <p className="font-medium text-sm">Este código não pertence a uma mesa ativa.</p>
@@ -196,15 +218,15 @@ export const ClientApp: React.FC = () => {
 
     if (table.status !== TableStatus.OCCUPIED) {
         return (
-            <div className="flex flex-col items-center justify-center h-full p-6 font-sans" style={{ backgroundColor: theme.backgroundColor }}>
-                <div className="bg-white p-10 rounded-[3rem] shadow-2xl text-center max-w-sm w-full border border-gray-100">
+            <div className={`flex flex-col items-center justify-center h-full p-6 ${fontClass}`} style={{ backgroundColor: theme.backgroundColor }}>
+                <div className={`bg-white p-10 shadow-2xl text-center max-w-sm w-full border border-gray-100 ${radiusClass}`}>
                     <div className="bg-blue-50 p-6 rounded-full inline-block mb-8 text-blue-600 shadow-inner">
                         <ChefHat size={64} strokeWidth={1.5} />
                     </div>
                     <h1 className="text-3xl font-black mb-2 text-slate-800 uppercase tracking-tighter">{theme.restaurantName}</h1>
                     <h2 className="text-xl font-bold text-blue-600 mb-8 tracking-tight">Mesa #{table.number}</h2>
-                    <div className="bg-red-50 text-red-600 py-3 rounded-2xl font-black mb-8 animate-pulse border border-red-100 text-xs uppercase tracking-widest">Mesa Fechada</div>
-                    <Button onClick={handleCallWaiter} className="w-full py-5 text-xl font-black rounded-3xl shadow-2xl shadow-blue-200">CHAMAR GARÇOM</Button>
+                    <div className={`bg-red-50 text-red-600 py-3 font-black mb-8 animate-pulse border border-red-100 text-xs uppercase tracking-widest ${radiusClass}`}>Mesa Fechada</div>
+                    <Button onClick={handleCallWaiter} className={`w-full py-5 text-xl font-black shadow-2xl shadow-blue-200 ${radiusClass}`}>CHAMAR GARÇOM</Button>
                 </div>
             </div>
         );
@@ -212,8 +234,8 @@ export const ClientApp: React.FC = () => {
 
     if (table.accessCode && !isAuthenticated) {
         return (
-            <div className="flex flex-col items-center justify-center h-full p-6 font-sans" style={{ backgroundColor: theme.backgroundColor }}>
-                <div className="bg-white p-10 rounded-[3.5rem] shadow-2xl text-center max-w-sm w-full border border-gray-100">
+            <div className={`flex flex-col items-center justify-center h-full p-6 ${fontClass}`} style={{ backgroundColor: theme.backgroundColor }}>
+                <div className={`bg-white p-10 shadow-2xl text-center max-w-sm w-full border border-gray-100 ${radiusClass}`}>
                     <div className="bg-emerald-50 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-8 shadow-inner">
                         <Lock size={40} className="text-emerald-500" />
                     </div>
@@ -222,14 +244,14 @@ export const ClientApp: React.FC = () => {
                     <input 
                         type="tel" 
                         maxLength={4} 
-                        className="text-center text-6xl tracking-[0.5em] w-full border-2 bg-gray-50 rounded-[2rem] py-6 mb-8 font-mono font-black text-blue-600 focus:border-blue-500 outline-none transition-all shadow-inner" 
+                        className={`text-center text-6xl tracking-[0.5em] w-full border-2 bg-gray-50 py-6 mb-8 font-mono font-black text-blue-600 focus:border-blue-500 outline-none transition-all shadow-inner ${radiusClass}`}
                         value={accessPin} 
                         onChange={e => setAccessPin(e.target.value)} 
                         placeholder="0000" 
                     />
                     <Button 
                         onClick={() => table.accessCode === accessPin ? setIsAuthenticated(true) : showAlert({ title: "Código Incorreto", message: "O código digitado não confere.", type: 'ERROR' })} 
-                        className="w-full py-5 text-xl font-black rounded-3xl shadow-xl shadow-emerald-200"
+                        className={`w-full py-5 text-xl font-black shadow-xl shadow-emerald-200 ${radiusClass}`}
                     >
                         ACESSAR CARDÁPIO
                     </Button>
@@ -243,40 +265,44 @@ export const ClientApp: React.FC = () => {
         return (
             <button 
                 onClick={() => setView(id)}
-                className={`flex flex-col items-center justify-center w-full py-3 rounded-2xl transition-all duration-300 relative ${isActive ? 'bg-slate-900 text-white shadow-lg transform -translate-y-2' : 'text-gray-400 hover:bg-gray-100 hover:text-gray-600'}`}
+                className={`flex flex-col items-center justify-center flex-1 h-full transition-all duration-300 relative group`}
             >
-                <div className="relative">
-                    <Icon size={22} strokeWidth={isActive ? 2.5 : 2} />
-                    {badge > 0 && (
-                        <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[9px] font-black w-4 h-4 flex items-center justify-center rounded-full border border-white">
-                            {badge}
-                        </span>
-                    )}
+                <div className={`p-2 rounded-xl transition-all duration-300 ${isActive ? 'bg-opacity-10 transform -translate-y-1' : 'text-gray-400 hover:text-gray-600'}`} style={isActive ? { backgroundColor: `${theme.primaryColor}20`, color: theme.primaryColor } : {}}>
+                    <div className="relative">
+                        <Icon size={24} strokeWidth={isActive ? 2.5 : 2} />
+                        {badge > 0 && (
+                            <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[9px] font-black w-4 h-4 flex items-center justify-center rounded-full border border-white shadow-sm">
+                                {badge}
+                            </span>
+                        )}
+                    </div>
                 </div>
-                <span className="text-[9px] font-bold uppercase mt-1 tracking-wider">{label}</span>
+                <span className={`text-[9px] font-bold uppercase mt-0.5 tracking-wider transition-colors ${isActive ? 'opacity-100' : 'opacity-60'}`} style={{ color: isActive ? theme.primaryColor : '#94a3b8' }}>
+                    {label}
+                </span>
             </button>
         )
     };
 
     return (
-        <div className="h-full overflow-hidden font-sans flex flex-col" style={{ backgroundColor: theme.backgroundColor, color: theme.fontColor }}>
+        <div className={`h-full overflow-hidden flex flex-col ${fontClass}`} style={{ backgroundColor: theme.backgroundColor, color: theme.fontColor }}>
             {/* HEADER SIMPLIFICADO */}
             <header className="bg-white/80 backdrop-blur-xl shadow-sm sticky top-0 z-40 border-b border-white/20 shrink-0">
                 <div className="flex justify-between items-center p-4 max-w-2xl mx-auto">
                     <div className="flex items-center gap-3">
-                        <div className="bg-white p-1 rounded-2xl shadow-md border border-gray-100 shrink-0">
-                            {theme.logoUrl ? <img src={theme.logoUrl} className="h-10 w-10 object-contain rounded-xl" /> : <ChefHat size={32} style={{ color: theme.primaryColor }} />}
+                        <div className={`bg-white p-1 shadow-md border border-gray-100 shrink-0 ${radiusClass}`}>
+                            {theme.logoUrl ? <img src={theme.logoUrl} className={`h-10 w-10 object-contain ${radiusClass}`} /> : <ChefHat size={32} style={{ color: theme.primaryColor }} />}
                         </div>
                         <div>
                             <h1 className="font-black text-lg leading-none uppercase tracking-tighter text-slate-800">{theme.restaurantName}</h1>
-                            <p className="text-[10px] text-emerald-500 font-black uppercase tracking-widest mt-0.5">MESA #{table.number}</p>
+                            <p className="text-[10px] font-black uppercase tracking-widest mt-0.5" style={{ color: theme.primaryColor }}>MESA #{table.number}</p>
                         </div>
                     </div>
                     
                     {/* Botão Chamar Garçom (Sino) no Header */}
                     <button 
                         onClick={handleCallWaiter} 
-                        className={`p-3 rounded-2xl bg-white border border-gray-100 shadow-sm text-blue-600 hover:bg-blue-50 active:scale-90 transition-all ${waiterCalled ? 'animate-pulse bg-blue-100 ring-2 ring-blue-200' : ''}`}
+                        className={`p-3 bg-white border border-gray-100 shadow-sm text-blue-600 hover:bg-blue-50 active:scale-90 transition-all ${radiusClass} ${waiterCalled ? 'animate-pulse bg-blue-100 ring-2 ring-blue-200' : ''}`}
                         title="Chamar Garçom"
                     >
                         <Bell size={20} fill={waiterCalled ? "currentColor" : "none"} />
@@ -292,10 +318,11 @@ export const ClientApp: React.FC = () => {
                         <div className="relative group">
                             <Search size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-emerald-500 transition-colors pointer-events-none" />
                             <input 
-                                className="w-full bg-white border border-gray-100 shadow-lg shadow-gray-200/50 p-4 pl-12 rounded-[1.5rem] text-sm font-bold focus:bg-white focus:border-emerald-500 focus:shadow-emerald-100 outline-none transition-all placeholder:text-gray-300" 
+                                className={`w-full bg-white border border-gray-100 shadow-lg shadow-gray-200/50 p-4 pl-12 text-sm font-bold outline-none transition-all placeholder:text-gray-300 focus:shadow-md ${radiusClass}`} 
                                 placeholder="O que você deseja comer hoje?" 
                                 value={searchQuery} 
                                 onChange={e => setSearchQuery(e.target.value)} 
+                                style={{ caretColor: theme.primaryColor }}
                             />
                         </div>
 
@@ -314,21 +341,28 @@ export const ClientApp: React.FC = () => {
                                             <div 
                                                 key={product.id} 
                                                 onClick={() => setSelectedProduct(product)} 
-                                                className={`bg-white rounded-[2rem] shadow-sm border border-gray-100 flex cursor-pointer hover:shadow-xl hover:border-emerald-100 transition-all active:scale-[0.98] group overflow-hidden ${isGrid ? 'flex-col' : 'flex-row p-3 gap-4'}`}
+                                                className={`bg-white shadow-sm border border-gray-100 flex cursor-pointer hover:shadow-xl transition-all active:scale-[0.98] group overflow-hidden ${radiusClass} ${isGrid ? 'flex-col' : 'flex-row p-3 gap-4'}`}
                                             >
-                                                <div className={`relative shrink-0 overflow-hidden bg-gray-50 ${isGrid ? 'w-full h-40' : 'w-24 h-24 rounded-2xl'}`}>
+                                                <div className={`relative shrink-0 overflow-hidden bg-gray-50 ${radiusClass} ${isGrid ? 'w-full h-40' : 'w-24 h-24'}`}>
                                                     <img src={product.image} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt={product.name} />
                                                 </div>
                                                 <div className={`flex-1 flex flex-col justify-between ${isGrid ? 'p-4 pt-2' : 'py-1 pr-1'}`}>
                                                     <div className="space-y-1">
-                                                        <h3 className="font-black text-slate-800 leading-tight text-lg group-hover:text-emerald-700 transition-colors">{product.name}</h3>
+                                                        <h3 className="font-black text-slate-800 leading-tight text-lg group-hover:opacity-70 transition-opacity">{product.name}</h3>
                                                         {product.description && (
                                                             <p className="text-[11px] text-gray-500 font-medium leading-relaxed line-clamp-2">{product.description}</p>
                                                         )}
                                                     </div>
                                                     <div className="flex justify-between items-end mt-3">
-                                                        <span className="font-black text-lg text-emerald-600">R$ {product.price.toFixed(2)}</span>
-                                                        <div className="w-8 h-8 rounded-full flex items-center justify-center text-white shadow-md transition-all group-hover:bg-slate-900 bg-gray-200 group-hover:scale-110">
+                                                        <span className="font-black text-lg" style={{ color: theme.primaryColor }}>R$ {product.price.toFixed(2)}</span>
+                                                        <div 
+                                                            className={`w-8 h-8 flex items-center justify-center text-white shadow-md transition-all group-hover:scale-110 ${radiusClass === 'rounded-full' || radiusClass === 'rounded-2xl' || radiusClass === 'rounded-3xl' ? 'rounded-full' : 'rounded-lg'}`} 
+                                                            style={{ 
+                                                                backgroundColor: isOutlineBtn ? 'transparent' : theme.primaryColor,
+                                                                border: isOutlineBtn ? `2px solid ${theme.primaryColor}` : 'none',
+                                                                color: isOutlineBtn ? theme.primaryColor : 'white'
+                                                            }}
+                                                        >
                                                             <Plus size={16} strokeWidth={3} />
                                                         </div>
                                                     </div>
@@ -343,11 +377,11 @@ export const ClientApp: React.FC = () => {
                 )}
 
                 {view === 'CART' && (
-                    <div className="bg-white rounded-[2.5rem] shadow-xl border border-gray-100 overflow-hidden animate-fade-in flex flex-col min-h-[50vh]">
+                    <div className={`bg-white shadow-xl border border-gray-100 overflow-hidden animate-fade-in flex flex-col min-h-[50vh] ${radiusClass}`}>
                         <div className="bg-gray-50 p-6 border-b flex justify-between items-center">
                             <div>
                                 <h2 className="text-2xl font-black text-slate-800 uppercase tracking-tighter">Sua Cesta</h2>
-                                <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest">Confira antes de pedir</p>
+                                <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: theme.primaryColor }}>Confira antes de pedir</p>
                             </div>
                         </div>
                         <div className="p-6 flex-1 space-y-4">
@@ -357,12 +391,12 @@ export const ClientApp: React.FC = () => {
                                         <ShoppingCart size={48} className="text-gray-300" />
                                     </div>
                                     <p className="font-bold text-gray-400 text-sm">Sua cesta está vazia</p>
-                                    <Button onClick={() => setView('MENU')} variant="outline" className="rounded-xl px-6 text-xs font-bold uppercase">Voltar ao Cardápio</Button>
+                                    <Button onClick={() => setView('MENU')} variant="outline" className={`px-6 text-xs font-bold uppercase ${radiusClass}`}>Voltar ao Cardápio</Button>
                                 </div>
                             ) : (
                                 <div className="space-y-4">
                                     {cart.map((item, idx) => (
-                                        <div key={idx} className="bg-gray-50 p-4 rounded-2xl relative group border border-transparent hover:border-emerald-200 transition-all">
+                                        <div key={idx} className={`bg-gray-50 p-4 relative group border border-transparent hover:border-gray-200 transition-all ${radiusClass}`}>
                                             <button 
                                                 onClick={() => setCart(prev => prev.filter((_, i) => i !== idx))} 
                                                 className="absolute top-2 right-2 text-red-400 hover:text-red-600 p-2"
@@ -371,7 +405,7 @@ export const ClientApp: React.FC = () => {
                                             </button>
                                             <div className="flex justify-between items-start pr-8">
                                                 <h4 className="font-bold text-slate-800 text-base leading-tight">
-                                                    <span className="text-emerald-600 mr-2">{item.quantity}x</span> 
+                                                    <span className="mr-2" style={{ color: theme.primaryColor }}>{item.quantity}x</span> 
                                                     {item.product.name}
                                                 </h4>
                                             </div>
@@ -403,7 +437,7 @@ export const ClientApp: React.FC = () => {
                                 </div>
                                 <button 
                                     onClick={handleConfirmOrder} 
-                                    className="w-full py-4 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-white font-black text-lg shadow-lg shadow-emerald-500/30 transition-all active:scale-95 uppercase tracking-widest flex items-center justify-center gap-2"
+                                    className={`w-full py-4 bg-white text-slate-900 font-black text-lg shadow-lg transition-all active:scale-95 uppercase tracking-widest flex items-center justify-center gap-2 ${radiusClass}`}
                                 >
                                     Enviar Pedido <ArrowRight size={20} />
                                 </button>
@@ -413,12 +447,12 @@ export const ClientApp: React.FC = () => {
                 )}
 
                 {view === 'BILL' && (
-                    <div className="bg-white rounded-[2.5rem] shadow-xl border border-gray-100 overflow-hidden animate-fade-in flex flex-col min-h-[50vh]">
+                    <div className={`bg-white shadow-xl border border-gray-100 overflow-hidden animate-fade-in flex flex-col min-h-[50vh] ${radiusClass}`}>
                         <div className="bg-slate-900 p-8 text-white">
                             <h2 className="text-2xl font-black uppercase tracking-tighter flex items-center gap-2">
-                                <Receipt size={24} className="text-emerald-400" /> Conta
+                                <Receipt size={24} style={{ color: theme.primaryColor }} /> Conta
                             </h2>
-                            <p className="text-emerald-400/80 text-[10px] font-bold uppercase tracking-widest mt-1">Mesa #{table.number} • {table.customerName}</p>
+                            <p className="text-white/60 text-[10px] font-bold uppercase tracking-widest mt-1">Mesa #{table.number} • {table.customerName}</p>
                         </div>
                         <div className="p-6 flex-1 overflow-y-auto custom-scrollbar">
                             <div className="space-y-4 mb-8">
@@ -460,11 +494,11 @@ export const ClientApp: React.FC = () => {
                                 </div>
                             )}
 
-                            <div className="bg-emerald-50 border border-emerald-100 p-4 rounded-2xl text-center">
+                            <div className={`bg-emerald-50 border border-emerald-100 p-4 text-center ${radiusClass}`}>
                                 <p className="text-emerald-800 font-bold text-sm mb-3">Pronto para pagar?</p>
                                 <button 
                                     onClick={handleCallWaiter} 
-                                    className="w-full py-3 bg-white border border-emerald-200 text-emerald-600 rounded-xl font-black text-sm uppercase shadow-sm active:scale-95 transition-all flex items-center justify-center gap-2"
+                                    className={`w-full py-3 bg-white border border-emerald-200 text-emerald-600 font-black text-sm uppercase shadow-sm active:scale-95 transition-all flex items-center justify-center gap-2 ${radiusClass}`}
                                 >
                                     <Bell size={16} /> Chamar Garçom
                                 </button>
@@ -474,7 +508,7 @@ export const ClientApp: React.FC = () => {
                 )}
 
                 {view === 'STATUS' && (
-                    <div className="bg-white rounded-[2.5rem] shadow-xl border border-gray-100 overflow-hidden animate-fade-in flex flex-col min-h-[50vh]">
+                    <div className={`bg-white shadow-xl border border-gray-100 overflow-hidden animate-fade-in flex flex-col min-h-[50vh] ${radiusClass}`}>
                         <div className="bg-blue-600 p-8 text-white">
                             <h2 className="text-2xl font-black uppercase tracking-tighter flex items-center gap-2">
                                 <Clock size={24} /> Pedidos
@@ -495,7 +529,7 @@ export const ClientApp: React.FC = () => {
                                         graceMinutes={graceMinutes} 
                                         onCancel={(id) => showConfirm({ title: "Cancelar Pedido?", message: "Esta ação removerá o pedido da cozinha.", type: 'WARNING', onConfirm: () => cancelOrder(id) })} 
                                     />
-                                    <div className="bg-gray-50 rounded-2xl p-5 border border-gray-100">
+                                    <div className={`bg-gray-50 p-5 border border-gray-100 ${radiusClass}`}>
                                         <div className="flex justify-between items-center mb-4 pb-2 border-b border-gray-200">
                                             <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">#{order.id.slice(0, 4)}</span>
                                             <span className="text-xs font-bold text-slate-500">{order.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
@@ -536,7 +570,7 @@ export const ClientApp: React.FC = () => {
                 {/* MODAL ADD TO CART (ATUALIZADO) */}
                 {selectedProduct && (
                     <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 animate-fade-in">
-                        <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col max-h-[90vh]">
+                        <div className={`bg-white shadow-2xl w-full max-w-sm overflow-hidden flex flex-col max-h-[90vh] ${radiusClass}`}>
                             {/* Header com Imagem Pequena (Cover) */}
                             <div className="relative">
                                 <div className="h-32 w-full overflow-hidden relative">
@@ -564,9 +598,9 @@ export const ClientApp: React.FC = () => {
                                 <div>
                                     <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-4 text-center">Quantidade</label>
                                     <div className="flex items-center gap-6 justify-center">
-                                        <button onClick={() => setModalQuantity(Math.max(1, modalQuantity - 1))} className="p-4 bg-gray-100 rounded-2xl hover:bg-red-50 hover:text-red-600 transition-colors"><Minus size={24}/></button>
-                                        <span className="text-5xl font-black w-20 text-center text-blue-600">{modalQuantity}</span>
-                                        <button onClick={() => setModalQuantity(modalQuantity + 1)} className="p-4 bg-gray-100 rounded-2xl hover:bg-emerald-50 hover:text-emerald-600 transition-colors"><Plus size={24}/></button>
+                                        <button onClick={() => setModalQuantity(Math.max(1, modalQuantity - 1))} className={`p-4 bg-gray-100 hover:bg-red-50 hover:text-red-600 transition-colors ${radiusClass}`}><Minus size={24}/></button>
+                                        <span className="text-5xl font-black w-20 text-center" style={{ color: theme.primaryColor }}>{modalQuantity}</span>
+                                        <button onClick={() => setModalQuantity(modalQuantity + 1)} className={`p-4 bg-gray-100 hover:bg-green-50 hover:text-green-600 transition-colors ${radiusClass}`}><Plus size={24}/></button>
                                     </div>
                                 </div>
                                 
@@ -580,7 +614,7 @@ export const ClientApp: React.FC = () => {
                                                 if (!extra) return null;
                                                 const isSelected = selectedExtraIds.includes(id);
                                                 return (
-                                                    <div key={id} onClick={() => setSelectedExtraIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id])} className={`flex items-center justify-between p-4 rounded-2xl border-2 transition-all cursor-pointer ${isSelected ? 'bg-orange-50 border-orange-400' : 'bg-gray-50 border-transparent hover:border-gray-200'}`}>
+                                                    <div key={id} onClick={() => setSelectedExtraIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id])} className={`flex items-center justify-between p-4 border-2 transition-all cursor-pointer ${radiusClass} ${isSelected ? 'bg-orange-50 border-orange-400' : 'bg-gray-50 border-transparent hover:border-gray-200'}`}>
                                                         <span className="text-sm font-black text-slate-700">{extra.name}</span>
                                                         <span className="text-xs font-bold text-slate-400">+ R$ {extra.price.toFixed(2)}</span>
                                                     </div>
@@ -597,14 +631,14 @@ export const ClientApp: React.FC = () => {
                                         <div className="flex gap-3">
                                             <button 
                                                 onClick={() => setDrinkTiming('IMMEDIATE')}
-                                                className={`flex-1 p-4 rounded-2xl border-2 font-bold text-xs uppercase tracking-wider transition-all ${drinkTiming === 'IMMEDIATE' ? 'bg-blue-600 text-white border-blue-600 shadow-lg' : 'bg-white text-gray-400 border-gray-200'}`}
+                                                className={`flex-1 p-4 border-2 font-bold text-xs uppercase tracking-wider transition-all ${radiusClass} ${drinkTiming === 'IMMEDIATE' ? 'bg-blue-600 text-white border-blue-600 shadow-lg' : 'bg-white text-gray-400 border-gray-200'}`}
                                             >
                                                 <Zap size={16} className="mx-auto mb-1"/>
                                                 Imediata
                                             </button>
                                             <button 
                                                 onClick={() => setDrinkTiming('WITH_FOOD')}
-                                                className={`flex-1 p-4 rounded-2xl border-2 font-bold text-xs uppercase tracking-wider transition-all ${drinkTiming === 'WITH_FOOD' ? 'bg-blue-600 text-white border-blue-600 shadow-lg' : 'bg-white text-gray-400 border-gray-200'}`}
+                                                className={`flex-1 p-4 border-2 font-bold text-xs uppercase tracking-wider transition-all ${radiusClass} ${drinkTiming === 'WITH_FOOD' ? 'bg-blue-600 text-white border-blue-600 shadow-lg' : 'bg-white text-gray-400 border-gray-200'}`}
                                             >
                                                 <Utensils size={16} className="mx-auto mb-1"/>
                                                 Com Comida
@@ -614,12 +648,12 @@ export const ClientApp: React.FC = () => {
                                 ) : (
                                     <div className="space-y-2">
                                         <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Observações</label>
-                                        <textarea className="w-full border-2 border-gray-100 bg-gray-50 rounded-2xl p-4 text-sm font-medium focus:border-blue-500 focus:bg-white outline-none transition-all resize-none" rows={3} placeholder="Ex: Sem cebola, ponto da carne..." value={modalNotes} onChange={e => setModalNotes(e.target.value)} />
+                                        <textarea className={`w-full border-2 border-gray-100 bg-gray-50 p-4 text-sm font-medium focus:border-blue-500 focus:bg-white outline-none transition-all resize-none ${radiusClass}`} rows={3} placeholder="Ex: Sem cebola, ponto da carne..." value={modalNotes} onChange={e => setModalNotes(e.target.value)} />
                                     </div>
                                 )}
                             </div>
                             <div className="p-6 border-t bg-gray-50 shrink-0">
-                                <Button onClick={handleAddToCart} className="w-full py-5 text-xl font-black shadow-2xl shadow-blue-200 rounded-2xl uppercase tracking-widest">
+                                <Button onClick={handleAddToCart} className={`w-full py-5 text-xl font-black shadow-2xl shadow-blue-200 uppercase tracking-widest ${radiusClass}`} style={{ backgroundColor: theme.primaryColor }}>
                                     Adicionar • R$ {((selectedProduct.price + selectedExtraIds.reduce((sum, id) => sum + (menuState.products.find(p => p.id === id)?.price || 0), 0)) * modalQuantity).toFixed(2)}
                                 </Button>
                             </div>
@@ -629,7 +663,7 @@ export const ClientApp: React.FC = () => {
             </main>
 
             {/* FLOATING BOTTOM NAVIGATION */}
-            <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-[90%] max-w-md bg-white/95 backdrop-blur-md border border-gray-200 shadow-2xl shadow-slate-300/50 rounded-3xl flex justify-around p-2 items-center safe-area-bottom">
+            <div className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-[90%] max-w-md bg-white/95 backdrop-blur-md border border-gray-200 shadow-2xl shadow-slate-300/50 flex justify-around p-2 items-center safe-area-bottom ${radiusClass === 'rounded-3xl' ? 'rounded-full' : 'rounded-3xl'}`}>
                  <NavButton id="MENU" icon={Home} label="Cardápio" />
                  <NavButton id="STATUS" icon={Clock} label="Pedidos" />
                  <NavButton id="BILL" icon={Receipt} label="Conta" />
