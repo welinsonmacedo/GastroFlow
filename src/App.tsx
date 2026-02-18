@@ -30,6 +30,7 @@ import { ManualPage } from './pages/ManualPage';
 import { ModuleSelector } from './pages/ModuleSelector';
 
 import { InstallPWA } from './components/InstallPWA';
+import { SecurityGuard } from './components/SecurityGuard'; // Importação do Guarda
 import { Lock } from 'lucide-react';
 import { Role } from './types';
 import { getTenantSlug } from './utils/tenant';
@@ -151,41 +152,43 @@ const App: React.FC = () => {
   const tenantSlug = getTenantSlug();
 
   return (
-    <BrowserRouter>
-        <UIProvider>
-            <InstallPWA />
-            {tenantSlug ? (
-                <AuthProvider>
-                    <RestaurantProvider>
-                        <MenuProvider>
-                            <OrderProvider>
-                                <StaffProvider>
-                                    <InventoryProvider>
-                                        <FinanceProvider>
-                                            <TenantApp />
-                                        </FinanceProvider>
-                                    </InventoryProvider>
-                                </StaffProvider>
-                            </OrderProvider>
-                        </MenuProvider>
-                    </RestaurantProvider>
-                </AuthProvider>
-            ) : (
-                <SaaSProvider>
-                     <Routes>
-                        <Route path="/" element={<LandingPage />} />
-                        <Route path="/register" element={<RegisterRestaurant />} />
-                        <Route path="/login-owner" element={<OwnerLogin />} />
-                        <Route path="/privacy" element={<PrivacyPolicy />} />
-                        <Route path="/terms" element={<TermsOfService />} />
-                        <Route path="/sys-admin" element={<SaaSLogin />} /> 
-                        <Route path="/dashboard" element={<ProtectedSaaSRoute><SuperAdminDashboard /></ProtectedSaaSRoute>} /> 
-                        <Route path="*" element={<Navigate to="/" />} />
-                     </Routes>
-                </SaaSProvider>
-            )}
-        </UIProvider>
-    </BrowserRouter>
+    <SecurityGuard>
+        <BrowserRouter>
+            <UIProvider>
+                <InstallPWA />
+                {tenantSlug ? (
+                    <AuthProvider>
+                        <RestaurantProvider>
+                            <MenuProvider>
+                                <OrderProvider>
+                                    <StaffProvider>
+                                        <InventoryProvider>
+                                            <FinanceProvider>
+                                                <TenantApp />
+                                            </FinanceProvider>
+                                        </InventoryProvider>
+                                    </StaffProvider>
+                                </OrderProvider>
+                            </MenuProvider>
+                        </RestaurantProvider>
+                    </AuthProvider>
+                ) : (
+                    <SaaSProvider>
+                        <Routes>
+                            <Route path="/" element={<LandingPage />} />
+                            <Route path="/register" element={<RegisterRestaurant />} />
+                            <Route path="/login-owner" element={<OwnerLogin />} />
+                            <Route path="/privacy" element={<PrivacyPolicy />} />
+                            <Route path="/terms" element={<TermsOfService />} />
+                            <Route path="/sys-admin" element={<SaaSLogin />} /> 
+                            <Route path="/dashboard" element={<ProtectedSaaSRoute><SuperAdminDashboard /></ProtectedSaaSRoute>} /> 
+                            <Route path="*" element={<Navigate to="/" />} />
+                        </Routes>
+                    </SaaSProvider>
+                )}
+            </UIProvider>
+        </BrowserRouter>
+    </SecurityGuard>
   );
 };
 

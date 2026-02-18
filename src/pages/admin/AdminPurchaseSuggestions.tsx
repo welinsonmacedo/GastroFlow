@@ -104,8 +104,8 @@ export const AdminPurchaseSuggestions: React.FC = () => {
     const totalEstimatedCost = suggestions.reduce((acc, item) => acc + item.estimatedCost, 0);
 
     return (
-        <div className="space-y-6 animate-fade-in pb-20">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-200 gap-4">
+        <div className="space-y-6 animate-fade-in h-full flex flex-col">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-200 gap-4 shrink-0">
                 <div>
                     <h2 className="text-2xl font-black text-slate-800 flex items-center gap-2">
                         <ShoppingCart className="text-blue-600"/> Sugestão de Compras
@@ -118,7 +118,7 @@ export const AdminPurchaseSuggestions: React.FC = () => {
             </div>
 
             {/* Cards de Resumo */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 shrink-0">
                 <div className="bg-white p-6 rounded-2xl border border-blue-100 shadow-sm flex items-center justify-between">
                     <div>
                         <p className="text-xs font-bold text-gray-500 uppercase">Itens a Repor</p>
@@ -136,55 +136,57 @@ export const AdminPurchaseSuggestions: React.FC = () => {
             </div>
 
             {/* Tabela de Sugestões */}
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                <table className="w-full text-left">
-                    <thead className="bg-slate-50 text-slate-500 text-[10px] font-black uppercase tracking-widest border-b">
-                        <tr>
-                            <th className="p-4">Item</th>
-                            <th className="p-4 text-center">Nível Atual</th>
-                            <th className="p-4 text-center">Popularidade (30d)</th>
-                            <th className="p-4 text-right bg-blue-50/50 text-blue-700">Sugestão Compra</th>
-                            <th className="p-4 text-right">Custo Est.</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                        {suggestions.map(item => (
-                            <tr key={item.id} className="hover:bg-slate-50 transition-colors">
-                                <td className="p-4">
-                                    <div className="font-bold text-slate-800">{item.name}</div>
-                                    <div className="text-xs text-gray-400">Estoque Mínimo: {item.minStock} {item.unit}</div>
-                                </td>
-                                <td className="p-4 text-center">
-                                    <span className="text-red-600 font-bold bg-red-50 px-2 py-1 rounded text-xs">
-                                        {item.currentStock} {item.unit}
-                                    </span>
-                                </td>
-                                <td className="p-4 text-center">
-                                    <div className="flex items-center justify-center gap-1 text-xs font-medium text-slate-600">
-                                        <TrendingUp size={14} className="text-emerald-500"/>
-                                        {item.salesCount} vendas
-                                    </div>
-                                </td>
-                                <td className="p-4 text-right bg-blue-50/30">
-                                    <span className="text-lg font-black text-blue-700">
-                                        {item.suggestedQty.toFixed(2)} <span className="text-xs font-normal text-slate-400">{item.unit}</span>
-                                    </span>
-                                </td>
-                                <td className="p-4 text-right font-mono font-bold text-slate-700">
-                                    R$ {item.estimatedCost.toFixed(2)}
-                                </td>
-                            </tr>
-                        ))}
-                        {suggestions.length === 0 && (
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col min-h-0">
+                <div className="overflow-y-auto custom-scrollbar flex-1">
+                    <table className="w-full text-left">
+                        <thead className="bg-slate-50 text-slate-500 text-[10px] font-black uppercase tracking-widest border-b sticky top-0 z-10 shadow-sm">
                             <tr>
-                                <td colSpan={5} className="p-10 text-center text-slate-400">
-                                    <AlertTriangle size={32} className="mx-auto mb-2 opacity-20"/>
-                                    <p>Estoque saudável! Nenhum item precisa de reposição urgente.</p>
-                                </td>
+                                <th className="p-4 bg-slate-50">Item</th>
+                                <th className="p-4 text-center bg-slate-50">Nível Atual</th>
+                                <th className="p-4 text-center bg-slate-50">Popularidade (30d)</th>
+                                <th className="p-4 text-right bg-blue-50/50 text-blue-700">Sugestão Compra</th>
+                                <th className="p-4 text-right bg-slate-50">Custo Est.</th>
                             </tr>
-                        )}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                            {suggestions.map(item => (
+                                <tr key={item.id} className="hover:bg-slate-50 transition-colors">
+                                    <td className="p-4">
+                                        <div className="font-bold text-slate-800">{item.name}</div>
+                                        <div className="text-xs text-gray-400">Estoque Mínimo: {item.minStock} {item.unit}</div>
+                                    </td>
+                                    <td className="p-4 text-center">
+                                        <span className="text-red-600 font-bold bg-red-50 px-2 py-1 rounded text-xs">
+                                            {item.currentStock} {item.unit}
+                                        </span>
+                                    </td>
+                                    <td className="p-4 text-center">
+                                        <div className="flex items-center justify-center gap-1 text-xs font-medium text-slate-600">
+                                            <TrendingUp size={14} className="text-emerald-500"/>
+                                            {item.salesCount} vendas
+                                        </div>
+                                    </td>
+                                    <td className="p-4 text-right bg-blue-50/30">
+                                        <span className="text-lg font-black text-blue-700">
+                                            {item.suggestedQty.toFixed(2)} <span className="text-xs font-normal text-slate-400">{item.unit}</span>
+                                        </span>
+                                    </td>
+                                    <td className="p-4 text-right font-mono font-bold text-slate-700">
+                                        R$ {item.estimatedCost.toFixed(2)}
+                                    </td>
+                                </tr>
+                            ))}
+                            {suggestions.length === 0 && (
+                                <tr>
+                                    <td colSpan={5} className="p-10 text-center text-slate-400">
+                                        <AlertTriangle size={32} className="mx-auto mb-2 opacity-20"/>
+                                        <p>Estoque saudável! Nenhum item precisa de reposição urgente.</p>
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     );
