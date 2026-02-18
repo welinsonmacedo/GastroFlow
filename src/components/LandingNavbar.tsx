@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 // @ts-ignore
 import { Link, useLocation } from 'react-router-dom';
-import { ChefHat, Menu, X, LogIn, MessageCircle } from 'lucide-react';
+import { ChefHat, Menu, X, MessageCircle } from 'lucide-react';
 
 export const LandingNavbar: React.FC = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -49,9 +49,6 @@ export const LandingNavbar: React.FC = () => {
 
             {/* Desktop Actions */}
             <div className="hidden md:flex gap-4">
-              <Link to="/login-owner" className="text-slate-700 hover:text-green-600 px-3 py-2 font-bold text-sm transition-colors flex items-center gap-2">
-                <LogIn size={18} /> Área do Cliente
-              </Link>
               <button 
                 onClick={openWhatsApp}
                 className="bg-slate-900 text-white px-6 py-2.5 rounded-xl font-bold text-sm hover:bg-slate-800 transition-all flex items-center gap-2 shadow-lg shadow-slate-900/20"
@@ -72,14 +69,6 @@ export const LandingNavbar: React.FC = () => {
         {/* Mobile Menu Dropdown */}
         {isMobileMenuOpen && (
           <div className="md:hidden absolute top-20 left-0 w-full bg-white border-b shadow-xl animate-fade-in flex flex-col p-4 gap-4 z-50">
-             <Link 
-                to="/login-owner" 
-                className="bg-green-50 text-green-700 px-4 py-3 rounded-lg font-bold text-center flex items-center justify-center gap-2 border border-green-100"
-                onClick={() => setIsMobileMenuOpen(false)}
-             >
-                <LogIn size={18} /> Acessar Área do Cliente
-             </Link>
-             <hr className="border-slate-100" />
              <button onClick={() => handleNavClick('features')} className="text-slate-600 font-medium p-2 hover:bg-gray-50 rounded text-left">Funcionalidades</button>
              <button onClick={() => handleNavClick('modules')} className="text-slate-600 font-medium p-2 hover:bg-gray-50 rounded text-left">Módulos de Gestão</button>
              <button onClick={() => handleNavClick('pricing')} className="text-slate-600 font-medium p-2 hover:bg-gray-50 rounded text-left">Planos e Preços</button>
