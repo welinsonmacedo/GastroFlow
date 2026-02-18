@@ -7,7 +7,7 @@ import { useUI } from '../../context/UIContext';
 import { Button } from '../../components/Button';
 import { ProductFormModal } from '../../components/modals/ProductFormModal';
 import { Product } from '../../types';
-import { Plus, GripVertical, Eye, EyeOff, Trash2, Tag, Search, Utensils } from 'lucide-react';
+import { Plus, GripVertical, Eye, EyeOff, Trash2, Tag, Search, Utensils, Edit } from 'lucide-react';
 
 export const AdminProducts: React.FC = () => {
   const { state: menuState, updateProduct, deleteProduct } = useMenu();
@@ -26,6 +26,11 @@ export const AdminProducts: React.FC = () => {
 
   const handleOpenAdd = () => {
       setEditingProduct(null);
+      setIsModalOpen(true);
+  };
+
+  const handleEdit = (product: Product) => {
+      setEditingProduct(product);
       setIsModalOpen(true);
   };
 
@@ -131,9 +136,11 @@ export const AdminProducts: React.FC = () => {
                                 <div className="font-bold text-blue-600">R$ {product.price.toFixed(2)}</div>
                             </div>
                             <div className="flex gap-1 border-l pl-3 ml-2 shrink-0">
-                                {/* Apenas Botão de Visibilidade e Excluir */}
                                 <button onClick={() => updateProduct({...product, isVisible: !product.isVisible})} className={`p-2 rounded-lg transition-colors ${product.isVisible ? 'text-green-600 hover:bg-green-50' : 'text-gray-400 hover:bg-gray-100'}`} title={product.isVisible ? "Ocultar do Cliente" : "Mostrar no Menu"}>
                                     {product.isVisible ? <Eye size={18}/> : <EyeOff size={18}/>}
+                                </button>
+                                <button onClick={() => handleEdit(product)} className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg transition-colors" title="Editar Produto">
+                                    <Edit size={18}/>
                                 </button>
                                 <button onClick={() => showConfirm({ title: 'Remover do Cardápio', message: 'O item continuará no estoque, mas não aparecerá mais no menu.', onConfirm: () => deleteProduct(product.id) })} className="p-2 text-red-400 hover:bg-red-50 rounded-lg transition-colors" title="Excluir da Lista">
                                     <Trash2 size={18}/>

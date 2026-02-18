@@ -58,7 +58,7 @@ interface OrderContextType {
   deleteTable: (tableId: string) => Promise<void>;
   openTable: (tableId: string, customerName: string, accessCode: string) => Promise<void>;
   closeTable: (tableId: string) => Promise<void>;
-  callWaiter: (tableId: string) => Promise<void>;
+  callWaiter: (tableId: string, reason?: string) => Promise<void>;
   resolveCall: (callId: string) => Promise<void>;
   unlockAudio: () => void;
 }
@@ -114,7 +114,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               localDispatch({ type: 'SET_ORDERS', orders: mappedOrders });
           }
 
-          if (callsRes.data) localDispatch({ type: 'SET_CALLS', calls: callsRes.data.map(c => ({ id: c.id, tableId: c.table_id, status: c.status, timestamp: new Date(c.created_at) })) });
+          if (callsRes.data) localDispatch({ type: 'SET_CALLS', calls: callsRes.data.map(c => ({ id: c.id, tableId: c.table_id, status: c.status, timestamp: new Date(c.created_at), reason: c.reason })) });
       } catch (e) {
           console.error("Erro ao buscar dados:", e);
       }
@@ -269,7 +269,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           case 'DELETE_TABLE': await supabase.from('restaurant_tables').delete().eq('id', action.tableId); fetchData(); break;
           case 'OPEN_TABLE': await supabase.from('restaurant_tables').update({ status: 'OCCUPIED', customer_name: action.customerName, access_code: action.accessCode }).eq('id', action.tableId); fetchData(); break;
           case 'CLOSE_TABLE': await supabase.from('restaurant_tables').update({ status: 'AVAILABLE', customer_name: null, access_code: null }).eq('id', action.tableId); fetchData(); break;
-          case 'CALL_WAITER': await supabase.from('service_calls').insert({ tenant_id: tenantId, table_id: action.tableId, status: 'PENDING' }); fetchData(); break;
+          case 'CALL_WAITER': await supabase.from('service_calls').insert({ tenant_id: tenantId, table_id: action.tableId, status: 'PENDING', reason: action.reason }); fetchData(); break;
           case 'RESOLVE_WAITER_CALL': await supabase.from('service_calls').update({ status: 'RESOLVED' }).eq('id', action.callId); fetchData(); break;
           case 'UNLOCK_AUDIO': localDispatch({ type: 'UNLOCK_AUDIO' }); break;
       }
@@ -283,7 +283,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         deleteTable: async (id) => dispatch({type: 'DELETE_TABLE', tableId: id}),
         openTable: async (id, name, code) => dispatch({type: 'OPEN_TABLE', tableId: id, customerName: name, accessCode: code}),
         closeTable: async (id) => dispatch({type: 'CLOSE_TABLE', tableId: id}),
-        callWaiter: async (id) => dispatch({type: 'CALL_WAITER', tableId: id}),
+        callWaiter: async (id, reason) => dispatch({type: 'CALL_WAITER', tableId: id, reason}),
         resolveCall: async (id) => dispatch({type: 'RESOLVE_WAITER_CALL', callId: id}),
         unlockAudio: () => localDispatch({ type: 'UNLOCK_AUDIO' })
     }}>

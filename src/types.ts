@@ -252,6 +252,7 @@ export interface ServiceCall {
   tableId: string;
   status: 'PENDING' | 'RESOLVED';
   timestamp: Date;
+  reason?: string;
 }
 
 export interface RestaurantTheme {

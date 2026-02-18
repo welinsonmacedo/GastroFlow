@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 // @ts-ignore
 import { useParams } from 'react-router-dom';
@@ -11,8 +12,9 @@ import {
     ShoppingCart, ChefHat, Plus, Minus, X, Lock, 
     Receipt, Loader2, Bell, Search, Edit3, 
     Zap, Clock, Trash2, ArrowRight, 
-    Activity, AlertCircle, Utensils, Home
+    Activity, AlertCircle, Utensils, Home, CreditCard, Banknote
 } from 'lucide-react';
+import { Modal } from '../components/Modal';
 
 const OrderGraceTimer: React.FC<{ order: Order; graceMinutes: number; onCancel: (id: string) => void }> = ({ order, graceMinutes, onCancel }) => {
     const [timeLeft, setTimeLeft] = useState(0);
@@ -78,6 +80,10 @@ export const ClientApp: React.FC = () => {
     const [modalNotes, setModalNotes] = useState('');
     const [drinkTiming, setDrinkTiming] = useState<'IMMEDIATE' | 'WITH_FOOD'>('IMMEDIATE');
     const [selectedExtraIds, setSelectedExtraIds] = useState<string[]>([]);
+    
+    // Estado para Modal de Pagamento
+    const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+    const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('');
 
     const table = orderState.tables.find(t => t.id === tableId);
     const theme = state.theme;
@@ -90,7 +96,7 @@ export const ClientApp: React.FC = () => {
             case 'none': return 'rounded-none';
             case 'sm': return 'rounded-sm';
             case 'md': return 'rounded-md';
-            case 'lg': return 'rounded-2xl'; // Nosso padrão "arredondado"
+            case 'lg': return 'rounded-2xl'; 
             case 'full': return 'rounded-3xl';
             default: return 'rounded-2xl';
         }
@@ -98,9 +104,9 @@ export const ClientApp: React.FC = () => {
     
     const getFontFamily = (font?: string) => {
         switch(font) {
-            case 'Roboto': return 'font-roboto'; // Requer configuração no index.html/css
+            case 'Roboto': return 'font-roboto'; 
             case 'Playfair Display': return 'font-serif';
-            case 'Montserrat': return 'font-sans'; // Ajustar conforme imports reais
+            case 'Montserrat': return 'font-sans'; 
             default: return 'font-sans';
         }
     };
@@ -118,6 +124,20 @@ export const ClientApp: React.FC = () => {
             setSelectedExtraIds([]);
         }
     }, [selectedProduct]);
+
+    // Filtra adicionais compatíveis com o produto selecionado
+    const compatibleExtras = useMemo(() => {
+        if (!selectedProduct) return [];
+        return menuState.products.filter(p => 
+            p.isExtra && 
+            p.isVisible &&
+            (
+                !p.targetCategories || 
+                p.targetCategories.length === 0 || 
+                p.targetCategories.includes(selectedProduct.category)
+            )
+        );
+    }, [selectedProduct, menuState.products]);
 
     // Lógica para organizar categorias
     const sortedCategories = useMemo(() => {
@@ -150,11 +170,35 @@ export const ClientApp: React.FC = () => {
 
     const handleCallWaiter = () => {
         if (!table) return;
+        
+        // Se estiver na tela de Conta, abre modal de pagamento
+        if (view === 'BILL') {
+            setIsPaymentModalOpen(true);
+            return;
+        }
+
+        // Caso contrário, chamada padrão
         orderDispatch({ type: 'CALL_WAITER', tableId: table.id });
         setWaiterCalled(true);
         showAlert({ 
             title: "Garçom Chamado", 
             message: "Sua solicitação foi enviada. Logo alguém virá lhe atender.", 
+            type: 'SUCCESS' 
+        });
+    };
+
+    const handleRequestBill = async () => {
+        if (!table || !selectedPaymentMethod) return;
+        
+        const method = state.businessInfo?.paymentMethods?.find(pm => pm.id === selectedPaymentMethod);
+        const reason = `Conta: ${method?.name || 'Não informado'}`;
+        
+        await orderDispatch({ type: 'CALL_WAITER', tableId: table.id, reason });
+        setIsPaymentModalOpen(false);
+        setWaiterCalled(true);
+        showAlert({ 
+            title: "Conta Solicitada", 
+            message: `O garçom foi notificado que você deseja pagar com ${method?.name}.`, 
             type: 'SUCCESS' 
         });
     };
@@ -356,7 +400,7 @@ export const ClientApp: React.FC = () => {
                                                     <div className="flex justify-between items-end mt-3">
                                                         <span className="font-black text-lg" style={{ color: theme.primaryColor }}>R$ {product.price.toFixed(2)}</span>
                                                         <div 
-                                                            className={`w-8 h-8 flex items-center justify-center text-white shadow-md transition-all group-hover:scale-110 ${radiusClass === 'rounded-full' || radiusClass === 'rounded-2xl' || radiusClass === 'rounded-3xl' ? 'rounded-full' : 'rounded-lg'}`} 
+                                                            className={`w-8 h-8 flex items-center justify-center text-white shadow-md transition-all group-hover:scale-110 ${radiusClass === 'rounded-3xl' ? 'rounded-full' : 'rounded-lg'}`} 
                                                             style={{ 
                                                                 backgroundColor: isOutlineBtn ? 'transparent' : theme.primaryColor,
                                                                 border: isOutlineBtn ? `2px solid ${theme.primaryColor}` : 'none',
@@ -500,7 +544,7 @@ export const ClientApp: React.FC = () => {
                                     onClick={handleCallWaiter} 
                                     className={`w-full py-3 bg-white border border-emerald-200 text-emerald-600 font-black text-sm uppercase shadow-sm active:scale-95 transition-all flex items-center justify-center gap-2 ${radiusClass}`}
                                 >
-                                    <Bell size={16} /> Chamar Garçom
+                                    <Bell size={16} /> Chamar Garçom / Pedir Conta
                                 </button>
                             </div>
                         </div>
@@ -567,7 +611,7 @@ export const ClientApp: React.FC = () => {
                     </div>
                 )}
 
-                {/* MODAL ADD TO CART (ATUALIZADO) */}
+                {/* MODAL ADD TO CART (ATUALIZADO COM ADICIONAIS) */}
                 {selectedProduct && (
                     <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 animate-fade-in">
                         <div className={`bg-white shadow-2xl w-full max-w-sm overflow-hidden flex flex-col max-h-[90vh] ${radiusClass}`}>
@@ -604,17 +648,15 @@ export const ClientApp: React.FC = () => {
                                     </div>
                                 </div>
                                 
-                                {/* REGRAS DE NEGÓCIO: Bebidas não mostram adicionais, e adicionais apenas se houver vinculados */}
-                                {!isDrinkProduct(selectedProduct) && selectedProduct.linkedExtraIds && selectedProduct.linkedExtraIds.length > 0 && (
+                                {/* LÓGICA DE ADICIONAIS REIMPLEMENTADA */}
+                                {compatibleExtras.length > 0 && !isDrinkProduct(selectedProduct) && (
                                     <div className="border-t border-b border-gray-100 py-6 space-y-3">
                                         <label className="block text-xs font-black text-gray-400 uppercase tracking-wider flex items-center gap-1"><Plus size={12} className="text-green-500"/> Adicionais</label>
                                         <div className="space-y-2">
-                                            {selectedProduct.linkedExtraIds.map(id => {
-                                                const extra = menuState.products.find(p => p.id === id);
-                                                if (!extra) return null;
-                                                const isSelected = selectedExtraIds.includes(id);
+                                            {compatibleExtras.map(extra => {
+                                                const isSelected = selectedExtraIds.includes(extra.id);
                                                 return (
-                                                    <div key={id} onClick={() => setSelectedExtraIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id])} className={`flex items-center justify-between p-4 border-2 transition-all cursor-pointer ${radiusClass} ${isSelected ? 'bg-orange-50 border-orange-400' : 'bg-gray-50 border-transparent hover:border-gray-200'}`}>
+                                                    <div key={extra.id} onClick={() => setSelectedExtraIds(prev => prev.includes(extra.id) ? prev.filter(i => i !== extra.id) : [...prev, extra.id])} className={`flex items-center justify-between p-4 border-2 transition-all cursor-pointer ${radiusClass} ${isSelected ? 'bg-orange-50 border-orange-400' : 'bg-gray-50 border-transparent hover:border-gray-200'}`}>
                                                         <span className="text-sm font-black text-slate-700">{extra.name}</span>
                                                         <span className="text-xs font-bold text-slate-400">+ R$ {extra.price.toFixed(2)}</span>
                                                     </div>
@@ -669,6 +711,35 @@ export const ClientApp: React.FC = () => {
                  <NavButton id="BILL" icon={Receipt} label="Conta" />
                  <NavButton id="CART" icon={ShoppingCart} label="Cesta" badge={cart.length} />
             </div>
+
+            {/* Modal de Pagamento */}
+            <Modal 
+                isOpen={isPaymentModalOpen} 
+                onClose={() => setIsPaymentModalOpen(false)} 
+                title="Pedir a Conta" 
+                variant="dialog" 
+                maxWidth="sm"
+            >
+                <div className="space-y-4">
+                    <p className="text-gray-500 text-sm text-center">Como deseja realizar o pagamento?</p>
+                    <div className="grid grid-cols-2 gap-3">
+                        {(state.businessInfo?.paymentMethods || []).filter(pm => pm.isActive).map(pm => (
+                            <button
+                                key={pm.id}
+                                onClick={() => setSelectedPaymentMethod(pm.id)}
+                                className={`p-4 rounded-xl border-2 flex flex-col items-center gap-2 transition-all ${selectedPaymentMethod === pm.id ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-gray-100 hover:bg-gray-50'}`}
+                            >
+                                {pm.type === 'CASH' && <Banknote size={24}/>}
+                                {pm.type === 'CREDIT' && <CreditCard size={24}/>}
+                                {pm.type === 'DEBIT' && <CreditCard size={24}/>}
+                                {pm.type === 'PIX' && <Zap size={24}/>}
+                                <span className="text-xs font-bold uppercase">{pm.name}</span>
+                            </button>
+                        ))}
+                    </div>
+                    <Button onClick={handleRequestBill} disabled={!selectedPaymentMethod} className="w-full py-4 text-lg font-black shadow-lg">Confirmar Solicitação</Button>
+                </div>
+            </Modal>
         </div>
     );
 };

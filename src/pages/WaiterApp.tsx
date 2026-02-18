@@ -8,7 +8,7 @@ import { useUI } from '../context/UIContext';
 import { TableStatus, Product, OrderStatus, ProductType } from '../types';
 import { Button } from '../components/Button';
 import { WaiterProductModal, OpenTableModal, TableActionsModal } from '../components/modals/WaiterModals';
-import { Bell, Search, ShoppingCart, ArrowLeft, Utensils, Trash2, Clock, CheckCircle, ChevronUp, ChevronDown, Zap, RefreshCcw, Lock, List, Grid, History, AlertTriangle, PackageX, CheckCheck, Check, Plus, Minus } from 'lucide-react';
+import { Bell, Search, ShoppingCart, ArrowLeft, Utensils, Trash2, Clock, CheckCircle, ChevronUp, ChevronDown, Zap, RefreshCcw, Lock, List, Grid, History, AlertTriangle, PackageX, CheckCheck, Check, Plus, Minus, CreditCard, Banknote } from 'lucide-react';
 import { Modal } from '../components/Modal';
 
 // Som de "Campainha" para Garçom
@@ -35,6 +35,7 @@ export const WaiterApp: React.FC = () => {
   // Confirmação de Chamado
   const [confirmCallId, setConfirmCallId] = useState<string | null>(null);
   const [callingTableNumber, setCallingTableNumber] = useState<number | null>(null);
+  const [callReason, setCallReason] = useState<string | null>(null); // Novo estado
 
   const [cart, setCart] = useState<{ product: Product; quantity: number; notes: string; extras?: Product[] }[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -119,6 +120,7 @@ export const WaiterApp: React.FC = () => {
           orderDispatch({ type: 'RESOLVE_WAITER_CALL', callId: confirmCallId });
           setConfirmCallId(null);
           setCallingTableNumber(null);
+          setCallReason(null);
           showAlert({ title: "Atendido", message: "Chamado finalizado.", type: 'SUCCESS' });
       }
   };
@@ -317,15 +319,27 @@ export const WaiterApp: React.FC = () => {
             {activeTab === 'TABLES' && (
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
                     {orderState.tables.map(table => {
-                        const hasCall = pendingCalls.find(c => c.tableId === table.id);
+                        const call = pendingCalls.find(c => c.tableId === table.id);
+                        const hasCall = !!call;
+                        const isBill = call?.reason?.toLowerCase().includes('conta');
+                        
                         const tableOrders = orderState.orders.filter(o => o.tableId === table.id && !o.isPaid && o.status !== 'CANCELLED');
                         const hasBufferedOrder = tableOrders.some(o => (new Date().getTime() - new Date(o.timestamp).getTime()) / 60000 < graceMinutes);
 
                         return (
-                            <div key={table.id} onClick={() => { if (hasCall) { setConfirmCallId(hasCall.id); setCallingTableNumber(table.number); } else if (table.status === TableStatus.AVAILABLE) { setSelectedTableForOpen(table.id); } else { setSelectedTableForAction(table.id); }}} className={`p-4 rounded-[2rem] shadow-sm border-4 flex flex-col items-center justify-between min-h-[140px] transition-all cursor-pointer relative active:scale-95 ${hasCall ? 'bg-red-500 border-red-200 text-white animate-pulse shadow-red-500/30' : (table.status === TableStatus.OCCUPIED ? 'bg-white border-blue-500 text-slate-800' : 'bg-gray-100 border-transparent text-slate-400 opacity-60')}`}>
-                                <div className="w-full flex justify-between items-start"><span className="text-[10px] font-black uppercase tracking-widest opacity-60">{hasCall ? 'CHAMANDO!' : (table.status === TableStatus.AVAILABLE ? 'LIVRE' : 'OCUPADA')}</span>{table.status === TableStatus.OCCUPIED && (<div className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-lg text-[10px] font-mono font-bold flex items-center gap-1"><Lock size={8}/> {table.accessCode}</div>)}</div>
+                            <div key={table.id} onClick={() => { if (hasCall) { setConfirmCallId(call!.id); setCallingTableNumber(table.number); setCallReason(call!.reason || null); } else if (table.status === TableStatus.AVAILABLE) { setSelectedTableForOpen(table.id); } else { setSelectedTableForAction(table.id); }}} className={`p-4 rounded-[2rem] shadow-sm border-4 flex flex-col items-center justify-between min-h-[140px] transition-all cursor-pointer relative active:scale-95 ${hasCall ? 'bg-red-500 border-red-200 text-white animate-pulse shadow-red-500/30' : (table.status === TableStatus.OCCUPIED ? 'bg-white border-blue-500 text-slate-800' : 'bg-gray-100 border-transparent text-slate-400 opacity-60')}`}>
+                                <div className="w-full flex justify-between items-start">
+                                    <span className="text-[10px] font-black uppercase tracking-widest opacity-60">
+                                        {hasCall ? (isBill ? 'PEDINDO CONTA' : 'CHAMANDO!') : (table.status === TableStatus.AVAILABLE ? 'LIVRE' : 'OCUPADA')}
+                                    </span>
+                                    {table.status === TableStatus.OCCUPIED && (<div className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-lg text-[10px] font-mono font-bold flex items-center gap-1"><Lock size={8}/> {table.accessCode}</div>)}
+                                </div>
                                 <div className={`text-5xl font-black tracking-tighter ${hasCall ? 'text-white' : 'text-slate-900'}`}>{table.number}</div>
-                                {hasCall && <Bell size={28} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-bounce" fill="white" />}
+                                {hasCall && (
+                                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-bounce">
+                                        {isBill ? <CreditCard size={32} color="white" /> : <Bell size={28} fill="white" />}
+                                    </div>
+                                )}
                                 {hasBufferedOrder && !hasCall && <div className="absolute top-4 right-4 text-blue-500 animate-spin"><Clock size={20} /></div>}
                                 <div className="w-full mt-2">{table.status === TableStatus.OCCUPIED && (<div className="bg-blue-50 px-3 py-1.5 rounded-xl text-[10px] font-black text-blue-600 border border-blue-100 truncate w-full text-center uppercase tracking-tight">{table.customerName || 'Cliente'}</div>)}</div>
                             </div>
@@ -442,15 +456,26 @@ export const WaiterApp: React.FC = () => {
 
         <Modal 
             isOpen={!!confirmCallId} 
-            onClose={() => { setConfirmCallId(null); setCallingTableNumber(null); }} 
+            onClose={() => { setConfirmCallId(null); setCallingTableNumber(null); setCallReason(null); }} 
             title="Atender Chamado?" 
             variant="dialog" 
             maxWidth="sm"
         >
             <div className="flex flex-col items-center text-center space-y-6">
-                <div className="bg-red-100 p-6 rounded-full text-red-600 animate-pulse"><Bell size={48} /></div>
-                <div><h3 className="text-2xl font-black text-slate-900 mb-1">Mesa {callingTableNumber}</h3><p className="text-gray-500 text-sm">O cliente solicitou a presença de um garçom.</p></div>
-                <div className="flex gap-3 w-full"><Button variant="secondary" onClick={() => { setConfirmCallId(null); setCallingTableNumber(null); }} className="flex-1">Cancelar</Button><Button onClick={handleResolveCall} className="flex-1 bg-red-600 hover:bg-red-700 text-white shadow-red-200">Confirmar</Button></div>
+                <div className="bg-red-100 p-6 rounded-full text-red-600 animate-pulse">
+                    {callReason?.toLowerCase().includes('conta') ? <CreditCard size={48} /> : <Bell size={48} />}
+                </div>
+                <div>
+                    <h3 className="text-2xl font-black text-slate-900 mb-1">Mesa {callingTableNumber}</h3>
+                    {callReason ? (
+                        <div className="bg-blue-50 text-blue-700 font-bold px-4 py-2 rounded-xl inline-block mt-2">
+                            {callReason}
+                        </div>
+                    ) : (
+                        <p className="text-gray-500 text-sm">O cliente solicitou a presença de um garçom.</p>
+                    )}
+                </div>
+                <div className="flex gap-3 w-full"><Button variant="secondary" onClick={() => { setConfirmCallId(null); setCallingTableNumber(null); setCallReason(null); }} className="flex-1">Cancelar</Button><Button onClick={handleResolveCall} className="flex-1 bg-red-600 hover:bg-red-700 text-white shadow-red-200">Confirmar</Button></div>
             </div>
         </Modal>
     </div>
