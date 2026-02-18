@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { useRestaurant } from '../context/RestaurantContext';
 import { useAuth } from '../context/AuthProvider';
 import { SystemModule } from '../types';
-import { ChefHat, Coffee, Truck, ShoppingBag, ArrowRight, LogOut, Grid, Briefcase, Settings, DollarSign, Store, Package } from 'lucide-react';
+import { ChefHat, Coffee, Truck, ShoppingBag, ArrowRight, LogOut, Grid, Briefcase, Settings, DollarSign, Store, Package, Users } from 'lucide-react';
 import { Button } from '../components/Button';
 
 const ModuleCard = ({ 
@@ -27,7 +27,6 @@ const ModuleCard = ({
         onClick={onClick}
         className="bg-white rounded-2xl p-5 shadow-lg border border-gray-100 cursor-pointer transform transition-all duration-300 hover:scale-[1.02] hover:shadow-xl hover:border-transparent group relative overflow-hidden h-full flex flex-col"
     >
-        {/* Hover Effect Background */}
         <div className={`absolute inset-0 opacity-0 group-hover:opacity-5 transition-opacity duration-500 ${colorClass.replace('text-', 'bg-')}`}></div>
         
         <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 shadow-md transition-transform group-hover:rotate-6 ${colorClass.replace('text-', 'bg-').replace('600', '100').replace('500', '100')} ${colorClass}`}>
@@ -48,36 +47,27 @@ export const ModuleSelector: React.FC = () => {
     const { logout, state: authState } = useAuth();
     const navigate = useNavigate();
 
-    const allowed = state.allowedModules || ['RESTAURANT', 'MANAGER', 'CONFIG', 'FINANCE', 'COMMERCE', 'INVENTORY'];
+    const allowed = state.allowedModules || ['RESTAURANT', 'MANAGER', 'CONFIG', 'FINANCE', 'COMMERCE', 'INVENTORY', 'HR'];
     const tenantName = state.theme.restaurantName;
 
     const handleSelect = (module: SystemModule) => {
         setActiveModule(module);
         
-        if (module === 'RESTAURANT') {
-            navigate('/restaurant'); 
-        } else if (module === 'MANAGER') {
-            navigate('/admin'); 
-        } else if (module === 'FINANCE') {
-            navigate('/finance'); 
-        } else if (module === 'CONFIG') {
-            navigate('/settings'); 
-        } else if (module === 'COMMERCE') {
-            navigate('/commerce'); 
-        } else if (module === 'INVENTORY') {
-            navigate('/inventory'); // Novo módulo
-        } else {
-            alert("Módulo em desenvolvimento.");
-        }
+        if (module === 'RESTAURANT') navigate('/restaurant'); 
+        else if (module === 'MANAGER') navigate('/admin'); 
+        else if (module === 'FINANCE') navigate('/finance'); 
+        else if (module === 'CONFIG') navigate('/settings'); 
+        else if (module === 'COMMERCE') navigate('/commerce'); 
+        else if (module === 'INVENTORY') navigate('/inventory');
+        else if (module === 'HR') navigate('/rh');
+        else alert("Módulo em desenvolvimento.");
     };
 
     return (
         <div className="min-h-screen bg-slate-900 flex flex-col relative overflow-hidden font-sans">
-            {/* Background Decoration */}
             <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-blue-600 rounded-full blur-[150px] opacity-10 translate-x-1/2 -translate-y-1/2"></div>
             <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-emerald-600 rounded-full blur-[150px] opacity-10 -translate-x-1/2 translate-y-1/2"></div>
 
-            {/* Header */}
             <header className="p-6 md:p-8 flex justify-between items-center relative z-10">
                 <div className="flex items-center gap-3">
                     <div className="bg-white/10 backdrop-blur-md p-2 rounded-xl border border-white/10">
@@ -103,91 +93,36 @@ export const ModuleSelector: React.FC = () => {
                 </div>
             </header>
 
-            {/* Main Content */}
             <main className="flex-1 flex flex-col items-center justify-center p-4 md:p-6 relative z-10">
                 <div className="text-center mb-8 max-w-2xl mx-auto">
-                    <h2 className="text-3xl md:text-4xl font-black text-white mb-4 tracking-tight">
-                        Escolha seu Ambiente
-                    </h2>
-                    <p className="text-slate-400 text-base">
-                        Selecione o módulo que deseja acessar agora.
-                    </p>
+                    <h2 className="text-3xl md:text-4xl font-black text-white mb-4 tracking-tight">Escolha seu Ambiente</h2>
+                    <p className="text-slate-400 text-base">Selecione o módulo que deseja acessar agora.</p>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4 max-w-6xl w-full">
-                    
                     {allowed.includes('RESTAURANT') && (
-                        <ModuleCard 
-                            type="RESTAURANT"
-                            title="Restaurante"
-                            desc="Salão, Mesas, KDS e Caixa Gastronômico."
-                            icon={ChefHat}
-                            colorClass="text-blue-600"
-                            onClick={() => handleSelect('RESTAURANT')}
-                        />
+                        <ModuleCard type="RESTAURANT" title="Restaurante" desc="Salão, Mesas, KDS e Caixa Gastronômico." icon={ChefHat} colorClass="text-blue-600" onClick={() => handleSelect('RESTAURANT')} />
                     )}
-
                     {(allowed.includes('COMMERCE') || authState.currentUser?.role === 'ADMIN') && (
-                        <ModuleCard 
-                            type="COMMERCE"
-                            title="Varejo"
-                            desc="PDV Rápido (Supermercado), Leitor de Código e Venda Balcão."
-                            icon={Store}
-                            colorClass="text-indigo-500"
-                            onClick={() => handleSelect('COMMERCE')}
-                        />
+                        <ModuleCard type="COMMERCE" title="Varejo" desc="PDV Rápido, Leitor de Código e Venda Balcão." icon={Store} colorClass="text-indigo-500" onClick={() => handleSelect('COMMERCE')} />
                     )}
-
                     {(allowed.includes('MANAGER') || authState.currentUser?.role === 'ADMIN') && (
-                        <ModuleCard 
-                            type="MANAGER"
-                            title="Gestor"
-                            desc="Backoffice Operacional. Cardápio e Mesas."
-                            icon={Briefcase}
-                            colorClass="text-purple-500"
-                            onClick={() => handleSelect('MANAGER')}
-                        />
+                        <ModuleCard type="MANAGER" title="Gestor" desc="Backoffice Operacional. Cardápio e Mesas." icon={Briefcase} colorClass="text-purple-500" onClick={() => handleSelect('MANAGER')} />
                     )}
-                    
                     {(allowed.includes('INVENTORY') || authState.currentUser?.role === 'ADMIN') && (
-                        <ModuleCard 
-                            type="INVENTORY"
-                            title="Estoque"
-                            desc="Insumos, Compras, Fornecedores e Fichas Técnicas."
-                            icon={Package}
-                            colorClass="text-orange-500"
-                            onClick={() => handleSelect('INVENTORY')}
-                        />
+                        <ModuleCard type="INVENTORY" title="Estoque" desc="Insumos, Compras e Fichas Técnicas." icon={Package} colorClass="text-orange-500" onClick={() => handleSelect('INVENTORY')} />
                     )}
-
+                    {(allowed.includes('HR') || authState.currentUser?.role === 'ADMIN') && (
+                        <ModuleCard type="HR" title="RH & Equipe" desc="Gestão de Ponto, Escalas e Pré-Folha." icon={Users} colorClass="text-pink-500" onClick={() => handleSelect('HR')} />
+                    )}
                     {(allowed.includes('FINANCE') || authState.currentUser?.role === 'ADMIN') && (
-                        <ModuleCard 
-                            type="FINANCE"
-                            title="Financeiro"
-                            desc="Fluxo de Caixa, DRE, Contas a Pagar e BI."
-                            icon={DollarSign}
-                            colorClass="text-emerald-500"
-                            onClick={() => handleSelect('FINANCE')}
-                        />
+                        <ModuleCard type="FINANCE" title="Financeiro" desc="Fluxo de Caixa, DRE e BI." icon={DollarSign} colorClass="text-emerald-500" onClick={() => handleSelect('FINANCE')} />
                     )}
-
                     {(allowed.includes('CONFIG') || authState.currentUser?.role === 'ADMIN') && (
-                        <ModuleCard 
-                            type="CONFIG"
-                            title="Configurações"
-                            desc="Dados da empresa, equipe e aparência."
-                            icon={Settings}
-                            colorClass="text-gray-500"
-                            onClick={() => handleSelect('CONFIG')}
-                        />
+                        <ModuleCard type="CONFIG" title="Configurações" desc="Dados da empresa e segurança." icon={Settings} colorClass="text-gray-500" onClick={() => handleSelect('CONFIG')} />
                     )}
-
                 </div>
             </main>
-            
-            <footer className="p-6 text-center text-slate-600 text-xs relative z-10">
-                &copy; {new Date().getFullYear()} Flux Eat Systems. Todos os módulos integrados.
-            </footer>
         </div>
     );
 };

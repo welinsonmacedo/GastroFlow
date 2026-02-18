@@ -30,13 +30,53 @@ export enum OrderStatus {
 
 export type OrderType = 'DINE_IN' | 'DELIVERY' | 'PDV';
 
-export type SystemModule = 'RESTAURANT' | 'SNACKBAR' | 'DISTRIBUTOR' | 'COMMERCE' | 'MANAGER' | 'CONFIG' | 'FINANCE' | 'INVENTORY';
+export type SystemModule = 'RESTAURANT' | 'SNACKBAR' | 'DISTRIBUTOR' | 'COMMERCE' | 'MANAGER' | 'CONFIG' | 'FINANCE' | 'INVENTORY' | 'HR';
 
 export type DeliveryPlatform = 'PHONE' | 'WHATSAPP' | 'IFOOD' | 'UBER_EATS' | 'RAPPI' | 'OTHER' | 'OWN_FLEET';
 
+// --- HR Types ---
+export type ContractType = 'CLT' | 'PJ' | 'TEMPORARY' | 'INTERN' | 'FREELANCE';
+export type EmployeeStatus = 'ACTIVE' | 'ON_LEAVE' | 'TERMINATED' | 'VACATION';
+
+export interface Shift {
+    id: string;
+    name: string;
+    startTime: string;
+    endTime: string;
+    breakMinutes: number;
+    toleranceMinutes: number;
+    nightShift: boolean;
+}
+
+export interface TimeEntry {
+    id: string;
+    staffId: string;
+    entryDate: Date;
+    clockIn?: Date;
+    breakStart?: Date;
+    breakEnd?: Date;
+    clockOut?: Date;
+    justification?: string;
+    status: 'PENDING' | 'APPROVED' | 'REJECTED';
+}
+
+export interface PayrollPreview {
+    staffId: string;
+    staffName: string;
+    baseSalary: number;
+    overtimeTotal: number;
+    absencesTotal: number;
+    addictionals: number;
+    benefits: number;
+    grossTotal: number;
+    discounts: number;
+    netTotal: number;
+    hoursWorked: number;
+}
+
 export interface DeliveryMethodConfig {
     id: string;
-    name: string; // ex: "Motoboy Próprio", "iFood"
+    name: string; 
     type: 'OWN' | 'APP' | 'PICKUP';
     feeType: 'FIXED' | 'PERCENTAGE';
     feeValue: number;
@@ -48,15 +88,15 @@ export interface DeliveryMethodConfig {
 
 export interface PaymentMethodConfig {
     id: string;
-    name: string; // ex: "Visa Crédito", "Master Débito"
+    name: string; 
     type: 'CREDIT' | 'DEBIT' | 'PIX' | 'CASH' | 'MEAL_VOUCHER';
-    feePercentage: number; // Taxa da maquininha (%)
+    feePercentage: number; 
     isActive: boolean;
 }
 
 export interface ExpenseCategory {
     id: string;
-    name: string; // ex: "Fornecedores", "Pessoal", "Aluguel"
+    name: string; 
 }
 
 export interface DeliveryInfo {
@@ -86,6 +126,7 @@ export interface PlanLimits {
     allowStaff?: boolean;
     allowTableMgmt?: boolean;
     allowCustomization?: boolean;
+    allowHR?: boolean;
 }
 
 export interface Plan {
@@ -135,7 +176,7 @@ export interface RestaurantTenant {
   joinedAt: Date;
   requestCount?: number;
   allowedModules?: SystemModule[]; 
-  allowedFeatures?: string[]; // Novo campo para abas específicas
+  allowedFeatures?: string[]; 
   businessInfo?: RestaurantBusinessInfo;
 }
 
@@ -147,6 +188,15 @@ export interface User {
   role: Role;
   pin: string; 
   allowedRoutes?: string[];
+  // RH Fields
+  department?: string;
+  hireDate?: Date;
+  contractType?: ContractType;
+  baseSalary?: number;
+  benefitsTotal?: number;
+  status?: EmployeeStatus;
+  phone?: string;
+  documentCpf?: string;
 }
 
 export interface SystemAccessLog {
@@ -156,8 +206,8 @@ export interface SystemAccessLog {
     last_seen_at: Date;
     logout_at?: Date;
     device_info?: string;
-    staff_name?: string; // Join
-    staff_role?: string; // Join
+    staff_name?: string; 
+    staff_role?: string; 
 }
 
 export interface SecurityIncident {
@@ -190,7 +240,7 @@ export interface InventoryItem {
     costPrice: number;
     salePrice: number;
     category?: string;
-    description?: string; // Novo Campo de Descrição
+    description?: string; 
     type: InventoryType;
     image?: string;
     recipe?: InventoryRecipeItem[];
@@ -317,12 +367,12 @@ export interface PurchaseTaxes {
 export interface PurchaseEntry {
     supplierId: string;
     invoiceNumber: string;
-    series?: string; // Nova Série
-    accessKey?: string; // Nova Chave
+    series?: string; 
+    accessKey?: string; 
     date: Date;
     items: PurchaseItemInput[];
     totalAmount: number;
-    taxes: PurchaseTaxes; // Novo objeto de impostos
+    taxes: PurchaseTaxes; 
     distributeTax: boolean;
     installments: PurchaseInstallment[];
 }

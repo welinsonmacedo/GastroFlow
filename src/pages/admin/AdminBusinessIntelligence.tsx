@@ -209,7 +209,8 @@ export const AdminBusinessIntelligence: React.FC = () => {
     // Alertas Inteligentes
     const alerts = [];
     if (executiveStats.cmvPercentage > 35) alerts.push({ type: 'danger', msg: `CMV Crítico: ${executiveStats.cmvPercentage.toFixed(1)}% (Meta: <35%)` });
-    if (executiveStats.growth < 0) alerts.push({ type: 'warning', msg: `Queda de receita: ${Math.abs(executiveStats.growth).toFixed(1)}% vs período anterior` });
+    // Added type cast to fix unknown type error when checking growth
+    if ((executiveStats.growth as number) < 0) alerts.push({ type: 'warning', msg: `Queda de receita: ${Math.abs(executiveStats.growth as number).toFixed(1)}% vs período anterior` });
     if (executiveStats.netResult < 0) alerts.push({ type: 'danger', msg: `Operação no prejuízo: R$ ${executiveStats.netResult.toFixed(2)}` });
 
     return (
@@ -245,7 +246,7 @@ export const AdminBusinessIntelligence: React.FC = () => {
                     <div className="flex bg-gray-100 p-1 rounded-xl">
                         <button onClick={() => setActiveTab('EXECUTIVE')} className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${activeTab === 'EXECUTIVE' ? 'bg-purple-600 text-white shadow-md' : 'text-gray-500 hover:text-gray-700'}`}>Executiva</button>
                         <button onClick={() => setActiveTab('PRODUCTS')} className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${activeTab === 'PRODUCTS' ? 'bg-blue-600 text-white shadow-md' : 'text-gray-500 hover:text-gray-700'}`}>Produtos</button>
-                        <button onClick={() => setActiveTab('FORECAST')} className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${activeTab === 'FORECAST' ? 'bg-orange-500 text-white shadow-md' : 'text-gray-500 hover:text-gray-700'}`}>Previsão</button>
+                        <button onClick={() => setActiveTab('FORECAST')} className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${activeTab === 'FORECAST' ? 'bg-orange-50 text-white shadow-md' : 'text-gray-500 hover:text-gray-700'}`}>Previsão</button>
                     </div>
                 </div>
             </div>
@@ -289,7 +290,7 @@ export const AdminBusinessIntelligence: React.FC = () => {
                             <p className="text-xs font-black text-gray-400 uppercase tracking-widest mb-1">Crescimento</p>
                             <div className={`flex items-center gap-2 text-2xl font-black ${executiveStats.growth >= 0 ? 'text-green-600' : 'text-red-500'}`}>
                                 {executiveStats.growth >= 0 ? <ArrowUpRight size={24}/> : <ArrowDownRight size={24}/>}
-                                {Math.abs(executiveStats.growth).toFixed(1)}%
+                                {Math.abs(executiveStats.growth as number).toFixed(1)}%
                             </div>
                             <p className="text-[10px] text-gray-400 mt-1 font-bold">vs. período anterior</p>
                         </div>
@@ -501,7 +502,8 @@ export const AdminBusinessIntelligence: React.FC = () => {
                         <div className="flex items-end justify-between h-64 gap-4 px-2">
                             {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map((day, idx) => {
                                 const val = efficiencyStats.dayRevenues[idx] || 0;
-                                const max = Math.max(...Object.values(efficiencyStats.dayRevenues)) || 1;
+                                // Added explicit number[] cast to fix spread argument unknown error
+                                const max = Math.max(...(Object.values(efficiencyStats.dayRevenues) as number[])) || 1;
                                 const height = (val / max) * 100;
                                 
                                 return (
@@ -512,7 +514,7 @@ export const AdminBusinessIntelligence: React.FC = () => {
                                              </div>
                                             <div 
                                                 className={`w-full rounded-t-xl transition-all duration-1000 ${height > 0 ? (height > 80 ? 'bg-gradient-to-t from-blue-600 to-blue-400' : 'bg-gradient-to-t from-blue-200 to-blue-100') : 'bg-gray-50'}`} 
-                                                style={{ height: `${Math.max(height, 2)}%` }}
+                                                style={{ height: `${Math.max(height as number, 2)}%` }}
                                             ></div>
                                         </div>
                                         <div className="bg-gray-50 w-full py-2 rounded-lg text-center">

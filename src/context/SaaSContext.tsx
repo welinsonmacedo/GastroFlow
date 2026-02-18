@@ -164,8 +164,22 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
                  name: p.name,
                  price: p.price,
                  period: p.period,
-                 features: p.features || [],
-                 limits: p.limits || { maxTables: 10, maxProducts: 30, maxStaff: 2, allowKds: false, allowCashier: false }, 
+                 features: p.features || [], // Garante array vazio
+                 // Garante objeto de limites com defaults
+                 limits: { 
+                     maxTables: p.limits?.maxTables ?? 10,
+                     maxProducts: p.limits?.maxProducts ?? 30,
+                     maxStaff: p.limits?.maxStaff ?? 2,
+                     allowKds: p.limits?.allowKds ?? false,
+                     allowCashier: p.limits?.allowCashier ?? false,
+                     allowReports: p.limits?.allowReports ?? false,
+                     allowInventory: p.limits?.allowInventory ?? false,
+                     allowPurchases: p.limits?.allowPurchases ?? false,
+                     allowExpenses: p.limits?.allowExpenses ?? false,
+                     allowStaff: p.limits?.allowStaff ?? true,
+                     allowTableMgmt: p.limits?.allowTableMgmt ?? true,
+                     allowCustomization: p.limits?.allowCustomization ?? true
+                 },
                  is_popular: p.is_popular,
                  button_text: p.button_text
              }));
@@ -179,7 +193,7 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
     let isMounted = true;
 
     if (state.isAuthenticated) {
-        const fetchTenants = async (retryCount = 0) => {
+        const fetchTenants = async () => {
             try {
                 const { data, error } = await supabase
                     .from('tenants')
@@ -242,38 +256,6 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [state.isAuthenticated]);
 
-  useEffect(() => {
-      if (!state.isAuthenticated) return;
-
-      const TIMEOUT_MS = 30 * 60 * 1000;
-      let timeoutId: any;
-
-      const handleLogout = async () => {
-          showAlert({
-              title: "Sessão Expirada",
-              message: "Sua sessão expirou por inatividade (30min). Por favor, faça login novamente.",
-              type: 'WARNING'
-          });
-          await supabase.auth.signOut();
-          dispatch({ type: 'LOGOUT_ADMIN' });
-      };
-
-      const resetTimer = () => {
-          if (timeoutId) clearTimeout(timeoutId);
-          timeoutId = setTimeout(handleLogout, TIMEOUT_MS);
-      };
-
-      const events = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'];
-      events.forEach(event => window.addEventListener(event, resetTimer));
-
-      resetTimer();
-
-      return () => {
-          if (timeoutId) clearTimeout(timeoutId);
-          events.forEach(event => window.removeEventListener(event, resetTimer));
-      };
-  }, [state.isAuthenticated, showAlert]);
-
   const dispatchWithSideEffects = async (action: SaaSAction) => {
     if (action.type === 'CREATE_TENANT') {
         try {
@@ -293,7 +275,7 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 plan: action.payload.plan,
                 status: 'ACTIVE',
                 theme_config: defaultTheme,
-                allowed_modules: ['RESTAURANT'] // Default module
+                allowed_modules: ['RESTAURANT'] 
             }).select().single();
 
             if (error) throw error;

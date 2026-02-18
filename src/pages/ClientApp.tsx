@@ -150,10 +150,11 @@ export const ClientApp: React.FC = () => {
             .map(p => p.category)
         ));
 
-        return categories.sort((a, b) => {
+        // Added explicit string type to sort params to fix 'localeCompare' unknown error
+        return categories.sort((a: any, b: any) => {
             if (a === 'Bebidas') return 1; 
             if (b === 'Bebidas') return -1;
-            return a.localeCompare(b);
+            return (a as string).localeCompare(b as string);
         });
     }, [menuState.products]);
 

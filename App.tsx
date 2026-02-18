@@ -149,7 +149,8 @@ const TenantNavigation = ({ isOpen, setIsOpen }: { isOpen: boolean, setIsOpen: (
         });
     };
 
-    const NavItem = ({ link }: { link: any }) => {
+    // Added optional key to props to fix list rendering type error
+    const NavItem = ({ link }: { link: any, key?: React.Key }) => {
         const isActive = location.pathname === link.to || (link.to !== '/admin' && location.pathname.startsWith(link.to));
         const isDashboardActive = link.to === '/admin' && location.pathname === '/admin';
         const finalActive = link.to === '/admin' ? isDashboardActive : isActive;
@@ -332,7 +333,7 @@ const App: React.FC = () => {
                         <Route path="/" element={<LandingPage />} />
                         <Route path="/register" element={<RegisterRestaurant />} />
                         <Route path="/login-owner" element={<OwnerLogin />} />
-                        <Route path="/privacy" element={<PrivacyPolicy />} />
+                        <Route path="/privacy" opacity-70 hover:opacity-100 transition-opacity z-10 element={<PrivacyPolicy />} />
                         <Route path="/terms" element={<TermsOfService />} />
                         <Route path="/sys-admin" element={<SaaSLogin />} /> 
                         <Route path="/dashboard" element={<ProtectedSaaSRoute><SuperAdminDashboard /></ProtectedSaaSRoute>} /> 

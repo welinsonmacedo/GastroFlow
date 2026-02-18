@@ -490,13 +490,15 @@ export const WaiterApp: React.FC = () => {
                                 </div>
                             )}
 
-                            {Object.entries(ordersByTable).map(([tblId, tableOrders]) => {
+                            {/* Added type cast [string, any] to handle 'unknown' issues during mapping */}
+                            {Object.entries(ordersByTable).map(([tblId, tableOrders]: [string, any]) => {
                                 const table = orderState.tables.find(t => t.id === tblId);
                                 const isExpanded = expandedTables.has(tblId);
-                                const totalItems = tableOrders.reduce((acc, o) => acc + o.items.length, 0);
+                                // Cast ensure proper reduce behavior on unknown types
+                                const totalItems = (tableOrders as any[]).reduce((acc, o) => acc + o.items.length, 0);
                                 
                                 // Verifica se há itens prontos para destaque
-                                const hasReadyItems = tableOrders.some(o => o.items.some(i => i.status === OrderStatus.READY));
+                                const hasReadyItems = (tableOrders as any[]).some(o => o.items.some((i: any) => i.status === OrderStatus.READY));
 
                                 return (
                                     <div key={tblId} className={`bg-white rounded-[2rem] shadow-sm border overflow-hidden transition-all ${hasReadyItems ? 'border-emerald-400 shadow-emerald-100' : 'border-gray-100'}`}>
@@ -525,12 +527,12 @@ export const WaiterApp: React.FC = () => {
                                         {/* Conteúdo Expandido (Pedidos) */}
                                         {isExpanded && (
                                             <div className="p-2 bg-gray-50/50 space-y-3">
-                                                {tableOrders.map(order => {
+                                                {(tableOrders as any[]).map(order => {
                                                     const foodReady = hasReadyKitchenFood(order.items);
                                                     
                                                     // Filtragem interna: Não mostra itens entregues na lista ativa
-                                                    const visibleItems = order.items.filter(i => i.status !== OrderStatus.DELIVERED);
-                                                    const isAllReady = visibleItems.length > 0 && visibleItems.every(item => canDeliverItem(item, foodReady));
+                                                    const visibleItems = order.items.filter((i: any) => i.status !== OrderStatus.DELIVERED);
+                                                    const isAllReady = visibleItems.length > 0 && visibleItems.every((item: any) => canDeliverItem(item, foodReady));
 
                                                     if (visibleItems.length === 0) return null; // Não renderiza card vazio
 
@@ -548,7 +550,7 @@ export const WaiterApp: React.FC = () => {
                                                                 )}
                                                             </div>
                                                             <div className="space-y-2">
-                                                                {visibleItems.map(item => {
+                                                                {visibleItems.map((item: any) => {
                                                                     const isDeliverable = canDeliverItem(item, foodReady);
                                                                     const isDrinkWithFood = item.notes?.includes('[COM COMIDA]');
                                                                     const isImmediate = item.notes?.includes('[IMEDIATA]');
@@ -623,7 +625,7 @@ export const WaiterApp: React.FC = () => {
                                             <div className="px-3 py-1 rounded-xl text-[10px] font-black uppercase bg-blue-100 text-blue-700">Entregue</div>
                                         </div>
                                         <div className="space-y-2">
-                                            {order.items.map(item => (
+                                            {order.items.map((item: any) => (
                                                 <div key={item.id} className="flex justify-between items-center text-sm p-2 rounded-xl bg-gray-50">
                                                     <span className="font-bold text-slate-700">{item.quantity}x {item.productName}</span>
                                                     <CheckCircle size={16} className="text-blue-400"/>

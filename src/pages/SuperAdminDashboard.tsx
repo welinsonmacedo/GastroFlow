@@ -42,13 +42,19 @@ export const SuperAdminDashboard: React.FC = () => {
       allowStaff: true, allowTableMgmt: true, allowCustomization: true
   });
 
-  // Derived Metrics
+  // Derived Metrics (Fixed MRR Calculation)
   const filteredTenants = state.tenants.filter(t => t.name.toLowerCase().includes(filter.toLowerCase()) || t.ownerName.toLowerCase().includes(filter.toLowerCase()));
   const activeTenants = state.tenants.filter(t => t.status === 'ACTIVE').length;
+  
   const mrr = state.tenants.reduce((acc, t) => {
     if (t.status === 'INACTIVE') return acc;
     const plan = state.plans.find(p => p.key === t.plan);
-    const price = plan ? parseFloat(plan.price.replace('R$', '').replace(',','.').trim()) : 0;
+    if (!plan) return acc;
+    
+    // Remove tudo que não é número ou vírgula/ponto, substitui vírgula por ponto
+    const cleanPrice = plan.price.replace(/[^\d,.-]/g, '').replace(',','.');
+    const price = parseFloat(cleanPrice);
+    
     return acc + (isNaN(price) ? 0 : price);
   }, 0);
 
@@ -72,14 +78,24 @@ export const SuperAdminDashboard: React.FC = () => {
   
   const handleEditPlan = (plan: Plan) => {
       setEditingPlan(plan);
-      setEditingFeatures(plan.features.join('\n'));
-      setEditingLimits(plan.limits || { maxTables: -1, maxProducts: -1, maxStaff: -1, allowKds: true, allowCashier: true, allowReports: true, allowInventory: true, allowPurchases: true, allowExpenses: true, allowStaff: true, allowTableMgmt: true, allowCustomization: true });
+      setEditingFeatures((plan.features || []).join('\n'));
+      // Garante que limits tenha valores padrão se vier null do banco
+      setEditingLimits(plan.limits || { 
+          maxTables: -1, maxProducts: -1, maxStaff: -1, 
+          allowKds: true, allowCashier: true, allowReports: true, 
+          allowInventory: true, allowPurchases: true, allowExpenses: true, 
+          allowStaff: true, allowTableMgmt: true, allowCustomization: true 
+      });
   };
   
   const handleSavePlan = (e: React.FormEvent) => {
       e.preventDefault();
       if(editingPlan) {
-          const updatedPlan: Plan = { ...editingPlan, features: editingFeatures.split('\n').filter(l => l.trim() !== ''), limits: editingLimits };
+          const updatedPlan: Plan = { 
+              ...editingPlan, 
+              features: editingFeatures.split('\n').filter(l => l.trim() !== ''), 
+              limits: editingLimits 
+          };
           dispatch({ type: 'UPDATE_PLAN_DETAILS', plan: updatedPlan });
           setEditingPlan(null);
           showAlert({ title: "Sucesso", message: "Plano atualizado!", type: 'SUCCESS' });
@@ -124,6 +140,18 @@ export const SuperAdminDashboard: React.FC = () => {
                             </h1>
                             <p className="text-gray-500">Bem-vindo, {state.adminName}</p>
                         </div>
+                        
+                        {activeView === 'RESTAURANTS' && (
+                           <div className="flex items-center gap-4">
+                              <div className="bg-white p-4 rounded-xl shadow-sm border flex items-center gap-4">
+                                  <div className="bg-green-100 p-2 rounded-full text-green-600"><Building2 size={20} /></div>
+                                  <div>
+                                      <p className="text-xs text-gray-500 uppercase font-bold">Ativos</p>
+                                      <p className="text-xl font-bold">{activeTenants}</p>
+                                  </div>
+                              </div>
+                           </div>
+                       )}
                     </header>
                 </div>
            )}
@@ -134,30 +162,143 @@ export const SuperAdminDashboard: React.FC = () => {
                <div className="p-8 pt-0 overflow-y-auto h-[calc(100vh-120px)] print:p-0 print:h-auto print:overflow-visible">
                     {/* --- VIEW: CONTRACTS --- */}
                     {activeView === 'CONTRACTS' && (
-                        /* ... (Conteúdo do Contrato mantido, resumido aqui para brevidade do diff) ... */
                         <div className="flex flex-col h-full print:block items-center">
                             <div className="bg-white p-6 rounded-xl shadow-sm border mb-6 print:hidden w-full max-w-4xl">
+                                <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2"><Settings size={18} /> Configuração do Documento</h2>
                                 <div className="flex gap-4 items-end">
                                     <div className="flex-1">
                                         <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Selecione o Cliente</label>
                                         <div className="relative">
-                                            <select className="w-full border p-3 rounded-lg appearance-none bg-gray-50 font-medium outline-none focus:ring-2 focus:ring-blue-500" value={selectedContractTenantId} onChange={(e) => setSelectedContractTenantId(e.target.value)}>
-                                                <option value="">-- Selecione --</option>
-                                                {state.tenants.map(t => <option key={t.id} value={t.id}>{t.name} ({t.ownerName})</option>)}
+                                            <select 
+                                                className="w-full border p-3 rounded-lg appearance-none bg-gray-50 font-medium outline-none focus:ring-2 focus:ring-blue-500"
+                                                value={selectedContractTenantId}
+                                                onChange={(e) => {
+                                                    setSelectedContractTenantId(e.target.value);
+                                                    setIsEditingContract(false);
+                                                }}
+                                            >
+                                                <option value="">-- Selecione um restaurante --</option>
+                                                {state.tenants.map(t => (
+                                                    <option key={t.id} value={t.id}>{t.name} ({t.ownerName})</option>
+                                                ))}
                                             </select>
+                                            <ChevronDown className="absolute right-3 top-3.5 text-gray-400 pointer-events-none" size={16}/>
                                         </div>
                                     </div>
-                                    <Button onClick={() => window.print()} disabled={!selectedContractTenantId} className="h-[46px] px-6"><Printer size={18} className="mr-2"/> Imprimir</Button>
+                                    <Button 
+                                        onClick={() => setIsEditingContract(!isEditingContract)} 
+                                        variant={isEditingContract ? "secondary" : "outline"}
+                                        disabled={!selectedContractTenantId} 
+                                        className={`h-[46px] px-6 transition-all ${isEditingContract ? 'bg-blue-100 text-blue-700 border-blue-200' : ''}`}
+                                    >
+                                        {isEditingContract ? <RotateCcw size={18} className="mr-2"/> : <Edit3 size={18} className="mr-2"/>} 
+                                        {isEditingContract ? 'Encerrar Edição' : 'Editar Texto'}
+                                    </Button>
+                                    <Button onClick={() => window.print()} disabled={!selectedContractTenantId} className="h-[46px] px-6">
+                                        <Printer size={18} className="mr-2"/> Imprimir Contrato
+                                    </Button>
                                 </div>
+                                {isEditingContract && <p className="text-xs text-blue-600 mt-2 font-bold animate-pulse">Modo de edição ativo. Clique no texto abaixo para alterar.</p>}
                             </div>
-                            {selectedContractTenant && (
-                                <div className="bg-white shadow-2xl mx-auto p-[15mm] w-[210mm] min-h-[297mm] text-xs leading-normal print:w-full print:shadow-none">
-                                    <h1 className="text-lg font-bold uppercase mb-1 text-center">Contrato de Licenciamento de Software (SaaS)</h1>
-                                    <p className="text-center text-[10px] mb-6">Nº {selectedContractTenant.id.slice(0,8).toUpperCase()}</p>
-                                    <div className="space-y-4">
-                                        <p><strong>CONTRATANTE:</strong> {selectedContractTenant.name.toUpperCase()}...</p>
-                                        <p><strong>PLANO:</strong> {selectedContractTenant.plan}...</p>
+
+                            {selectedContractTenant ? (
+                                <div 
+                                    key={selectedContractTenantId}
+                                    contentEditable={isEditingContract}
+                                    suppressContentEditableWarning={true}
+                                    className={`bg-white shadow-2xl p-[2cm] max-w-[21cm] min-h-[29.7cm] mx-auto text-justify text-sm leading-relaxed print:shadow-none print:w-full print:max-w-none print:mx-0 print:p-0 transition-all ${isEditingContract ? 'ring-4 ring-blue-200 outline-none cursor-text' : ''}`}
+                                >
+                                    <div className="text-center mb-8">
+                                        <h1 className="text-xl font-bold uppercase mb-2">Contrato de Licenciamento de Software (SaaS)</h1>
+                                        <p className="text-xs text-gray-500 font-bold">Nº {selectedContractTenant.id.slice(0,8).toUpperCase()}/{new Date().getFullYear()}</p>
                                     </div>
+
+                                    <div className="space-y-6">
+                                        <section>
+                                            <h3 className="font-bold uppercase mb-2 text-xs text-gray-900 border-b border-gray-300 pb-1">1. Identificação das Partes</h3>
+                                            <p className="mb-2">
+                                                <strong>CONTRATADA:</strong> <strong>FLUX EAT TECNOLOGIA LTDA</strong>, inscrita no CNPJ sob o nº 00.000.000/0001-00, com sede em Uberlândia/MG, doravante denominada simplesmente "CONTRATADA".
+                                            </p>
+                                            <p>
+                                                <strong>CONTRATANTE:</strong> <strong>{selectedContractTenant.businessInfo?.restaurantName || selectedContractTenant.name.toUpperCase()}</strong>, 
+                                                {selectedContractTenant.businessInfo?.cnpj ? ` inscrita no CNPJ nº ${selectedContractTenant.businessInfo.cnpj},` : ''} 
+                                                representada neste ato por <strong>{selectedContractTenant.ownerName.toUpperCase()}</strong>,
+                                                {selectedContractTenant.businessInfo?.address?.street ? ` localizada em ${selectedContractTenant.businessInfo.address.street}, ${selectedContractTenant.businessInfo.address.number || ''} - ${selectedContractTenant.businessInfo.address.city || ''}/${selectedContractTenant.businessInfo.address.state || ''},` : ''}
+                                                com e-mail de contato <strong>{selectedContractTenant.email}</strong>.
+                                            </p>
+                                        </section>
+
+                                        <section>
+                                            <h3 className="font-bold uppercase mb-2 text-xs text-gray-900 border-b border-gray-300 pb-1">2. Objeto</h3>
+                                            <p>
+                                                O presente contrato tem como objeto o licenciamento de uso do software <strong>Flux Eat</strong>, na modalidade SaaS (Software as a Service), para gestão de restaurante, incluindo módulos de cardápio digital, KDS e controle financeiro, conforme as especificações do plano contratado.
+                                            </p>
+                                        </section>
+
+                                        <section>
+                                            <h3 className="font-bold uppercase mb-2 text-xs text-gray-900 border-b border-gray-300 pb-1">3. Plano e Escopo de Uso</h3>
+                                            <p>
+                                                A CONTRATANTE opta pelo plano <strong>{selectedContractPlan?.name.toUpperCase() || selectedContractTenant.plan}</strong>.
+                                                A licença de software concede direito de uso das seguintes funcionalidades e limites operacionais:
+                                            </p>
+                                            
+                                            <ul className="list-disc pl-5 my-3 text-xs space-y-1">
+                                                {(selectedContractPlan?.features || []).map((feature, idx) => (
+                                                    <li key={idx}>{feature}</li>
+                                                ))}
+
+                                                {selectedContractPlan?.limits && (
+                                                    <>
+                                                        <li><strong>Capacidade de Mesas:</strong> {selectedContractPlan.limits.maxTables === -1 ? 'Ilimitada' : `${selectedContractPlan.limits.maxTables} mesas simultâneas`}</li>
+                                                        <li><strong>Contas de Staff (Usuários):</strong> {selectedContractPlan.limits.maxStaff === -1 ? 'Ilimitadas' : `Até ${selectedContractPlan.limits.maxStaff} usuários`}</li>
+                                                        
+                                                        {/* Modules */}
+                                                        <li><strong>Módulo KDS (Cozinha):</strong> {selectedContractPlan.limits.allowKds ? 'Incluso' : 'Não contratado'}</li>
+                                                        <li><strong>Frente de Caixa (PDV):</strong> {selectedContractPlan.limits.allowCashier ? 'Incluso' : 'Não contratado'}</li>
+                                                        <li><strong>Controle de Estoque:</strong> {selectedContractPlan.limits.allowInventory ? 'Incluso' : 'Não contratado'}</li>
+                                                        <li><strong>Gestão Financeira:</strong> {selectedContractPlan.limits.allowExpenses ? 'Incluso' : 'Não contratado'}</li>
+                                                    </>
+                                                )}
+                                            </ul>
+
+                                            <p className="mt-2">
+                                                Pela licença de uso, a CONTRATANTE pagará à CONTRATADA o valor mensal de <strong>{selectedContractPlan?.price || 'A DEFINIR'}</strong>.
+                                                Os pagamentos deverão ser efetuados via [Boleto/Pix/Cartão] até o dia [Dia] de cada mês.
+                                            </p>
+                                        </section>
+
+                                        <section>
+                                            <h3 className="font-bold uppercase mb-2 text-xs text-gray-900 border-b border-gray-300 pb-1">4. Vigência e Cancelamento</h3>
+                                            <p>
+                                                Este contrato entra em vigor na data de sua assinatura e vigorará por prazo indeterminado. Qualquer uma das partes poderá rescindir este contrato mediante aviso prévio de 30 (trinta) dias, sem incidência de multa, desde que não haja pendências financeiras.
+                                            </p>
+                                        </section>
+
+                                        <section className="mt-12 pt-12">
+                                            <p className="mb-12">
+                                                E, por estarem assim justas e contratadas, as partes assinam o presente instrumento.
+                                            </p>
+                                            <p className="text-right mb-16">
+                                                Uberlândia/MG, {new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })}.
+                                            </p>
+
+                                            <div className="flex justify-between gap-8 pt-8">
+                                                <div className="flex-1 border-t border-black text-center pt-2">
+                                                    <p className="font-bold text-xs uppercase">Flux Eat Tecnologia</p>
+                                                    <p className="text-[10px] text-gray-500">Contratada</p>
+                                                </div>
+                                                <div className="flex-1 border-t border-black text-center pt-2">
+                                                    <p className="font-bold text-xs uppercase">{selectedContractTenant.ownerName}</p>
+                                                    <p className="text-[10px] text-gray-500">Contratante</p>
+                                                </div>
+                                            </div>
+                                         </section>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="flex-1 flex flex-col items-center justify-center text-gray-400 border-2 border-dashed border-gray-200 rounded-xl bg-gray-50 print:hidden min-h-[400px]">
+                                    <FileText size={48} className="mb-4 opacity-20"/>
+                                    <p>Selecione um cliente acima para gerar o contrato.</p>
                                 </div>
                             )}
                         </div>
@@ -194,16 +335,62 @@ export const SuperAdminDashboard: React.FC = () => {
                         </>
                     )}
 
-                    {/* --- VIEW: PLANS (Conteúdo Simplificado para não repetir tudo) --- */}
+                    {/* --- VIEW: PLANS --- */}
                     {activeView === 'PLANS' && (
                         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
                             {state.plans.map(plan => (
                                 <div key={plan.id} className="bg-white rounded-xl shadow-sm border p-6">
-                                    <h3 className="font-bold text-lg">{plan.name}</h3>
-                                    <p className="text-2xl font-black text-blue-600">{plan.price}</p>
-                                    <Button variant="outline" onClick={() => handleEditPlan(plan)} className="w-full mt-4">Editar</Button>
+                                    {editingPlan?.id === plan.id ? (
+                                        <form onSubmit={handleSavePlan} className="space-y-4">
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div><label className="text-xs font-bold text-gray-500 uppercase">Nome</label><input className="w-full border p-2 rounded text-sm" value={editingPlan.name} onChange={e => setEditingPlan({...editingPlan, name: e.target.value})} /></div>
+                                                <div><label className="text-xs font-bold text-gray-500 uppercase">Preço</label><input className="w-full border p-2 rounded text-sm" value={editingPlan.price} onChange={e => setEditingPlan({...editingPlan, price: e.target.value})} /></div>
+                                            </div>
+                                            <div className="bg-gray-50 p-3 rounded-lg border border-gray-200 space-y-3">
+                                                <h4 className="text-xs font-bold text-gray-700 flex items-center gap-1"><Settings size={12}/> Limites</h4>
+                                                <div className="grid grid-cols-3 gap-2">
+                                                    <div><label className="text-[10px] font-bold text-gray-500">Max Mesas</label><input type="number" className="w-full border p-1 rounded text-sm" value={editingLimits.maxTables} onChange={(e) => setEditingLimits({...editingLimits, maxTables: parseInt(e.target.value)})} /></div>
+                                                    <div><label className="text-[10px] font-bold text-gray-500">Max Prod</label><input type="number" className="w-full border p-1 rounded text-sm" value={editingLimits.maxProducts} onChange={(e) => setEditingLimits({...editingLimits, maxProducts: parseInt(e.target.value)})} /></div>
+                                                    <div><label className="text-[10px] font-bold text-gray-500">Max Staff</label><input type="number" className="w-full border p-1 rounded text-sm" value={editingLimits.maxStaff} onChange={(e) => setEditingLimits({...editingLimits, maxStaff: parseInt(e.target.value)})} /></div>
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-2 text-xs">
+                                                    <label className="flex items-center gap-2"><input type="checkbox" checked={editingLimits.allowKds} onChange={(e) => setEditingLimits({...editingLimits, allowKds: e.target.checked})} /> KDS</label>
+                                                    <label className="flex items-center gap-2"><input type="checkbox" checked={editingLimits.allowCashier} onChange={(e) => setEditingLimits({...editingLimits, allowCashier: e.target.checked})} /> Frente de Caixa</label>
+                                                    <label className="flex items-center gap-2"><input type="checkbox" checked={editingLimits.allowInventory} onChange={(e) => setEditingLimits({...editingLimits, allowInventory: e.target.checked})} /> Estoque</label>
+                                                    <label className="flex items-center gap-2"><input type="checkbox" checked={editingLimits.allowExpenses} onChange={(e) => setEditingLimits({...editingLimits, allowExpenses: e.target.checked})} /> Financeiro</label>
+                                                </div>
+                                            </div>
+                                            <div className="flex gap-2 mt-auto">
+                                                <Button type="button" variant="secondary" onClick={() => setEditingPlan(null)} className="flex-1">Cancelar</Button>
+                                                <Button type="submit" className="flex-1">Salvar</Button>
+                                            </div>
+                                        </form>
+                                    ) : (
+                                        <>
+                                            <h3 className="font-bold text-lg">{plan.name}</h3>
+                                            <p className="text-2xl font-black text-blue-600">{plan.price}</p>
+                                            <ul className="space-y-1 my-4 text-xs text-gray-600">
+                                                {(plan.features || []).map((f, i) => <li key={i}>• {f}</li>)}
+                                            </ul>
+                                            <Button variant="outline" onClick={() => handleEditPlan(plan)} className="w-full mt-4">Editar</Button>
+                                        </>
+                                    )}
                                 </div>
                             ))}
+                        </div>
+                    )}
+
+                    {/* --- VIEW: FINANCIAL --- */}
+                    {activeView === 'FINANCIAL' && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 animate-fade-in">
+                            <div className="bg-white p-6 rounded-xl shadow-sm border border-l-4 border-l-green-500">
+                                <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">MRR Estimado</p>
+                                <p className="text-3xl font-black text-gray-800">R$ {mrr.toFixed(2)}</p>
+                            </div>
+                            <div className="bg-white p-6 rounded-xl shadow-sm border border-l-4 border-l-blue-500">
+                                <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">Clientes Ativos</p>
+                                <p className="text-3xl font-black text-gray-800">{activeTenants}</p>
+                            </div>
                         </div>
                     )}
 

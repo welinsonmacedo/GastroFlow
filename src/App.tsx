@@ -8,7 +8,7 @@ import { InventoryProvider } from './context/InventoryContext';
 import { FinanceProvider } from './context/FinanceContext'; 
 import { MenuProvider } from './context/MenuContext'; 
 import { OrderProvider } from './context/OrderContext'; 
-import { StaffProvider } from './context/StaffContext'; 
+import { StaffProvider, useStaff } from './context/StaffContext'; 
 import { SaaSProvider, useSaaS } from './context/SaaSContext';
 import { UIProvider, useUI } from './context/UIContext';
 import { ClientApp } from './pages/ClientApp';
@@ -17,7 +17,8 @@ import { FinanceDashboard } from './pages/FinanceDashboard';
 import { SettingsDashboard } from './pages/SettingsDashboard';
 import { RestaurantDashboard } from './pages/RestaurantDashboard';
 import { CommerceDashboard } from './pages/CommerceDashboard'; 
-import { InventoryDashboard } from './pages/InventoryDashboard'; // Novo
+import { InventoryDashboard } from './pages/InventoryDashboard';
+import { StaffDashboard } from './pages/StaffDashboard'; // Novo
 import { SuperAdminDashboard } from './pages/SuperAdminDashboard';
 import { LandingPage } from './pages/LandingPage';
 import { Login } from './pages/Login';
@@ -31,8 +32,8 @@ import { ModuleSelector } from './pages/ModuleSelector';
 
 import { InstallPWA } from './components/InstallPWA';
 import { SecurityGuard } from './components/SecurityGuard'; 
-import { PwaGuard } from './components/PwaGuard'; // Guardião de PWA
-import { CookieConsent } from './components/CookieConsent'; // LGPD
+import { PwaGuard } from './components/PwaGuard'; 
+import { CookieConsent } from './components/CookieConsent'; 
 import { Lock } from 'lucide-react';
 import { Role } from './types';
 import { getTenantSlug } from './utils/tenant';
@@ -40,7 +41,7 @@ import { getTenantSlug } from './utils/tenant';
 interface ProtectedRouteProps {
     allowedRoles?: Role[];
     requiredRoute?: string;
-    requiredFeature?: 'allowKds' | 'allowCashier' | 'allowReports' | 'allowInventory';
+    requiredFeature?: 'allowKds' | 'allowCashier' | 'allowReports' | 'allowInventory' | 'allowHR';
 }
 
 const ProtectedRestaurantRoute = ({ children, allowedRoles, requiredRoute, requiredFeature }: PropsWithChildren<ProtectedRouteProps>) => {
@@ -53,7 +54,6 @@ const ProtectedRestaurantRoute = ({ children, allowedRoles, requiredRoute, requi
         return <Navigate to={`/login${window.location.search}`} replace />;
     }
 
-    // Se não tiver módulo ativo selecionado, manda pro seletor
     if (!restState.activeModule && restState.allowedModules.length > 0) {
          return <Navigate to="/modules" replace />;
     }
@@ -118,28 +118,16 @@ const TenantApp = () => {
                         <Route path="/login" element={<Login />} />
                         <Route path="/manual" element={<ManualPage />} />
                         
-                        {/* App do Cliente (Cardápio) */}
                         <Route path="/client/table/:tableId" element={<ClientApp />} />
-                        
-                        {/* Seletor de Módulos */}
                         <Route path="/modules" element={<ModuleSelector />} />
                         
-                        {/* Módulo Restaurante (Operacional) */}
                         <Route path="/restaurant/*" element={<ProtectedRestaurantRoute requiredRoute="/restaurant"><RestaurantDashboard /></ProtectedRestaurantRoute>} />
-                        
-                        {/* Módulo Comércio (Varejo) */}
                         <Route path="/commerce/*" element={<ProtectedRestaurantRoute requiredRoute="/commerce"><CommerceDashboard /></ProtectedRestaurantRoute>} />
-                        
-                        {/* Módulo Estoque (Novo) */}
                         <Route path="/inventory/*" element={<ProtectedRestaurantRoute requiredRoute="/inventory" requiredFeature="allowInventory"><InventoryDashboard /></ProtectedRestaurantRoute>} />
+                        <Route path="/rh/*" element={<ProtectedRestaurantRoute requiredRoute="/rh" requiredFeature="allowHR"><StaffDashboard /></ProtectedRestaurantRoute>} />
 
-                        {/* Painel Administrativo (Gestor) */}
                         <Route path="/admin/*" element={<ProtectedRestaurantRoute allowedRoles={[Role.ADMIN]} requiredRoute="/admin"><AdminDashboard /></ProtectedRestaurantRoute>} />
-
-                        {/* Painel de Configurações */}
                         <Route path="/settings/*" element={<ProtectedRestaurantRoute allowedRoles={[Role.ADMIN]} requiredRoute="/settings"><SettingsDashboard /></ProtectedRestaurantRoute>} />
-
-                        {/* Painel Financeiro */}
                         <Route path="/finance/*" element={<ProtectedRestaurantRoute allowedRoles={[Role.ADMIN]} requiredRoute="/finance"><FinanceDashboard /></ProtectedRestaurantRoute>} />
                         
                         <Route path="*" element={<Navigate to={`/login${window.location.search}`} replace />} />
