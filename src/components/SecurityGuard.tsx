@@ -4,6 +4,7 @@ import { ShieldAlert, RefreshCcw, Lock } from 'lucide-react';
 
 export const SecurityGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isLocked, setIsLocked] = useState(false);
+  const [lockReason, setLockReason] = useState('Modo Desenvolvedor Detectado');
 
   useEffect(() => {
     // 1. Bloquear Botão Direito (Menu de Contexto)
@@ -25,13 +26,50 @@ export const SecurityGuard: React.FC<{ children: React.ReactNode }> = ({ childre
       ) {
         e.preventDefault();
         e.stopPropagation();
+        setLockReason('Tentativa de Acesso ao DevTools');
         setIsLocked(true); // Trava o sistema imediatamente
       }
     };
 
-    // 3. Tenta detectar se o DevTools foi aberto via redimensionamento abrupto (Opcional/Heurística)
-    // Esta parte é mais sensível e pode causar falsos positivos, focamos nos atalhos que são a porta de entrada.
-    
+    // 3. Detectar Automação (WebDriver)
+    if (navigator.webdriver) {
+        setLockReason('Software de Automação Detectado');
+        setIsLocked(true);
+    }
+
+    // 4. Detectar Injeção de Extensões via MutationObserver
+    const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+            mutation.addedNodes.forEach((node) => {
+                if (node.nodeType === 1) { // ELEMENT_NODE
+                    const el = node as HTMLElement;
+                    // Verifica se o elemento inserido tem origem em extensões
+                    // Extensões costumam injetar scripts, iframes ou estilos com src/href apontando para chrome-extension:// ou moz-extension://
+                    const html = el.outerHTML.toLowerCase();
+                    if (html.includes('chrome-extension://') || html.includes('moz-extension://')) {
+                        setLockReason('Uso de Extensões Proibido');
+                        setIsLocked(true);
+                    }
+                    
+                    // Verifica atributos específicos de extensões conhecidas (ex: Grammarly, LastPass injetam atributos no body ou inputs)
+                    if (el.hasAttribute('data-gramm') || el.hasAttribute('data-lastpass-root')) {
+                        // Opcional: Bloquear ou apenas limpar. Para "Proibir", bloqueamos.
+                        setLockReason('Extensão de Terceiros Detectada');
+                        setIsLocked(true);
+                    }
+                }
+            });
+        });
+    });
+
+    // Observa o documento inteiro por injeções
+    observer.observe(document.documentElement, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ['src', 'href', 'style', 'class'] // Filtra atributos que extensões costumam alterar
+    });
+
     // Adiciona os Event Listeners
     document.addEventListener('contextmenu', handleContextMenu);
     window.addEventListener('keydown', handleKeyDown);
@@ -46,6 +84,7 @@ export const SecurityGuard: React.FC<{ children: React.ReactNode }> = ({ childre
     return () => {
       document.removeEventListener('contextmenu', handleContextMenu);
       window.removeEventListener('keydown', handleKeyDown);
+      observer.disconnect();
       clearInterval(clearConsole);
     };
   }, []);
@@ -61,13 +100,13 @@ export const SecurityGuard: React.FC<{ children: React.ReactNode }> = ({ childre
         
         <div className="bg-white/10 p-6 rounded-2xl max-w-2xl border border-white/10 backdrop-blur-sm">
             <h2 className="text-xl font-bold mb-2 flex items-center justify-center gap-2">
-                <Lock size={20} /> Modo Desenvolvedor Detectado
+                <Lock size={20} /> Violação de Segurança
             </h2>
             <p className="text-lg md:text-xl font-medium leading-relaxed opacity-90">
-              O sistema detectou uma tentativa de acesso às ferramentas de desenvolvedor ou uso de comandos restritos.
+              {lockReason}.
             </p>
             <p className="mt-4 text-sm font-bold bg-black/20 p-2 rounded text-white/80">
-              Todos os dados sensíveis foram ocultados e a sessão foi suspensa por segurança.
+              O sistema detectou ferramentas não autorizadas. Desabilite extensões e ferramentas de desenvolvedor para continuar.
             </p>
         </div>
 
