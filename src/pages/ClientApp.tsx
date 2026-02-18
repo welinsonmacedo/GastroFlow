@@ -10,9 +10,9 @@ import { Button } from '../components/Button';
 import { TableStatus, Product, Order } from '../types';
 import { 
     ShoppingCart, ChefHat, Plus, Minus, X, Lock, 
-    Receipt, Loader2, Bell, ArrowLeft, Search, Edit3, 
+    Receipt, Loader2, Bell, Search, Edit3, 
     Zap, Clock, Trash2, ArrowRight, 
-    Activity, AlertCircle, RefreshCcw, Utensils
+    Activity, AlertCircle, Utensils, Home
 } from 'lucide-react';
 
 const OrderGraceTimer: React.FC<{ order: Order; graceMinutes: number; onCancel: (id: string) => void }> = ({ order, graceMinutes, onCancel }) => {
@@ -70,7 +70,6 @@ export const ClientApp: React.FC = () => {
 
     const [cart, setCart] = useState<{ product: Product; quantity: number; notes: string; extras?: Product[] }[]>([]);
     const [view, setView] = useState<'MENU' | 'CART' | 'STATUS' | 'BILL'>('MENU');
-    const [isRefreshing, setIsRefreshing] = useState(false);
     const [accessPin, setAccessPin] = useState('');
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [waiterCalled, setWaiterCalled] = useState(false);
@@ -124,11 +123,6 @@ export const ClientApp: React.FC = () => {
         });
         return grouped;
     };
-
-    const handleManualRefresh = useCallback(() => {
-        setIsRefreshing(true);
-        setTimeout(() => setIsRefreshing(false), 800);
-    }, []);
 
     const handleCallWaiter = () => {
         if (!table) return;
@@ -244,64 +238,62 @@ export const ClientApp: React.FC = () => {
         );
     }
 
-    return (
-        <div className="h-full overflow-y-auto pb-32 font-sans" style={{ backgroundColor: theme.backgroundColor, color: theme.fontColor }}>
-            {/* HEADER */}
-            <header className="bg-white/70 backdrop-blur-xl shadow-sm sticky top-0 z-40 border-b border-white/20">
-                <div className="flex justify-between items-center p-4 max-w-2xl mx-auto">
-                    <div>
-                        {view !== 'MENU' ? (
-                            <button onClick={() => setView('MENU')} className="flex items-center gap-3 text-slate-800 font-black uppercase tracking-tighter text-sm bg-gray-100/50 px-4 py-2 rounded-2xl active:scale-95 transition-all">
-                                <ArrowLeft size={20} /> Voltar
-                            </button>
-                        ) : (
-                            <div className="flex items-center gap-3">
-                                <div className="bg-white p-1 rounded-2xl shadow-md border border-gray-100 shrink-0">
-                                    {theme.logoUrl ? <img src={theme.logoUrl} className="h-10 w-10 object-contain rounded-xl" /> : <ChefHat size={32} style={{ color: theme.primaryColor }} />}
-                                </div>
-                                <div>
-                                    <h1 className="font-black text-xl leading-none uppercase tracking-tighter text-slate-800">{theme.restaurantName}</h1>
-                                    <p className="text-[10px] text-emerald-500 font-black uppercase tracking-widest mt-1">MESA #{table.number}</p>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                    <div className="flex gap-2">
-                        {/* Botão Chamar Garçom (Sino) no Header */}
-                        <button 
-                            onClick={handleCallWaiter} 
-                            className={`p-3 rounded-2xl bg-gray-100 text-blue-600 hover:bg-blue-50 active:scale-90 transition-all ${waiterCalled ? 'animate-pulse bg-blue-100' : ''}`}
-                            title="Chamar Garçom"
-                        >
-                            <Bell size={20} fill={waiterCalled ? "currentColor" : "none"} />
-                        </button>
+    const NavButton = ({ id, icon: Icon, label, badge }: any) => {
+        const isActive = view === id;
+        return (
+            <button 
+                onClick={() => setView(id)}
+                className={`flex flex-col items-center justify-center w-full py-3 rounded-2xl transition-all duration-300 relative ${isActive ? 'bg-slate-900 text-white shadow-lg transform -translate-y-2' : 'text-gray-400 hover:bg-gray-100 hover:text-gray-600'}`}
+            >
+                <div className="relative">
+                    <Icon size={22} strokeWidth={isActive ? 2.5 : 2} />
+                    {badge > 0 && (
+                        <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[9px] font-black w-4 h-4 flex items-center justify-center rounded-full border border-white">
+                            {badge}
+                        </span>
+                    )}
+                </div>
+                <span className="text-[9px] font-bold uppercase mt-1 tracking-wider">{label}</span>
+            </button>
+        )
+    };
 
-                        <button onClick={handleManualRefresh} className={`p-3 rounded-2xl bg-gray-100 text-slate-600 transition-all ${isRefreshing ? 'animate-spin' : 'active:scale-90'}`}>
-                            <RefreshCcw size={20} />
-                        </button>
-                        <button onClick={() => setView('BILL')} className="p-3 rounded-2xl bg-gray-100 text-slate-600 hover:bg-gray-200 active:scale-90 transition-all">
-                            <Receipt size={24} />
-                        </button>
-                        <button onClick={() => setView('CART')} className="relative p-3 rounded-2xl bg-slate-900 text-white shadow-xl shadow-slate-900/20 active:scale-90 transition-all">
-                            <ShoppingCart size={24} />
-                            {cart.length > 0 && (
-                                <span className="absolute -top-1 -right-1 bg-emerald-500 text-white text-[10px] rounded-full w-6 h-6 flex items-center justify-center font-black border-4 border-white shadow-md">
-                                    {cart.length}
-                                </span>
-                            )}
-                        </button>
+    return (
+        <div className="h-full overflow-hidden font-sans flex flex-col" style={{ backgroundColor: theme.backgroundColor, color: theme.fontColor }}>
+            {/* HEADER SIMPLIFICADO */}
+            <header className="bg-white/80 backdrop-blur-xl shadow-sm sticky top-0 z-40 border-b border-white/20 shrink-0">
+                <div className="flex justify-between items-center p-4 max-w-2xl mx-auto">
+                    <div className="flex items-center gap-3">
+                        <div className="bg-white p-1 rounded-2xl shadow-md border border-gray-100 shrink-0">
+                            {theme.logoUrl ? <img src={theme.logoUrl} className="h-10 w-10 object-contain rounded-xl" /> : <ChefHat size={32} style={{ color: theme.primaryColor }} />}
+                        </div>
+                        <div>
+                            <h1 className="font-black text-lg leading-none uppercase tracking-tighter text-slate-800">{theme.restaurantName}</h1>
+                            <p className="text-[10px] text-emerald-500 font-black uppercase tracking-widest mt-0.5">MESA #{table.number}</p>
+                        </div>
                     </div>
+                    
+                    {/* Botão Chamar Garçom (Sino) no Header */}
+                    <button 
+                        onClick={handleCallWaiter} 
+                        className={`p-3 rounded-2xl bg-white border border-gray-100 shadow-sm text-blue-600 hover:bg-blue-50 active:scale-90 transition-all ${waiterCalled ? 'animate-pulse bg-blue-100 ring-2 ring-blue-200' : ''}`}
+                        title="Chamar Garçom"
+                    >
+                        <Bell size={20} fill={waiterCalled ? "currentColor" : "none"} />
+                    </button>
                 </div>
             </header>
 
-            <main className="p-4 max-w-2xl mx-auto min-h-[calc(100vh-160px)]">
+            {/* MAIN CONTENT - Com padding bottom extra para a nav bar flutuante */}
+            <main className="flex-1 overflow-y-auto p-4 pb-32 max-w-2xl mx-auto w-full custom-scrollbar">
                 {view === 'MENU' && (
-                    <div className="space-y-12 mt-4 animate-fade-in">
+                    <div className="space-y-8 animate-fade-in pt-2">
+                        {/* SEARCH BAR CORRIGIDO */}
                         <div className="relative group">
-                            <Search size={22} className="absolute left-5 top-4.5 text-gray-400 group-focus-within:text-emerald-500 transition-colors mt-0.5" />
+                            <Search size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-emerald-500 transition-colors pointer-events-none" />
                             <input 
-                                className="w-full bg-white border-2 border-transparent shadow-xl p-5 pl-14 rounded-[2rem] text-sm font-bold focus:bg-white focus:border-emerald-500 outline-none transition-all" 
-                                placeholder="Qual será sua escolha hoje?..." 
+                                className="w-full bg-white border border-gray-100 shadow-lg shadow-gray-200/50 p-4 pl-12 rounded-[1.5rem] text-sm font-bold focus:bg-white focus:border-emerald-500 focus:shadow-emerald-100 outline-none transition-all placeholder:text-gray-300" 
+                                placeholder="O que você deseja comer hoje?" 
                                 value={searchQuery} 
                                 onChange={e => setSearchQuery(e.target.value)} 
                             />
@@ -312,33 +304,32 @@ export const ClientApp: React.FC = () => {
                             if (items.length === 0) return null;
                             const isGrid = theme.viewMode === 'GRID';
                             return (
-                                <div key={category} className="space-y-6 animate-fade-in">
+                                <div key={category} className="space-y-4 animate-fade-in">
                                     <div className="flex items-center gap-4">
-                                        <h2 className="text-2xl font-black uppercase tracking-tighter text-slate-800 whitespace-nowrap">{category}</h2>
-                                        <span className="h-[2px] flex-1 bg-gray-100 rounded-full"></span>
+                                        <h2 className="text-xl font-black uppercase tracking-tighter text-slate-800 whitespace-nowrap">{category}</h2>
+                                        <div className="h-px flex-1 bg-gray-200 rounded-full"></div>
                                     </div>
-                                    <div className={isGrid ? "grid grid-cols-2 gap-5" : "flex flex-col gap-6"}>
+                                    <div className={isGrid ? "grid grid-cols-2 gap-4" : "flex flex-col gap-4"}>
                                         {items.map(product => (
                                             <div 
                                                 key={product.id} 
                                                 onClick={() => setSelectedProduct(product)} 
-                                                className={`bg-white rounded-[2.5rem] shadow-sm border border-gray-100 flex cursor-pointer hover:shadow-2xl transition-all active:scale-[0.98] group overflow-hidden ${isGrid ? 'flex-col' : 'flex-row p-4 gap-5'}`}
+                                                className={`bg-white rounded-[2rem] shadow-sm border border-gray-100 flex cursor-pointer hover:shadow-xl hover:border-emerald-100 transition-all active:scale-[0.98] group overflow-hidden ${isGrid ? 'flex-col' : 'flex-row p-3 gap-4'}`}
                                             >
-                                                <div className={`relative shrink-0 overflow-hidden bg-gray-50 ${isGrid ? 'w-full h-48' : 'w-24 h-24 sm:w-32 sm:h-32 rounded-3xl'}`}>
+                                                <div className={`relative shrink-0 overflow-hidden bg-gray-50 ${isGrid ? 'w-full h-40' : 'w-24 h-24 rounded-2xl'}`}>
                                                     <img src={product.image} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt={product.name} />
-                                                    {/* Preço removido da foto */}
                                                 </div>
-                                                <div className={`flex-1 flex flex-col justify-between ${isGrid ? 'p-6' : ''}`}>
-                                                    <div className="space-y-2">
-                                                        <h3 className="font-black text-slate-800 leading-none text-xl group-hover:text-emerald-600 transition-colors uppercase tracking-tighter">{product.name}</h3>
+                                                <div className={`flex-1 flex flex-col justify-between ${isGrid ? 'p-4 pt-2' : 'py-1 pr-1'}`}>
+                                                    <div className="space-y-1">
+                                                        <h3 className="font-black text-slate-800 leading-tight text-lg group-hover:text-emerald-700 transition-colors">{product.name}</h3>
                                                         {product.description && (
-                                                            <p className="text-xs text-gray-500 font-medium leading-relaxed line-clamp-3">{product.description}</p>
+                                                            <p className="text-[11px] text-gray-500 font-medium leading-relaxed line-clamp-2">{product.description}</p>
                                                         )}
                                                     </div>
-                                                    <div className="flex justify-between items-end mt-4">
-                                                        <span className="font-black text-2xl text-emerald-600 leading-none">R$ {product.price.toFixed(2)}</span>
-                                                        <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-xl shadow-emerald-200 transition-all hover:rotate-90" style={{ backgroundColor: theme.primaryColor }}>
-                                                            <Plus size={28} strokeWidth={3} />
+                                                    <div className="flex justify-between items-end mt-3">
+                                                        <span className="font-black text-lg text-emerald-600">R$ {product.price.toFixed(2)}</span>
+                                                        <div className="w-8 h-8 rounded-full flex items-center justify-center text-white shadow-md transition-all group-hover:bg-slate-900 bg-gray-200 group-hover:scale-110">
+                                                            <Plus size={16} strokeWidth={3} />
                                                         </div>
                                                     </div>
                                                 </div>
@@ -352,47 +343,49 @@ export const ClientApp: React.FC = () => {
                 )}
 
                 {view === 'CART' && (
-                    <div className="bg-white rounded-[3rem] shadow-2xl border border-gray-100 overflow-hidden animate-fade-in flex flex-col min-h-[70vh]">
-                        <div className="bg-gray-50/80 backdrop-blur-md p-8 border-b flex justify-between items-center">
-                            <div className="space-y-1">
-                                <h2 className="text-3xl font-black text-slate-800 uppercase tracking-tighter">Sua Cesta</h2>
-                                <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Itens Prontos para o Pedido</p>
+                    <div className="bg-white rounded-[2.5rem] shadow-xl border border-gray-100 overflow-hidden animate-fade-in flex flex-col min-h-[50vh]">
+                        <div className="bg-gray-50 p-6 border-b flex justify-between items-center">
+                            <div>
+                                <h2 className="text-2xl font-black text-slate-800 uppercase tracking-tighter">Sua Cesta</h2>
+                                <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest">Confira antes de pedir</p>
                             </div>
-                            <button onClick={() => setView('MENU')} className="bg-gray-200 text-slate-500 p-2 rounded-2xl hover:bg-red-50 hover:text-red-500 transition-all">
-                                <X size={28} />
-                            </button>
                         </div>
-                        <div className="p-8 flex-1 space-y-6">
+                        <div className="p-6 flex-1 space-y-4">
                             {cart.length === 0 ? (
-                                <div className="flex flex-col items-center justify-center h-80 space-y-4">
-                                    <div className="bg-gray-50 p-10 rounded-full">
-                                        <ShoppingCart size={80} className="opacity-10" />
+                                <div className="flex flex-col items-center justify-center py-20 space-y-4 text-center">
+                                    <div className="bg-gray-50 p-8 rounded-full">
+                                        <ShoppingCart size={48} className="text-gray-300" />
                                     </div>
-                                    <p className="font-black text-gray-300 uppercase tracking-widest text-sm">Cesta Vazia</p>
-                                    <Button onClick={() => setView('MENU')} variant="outline" className="rounded-2xl px-8 font-black uppercase text-xs">Acessar Cardápio</Button>
+                                    <p className="font-bold text-gray-400 text-sm">Sua cesta está vazia</p>
+                                    <Button onClick={() => setView('MENU')} variant="outline" className="rounded-xl px-6 text-xs font-bold uppercase">Voltar ao Cardápio</Button>
                                 </div>
                             ) : (
-                                <div className="space-y-6">
+                                <div className="space-y-4">
                                     {cart.map((item, idx) => (
-                                        <div key={idx} className="bg-gray-50 p-6 rounded-[2rem] relative group border-2 border-transparent hover:border-emerald-200 transition-all">
+                                        <div key={idx} className="bg-gray-50 p-4 rounded-2xl relative group border border-transparent hover:border-emerald-200 transition-all">
                                             <button 
                                                 onClick={() => setCart(prev => prev.filter((_, i) => i !== idx))} 
-                                                className="absolute -top-3 -right-3 bg-white text-red-500 p-2 rounded-full shadow-xl border border-red-50 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                className="absolute top-2 right-2 text-red-400 hover:text-red-600 p-2"
                                             >
-                                                <Trash2 size={18} />
+                                                <Trash2 size={16} />
                                             </button>
-                                            <div className="flex justify-between items-start mb-2">
-                                                <h4 className="font-black text-slate-800 text-xl tracking-tighter uppercase leading-tight">{item.quantity}x {item.product.name}</h4>
-                                                <span className="font-black text-emerald-600 text-lg">R$ {(item.product.price * item.quantity).toFixed(2)}</span>
+                                            <div className="flex justify-between items-start pr-8">
+                                                <h4 className="font-bold text-slate-800 text-base leading-tight">
+                                                    <span className="text-emerald-600 mr-2">{item.quantity}x</span> 
+                                                    {item.product.name}
+                                                </h4>
+                                            </div>
+                                            <div className="text-sm font-black text-slate-700 mt-1">
+                                                R$ {(item.product.price * item.quantity).toFixed(2)}
                                             </div>
                                             {item.extras?.map(ex => (
-                                                <div key={ex.id} className="text-[11px] font-black text-orange-600 uppercase flex items-center gap-1 pl-4 border-l-2 border-orange-200 mt-1">
-                                                    <Plus size={12} /> {ex.name} (+R$ {ex.price.toFixed(2)})
+                                                <div key={ex.id} className="text-[10px] font-bold text-orange-600 mt-1 flex items-center gap-1">
+                                                    <Plus size={8} /> {ex.name} (+R$ {ex.price.toFixed(2)})
                                                 </div>
                                             ))}
                                             {item.notes && (
-                                                <div className="mt-4 p-4 bg-white/50 rounded-2xl text-[11px] font-bold text-blue-600 border border-blue-100 flex items-start gap-2 italic">
-                                                    <Edit3 size={14} className="shrink-0 opacity-50" /> "{item.notes}"
+                                                <div className="mt-2 text-[10px] text-gray-500 italic bg-white p-2 rounded-lg border border-gray-100">
+                                                    Note: {item.notes}
                                                 </div>
                                             )}
                                         </div>
@@ -401,18 +394,18 @@ export const ClientApp: React.FC = () => {
                             )}
                         </div>
                         {cart.length > 0 && (
-                            <div className="bg-gray-50 p-10 border-t space-y-6 safe-area-bottom">
-                                <div className="flex justify-between items-center">
-                                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Subtotal Estimado</span>
-                                    <span className="text-5xl font-black text-slate-800 tracking-tighter leading-none">
+                            <div className="bg-slate-900 p-6 text-white">
+                                <div className="flex justify-between items-center mb-6">
+                                    <span className="text-xs font-bold text-slate-400 uppercase">Total Estimado</span>
+                                    <span className="text-3xl font-black">
                                         R$ {cart.reduce((acc, i) => acc + ((i.product.price + (i.extras?.reduce((s, e) => s + e.price, 0) || 0)) * i.quantity), 0).toFixed(2)}
                                     </span>
                                 </div>
                                 <button 
                                     onClick={handleConfirmOrder} 
-                                    className="w-full py-6 rounded-[2rem] text-white font-black text-2xl shadow-2xl shadow-emerald-500/30 transition-all hover:scale-[1.02] active:scale-95 bg-emerald-600 uppercase tracking-widest flex items-center justify-center gap-4"
+                                    className="w-full py-4 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-white font-black text-lg shadow-lg shadow-emerald-500/30 transition-all active:scale-95 uppercase tracking-widest flex items-center justify-center gap-2"
                                 >
-                                    Confirmar <ArrowRight size={28} strokeWidth={3} />
+                                    Enviar Pedido <ArrowRight size={20} />
                                 </button>
                             </div>
                         )}
@@ -420,31 +413,29 @@ export const ClientApp: React.FC = () => {
                 )}
 
                 {view === 'BILL' && (
-                    <div className="bg-white rounded-[3rem] shadow-2xl border border-gray-100 overflow-hidden animate-fade-in flex flex-col min-h-[70vh]">
-                        <div className="bg-slate-900 p-10 text-white flex justify-between items-end">
-                            <div className="space-y-1">
-                                <h2 className="text-3xl font-black uppercase tracking-tighter flex items-center gap-3">
-                                    <Receipt size={32} className="text-emerald-400" /> Sua Conta
-                                </h2>
-                                <p className="text-emerald-400/60 text-[10px] font-black uppercase tracking-widest">Mesa #{table.number} • {table.customerName}</p>
-                            </div>
+                    <div className="bg-white rounded-[2.5rem] shadow-xl border border-gray-100 overflow-hidden animate-fade-in flex flex-col min-h-[50vh]">
+                        <div className="bg-slate-900 p-8 text-white">
+                            <h2 className="text-2xl font-black uppercase tracking-tighter flex items-center gap-2">
+                                <Receipt size={24} className="text-emerald-400" /> Conta
+                            </h2>
+                            <p className="text-emerald-400/80 text-[10px] font-bold uppercase tracking-widest mt-1">Mesa #{table.number} • {table.customerName}</p>
                         </div>
-                        <div className="p-8 flex-1 overflow-y-auto custom-scrollbar">
-                            <div className="space-y-4 mb-10">
+                        <div className="p-6 flex-1 overflow-y-auto custom-scrollbar">
+                            <div className="space-y-4 mb-8">
                                 {tableOrders.flatMap(o => groupItems(o.items)).map((item, idx) => (
-                                    <div key={idx} className="border-b-2 border-dashed border-gray-50 pb-4">
-                                        <div className="flex justify-between items-center">
-                                            <div className="space-y-0.5">
-                                                <p className="text-slate-800 font-black uppercase tracking-tighter text-sm">{item.quantity}x {item.productName}</p>
-                                                {item.notes && <p className="text-[10px] text-gray-400 font-bold italic">{item.notes}</p>}
+                                    <div key={idx} className="border-b border-dashed border-gray-200 pb-3">
+                                        <div className="flex justify-between items-center text-sm">
+                                            <div className="font-bold text-slate-700">
+                                                <span className="text-xs text-slate-400 mr-2">{item.quantity}x</span>
+                                                {item.productName}
                                             </div>
-                                            <span className="font-black text-slate-900 text-sm">R$ {(item.productPrice * item.quantity).toFixed(2)}</span>
+                                            <span className="font-bold text-slate-900">R$ {(item.productPrice * item.quantity).toFixed(2)}</span>
                                         </div>
                                         {/* Adicionais agrupados */}
                                         {item.extras && item.extras.length > 0 && (
-                                            <div className="mt-2 pl-3 border-l-2 border-orange-200 space-y-1">
+                                            <div className="mt-1 pl-6 space-y-0.5">
                                                 {item.extras.map((ex: any, i: number) => (
-                                                    <div key={i} className="flex justify-between text-xs text-orange-600 font-bold">
+                                                    <div key={i} className="flex justify-between text-[10px] text-orange-600 font-medium">
                                                         <span>+ {ex.quantity}x {ex.productName}</span>
                                                         <span>R$ {(ex.productPrice * ex.quantity).toFixed(2)}</span>
                                                     </div>
@@ -454,50 +445,47 @@ export const ClientApp: React.FC = () => {
                                     </div>
                                 ))}
                                 {tableOrders.length === 0 && (
-                                    <div className="text-center py-20">
-                                        <Receipt size={64} className="mx-auto mb-4 opacity-10" />
-                                        <p className="font-black uppercase tracking-widest text-xs text-gray-300">Nenhum Consumo</p>
+                                    <div className="text-center py-10">
+                                        <p className="font-bold text-gray-400 text-sm">Nenhum consumo registrado</p>
                                     </div>
                                 )}
                             </div>
                             
                             {tableOrders.length > 0 && (
-                                <div className="flex justify-between items-center text-4xl font-black border-t-4 border-slate-900 pt-8 mb-12">
-                                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Total Geral</span>
-                                    <span className="text-emerald-600 tracking-tighter leading-none">
+                                <div className="flex justify-between items-center text-2xl font-black border-t-2 border-slate-900 pt-4 mb-8">
+                                    <span className="text-xs text-gray-500 uppercase">Total</span>
+                                    <span className="text-slate-900">
                                         R$ {tableOrders.reduce((acc, o) => acc + o.items.reduce((s, i) => s + (i.productPrice * i.quantity), 0), 0).toFixed(2)}
                                     </span>
                                 </div>
                             )}
 
-                            <div className="bg-emerald-50 border-2 border-emerald-100 p-6 rounded-[2rem] text-sm text-emerald-800 mb-8">
-                                <p className="font-black text-lg mb-1 uppercase tracking-tighter">Deseja Fechar?</p>
-                                <p className="font-bold opacity-70">Toque no botão abaixo e nosso garçom virá até sua mesa para processar o pagamento.</p>
+                            <div className="bg-emerald-50 border border-emerald-100 p-4 rounded-2xl text-center">
+                                <p className="text-emerald-800 font-bold text-sm mb-3">Pronto para pagar?</p>
+                                <button 
+                                    onClick={handleCallWaiter} 
+                                    className="w-full py-3 bg-white border border-emerald-200 text-emerald-600 rounded-xl font-black text-sm uppercase shadow-sm active:scale-95 transition-all flex items-center justify-center gap-2"
+                                >
+                                    <Bell size={16} /> Chamar Garçom
+                                </button>
                             </div>
-                            <button 
-                                onClick={handleCallWaiter} 
-                                className="w-full py-6 rounded-[2rem] border-2 border-emerald-600 text-emerald-600 hover:bg-emerald-50 font-black text-lg uppercase tracking-widest shadow-xl shadow-emerald-500/10 transition-all flex items-center justify-center gap-4"
-                            >
-                                <Bell size={28} className={waiterCalled ? "animate-ping" : ""} /> 
-                                {waiterCalled ? 'Garçom Chamado' : 'Chamar Garçom'}
-                            </button>
                         </div>
                     </div>
                 )}
 
                 {view === 'STATUS' && (
-                    <div className="bg-white rounded-[3rem] shadow-2xl border border-gray-100 overflow-hidden animate-fade-in flex flex-col min-h-[70vh]">
-                        <div className="bg-blue-600 p-10 text-white shrink-0">
-                            <h2 className="text-3xl font-black uppercase tracking-tighter flex items-center gap-3">
-                                <Clock size={32} /> Meus Pedidos
+                    <div className="bg-white rounded-[2.5rem] shadow-xl border border-gray-100 overflow-hidden animate-fade-in flex flex-col min-h-[50vh]">
+                        <div className="bg-blue-600 p-8 text-white">
+                            <h2 className="text-2xl font-black uppercase tracking-tighter flex items-center gap-2">
+                                <Clock size={24} /> Pedidos
                             </h2>
-                            <p className="text-white/60 text-[10px] font-black uppercase tracking-widest mt-2">Acompanhe a Produção</p>
+                            <p className="text-blue-200 text-[10px] font-bold uppercase tracking-widest mt-1">Acompanhamento em tempo real</p>
                         </div>
-                        <div className="p-8 space-y-6 flex-1 overflow-y-auto custom-scrollbar">
+                        <div className="p-6 space-y-6 flex-1 overflow-y-auto custom-scrollbar">
                             {tableOrders.length === 0 && (
-                                <div className="text-center py-20">
-                                    <Activity size={64} className="mx-auto mb-4 opacity-10" />
-                                    <p className="font-black uppercase tracking-widest text-xs text-gray-300">Nenhum Pedido Ativo</p>
+                                <div className="text-center py-10">
+                                    <Activity size={48} className="mx-auto mb-2 text-gray-200" />
+                                    <p className="font-bold text-gray-400 text-sm">Nenhum pedido ativo</p>
                                 </div>
                             )}
                             {[...tableOrders].reverse().map(order => (
@@ -507,52 +495,40 @@ export const ClientApp: React.FC = () => {
                                         graceMinutes={graceMinutes} 
                                         onCancel={(id) => showConfirm({ title: "Cancelar Pedido?", message: "Esta ação removerá o pedido da cozinha.", type: 'WARNING', onConfirm: () => cancelOrder(id) })} 
                                     />
-                                    <div className="bg-gray-50 rounded-[2rem] p-6 border-2 border-transparent hover:border-blue-100 transition-all shadow-sm">
-                                        <div className="flex justify-between text-[10px] font-black text-gray-400 mb-6 border-b border-gray-200 pb-3 uppercase tracking-widest">
-                                            <span>ID #{order.id.slice(0, 6)}</span>
-                                            <span>{order.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                    <div className="bg-gray-50 rounded-2xl p-5 border border-gray-100">
+                                        <div className="flex justify-between items-center mb-4 pb-2 border-b border-gray-200">
+                                            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">#{order.id.slice(0, 4)}</span>
+                                            <span className="text-xs font-bold text-slate-500">{order.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                                         </div>
-                                        <div className="space-y-6">
+                                        <div className="space-y-3">
                                             {groupItems(order.items).map((item, idx) => (
-                                                <div key={idx}>
-                                                    <div className="flex justify-between items-center gap-4">
-                                                        <div className="flex-1 min-w-0 pr-4">
-                                                            <span className="text-slate-800 font-black uppercase tracking-tighter block truncate">{item.quantity}x {item.productName}</span>
-                                                            {item.notes && <span className="text-[10px] text-gray-400 font-bold italic block truncate mt-1">"{item.notes}"</span>}
+                                                <div key={idx} className="flex justify-between items-center">
+                                                    <div className="flex-1">
+                                                        <div className="font-bold text-slate-700 text-sm leading-tight">
+                                                            {item.quantity}x {item.productName}
                                                         </div>
-                                                        <span className={`text-[9px] px-3 py-1.5 rounded-xl font-black uppercase tracking-tighter shrink-0 border shadow-sm ${item.status === 'PENDING' ? 'bg-white text-gray-500 border-gray-200' : ''} ${item.status === 'PREPARING' ? 'bg-yellow-100 text-yellow-700 border-yellow-200 animate-pulse' : ''} ${item.status === 'READY' ? 'bg-emerald-600 text-white border-emerald-700 shadow-emerald-500/20' : ''} ${item.status === 'DELIVERED' ? 'bg-blue-100 text-blue-700 border-blue-200' : ''}`}>
-                                                            {item.status === 'PENDING' && 'Na Fila'} 
-                                                            {item.status === 'PREPARING' && 'Preparando'} 
-                                                            {item.status === 'READY' && 'Pronto!'} 
-                                                            {item.status === 'DELIVERED' && 'Entregue'}
-                                                        </span>
+                                                        {item.notes && <div className="text-[10px] text-gray-400 italic mt-0.5">"{item.notes}"</div>}
+                                                        {/* Adicionais */}
+                                                        {item.extras && item.extras.length > 0 && (
+                                                            <div className="mt-1 pl-2 border-l-2 border-gray-200">
+                                                                {item.extras.map((ex: any, i: number) => (
+                                                                    <div key={i} className="text-[10px] text-gray-500">+ {ex.quantity}x {ex.productName}</div>
+                                                                ))}
+                                                            </div>
+                                                        )}
                                                     </div>
-                                                    {/* Exibe adicionais agrupados */}
-                                                    {item.extras && item.extras.length > 0 && (
-                                                        <div className="mt-1 pl-3 border-l-2 border-orange-200 space-y-1">
-                                                            {item.extras.map((ex: any, i: number) => (
-                                                                <div key={i} className="flex justify-between items-center">
-                                                                    <span className="text-xs text-orange-600 font-bold">+ {ex.quantity}x {ex.productName}</span>
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                    )}
+                                                    <span className={`text-[9px] px-2 py-1 rounded-lg font-black uppercase tracking-wider border ${item.status === 'PENDING' ? 'bg-white text-gray-400 border-gray-200' : ''} ${item.status === 'PREPARING' ? 'bg-yellow-50 text-yellow-600 border-yellow-200 animate-pulse' : ''} ${item.status === 'READY' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : ''} ${item.status === 'DELIVERED' ? 'bg-blue-50 text-blue-600 border-blue-200' : ''}`}>
+                                                        {item.status === 'PENDING' && 'Fila'} 
+                                                        {item.status === 'PREPARING' && 'Prep'} 
+                                                        {item.status === 'READY' && 'Pronto'} 
+                                                        {item.status === 'DELIVERED' && 'Entregue'}
+                                                    </span>
                                                 </div>
                                             ))}
                                         </div>
                                     </div>
                                 </div>
                             ))}
-                            <div className="mt-10 p-10 bg-blue-50/50 rounded-[2.5rem] border-4 border-dashed border-blue-100 text-center">
-                                <p className="text-blue-600 text-[10px] mb-6 font-black uppercase tracking-widest">Precisa de ajuda?</p>
-                                <Button 
-                                    variant="outline" 
-                                    className="w-full bg-white border-blue-200 text-blue-600 hover:bg-blue-50 font-black py-5 rounded-3xl shadow-xl shadow-blue-200/10 transition-all uppercase tracking-widest text-xs" 
-                                    onClick={handleCallWaiter}
-                                >
-                                    {waiterCalled ? 'Solicitação Enviada' : 'Chamar Garçom na Mesa'}
-                                </Button>
-                            </div>
                         </div>
                     </div>
                 )}
@@ -569,7 +545,7 @@ export const ClientApp: React.FC = () => {
                                         className="w-full h-full object-cover" 
                                         alt={selectedProduct.name} 
                                     />
-                                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent"></div>
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
                                 </div>
                                 <div className="absolute bottom-0 left-0 w-full p-4 text-white flex justify-between items-end">
                                     <h3 className="font-black text-xl truncate pr-4 text-shadow">{selectedProduct.name}</h3>
@@ -651,6 +627,14 @@ export const ClientApp: React.FC = () => {
                     </div>
                 )}
             </main>
+
+            {/* FLOATING BOTTOM NAVIGATION */}
+            <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-[90%] max-w-md bg-white/95 backdrop-blur-md border border-gray-200 shadow-2xl shadow-slate-300/50 rounded-3xl flex justify-around p-2 items-center safe-area-bottom">
+                 <NavButton id="MENU" icon={Home} label="Cardápio" />
+                 <NavButton id="STATUS" icon={Clock} label="Pedidos" />
+                 <NavButton id="BILL" icon={Receipt} label="Conta" />
+                 <NavButton id="CART" icon={ShoppingCart} label="Cesta" badge={cart.length} />
+            </div>
         </div>
     );
 };
