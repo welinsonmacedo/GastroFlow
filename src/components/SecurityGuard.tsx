@@ -1,85 +1,93 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { ShieldAlert, RefreshCcw, Lock } from 'lucide-react';
+import { logSecurityIncident } from '../utils/security';
 
 export const SecurityGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isLocked, setIsLocked] = useState(false);
   const [lockReason, setLockReason] = useState('Modo Desenvolvedor Detectado');
+  const logSent = useRef(false);
+
+  // Helper para logar apenas uma vez por refresh para evitar spam
+  const handleLog = (reason: string, type: string) => {
+      if (!logSent.current) {
+          logSecurityIncident({
+              type: type,
+              severity: 'CRITICAL',
+              details: reason
+          });
+          logSent.current = true;
+      }
+      setLockReason(reason);
+      setIsLocked(true);
+  };
 
   useEffect(() => {
-    // 1. Bloquear Botão Direito (Menu de Contexto)
+    // 1. Bloquear Botão Direito
     const handleContextMenu = (e: MouseEvent) => {
       e.preventDefault();
       return false;
     };
 
-    // 2. Bloquear Atalhos de Teclado do DevTools e Inspeção
+    // 2. Bloquear Atalhos DevTools
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Lista de teclas proibidas
-      // F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+Shift+C, Ctrl+U (Source)
       if (
         e.key === 'F12' || 
         (e.ctrlKey && e.shiftKey && ['I', 'J', 'C'].includes(e.key.toUpperCase())) ||
-        (e.metaKey && e.altKey && ['I', 'J', 'C'].includes(e.key.toUpperCase())) || // Mac
+        (e.metaKey && e.altKey && ['I', 'J', 'C'].includes(e.key.toUpperCase())) || 
         (e.ctrlKey && e.key.toUpperCase() === 'U') ||
         (e.metaKey && e.key.toUpperCase() === 'U')
       ) {
         e.preventDefault();
         e.stopPropagation();
-        setLockReason('Tentativa de Acesso ao DevTools');
-        setIsLocked(true); // Trava o sistema imediatamente
+        handleLog('Tentativa de Acesso ao DevTools (Teclado)', 'DEV_TOOLS_ATTEMPT');
       }
     };
 
     // 3. Detectar Automação (WebDriver)
     if (navigator.webdriver) {
-        setLockReason('Software de Automação Detectado');
-        setIsLocked(true);
+        handleLog('Software de Automação Detectado (Bot)', 'BOT_DETECTED');
     }
 
     // 4. Detectar Injeção de Extensões via MutationObserver
     const observer = new MutationObserver((mutations) => {
         mutations.forEach((mutation) => {
             mutation.addedNodes.forEach((node) => {
-                if (node.nodeType === 1) { // ELEMENT_NODE
+                if (node.nodeType === 1) { 
                     const el = node as HTMLElement;
-                    // Verifica se o elemento inserido tem origem em extensões
-                    // Extensões costumam injetar scripts, iframes ou estilos com src/href apontando para chrome-extension:// ou moz-extension://
                     const html = el.outerHTML.toLowerCase();
+                    
                     if (html.includes('chrome-extension://') || html.includes('moz-extension://')) {
-                        setLockReason('Uso de Extensões Proibido');
-                        setIsLocked(true);
+                        handleLog('Uso de Extensões Proibido (Injeção de Script)', 'EXTENSION_INJECTION');
                     }
                     
-                    // Verifica atributos específicos de extensões conhecidas (ex: Grammarly, LastPass injetam atributos no body ou inputs)
                     if (el.hasAttribute('data-gramm') || el.hasAttribute('data-lastpass-root')) {
-                        // Opcional: Bloquear ou apenas limpar. Para "Proibir", bloqueamos.
-                        setLockReason('Extensão de Terceiros Detectada');
-                        setIsLocked(true);
+                        handleLog('Extensão de Terceiros Detectada (Modificação de DOM)', 'EXTENSION_DOM_MOD');
                     }
                 }
             });
         });
     });
 
-    // Observa o documento inteiro por injeções
     observer.observe(document.documentElement, {
         childList: true,
         subtree: true,
         attributes: true,
-        attributeFilter: ['src', 'href', 'style', 'class'] // Filtra atributos que extensões costumam alterar
+        attributeFilter: ['src', 'href', 'style', 'class'] 
     });
 
-    // Adiciona os Event Listeners
     document.addEventListener('contextmenu', handleContextMenu);
     window.addEventListener('keydown', handleKeyDown);
 
-    // Limpa o console para dificultar leitura de logs anteriores se abrir
+    // Limpa o console
     const clearConsole = setInterval(() => {
         if (process.env.NODE_ENV === 'production') {
             console.clear();
         }
     }, 2000);
+
+    // Detecção de Enumeração de Rotas (Simulada - se cair em 404 repetido, o AppRouter deve lidar, aqui é global)
+    // Se o usuário tentar acessar URL inválida, cai no Router, não aqui.
 
     return () => {
       document.removeEventListener('contextmenu', handleContextMenu);
@@ -90,7 +98,6 @@ export const SecurityGuard: React.FC<{ children: React.ReactNode }> = ({ childre
   }, []);
 
   if (isLocked) {
-    // Remove todo o conteúdo da aplicação (children) e mostra apenas esta tela
     return (
       <div className="fixed inset-0 z-[99999] bg-red-700 flex flex-col items-center justify-center text-white p-8 text-center font-sans h-screen w-screen overflow-hidden">
         <div className="bg-white/10 p-8 rounded-full mb-8 animate-pulse shadow-2xl border-4 border-white/20">
@@ -106,7 +113,7 @@ export const SecurityGuard: React.FC<{ children: React.ReactNode }> = ({ childre
               {lockReason}.
             </p>
             <p className="mt-4 text-sm font-bold bg-black/20 p-2 rounded text-white/80">
-              O sistema detectou ferramentas não autorizadas. Desabilite extensões e ferramentas de desenvolvedor para continuar.
+              Este incidente foi registrado. Desabilite ferramentas não autorizadas para continuar.
             </p>
         </div>
 

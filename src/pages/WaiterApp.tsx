@@ -359,7 +359,8 @@ export const WaiterApp: React.FC = () => {
                     {!showHistory && (
                         <div className="space-y-4">
                             {Object.keys(ordersByTable).length === 0 && <div className="flex flex-col items-center justify-center py-20 opacity-50"><Utensils size={64} className="text-slate-300 mb-4"/><p className="text-slate-400 font-bold uppercase tracking-widest text-sm">Sem pedidos ativos</p></div>}
-                            {Object.entries(ordersByTable).map(([tblId, tableOrders]) => {
+                            {Object.entries(ordersByTable).map(([tblId, tableOrdersData]) => {
+                                const tableOrders = tableOrdersData as typeof activeOrders; // Explicit cast to fix type error
                                 const table = orderState.tables.find(t => t.id === tblId);
                                 const isExpanded = expandedTables.has(tblId);
                                 const totalItems = tableOrders.reduce((acc, o) => acc + o.items.length, 0);

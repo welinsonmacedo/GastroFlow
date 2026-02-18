@@ -160,6 +160,16 @@ export interface SystemAccessLog {
     staff_role?: string; // Join
 }
 
+export interface SecurityIncident {
+    id: string;
+    severity: 'LOW' | 'MEDIUM' | 'CRITICAL';
+    type: string;
+    details: string;
+    created_at: Date;
+    ip_address?: string;
+    user_agent?: string;
+}
+
 export interface InventoryRecipeItem {
   ingredientId: string;
   ingredientName: string;
