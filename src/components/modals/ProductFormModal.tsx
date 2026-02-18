@@ -38,8 +38,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({ isOpen, onCl
     }
   }, [isOpen, productToEdit]);
 
-  // Se seleciona um item do estoque e não estamos editando um produto existente, 
-  // puxa a descrição do estoque se o campo estiver vazio
+  // Se seleciona um item do estoque e não estamos editando, tenta puxar a descrição do item de estoque
   useEffect(() => {
       if (selectedStockId && !productToEdit) {
           const stockItem = invState.inventory.find(i => i.id === selectedStockId);
@@ -97,7 +96,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({ isOpen, onCl
               name: stockItem.name,
               price: stockItem.salePrice,
               category: stockItem.category,
-              description: description, // Usa o estado da descrição
+              description: description, // Usa o estado local da descrição
               image: stockItem.image || '',
               linkedInventoryItemId: stockItem.id, 
               isExtra: false, 
@@ -112,7 +111,6 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({ isOpen, onCl
               await updateProduct({ 
                   ...productToEdit, 
                   ...productData,
-                  // Mantém configurações específicas do produto se existirem
                   isVisible: productToEdit.isVisible,
                   sortOrder: productToEdit.sortOrder
               } as Product);
