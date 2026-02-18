@@ -73,7 +73,7 @@ export const MenuProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const { error } = await supabase.from('products').insert({
           tenant_id: tenantId, 
           name: product.name, price: product.price, cost_price: product.costPrice,
-          category: product.category, type: product.type, image: product.image, 
+          category: product.category, type: product.type, image: product.image, description: product.description,
           is_visible: product.isVisible, sort_order: product.sortOrder, 
           linked_inventory_item_id: product.linkedInventoryItemId,
           is_extra: product.isExtra, linked_extra_ids: product.linkedExtraIds,
