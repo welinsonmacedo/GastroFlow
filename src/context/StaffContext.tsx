@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { User, Shift, TimeEntry, PayrollPreview } from '../types';
+import { User, Shift, TimeEntry, PayrollPreview, CustomRole } from '../types';
 import { supabase } from '../lib/supabase';
 import { useRestaurant } from './RestaurantContext';
 import { useUI } from './UIContext';
@@ -9,6 +9,7 @@ interface StaffState {
   users: User[];
   shifts: Shift[];
   timeEntries: TimeEntry[];
+  roles: CustomRole[]; // Novos cargos
   isLoading: boolean;
 }
 
@@ -18,6 +19,11 @@ interface StaffContextType {
   updateUser: (user: User) => Promise<void>;
   deleteUser: (userId: string) => Promise<void>;
   
+  // Custom Roles
+  addRole: (role: Partial<CustomRole>) => Promise<void>;
+  updateRole: (role: CustomRole) => Promise<void>;
+  deleteRole: (roleId: string) => Promise<void>;
+
   // HR Actions
   addShift: (shift: Partial<Shift>) => Promise<void>;
   deleteShift: (id: string) => Promise<void>;
@@ -36,23 +42,28 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     users: [], 
     shifts: [], 
     timeEntries: [], 
+    roles: [],
     isLoading: true 
   });
 
   const fetchData = useCallback(async () => {
       if (!tenantId) return;
       
-      const [staffRes, shiftsRes, timeRes] = await Promise.all([
-          supabase.from('staff').select('*').eq('tenant_id', tenantId).order('name'),
+      const [staffRes, shiftsRes, timeRes, rolesRes] = await Promise.all([
+          // Busca Staff com Join no Custom Role para pegar o nome do cargo
+          supabase.from('staff').select('*, custom_roles(name)').eq('tenant_id', tenantId).order('name'),
           supabase.from('rh_shifts').select('*').eq('tenant_id', tenantId),
-          supabase.from('rh_time_entries').select('*').eq('tenant_id', tenantId).gte('entry_date', new Date(new Date().setDate(1)).toISOString().split('T')[0])
+          supabase.from('rh_time_entries').select('*').eq('tenant_id', tenantId).gte('entry_date', new Date(new Date().setDate(1)).toISOString().split('T')[0]),
+          supabase.from('custom_roles').select('*').eq('tenant_id', tenantId)
       ]);
 
       if (staffRes.data) {
-          const mappedUsers = staffRes.data.map(u => ({ 
+          const mappedUsers = staffRes.data.map((u: any) => ({ 
               id: u.id, 
               name: u.name, 
-              role: u.role, 
+              role: u.role, // Enum legado
+              customRoleId: u.custom_role_id,
+              customRoleName: u.custom_roles?.name,
               email: u.email, 
               auth_user_id: u.auth_user_id, 
               allowedRoutes: u.allowed_routes || [],
@@ -87,10 +98,18 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               status: t.status
           }));
 
+          const mappedRoles = (rolesRes.data || []).map(r => ({
+              id: r.id,
+              name: r.name,
+              description: r.description,
+              permissions: r.permissions || { allowed_modules: [], allowed_features: [] }
+          }));
+
           setState({ 
             users: mappedUsers, 
             shifts: mappedShifts, 
             timeEntries: mappedTime, 
+            roles: mappedRoles,
             isLoading: false 
           });
       }
@@ -103,6 +122,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               .on('postgres_changes', { event: '*', schema: 'public', table: 'staff', filter: `tenant_id=eq.${tenantId}` }, fetchData)
               .on('postgres_changes', { event: '*', schema: 'public', table: 'rh_shifts', filter: `tenant_id=eq.${tenantId}` }, fetchData)
               .on('postgres_changes', { event: '*', schema: 'public', table: 'rh_time_entries', filter: `tenant_id=eq.${tenantId}` }, fetchData)
+              .on('postgres_changes', { event: '*', schema: 'public', table: 'custom_roles', filter: `tenant_id=eq.${tenantId}` }, fetchData)
               .subscribe();
           return () => { supabase.removeChannel(channel); };
       }
@@ -114,13 +134,13 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           showAlert({ title: "Limite Atingido", message: `Seu plano permite no máximo ${planLimits.maxStaff} membros.`, type: 'WARNING' });
           return;
       }
-      // PIN REMOVIDO DA INSERÇÃO - CAMPO PIN NO BANCO DEVE SER NULLABLE OU TER DEFAULT
-      // Assumindo que pin ainda é not null no banco, enviamos um placeholder interno que não será usado para login
+      
       await supabase.from('staff').insert({ 
           tenant_id: tenantId, 
           name: user.name, 
           role: user.role, 
-          pin: '0000', // Placeholder interno, acesso agora é via Auth
+          custom_role_id: user.customRoleId || null,
+          pin: '0000', 
           email: user.email, 
           allowed_routes: user.allowedRoutes,
           department: user.department,
@@ -138,6 +158,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       await supabase.from('staff').update({ 
           name: user.name, 
           role: user.role, 
+          custom_role_id: user.customRoleId || null,
           email: user.email, 
           allowed_routes: user.allowedRoutes,
           department: user.department,
@@ -154,6 +175,36 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const deleteUser = async (userId: string) => {
       await supabase.from('staff').delete().eq('id', userId);
   };
+
+  // --- Custom Roles Actions ---
+
+  const addRole = async (role: Partial<CustomRole>) => {
+      if(!tenantId) return;
+      const { error } = await supabase.from('custom_roles').insert({
+          tenant_id: tenantId,
+          name: role.name,
+          description: role.description,
+          permissions: role.permissions
+      });
+      if (error) throw error;
+  };
+
+  const updateRole = async (role: CustomRole) => {
+      if(!tenantId) return;
+      const { error } = await supabase.from('custom_roles').update({
+          name: role.name,
+          description: role.description,
+          permissions: role.permissions
+      }).eq('id', role.id);
+      if (error) throw error;
+  };
+
+  const deleteRole = async (roleId: string) => {
+      const { error } = await supabase.from('custom_roles').delete().eq('id', roleId);
+      if (error) throw error;
+  };
+
+  // --- HR Actions ---
 
   const addShift = async (shift: Partial<Shift>) => {
     if(!tenantId) return;
@@ -267,6 +318,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   return (
     <StaffContext.Provider value={{ 
         state, addUser, updateUser, deleteUser,
+        addRole, updateRole, deleteRole,
         addShift, deleteShift, registerTime, getPayroll
     }}>
       {children}

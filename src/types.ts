@@ -34,6 +34,19 @@ export type SystemModule = 'RESTAURANT' | 'SNACKBAR' | 'DISTRIBUTOR' | 'COMMERCE
 
 export type DeliveryPlatform = 'PHONE' | 'WHATSAPP' | 'IFOOD' | 'UBER_EATS' | 'RAPPI' | 'OTHER' | 'OWN_FLEET';
 
+// --- Custom Roles ---
+export interface RolePermissions {
+    allowed_modules: SystemModule[];
+    allowed_features: string[];
+}
+
+export interface CustomRole {
+    id: string;
+    name: string;
+    description?: string;
+    permissions: RolePermissions;
+}
+
 // --- HR Types ---
 export type ContractType = 'CLT' | 'PJ' | 'TEMPORARY' | 'INTERN' | 'FREELANCE';
 export type EmployeeStatus = 'ACTIVE' | 'ON_LEAVE' | 'TERMINATED' | 'VACATION';
@@ -186,6 +199,8 @@ export interface User {
   name: string;
   email?: string;
   role: Role;
+  customRoleId?: string; // Novo
+  customRoleName?: string; // Novo (para display)
   allowedRoutes?: string[];
   // RH Fields
   department?: string;

@@ -14,33 +14,33 @@ interface StaffFormModalProps {
 }
 
 export const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose, userToEdit }) => {
-  const { updateUser } = useStaff(); // Apenas update, criação é no RH
+  const { updateUser, state } = useStaff(); 
   const { showAlert } = useUI();
 
-  const [form, setForm] = useState<Partial<User>>({ name: '', role: Role.WAITER, email: '', allowedRoutes: [] });
+  const [form, setForm] = useState<Partial<User>>({ name: '', role: Role.WAITER, email: '', allowedRoutes: [], customRoleId: '' });
 
   useEffect(() => {
     if (isOpen && userToEdit) {
-        setForm(userToEdit);
+        setForm({
+            ...userToEdit,
+            // Se tiver customRole, inicializa o select, senão usa o role enum ou string vazia
+            customRoleId: userToEdit.customRoleId || '' 
+        });
     }
   }, [isOpen, userToEdit]);
 
-  const getRoutesForRole = (role: Role): string[] => {
-      switch (role) {
-          case Role.WAITER: return ['/waiter'];
-          case Role.KITCHEN: return ['/kitchen'];
-          case Role.CASHIER: return ['/cashier'];
-          case Role.ADMIN: return ['/admin', '/waiter', '/kitchen', '/cashier'];
-          default: return [];
-      }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
-      if (!userToEdit) return; // Segurança extra
+      if (!userToEdit) return;
 
-      const routes = getRoutesForRole(form.role || Role.WAITER);
-      const userToSave = { ...form, allowedRoutes: routes };
+      // Se um cargo personalizado for selecionado, usamos ele. 
+      // Caso contrário, usamos o Enum legado para retrocompatibilidade.
+      // O backend dará preferência ao customRoleId se presente.
+      const userToSave = { 
+          ...form, 
+          // Se selecionou "Nenhum" no custom role, envia string vazia (que o context converte para null)
+          customRoleId: form.customRoleId || undefined 
+      };
 
       try {
           await updateUser({ ...userToEdit, ...userToSave } as User);
@@ -76,18 +76,39 @@ export const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose,
                 <label className="block text-xs font-bold mb-2 text-slate-600 uppercase flex items-center gap-2">
                     <Shield size={14}/> Cargo no Sistema
                 </label>
+                
+                {/* Select Unificado: Cargos Padrão + Personalizados */}
                 <select 
                     className="w-full border-2 p-3 rounded-xl text-sm bg-white focus:border-blue-500 outline-none transition-all cursor-pointer" 
-                    value={form.role} 
-                    onChange={e => setForm({...form, role: e.target.value as Role})}
+                    value={form.customRoleId ? form.customRoleId : form.role} 
+                    onChange={e => {
+                        const val = e.target.value;
+                        // Verifica se é um cargo padrão (Enum) ou ID
+                        if (['WAITER', 'KITCHEN', 'CASHIER', 'ADMIN'].includes(val)) {
+                            setForm({...form, role: val as Role, customRoleId: ''});
+                        } else {
+                            setForm({...form, customRoleId: val, role: Role.WAITER}); // Role base genérico se usar custom
+                        }
+                    }}
                 >
-                    <option value="WAITER">Garçom (Pedidos e Mesas)</option>
-                    <option value="KITCHEN">Cozinha (Tela KDS)</option>
-                    <option value="CASHIER">Caixa (Pagamentos e Fechamento)</option>
-                    <option value="ADMIN">Gerente (Acesso Total)</option>
+                    <optgroup label="Cargos Padrão (Sistema)">
+                        <option value="WAITER">Garçom (Padrão)</option>
+                        <option value="KITCHEN">Cozinha (Padrão)</option>
+                        <option value="CASHIER">Caixa (Padrão)</option>
+                        <option value="ADMIN">Gerente (Acesso Total)</option>
+                    </optgroup>
+                    
+                    {state.roles.length > 0 && (
+                        <optgroup label="Cargos Personalizados">
+                            {state.roles.map(role => (
+                                <option key={role.id} value={role.id}>{role.name}</option>
+                            ))}
+                        </optgroup>
+                    )}
                 </select>
+
                 <p className="text-[10px] text-gray-400 mt-2 px-1">
-                    O cargo define quais módulos o colaborador poderá acessar após o login.
+                    Define quais módulos e abas o colaborador poderá acessar.
                 </p>
             </div>
 
