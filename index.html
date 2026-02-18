@@ -5,8 +5,12 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <meta name="theme-color" content="#22c55e" />
+    
+    <!-- Configurações para iOS (Ocultar barra de endereços/links) -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Flux Eat" />
+    
     <title>Flux Eat</title>
     
     <link rel="manifest" href="/manifest.json" />
@@ -49,19 +53,22 @@
         overflow: hidden; /* Impede o scroll da janela do navegador */
         overscroll-behavior: none; /* Desativa o efeito elástico do iOS/Android */
         -webkit-tap-highlight-color: transparent;
+        background-color: #f9fafb;
       }
 
       body { 
         font-family: 'Inter', sans-serif;
-        background-color: #f9fafb;
       }
 
       #root {
         height: 100%;
         width: 100%;
-        overflow: hidden; /* MUDANÇA: O root não rola mais, o container interno do App rolará */
+        overflow: hidden; 
         display: flex;
         flex-direction: column;
+        
+        /* Ajuste para Window Controls Overlay (Desktop PWA) */
+        padding-top: env(titlebar-area-height, 0px); 
       }
 
       /* Custom scrollbar for KDS */
@@ -80,16 +87,29 @@
         padding-top: constant(safe-area-inset-top);
       }
 
+      /* Área de arraste para PWA Desktop (Permite mover a janela clicando no topo) */
+      .app-drag-region {
+        -webkit-app-region: drag;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: env(titlebar-area-height, 30px);
+        z-index: 9999;
+        pointer-events: none; /* Permite clicar nos botões se houver */
+      }
+
       /* CORREÇÃO DE IMPRESSÃO PARA PWA */
       @media print {
         html, body, #root {
           height: auto !important;
           overflow: visible !important;
           background-color: white !important;
+          padding-top: 0 !important;
         }
         
         /* Esconde elementos de UI durante a impressão */
-        nav, header, button, .no-print {
+        nav, header, button, .no-print, .app-drag-region {
           display: none !important;
         }
         
@@ -124,6 +144,8 @@
 </script>
 </head>
   <body class="bg-gray-50 text-slate-900">
+    <!-- Região de arraste invisível para Desktop PWA -->
+    <div class="app-drag-region"></div>
     <div id="root"></div>
     <script type="module" src="/src/index.tsx"></script>
   </body>
