@@ -199,10 +199,11 @@ export interface User {
   name: string;
   email?: string;
   role: Role;
-  customRoleId?: string; // Novo
-  customRoleName?: string; // Novo (para display)
+  customRoleId?: string; 
+  customRoleName?: string;
   allowedRoutes?: string[];
-  // RH Fields
+  
+  // RH Fields - Basic
   department?: string;
   hireDate?: Date;
   contractType?: ContractType;
@@ -211,6 +212,40 @@ export interface User {
   status?: EmployeeStatus;
   phone?: string;
   documentCpf?: string;
+
+  // RH Fields - Extended (Personal)
+  birthDate?: Date;
+  mothersName?: string;
+  fathersName?: string;
+  maritalStatus?: string;
+  gender?: string;
+  educationLevel?: string;
+
+  // RH Fields - Documents
+  rgNumber?: string;
+  rgIssuer?: string;
+  rgState?: string;
+  ctpsNumber?: string;
+  ctpsSeries?: string;
+  ctpsState?: string;
+  pisPasep?: string;
+  voterRegistration?: string;
+
+  // RH Fields - Address
+  addressZip?: string;
+  addressStreet?: string;
+  addressNumber?: string;
+  addressNeighborhood?: string;
+  addressCity?: string;
+  addressState?: string;
+  addressComplement?: string;
+
+  // RH Fields - Bank
+  bankName?: string;
+  bankAgency?: string;
+  bankAccount?: string;
+  bankAccountType?: string;
+  pixKey?: string;
 }
 
 export interface SystemAccessLog {

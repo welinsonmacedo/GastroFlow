@@ -5,7 +5,7 @@ import { Button } from '../Button';
 import { useStaff } from '../../context/StaffContext';
 import { useUI } from '../../context/UIContext';
 import { User, Role, ContractType } from '../../types';
-import { Shield, Mail, User as UserIcon, Phone, FileText, Building2, DollarSign, Calendar } from 'lucide-react';
+import { Shield, Mail, User as UserIcon, Phone, FileText, Building2, DollarSign, Calendar, MapPin, Briefcase, CreditCard, Loader2 } from 'lucide-react';
 
 interface StaffFormModalProps {
   isOpen: boolean;
@@ -17,37 +17,55 @@ interface StaffFormModalProps {
 export const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose, userToEdit, variant = 'ACCESS' }) => {
   const { addUser, updateUser, state } = useStaff(); 
   const { showAlert } = useUI();
+  const [loadingCep, setLoadingCep] = useState(false);
 
-  const [form, setForm] = useState<Partial<User>>({ 
-      name: '', role: Role.WAITER, email: '', allowedRoutes: [], customRoleId: '',
-      department: '', phone: '', documentCpf: '', baseSalary: 0, contractType: 'CLT'
-  });
+  const [form, setForm] = useState<Partial<User>>({});
 
   useEffect(() => {
     if (isOpen) {
         if (userToEdit) {
-            setForm({
-                ...userToEdit,
-                customRoleId: userToEdit.customRoleId || '' 
-            });
+            setForm({ ...userToEdit, customRoleId: userToEdit.customRoleId || '' });
         } else {
-            // Reset form for creation
             setForm({ 
                 name: '', role: Role.WAITER, email: '', allowedRoutes: [], customRoleId: '',
-                department: '', phone: '', documentCpf: '', baseSalary: 0, contractType: 'CLT'
+                department: '', phone: '', documentCpf: '', baseSalary: 0, contractType: 'CLT',
+                addressState: '', bankAccountType: 'CORRENTE'
             });
         }
     }
   }, [isOpen, userToEdit]);
 
+  const handleCepBlur = async () => {
+    const cep = form.addressZip?.replace(/\D/g, '');
+    if (cep && cep.length === 8) {
+      setLoadingCep(true);
+      try {
+        const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+        const data = await res.json();
+        if (!data.erro) {
+          setForm(prev => ({
+            ...prev,
+            addressStreet: data.logradouro,
+            addressNeighborhood: data.bairro,
+            addressCity: data.localidade,
+            addressState: data.uf
+          }));
+        }
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoadingCep(false);
+      }
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
-
       const userToSave = { 
           ...form, 
           customRoleId: form.customRoleId || undefined,
-          // Garante que campos numéricos sejam números
-          baseSalary: Number(form.baseSalary) || 0
+          baseSalary: Number(form.baseSalary) || 0,
+          benefitsTotal: Number(form.benefitsTotal) || 0
       };
 
       try {
@@ -64,7 +82,6 @@ export const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose,
       }
   };
 
-  // Se for modo ACCESS e não tiver usuário para editar, não renderiza (pois não cria usuários por aqui)
   if (variant === 'ACCESS' && !userToEdit) return null;
 
   return (
@@ -72,55 +89,24 @@ export const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose,
         isOpen={isOpen} 
         onClose={onClose}
         title={userToEdit ? (variant === 'RH' ? 'Editar Colaborador' : `Acesso: ${userToEdit.name}`) : 'Novo Colaborador'}
-        variant="dialog"
+        variant={variant === 'RH' ? "page" : "dialog"}
         maxWidth="md"
     >
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-8 pb-10">
             
-            {/* --- SEÇÃO DE IDENTIFICAÇÃO (Sempre editável no RH, Readonly no ACCESS) --- */}
-            {variant === 'ACCESS' ? (
-                 <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-4">
-                     <div className="flex items-center gap-3 mb-2">
-                         <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center font-bold text-slate-700 border">{userToEdit?.name.charAt(0)}</div>
-                         <div>
-                             <p className="font-bold text-slate-800">{userToEdit?.name}</p>
-                             <p className="text-xs text-slate-500">{userToEdit?.department || 'Setor não informado'}</p>
-                         </div>
-                     </div>
-                </div>
-            ) : (
-                <div className="space-y-4">
+            {/* VARIANT ACCESS: Apenas Login e Senha */}
+            {variant === 'ACCESS' && (
+                <div className="space-y-6">
+                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                        <div className="flex items-center gap-3 mb-2">
+                            <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center font-bold text-slate-700 border">{userToEdit?.name.charAt(0)}</div>
+                            <div>
+                                <p className="font-bold text-slate-800">{userToEdit?.name}</p>
+                                <p className="text-xs text-slate-500">{userToEdit?.department || 'Setor não informado'}</p>
+                            </div>
+                        </div>
+                    </div>
                     <div>
-                        <label className="block text-xs font-bold mb-1 text-slate-600 uppercase">Nome Completo</label>
-                        <div className="relative">
-                            <UserIcon className="absolute left-3 top-3 text-gray-400" size={18}/>
-                            <input required className="w-full border pl-10 p-2.5 rounded-xl text-sm outline-none focus:border-blue-500" placeholder="Ex: Maria Silva" value={form.name} onChange={e => setForm({...form, name: e.target.value})} autoFocus />
-                        </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-xs font-bold mb-1 text-slate-600 uppercase">CPF</label>
-                            <div className="relative">
-                                <FileText className="absolute left-3 top-3 text-gray-400" size={18}/>
-                                <input className="w-full border pl-10 p-2.5 rounded-xl text-sm outline-none focus:border-blue-500" placeholder="000.000.000-00" value={form.documentCpf} onChange={e => setForm({...form, documentCpf: e.target.value})} />
-                            </div>
-                        </div>
-                        <div>
-                            <label className="block text-xs font-bold mb-1 text-slate-600 uppercase">Telefone</label>
-                            <div className="relative">
-                                <Phone className="absolute left-3 top-3 text-gray-400" size={18}/>
-                                <input className="w-full border pl-10 p-2.5 rounded-xl text-sm outline-none focus:border-blue-500" placeholder="(00) 00000-0000" value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} />
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* --- SEÇÃO DE ACESSO (Comum aos dois, mas simplificado no RH se quiser) --- */}
-            <div className="border-t pt-4">
-                <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-3">Credenciais de Sistema</h4>
-                <div className="grid grid-cols-1 gap-4">
-                     <div>
                         <label className="block text-xs font-bold mb-2 text-slate-600 uppercase flex items-center gap-2">
                             <Shield size={14}/> Cargo / Função
                         </label>
@@ -166,51 +152,218 @@ export const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose,
                         />
                     </div>
                 </div>
-            </div>
+            )}
 
-            {/* --- SEÇÃO DE RH (Apenas se variant='RH') --- */}
+            {/* VARIANT RH: Formulário Completo */}
             {variant === 'RH' && (
-                <div className="border-t pt-4 bg-gray-50 -mx-6 px-6 pb-6 -mb-6">
-                    <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-3 mt-2">Dados Contratuais (RH)</h4>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-xs font-bold mb-1 text-slate-600">Departamento</label>
-                            <div className="relative">
-                                <Building2 className="absolute left-3 top-2.5 text-gray-400" size={16}/>
-                                <input className="w-full border pl-9 p-2 rounded-xl text-sm bg-white" placeholder="Ex: Cozinha" value={form.department} onChange={e => setForm({...form, department: e.target.value})} />
+                <div className="space-y-8 max-w-5xl mx-auto">
+                    
+                    {/* 1. DADOS PESSOAIS */}
+                    <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                        <h4 className="text-sm font-black text-slate-800 uppercase tracking-widest mb-6 flex items-center gap-2 pb-2 border-b">
+                            <UserIcon size={16} className="text-blue-600"/> Dados Pessoais
+                        </h4>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div className="md:col-span-2">
+                                <label className="block text-xs font-bold mb-1 text-slate-600">Nome Completo</label>
+                                <input required className="w-full border p-2.5 rounded-xl text-sm" placeholder="Ex: Maria Silva" value={form.name} onChange={e => setForm({...form, name: e.target.value})} />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold mb-1 text-slate-600">Data de Nascimento</label>
+                                <input type="date" className="w-full border p-2.5 rounded-xl text-sm" value={form.birthDate ? new Date(form.birthDate).toISOString().split('T')[0] : ''} onChange={e => setForm({...form, birthDate: new Date(e.target.value)})} />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold mb-1 text-slate-600">Gênero</label>
+                                <select className="w-full border p-2.5 rounded-xl text-sm bg-white" value={form.gender} onChange={e => setForm({...form, gender: e.target.value})}>
+                                    <option value="">Selecione...</option>
+                                    <option value="Masculino">Masculino</option>
+                                    <option value="Feminino">Feminino</option>
+                                    <option value="Outro">Outro</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold mb-1 text-slate-600">Estado Civil</label>
+                                <select className="w-full border p-2.5 rounded-xl text-sm bg-white" value={form.maritalStatus} onChange={e => setForm({...form, maritalStatus: e.target.value})}>
+                                    <option value="">Selecione...</option>
+                                    <option value="Solteiro(a)">Solteiro(a)</option>
+                                    <option value="Casado(a)">Casado(a)</option>
+                                    <option value="Divorciado(a)">Divorciado(a)</option>
+                                    <option value="Viúvo(a)">Viúvo(a)</option>
+                                </select>
+                            </div>
+                             <div>
+                                <label className="block text-xs font-bold mb-1 text-slate-600">Escolaridade</label>
+                                <select className="w-full border p-2.5 rounded-xl text-sm bg-white" value={form.educationLevel} onChange={e => setForm({...form, educationLevel: e.target.value})}>
+                                    <option value="">Selecione...</option>
+                                    <option value="Fundamental">Ensino Fundamental</option>
+                                    <option value="Medio">Ensino Médio</option>
+                                    <option value="Superior">Ensino Superior</option>
+                                </select>
+                            </div>
+                            <div className="md:col-span-2">
+                                <label className="block text-xs font-bold mb-1 text-slate-600">Nome da Mãe</label>
+                                <input className="w-full border p-2.5 rounded-xl text-sm" value={form.mothersName} onChange={e => setForm({...form, mothersName: e.target.value})} />
+                            </div>
+                             <div>
+                                <label className="block text-xs font-bold mb-1 text-slate-600">Telefone</label>
+                                <input className="w-full border p-2.5 rounded-xl text-sm" placeholder="(00) 00000-0000" value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} />
                             </div>
                         </div>
-                        <div>
-                            <label className="block text-xs font-bold mb-1 text-slate-600">Tipo Contrato</label>
-                            <select className="w-full border p-2 rounded-xl text-sm bg-white" value={form.contractType} onChange={e => setForm({...form, contractType: e.target.value as ContractType})}>
-                                <option value="CLT">CLT</option>
-                                <option value="PJ">PJ</option>
-                                <option value="FREELANCE">Freelance</option>
-                                <option value="TEMPORARY">Temporário</option>
-                                <option value="INTERN">Estágio</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label className="block text-xs font-bold mb-1 text-slate-600">Salário Base</label>
-                            <div className="relative">
-                                <DollarSign className="absolute left-3 top-2.5 text-gray-400" size={16}/>
-                                <input type="number" step="0.01" className="w-full border pl-9 p-2 rounded-xl text-sm bg-white font-bold text-slate-700" placeholder="0.00" value={form.baseSalary} onChange={e => setForm({...form, baseSalary: parseFloat(e.target.value)})} />
+                    </div>
+
+                    {/* 2. DOCUMENTAÇÃO */}
+                    <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                        <h4 className="text-sm font-black text-slate-800 uppercase tracking-widest mb-6 flex items-center gap-2 pb-2 border-b">
+                            <FileText size={16} className="text-orange-600"/> Documentação
+                        </h4>
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                            <div>
+                                <label className="block text-xs font-bold mb-1 text-slate-600">CPF</label>
+                                <input className="w-full border p-2.5 rounded-xl text-sm" placeholder="000.000.000-00" value={form.documentCpf} onChange={e => setForm({...form, documentCpf: e.target.value})} />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold mb-1 text-slate-600">RG</label>
+                                <input className="w-full border p-2.5 rounded-xl text-sm" value={form.rgNumber} onChange={e => setForm({...form, rgNumber: e.target.value})} />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold mb-1 text-slate-600">Órgão Emissor</label>
+                                <input className="w-full border p-2.5 rounded-xl text-sm" placeholder="Ex: SSP" value={form.rgIssuer} onChange={e => setForm({...form, rgIssuer: e.target.value})} />
+                            </div>
+                             <div>
+                                <label className="block text-xs font-bold mb-1 text-slate-600">UF RG</label>
+                                <input className="w-full border p-2.5 rounded-xl text-sm" maxLength={2} value={form.rgState} onChange={e => setForm({...form, rgState: e.target.value.toUpperCase()})} />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold mb-1 text-slate-600">CTPS (Carteira)</label>
+                                <input className="w-full border p-2.5 rounded-xl text-sm" value={form.ctpsNumber} onChange={e => setForm({...form, ctpsNumber: e.target.value})} />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold mb-1 text-slate-600">Série CTPS</label>
+                                <input className="w-full border p-2.5 rounded-xl text-sm" value={form.ctpsSeries} onChange={e => setForm({...form, ctpsSeries: e.target.value})} />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold mb-1 text-slate-600">UF CTPS</label>
+                                <input className="w-full border p-2.5 rounded-xl text-sm" maxLength={2} value={form.ctpsState} onChange={e => setForm({...form, ctpsState: e.target.value.toUpperCase()})} />
+                            </div>
+                             <div>
+                                <label className="block text-xs font-bold mb-1 text-slate-600">PIS/PASEP</label>
+                                <input className="w-full border p-2.5 rounded-xl text-sm" value={form.pisPasep} onChange={e => setForm({...form, pisPasep: e.target.value})} />
                             </div>
                         </div>
-                         <div>
-                            <label className="block text-xs font-bold mb-1 text-slate-600">Admissão</label>
-                            <div className="relative">
-                                <Calendar className="absolute left-3 top-2.5 text-gray-400" size={16}/>
-                                <input type="date" className="w-full border pl-9 p-2 rounded-xl text-sm bg-white" value={form.hireDate ? new Date(form.hireDate).toISOString().split('T')[0] : ''} onChange={e => setForm({...form, hireDate: new Date(e.target.value)})} />
+                    </div>
+
+                    {/* 3. ENDEREÇO */}
+                    <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                        <h4 className="text-sm font-black text-slate-800 uppercase tracking-widest mb-6 flex items-center gap-2 pb-2 border-b">
+                            <MapPin size={16} className="text-green-600"/> Endereço
+                        </h4>
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                            <div>
+                                <label className="block text-xs font-bold mb-1 text-slate-600">CEP</label>
+                                <div className="relative">
+                                    <input className="w-full border p-2.5 rounded-xl text-sm" placeholder="00000-000" value={form.addressZip} onChange={e => setForm({...form, addressZip: e.target.value})} onBlur={handleCepBlur} />
+                                    {loadingCep && <Loader2 size={16} className="absolute right-3 top-2.5 animate-spin text-blue-500"/>}
+                                </div>
+                            </div>
+                            <div className="md:col-span-2">
+                                <label className="block text-xs font-bold mb-1 text-slate-600">Logradouro</label>
+                                <input className="w-full border p-2.5 rounded-xl text-sm bg-gray-50" value={form.addressStreet} onChange={e => setForm({...form, addressStreet: e.target.value})} />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold mb-1 text-slate-600">Número</label>
+                                <input className="w-full border p-2.5 rounded-xl text-sm" value={form.addressNumber} onChange={e => setForm({...form, addressNumber: e.target.value})} />
+                            </div>
+                             <div>
+                                <label className="block text-xs font-bold mb-1 text-slate-600">Bairro</label>
+                                <input className="w-full border p-2.5 rounded-xl text-sm bg-gray-50" value={form.addressNeighborhood} onChange={e => setForm({...form, addressNeighborhood: e.target.value})} />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold mb-1 text-slate-600">Cidade</label>
+                                <input className="w-full border p-2.5 rounded-xl text-sm bg-gray-50" value={form.addressCity} onChange={e => setForm({...form, addressCity: e.target.value})} />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold mb-1 text-slate-600">Estado</label>
+                                <input className="w-full border p-2.5 rounded-xl text-sm bg-gray-50" value={form.addressState} onChange={e => setForm({...form, addressState: e.target.value})} />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold mb-1 text-slate-600">Complemento</label>
+                                <input className="w-full border p-2.5 rounded-xl text-sm" value={form.addressComplement} onChange={e => setForm({...form, addressComplement: e.target.value})} />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* 4. DADOS BANCÁRIOS */}
+                    <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                        <h4 className="text-sm font-black text-slate-800 uppercase tracking-widest mb-6 flex items-center gap-2 pb-2 border-b">
+                            <CreditCard size={16} className="text-purple-600"/> Dados Bancários
+                        </h4>
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                            <div className="md:col-span-2">
+                                <label className="block text-xs font-bold mb-1 text-slate-600">Banco</label>
+                                <input className="w-full border p-2.5 rounded-xl text-sm" placeholder="Ex: Nubank, Itaú" value={form.bankName} onChange={e => setForm({...form, bankName: e.target.value})} />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold mb-1 text-slate-600">Tipo de Conta</label>
+                                <select className="w-full border p-2.5 rounded-xl text-sm bg-white" value={form.bankAccountType} onChange={e => setForm({...form, bankAccountType: e.target.value})}>
+                                    <option value="CORRENTE">Conta Corrente</option>
+                                    <option value="POUPANCA">Conta Poupança</option>
+                                    <option value="SALARIO">Conta Salário</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold mb-1 text-slate-600">Chave PIX</label>
+                                <input className="w-full border p-2.5 rounded-xl text-sm" value={form.pixKey} onChange={e => setForm({...form, pixKey: e.target.value})} />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold mb-1 text-slate-600">Agência</label>
+                                <input className="w-full border p-2.5 rounded-xl text-sm" value={form.bankAgency} onChange={e => setForm({...form, bankAgency: e.target.value})} />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold mb-1 text-slate-600">Conta com Dígito</label>
+                                <input className="w-full border p-2.5 rounded-xl text-sm" value={form.bankAccount} onChange={e => setForm({...form, bankAccount: e.target.value})} />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* 5. CONTRATO */}
+                    <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                        <h4 className="text-sm font-black text-slate-800 uppercase tracking-widest mb-6 flex items-center gap-2 pb-2 border-b">
+                            <Briefcase size={16} className="text-gray-600"/> Dados Contratuais
+                        </h4>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div>
+                                <label className="block text-xs font-bold mb-1 text-slate-600">Departamento / Setor</label>
+                                <input className="w-full border p-2.5 rounded-xl text-sm" placeholder="Ex: Cozinha" value={form.department} onChange={e => setForm({...form, department: e.target.value})} />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold mb-1 text-slate-600">Tipo Contrato</label>
+                                <select className="w-full border p-2.5 rounded-xl text-sm bg-white" value={form.contractType} onChange={e => setForm({...form, contractType: e.target.value as ContractType})}>
+                                    <option value="CLT">CLT</option>
+                                    <option value="PJ">PJ</option>
+                                    <option value="FREELANCE">Freelance</option>
+                                    <option value="TEMPORARY">Temporário</option>
+                                    <option value="INTERN">Estágio</option>
+                                </select>
+                            </div>
+                             <div>
+                                <label className="block text-xs font-bold mb-1 text-slate-600">Data de Admissão</label>
+                                <input type="date" className="w-full border p-2.5 rounded-xl text-sm" value={form.hireDate ? new Date(form.hireDate).toISOString().split('T')[0] : ''} onChange={e => setForm({...form, hireDate: new Date(e.target.value)})} />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold mb-1 text-slate-600">Salário Base</label>
+                                <div className="relative">
+                                    <DollarSign className="absolute left-3 top-2.5 text-gray-400" size={16}/>
+                                    <input type="number" step="0.01" className="w-full border pl-9 p-2.5 rounded-xl text-sm bg-white font-bold text-slate-700" placeholder="0.00" value={form.baseSalary} onChange={e => setForm({...form, baseSalary: parseFloat(e.target.value)})} />
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
             )}
 
-            <div className="flex gap-3 pt-4 border-t">
-                <Button type="button" variant="secondary" onClick={onClose} className="flex-1">Cancelar</Button>
-                <Button type="submit" className="flex-1 shadow-lg">{userToEdit ? 'Salvar Alterações' : 'Cadastrar'}</Button>
+            <div className="flex gap-4 pt-6 border-t bg-gray-50 -mx-6 px-6 -mb-6 pb-6 sticky bottom-0 z-10">
+                <Button type="button" variant="secondary" onClick={onClose} className="flex-1 py-4 text-lg">Cancelar</Button>
+                <Button type="submit" className="flex-1 shadow-lg py-4 text-lg font-bold">{userToEdit ? 'Salvar Alterações' : 'Cadastrar Colaborador'}</Button>
             </div>
         </form>
     </Modal>

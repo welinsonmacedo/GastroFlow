@@ -67,6 +67,8 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               email: u.email, 
               auth_user_id: u.auth_user_id, 
               allowedRoutes: u.allowed_routes || [],
+              
+              // RH Basic
               department: u.department,
               hireDate: u.hire_date ? new Date(u.hire_date) : undefined,
               contractType: u.contract_type,
@@ -74,7 +76,38 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               benefitsTotal: Number(u.benefits_total) || 0,
               status: u.status,
               phone: u.phone,
-              documentCpf: u.document_cpf
+              documentCpf: u.document_cpf,
+
+              // RH Extended
+              birthDate: u.birth_date ? new Date(u.birth_date) : undefined,
+              mothersName: u.mothers_name,
+              fathersName: u.fathers_name,
+              maritalStatus: u.marital_status,
+              gender: u.gender,
+              educationLevel: u.education_level,
+              
+              rgNumber: u.rg_number,
+              rgIssuer: u.rg_issuer,
+              rgState: u.rg_state,
+              ctpsNumber: u.ctps_number,
+              ctpsSeries: u.ctps_series,
+              ctpsState: u.ctps_state,
+              pisPasep: u.pis_pasep,
+              voterRegistration: u.voter_registration,
+
+              addressZip: u.address_zip,
+              addressStreet: u.address_street,
+              addressNumber: u.address_number,
+              addressNeighborhood: u.address_neighborhood,
+              addressCity: u.address_city,
+              addressState: u.address_state,
+              addressComplement: u.address_complement,
+
+              bankName: u.bank_name,
+              bankAgency: u.bank_agency,
+              bankAccount: u.bank_account,
+              bankAccountType: u.bank_account_type,
+              pixKey: u.pix_key
           }));
 
           const mappedShifts = (shiftsRes.data || []).map(s => ({
@@ -143,6 +176,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           pin: '0000', 
           email: user.email, 
           allowed_routes: user.allowedRoutes,
+          
           department: user.department,
           hire_date: user.hireDate?.toISOString().split('T')[0],
           contract_type: user.contractType,
@@ -150,7 +184,35 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           benefits_total: user.benefitsTotal,
           status: user.status,
           phone: user.phone,
-          document_cpf: user.documentCpf
+          document_cpf: user.documentCpf,
+
+          // Extended
+          birth_date: user.birthDate?.toISOString().split('T')[0],
+          mothers_name: user.mothersName,
+          fathers_name: user.fathersName,
+          marital_status: user.maritalStatus,
+          gender: user.gender,
+          education_level: user.educationLevel,
+          rg_number: user.rgNumber,
+          rg_issuer: user.rgIssuer,
+          rg_state: user.rgState,
+          ctps_number: user.ctpsNumber,
+          ctps_series: user.ctpsSeries,
+          ctps_state: user.ctpsState,
+          pis_pasep: user.pisPasep,
+          voter_registration: user.voterRegistration,
+          address_zip: user.addressZip,
+          address_street: user.addressStreet,
+          address_number: user.addressNumber,
+          address_neighborhood: user.addressNeighborhood,
+          address_city: user.addressCity,
+          address_state: user.addressState,
+          address_complement: user.addressComplement,
+          bank_name: user.bankName,
+          bank_agency: user.bankAgency,
+          bank_account: user.bankAccount,
+          bank_account_type: user.bankAccountType,
+          pix_key: user.pixKey
       });
   };
 
@@ -161,6 +223,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           custom_role_id: user.customRoleId || null,
           email: user.email, 
           allowed_routes: user.allowedRoutes,
+
           department: user.department,
           hire_date: user.hireDate ? new Date(user.hireDate).toISOString().split('T')[0] : null,
           contract_type: user.contractType,
@@ -168,7 +231,34 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           benefits_total: user.benefitsTotal,
           status: user.status,
           phone: user.phone,
-          document_cpf: user.documentCpf
+          document_cpf: user.documentCpf,
+
+          birth_date: user.birthDate ? new Date(user.birthDate).toISOString().split('T')[0] : null,
+          mothers_name: user.mothersName,
+          fathers_name: user.fathersName,
+          marital_status: user.maritalStatus,
+          gender: user.gender,
+          education_level: user.educationLevel,
+          rg_number: user.rgNumber,
+          rg_issuer: user.rgIssuer,
+          rg_state: user.rgState,
+          ctps_number: user.ctpsNumber,
+          ctps_series: user.ctpsSeries,
+          ctps_state: user.ctpsState,
+          pis_pasep: user.pisPasep,
+          voter_registration: user.voterRegistration,
+          address_zip: user.addressZip,
+          address_street: user.addressStreet,
+          address_number: user.addressNumber,
+          address_neighborhood: user.addressNeighborhood,
+          address_city: user.addressCity,
+          address_state: user.addressState,
+          address_complement: user.addressComplement,
+          bank_name: user.bankName,
+          bank_agency: user.bankAgency,
+          bank_account: user.bankAccount,
+          bank_account_type: user.bankAccountType,
+          pix_key: user.pixKey
       }).eq('id', user.id);
   };
 
