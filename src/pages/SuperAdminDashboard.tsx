@@ -39,7 +39,8 @@ export const SuperAdminDashboard: React.FC = () => {
       maxTables: 10, maxProducts: 30, maxStaff: 2, 
       allowKds: false, allowCashier: false, allowReports: false,
       allowInventory: false, allowPurchases: false, allowExpenses: false,
-      allowStaff: true, allowTableMgmt: true, allowCustomization: true
+      allowStaff: true, allowTableMgmt: true, allowCustomization: true,
+      allowHR: false
   });
 
   // Derived Metrics (Fixed MRR Calculation)
@@ -84,7 +85,8 @@ export const SuperAdminDashboard: React.FC = () => {
           maxTables: -1, maxProducts: -1, maxStaff: -1, 
           allowKds: true, allowCashier: true, allowReports: true, 
           allowInventory: true, allowPurchases: true, allowExpenses: true, 
-          allowStaff: true, allowTableMgmt: true, allowCustomization: true 
+          allowStaff: true, allowTableMgmt: true, allowCustomization: true,
+          allowHR: true
       });
   };
   
@@ -257,6 +259,7 @@ export const SuperAdminDashboard: React.FC = () => {
                                                         <li><strong>Frente de Caixa (PDV):</strong> {selectedContractPlan.limits.allowCashier ? 'Incluso' : 'Não contratado'}</li>
                                                         <li><strong>Controle de Estoque:</strong> {selectedContractPlan.limits.allowInventory ? 'Incluso' : 'Não contratado'}</li>
                                                         <li><strong>Gestão Financeira:</strong> {selectedContractPlan.limits.allowExpenses ? 'Incluso' : 'Não contratado'}</li>
+                                                        <li><strong>RH & Ponto:</strong> {selectedContractPlan.limits.allowHR ? 'Incluso' : 'Não contratado'}</li>
                                                     </>
                                                 )}
                                             </ul>
@@ -358,6 +361,7 @@ export const SuperAdminDashboard: React.FC = () => {
                                                     <label className="flex items-center gap-2"><input type="checkbox" checked={editingLimits.allowCashier} onChange={(e) => setEditingLimits({...editingLimits, allowCashier: e.target.checked})} /> Frente de Caixa</label>
                                                     <label className="flex items-center gap-2"><input type="checkbox" checked={editingLimits.allowInventory} onChange={(e) => setEditingLimits({...editingLimits, allowInventory: e.target.checked})} /> Estoque</label>
                                                     <label className="flex items-center gap-2"><input type="checkbox" checked={editingLimits.allowExpenses} onChange={(e) => setEditingLimits({...editingLimits, allowExpenses: e.target.checked})} /> Financeiro</label>
+                                                    <label className="flex items-center gap-2"><input type="checkbox" checked={editingLimits.allowHR} onChange={(e) => setEditingLimits({...editingLimits, allowHR: e.target.checked})} /> RH & Ponto</label>
                                                 </div>
                                             </div>
                                             <div className="flex gap-2 mt-auto">
@@ -372,7 +376,7 @@ export const SuperAdminDashboard: React.FC = () => {
                                             <ul className="space-y-1 my-4 text-xs text-gray-600">
                                                 {(plan.features || []).map((f, i) => <li key={i}>• {f}</li>)}
                                             </ul>
-                                            <Button variant="outline" onClick={() => handleEditPlan(plan)} className="w-full mt-4">Editar</Button>
+                                            <Button variant="outline" onClick={() => handleEditPlan(plan)} className="w-full mt-4">Editar Plano</Button>
                                         </>
                                     )}
                                 </div>

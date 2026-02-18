@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Modal } from '../Modal';
 import { Button } from '../Button';
@@ -27,12 +28,22 @@ const MODULE_STRUCTURE = {
         ]
     },
     INVENTORY: {
-        label: "Estoque (Novo)",
+        label: "Estoque",
         description: "Controle avançado de insumos e compras.",
         features: [
             { key: "inventory_manage", label: "Gestão (Itens, Balanço, Logs)" },
             { key: "inventory_purchases", label: "Compras (Notas Fiscais, Sugestões)" },
             { key: "inventory_suppliers", label: "Gestão de Fornecedores" }
+        ]
+    },
+    HR: {
+        label: "RH & Equipe",
+        description: "Gestão de ponto, escalas e pré-folha.",
+        features: [
+            { key: "rh_staff_list", label: "Cadastro de Colaboradores" },
+            { key: "rh_attendance", label: "Controle de Ponto" },
+            { key: "rh_schedules", label: "Escalas & Turnos" },
+            { key: "rh_payroll", label: "Geração de Pré-Folha" }
         ]
     },
     MANAGER: {
