@@ -42,7 +42,7 @@ export const Modal: React.FC<ModalProps> = ({
   const content = variant === 'page' ? (
     // --- VARIANT: PAGE (Sidebar Aware) ---
     // z-[60] para garantir que fique acima da sidebar (z-50) e navbar (z-50)
-    <div className="fixed inset-0 z-[60] bg-gray-50 flex flex-col animate-fade-in md:left-72">
+    <div className="fixed inset-0 z-[60] bg-gray-50 flex flex-col animate-fade-in">
         {/* Header */}
         <div className="bg-white border-b px-4 md:px-6 py-4 flex justify-between items-center shrink-0 shadow-sm safe-area-top relative z-10">
           <div className="flex items-center gap-3">
