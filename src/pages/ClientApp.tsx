@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 // @ts-ignore
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { useRestaurant } from '../context/RestaurantContext';
 import { useMenu } from '../context/MenuContext';
 import { useOrder } from '../context/OrderContext';
@@ -12,7 +12,7 @@ import {
     ShoppingCart, ChefHat, Plus, Minus, X, Lock, 
     Receipt, Loader2, Bell, Search, Edit3, 
     Zap, Clock, Trash2, ArrowRight, 
-    Activity, AlertCircle, Utensils, Home, CreditCard, Banknote
+    Activity, AlertCircle, Utensils, Home, CreditCard, Banknote, Shield
 } from 'lucide-react';
 import { Modal } from '../components/Modal';
 
@@ -124,6 +124,10 @@ export const ClientApp: React.FC = () => {
             setSelectedExtraIds([]);
         }
     }, [selectedProduct]);
+
+    const toggleExtra = (id: string) => {
+        setSelectedExtraIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+    };
 
     // Filtra adicionais compatíveis com o produto selecionado
     const compatibleExtras = useMemo(() => {
@@ -438,7 +442,7 @@ export const ClientApp: React.FC = () => {
                                     <Button onClick={() => setView('MENU')} variant="outline" className={`px-6 text-xs font-bold uppercase ${radiusClass}`}>Voltar ao Cardápio</Button>
                                 </div>
                             ) : (
-                                <div className="space-y-4">
+                                <div className="space-y-6">
                                     {cart.map((item, idx) => (
                                         <div key={idx} className={`bg-gray-50 p-4 relative group border border-transparent hover:border-gray-200 transition-all ${radiusClass}`}>
                                             <button 
@@ -472,13 +476,22 @@ export const ClientApp: React.FC = () => {
                             )}
                         </div>
                         {cart.length > 0 && (
-                            <div className="bg-slate-900 p-6 text-white">
+                            <div className="bg-slate-900 p-6 text-white safe-area-bottom">
                                 <div className="flex justify-between items-center mb-6">
                                     <span className="text-xs font-bold text-slate-400 uppercase">Total Estimado</span>
                                     <span className="text-3xl font-black">
                                         R$ {cart.reduce((acc, i) => acc + ((i.product.price + (i.extras?.reduce((s, e) => s + e.price, 0) || 0)) * i.quantity), 0).toFixed(2)}
                                     </span>
                                 </div>
+                                
+                                {/* LGPD Disclaimer no Checkout */}
+                                <div className="mb-4 flex items-start gap-2 bg-slate-800/50 p-3 rounded-lg border border-slate-700">
+                                    <Shield size={14} className="text-green-400 shrink-0 mt-0.5" />
+                                    <p className="text-[10px] text-slate-400 leading-tight">
+                                        Ao confirmar, você concorda com o processamento dos seus dados para a preparação e entrega do pedido, conforme nossa <Link to="/privacy" target="_blank" className="underline text-green-400">Política de Privacidade</Link>.
+                                    </p>
+                                </div>
+
                                 <button 
                                     onClick={handleConfirmOrder} 
                                     className={`w-full py-4 bg-white text-slate-900 font-black text-lg shadow-lg transition-all active:scale-95 uppercase tracking-widest flex items-center justify-center gap-2 ${radiusClass}`}
@@ -656,7 +669,7 @@ export const ClientApp: React.FC = () => {
                                             {compatibleExtras.map(extra => {
                                                 const isSelected = selectedExtraIds.includes(extra.id);
                                                 return (
-                                                    <div key={extra.id} onClick={() => setSelectedExtraIds(prev => prev.includes(extra.id) ? prev.filter(i => i !== extra.id) : [...prev, extra.id])} className={`flex items-center justify-between p-4 border-2 transition-all cursor-pointer ${radiusClass} ${isSelected ? 'bg-orange-50 border-orange-400' : 'bg-gray-50 border-transparent hover:border-gray-200'}`}>
+                                                    <div key={extra.id} onClick={() => toggleExtra(extra.id)} className={`flex items-center justify-between p-4 border-2 transition-all cursor-pointer ${radiusClass} ${isSelected ? 'bg-orange-50 border-orange-400' : 'bg-gray-50 border-transparent hover:border-gray-200'}`}>
                                                         <span className="text-sm font-black text-slate-700">{extra.name}</span>
                                                         <span className="text-xs font-bold text-slate-400">+ R$ {extra.price.toFixed(2)}</span>
                                                     </div>

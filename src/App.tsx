@@ -32,6 +32,7 @@ import { ModuleSelector } from './pages/ModuleSelector';
 import { InstallPWA } from './components/InstallPWA';
 import { SecurityGuard } from './components/SecurityGuard'; 
 import { PwaGuard } from './components/PwaGuard'; // Guardião de PWA
+import { CookieConsent } from './components/CookieConsent'; // LGPD
 import { Lock } from 'lucide-react';
 import { Role } from './types';
 import { getTenantSlug } from './utils/tenant';
@@ -157,6 +158,7 @@ const App: React.FC = () => {
         <BrowserRouter>
             <UIProvider>
                 <PwaGuard>
+                    <CookieConsent />
                     <InstallPWA />
                     {tenantSlug ? (
                         <AuthProvider>
