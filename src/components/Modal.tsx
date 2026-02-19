@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Minus, Square } from 'lucide-react';
+import { X, Save } from 'lucide-react';
 
 interface ModalProps {
   isOpen: boolean;
@@ -10,6 +10,7 @@ interface ModalProps {
   children: React.ReactNode;
   variant?: 'page' | 'dialog'; // 'page' = 100% Fullscreen, 'dialog' = Floating Window (98%)
   maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | '5xl' | 'full'; 
+  onSave?: () => void; // Ação opcional para o botão de salvar no header
 }
 
 export const Modal: React.FC<ModalProps> = ({ 
@@ -18,7 +19,8 @@ export const Modal: React.FC<ModalProps> = ({
   title, 
   children, 
   variant = 'page',
-  maxWidth = 'md' 
+  maxWidth = 'md',
+  onSave
 }) => {
   const [mounted, setMounted] = useState(false);
 
@@ -66,12 +68,14 @@ export const Modal: React.FC<ModalProps> = ({
 
           {/* Controles da Janela (Window Controls) */}
           <div className="flex items-center gap-1">
-             {/* Botões Decorativos (Minimizar/Maximizar) */}
-             <button className="w-8 h-6 flex items-center justify-center hover:bg-slate-300 rounded transition-colors text-slate-400">
-                <Minus size={12} strokeWidth={3} />
-             </button>
-             <button className="w-8 h-6 flex items-center justify-center hover:bg-slate-300 rounded transition-colors text-slate-400">
-                <Square size={10} strokeWidth={3} />
+             {/* Botão Salvar (Ação) */}
+             <button 
+                onClick={onSave}
+                className="w-8 h-6 flex items-center justify-center hover:bg-slate-300 text-slate-600 rounded transition-colors"
+                title="Salvar / Confirmar"
+                disabled={!onSave} // Desabilita visualmente se não houver função, ou remove se preferir
+             >
+                <Save size={14} strokeWidth={2.5} />
              </button>
              
              {/* Botão Fechar (Funcional) */}
