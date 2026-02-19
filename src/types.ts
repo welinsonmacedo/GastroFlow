@@ -51,6 +51,7 @@ export interface CustomRole {
 export type ContractType = 'CLT' | 'PJ' | 'TEMPORARY' | 'INTERN' | 'FREELANCE';
 export type EmployeeStatus = 'ACTIVE' | 'ON_LEAVE' | 'TERMINATED' | 'VACATION';
 export type TaxRegime = 'SIMPLES_NACIONAL' | 'LUCRO_PRESUMIDO' | 'LUCRO_REAL' | 'MEI';
+export type TaxPayerType = 'EMPLOYEE' | 'EMPLOYER';
 
 export interface Shift {
     id: string;
@@ -79,6 +80,7 @@ export interface RHTax {
     name: string;
     type: 'PERCENTAGE' | 'FIXED';
     value: number;
+    payerType: TaxPayerType; // Novo campo: Quem paga?
     isActive: boolean;
 }
 
@@ -102,7 +104,12 @@ export interface PayrollPreview {
     discounts: number;
     netTotal: number;
     hoursWorked: number;
-    taxBreakdown: { name: string; value: number }[];
+    
+    // Novos campos de custo empresa
+    employerCharges: number; // Total de encargos patronais
+    totalCompanyCost: number; // Bruto + Encargos + Benefícios da empresa
+
+    taxBreakdown: { name: string; value: number; type: TaxPayerType }[];
     benefitBreakdown: { name: string; value: number }[];
 }
 

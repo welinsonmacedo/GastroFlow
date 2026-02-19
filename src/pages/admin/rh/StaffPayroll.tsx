@@ -4,7 +4,7 @@ import { useStaff } from '../../../context/StaffContext';
 import { useUI } from '../../../context/UIContext';
 import { Button } from '../../../components/Button';
 import { PayrollPreview } from '../../../types';
-import { FileText, Printer, Calculator, RefreshCcw, Eye, X } from 'lucide-react';
+import { FileText, Printer, Calculator, RefreshCcw, Eye, X, Building2 } from 'lucide-react';
 import { printHtml, getReportStyles } from '../../../utils/printHelper';
 import { Modal } from '../../../components/Modal';
 
@@ -17,7 +17,6 @@ export const StaffPayroll: React.FC = () => {
     const [payrollData, setPayrollData] = useState<PayrollPreview[]>([]);
     const [loading, setLoading] = useState(false);
     
-    // Estado para o Modal de Detalhes
     const [selectedSlip, setSelectedSlip] = useState<PayrollPreview | null>(null);
 
     const loadData = async () => {
@@ -37,6 +36,7 @@ export const StaffPayroll: React.FC = () => {
     const totalBruto = payrollData.reduce((acc, p) => acc + p.grossTotal, 0);
     const totalLiquido = payrollData.reduce((acc, p) => acc + p.netTotal, 0);
     const totalDescontos = payrollData.reduce((acc, p) => acc + p.discounts, 0);
+    const totalCustoEmpresa = payrollData.reduce((acc, p) => acc + p.totalCompanyCost, 0);
 
     const handlePrintTable = () => {
         const html = `
@@ -44,39 +44,38 @@ export const StaffPayroll: React.FC = () => {
             <html>
             <head><title>Pré-Folha ${month+1}/${year}</title>${getReportStyles()}</head>
             <body>
-                <h1>Pré-Folha de Pagamento - ${month+1}/${year}</h1>
+                <h1>Folha de Pagamento - ${month+1}/${year}</h1>
                 <table>
                     <thead>
                         <tr>
                             <th>Colaborador</th>
-                            <th class="text-right">Salário Base</th>
-                            <th class="text-right">Horas Extras</th>
-                            <th class="text-right">Benefícios</th>
                             <th class="text-right">Bruto</th>
-                            <th class="text-right">Descontos</th>
-                            <th class="text-right">Líquido Est.</th>
+                            <th class="text-right">Descontos (Func)</th>
+                            <th class="text-right">Líquido</th>
+                            <th class="text-right">Encargos (Empresa)</th>
+                            <th class="text-right">Custo Total</th>
                         </tr>
                     </thead>
                     <tbody>
                         ${payrollData.map(p => `
                             <tr>
                                 <td>${p.staffName}</td>
-                                <td class="text-right">R$ ${p.baseSalary.toFixed(2)}</td>
-                                <td class="text-right">R$ ${p.overtimeTotal.toFixed(2)}</td>
-                                <td class="text-right">R$ ${p.benefits.toFixed(2)}</td>
-                                <td class="text-right font-bold">R$ ${p.grossTotal.toFixed(2)}</td>
+                                <td class="text-right">R$ ${p.grossTotal.toFixed(2)}</td>
                                 <td class="text-right text-red-600">- R$ ${p.discounts.toFixed(2)}</td>
                                 <td class="text-right font-bold">R$ ${p.netTotal.toFixed(2)}</td>
+                                <td class="text-right text-purple-600">R$ ${p.employerCharges.toFixed(2)}</td>
+                                <td class="text-right font-bold bg-gray-50">R$ ${p.totalCompanyCost.toFixed(2)}</td>
                             </tr>
                         `).join('')}
                     </tbody>
                     <tfoot>
                         <tr class="total-row">
                             <td>TOTAL GERAL</td>
-                            <td colspan="3"></td>
                             <td class="text-right">R$ ${totalBruto.toFixed(2)}</td>
                             <td class="text-right text-red-600">- R$ ${totalDescontos.toFixed(2)}</td>
                             <td class="text-right">R$ ${totalLiquido.toFixed(2)}</td>
+                            <td class="text-right">R$ ${payrollData.reduce((acc,p) => acc + p.employerCharges, 0).toFixed(2)}</td>
+                            <td class="text-right">R$ ${totalCustoEmpresa.toFixed(2)}</td>
                         </tr>
                     </tfoot>
                 </table>
@@ -87,6 +86,9 @@ export const StaffPayroll: React.FC = () => {
     };
 
     const handlePrintSlip = (slip: PayrollPreview) => {
+        const employeeTaxes = slip.taxBreakdown.filter(t => t.type !== 'EMPLOYER');
+        const employerTaxes = slip.taxBreakdown.filter(t => t.type === 'EMPLOYER');
+
         const html = `
             <!DOCTYPE html>
             <html>
@@ -102,11 +104,12 @@ export const StaffPayroll: React.FC = () => {
                 .col h3 { border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-top: 0; }
                 .item { display: flex; justify-content: space-between; margin-bottom: 5px; }
                 .total-row { font-weight: bold; border-top: 2px solid #000; margin-top: 10px; padding-top: 5px; font-size: 14px; }
+                .info { font-size: 10px; color: #555; margin-top: 20px; border-top: 1px dashed #ccc; padding-top: 5px; }
             </style>
             </head>
             <body>
                 <div class="box">
-                    <div class="header">DEMONSTRATIVO DE PAGAMENTO (PRÉVIA)</div>
+                    <div class="header">DEMONSTRATIVO DE PAGAMENTO</div>
                     <div class="row"><span class="title">Colaborador:</span> <span>${slip.staffName}</span></div>
                     <div class="row"><span class="title">Referência:</span> <span>${month+1}/${year}</span></div>
                 </div>
@@ -122,8 +125,8 @@ export const StaffPayroll: React.FC = () => {
                     </div>
                     <div class="col">
                         <h3>Descontos</h3>
-                        ${slip.taxBreakdown.map(t => `<div class="item"><span>${t.name}</span> <span>R$ ${t.value.toFixed(2)}</span></div>`).join('')}
-                        ${slip.taxBreakdown.length === 0 ? '<div class="item"><span>-</span> <span>-</span></div>' : ''}
+                        ${employeeTaxes.map(t => `<div class="item"><span>${t.name}</span> <span>R$ ${t.value.toFixed(2)}</span></div>`).join('')}
+                        ${employeeTaxes.length === 0 ? '<div class="item"><span>-</span> <span>-</span></div>' : ''}
                         <div class="total-row item" style="color: red;"><span>Total Descontos</span> <span>R$ ${slip.discounts.toFixed(2)}</span></div>
                     </div>
                 </div>
@@ -134,6 +137,13 @@ export const StaffPayroll: React.FC = () => {
                         <span style="font-weight: bold;">R$ ${slip.netTotal.toFixed(2)}</span>
                     </div>
                 </div>
+
+                ${employerTaxes.length > 0 ? `
+                <div class="info">
+                    <strong>Informativo de Recolhimentos da Empresa (Não descontado):</strong><br/>
+                    ${employerTaxes.map(t => `${t.name}: R$ ${t.value.toFixed(2)}`).join(' | ')}
+                </div>
+                ` : ''}
             </body>
             </html>
         `;
@@ -145,30 +155,30 @@ export const StaffPayroll: React.FC = () => {
             <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-200 gap-4">
                 <div>
                     <h2 className="text-2xl font-black text-slate-800 flex items-center gap-2"><Calculator className="text-pink-600"/> Pré-Folha de Pagamento</h2>
-                    <p className="text-sm text-gray-500">Consolidação automática de salários, benefícios e descontos.</p>
+                    <p className="text-sm text-gray-500">Cálculo de salários e custo total da folha.</p>
                 </div>
                 
                 <div className="flex flex-wrap items-center gap-3">
                     <div className="flex items-center gap-2 bg-gray-100 p-1 rounded-xl">
-                        <select className="bg-transparent text-sm font-bold p-2" value={month} onChange={e => setMonth(parseInt(e.target.value))}>
+                        <select className="bg-transparent text-sm font-bold p-2 outline-none" value={month} onChange={e => setMonth(parseInt(e.target.value))}>
                             <option value={0}>Janeiro</option><option value={1}>Fevereiro</option><option value={2}>Março</option><option value={3}>Abril</option><option value={4}>Maio</option><option value={5}>Junho</option><option value={6}>Julho</option><option value={7}>Agosto</option><option value={8}>Setembro</option><option value={9}>Outubro</option><option value={10}>Novembro</option><option value={11}>Dezembro</option>
                         </select>
-                        <select className="bg-transparent text-sm font-bold p-2" value={year} onChange={e => setYear(parseInt(e.target.value))}>
+                        <select className="bg-transparent text-sm font-bold p-2 outline-none" value={year} onChange={e => setYear(parseInt(e.target.value))}>
                             <option value={2025}>2025</option><option value={2026}>2026</option>
                         </select>
                     </div>
                     <Button onClick={loadData} disabled={loading} variant="secondary" className="px-3">
                         <RefreshCcw size={18} className={loading ? "animate-spin" : ""}/>
                     </Button>
-                    <Button onClick={handlePrintTable} className="bg-slate-900"><Printer size={18}/> Exportar PDF</Button>
+                    <Button onClick={handlePrintTable} className="bg-slate-900"><Printer size={18}/> Exportar Relatório</Button>
                 </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200"><p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Custo Bruto Total</p><p className="text-3xl font-black text-slate-800">R$ {totalBruto.toFixed(2)}</p></div>
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200"><p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Total Líquido Estimado</p><p className="text-3xl font-black text-emerald-600">R$ {totalLiquido.toFixed(2)}</p></div>
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200"><p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Encargos/Descontos</p><p className="text-3xl font-black text-red-600">- R$ {totalDescontos.toFixed(2)}</p></div>
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200"><p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Colaboradores</p><p className="text-3xl font-black text-blue-600">{payrollData.length}</p></div>
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200"><p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Folha Bruta</p><p className="text-2xl font-black text-slate-800">R$ {totalBruto.toFixed(2)}</p></div>
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200"><p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Total Líquido (Pagar)</p><p className="text-2xl font-black text-emerald-600">R$ {totalLiquido.toFixed(2)}</p></div>
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200"><p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Encargos Empresa</p><p className="text-2xl font-black text-purple-600">R$ {(totalCustoEmpresa - totalBruto).toFixed(2)}</p></div>
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200"><p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Custo Total RH</p><p className="text-2xl font-black text-slate-900">R$ {totalCustoEmpresa.toFixed(2)}</p></div>
             </div>
 
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
@@ -178,12 +188,12 @@ export const StaffPayroll: React.FC = () => {
                             <tr>
                                 <th className="p-4">Colaborador</th>
                                 <th className="p-4 text-right">Salário Base</th>
-                                <th className="p-4 text-right">Horas Extras (50%)</th>
-                                <th className="p-4 text-right">Benefícios</th>
+                                <th className="p-4 text-right">Proventos (Extra/Benef)</th>
                                 <th className="p-4 text-right">Bruto Total</th>
-                                <th className="p-4 text-right">Descontos</th>
-                                <th className="p-4 text-right">Líquido Est.</th>
-                                <th className="p-4 text-center">Ações</th>
+                                <th className="p-4 text-right">Descontos (Func)</th>
+                                <th className="p-4 text-right bg-emerald-50 text-emerald-800">Líquido</th>
+                                <th className="p-4 text-right text-purple-600">Encargos (Emp)</th>
+                                <th className="p-4 text-center">Holerite</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y">
@@ -191,11 +201,11 @@ export const StaffPayroll: React.FC = () => {
                                 <tr key={p.staffId} className="hover:bg-slate-50 transition-colors group">
                                     <td className="p-4"><div className="font-bold text-slate-800">{p.staffName}</div><div className="text-[10px] text-slate-400">{p.hoursWorked.toFixed(1)}h trabalhadas</div></td>
                                     <td className="p-4 text-right font-mono text-slate-600">R$ {p.baseSalary.toFixed(2)}</td>
-                                    <td className="p-4 text-right font-mono text-orange-600">+ R$ {p.overtimeTotal.toFixed(2)}</td>
-                                    <td className="p-4 text-right font-mono text-blue-600">R$ {p.benefits.toFixed(2)}</td>
-                                    <td className="p-4 text-right font-black text-slate-900 bg-slate-50/50">R$ {p.grossTotal.toFixed(2)}</td>
+                                    <td className="p-4 text-right font-mono text-blue-600">+ R$ {(p.overtimeTotal + p.benefits).toFixed(2)}</td>
+                                    <td className="p-4 text-right font-black text-slate-900">R$ {p.grossTotal.toFixed(2)}</td>
                                     <td className="p-4 text-right font-mono text-red-500">- R$ {p.discounts.toFixed(2)}</td>
-                                    <td className="p-4 text-right font-black text-emerald-600">R$ {p.netTotal.toFixed(2)}</td>
+                                    <td className="p-4 text-right font-black text-emerald-600 bg-emerald-50">R$ {p.netTotal.toFixed(2)}</td>
+                                    <td className="p-4 text-right font-mono text-purple-600">R$ {p.employerCharges.toFixed(2)}</td>
                                     <td className="p-4 text-center">
                                         <button onClick={() => setSelectedSlip(p)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Ver Detalhes">
                                             <Eye size={18}/>
@@ -227,7 +237,7 @@ export const StaffPayroll: React.FC = () => {
                         <div className="grid grid-cols-2 gap-6">
                             {/* Vencimentos */}
                             <div className="space-y-2">
-                                <h4 className="text-xs font-black uppercase text-green-700 border-b border-green-200 pb-1 mb-2">Vencimentos (Crédito)</h4>
+                                <h4 className="text-xs font-black uppercase text-green-700 border-b border-green-200 pb-1 mb-2">Vencimentos</h4>
                                 <div className="flex justify-between text-sm">
                                     <span className="text-slate-600">Salário Base</span>
                                     <span className="font-mono font-bold">R$ {selectedSlip.baseSalary.toFixed(2)}</span>
@@ -238,37 +248,28 @@ export const StaffPayroll: React.FC = () => {
                                         <span className="font-mono font-bold text-green-600">R$ {selectedSlip.overtimeTotal.toFixed(2)}</span>
                                     </div>
                                 )}
-                                {/* Detalhamento de Benefícios */}
                                 {selectedSlip.benefitBreakdown.map((ben, idx) => (
                                     <div key={`ben-${idx}`} className="flex justify-between text-sm">
                                         <span className="text-slate-600">{ben.name}</span>
                                         <span className="font-mono font-bold text-blue-600">R$ {ben.value.toFixed(2)}</span>
                                     </div>
                                 ))}
-                                {/* Fallback se tiver valor mas não breakdown (legado) */}
-                                {selectedSlip.benefits > 0 && selectedSlip.benefitBreakdown.length === 0 && (
-                                    <div className="flex justify-between text-sm">
-                                        <span className="text-slate-600">Benefícios Diversos</span>
-                                        <span className="font-mono font-bold text-blue-600">R$ {selectedSlip.benefits.toFixed(2)}</span>
-                                    </div>
-                                )}
-
                                 <div className="border-t pt-2 mt-2 flex justify-between text-sm font-black text-slate-800">
                                     <span>Total Bruto</span>
                                     <span>R$ {selectedSlip.grossTotal.toFixed(2)}</span>
                                 </div>
                             </div>
 
-                            {/* Descontos */}
+                            {/* Descontos (Funcionário) */}
                             <div className="space-y-2">
-                                <h4 className="text-xs font-black uppercase text-red-700 border-b border-red-200 pb-1 mb-2">Descontos (Débito)</h4>
-                                {selectedSlip.taxBreakdown.map((tax, idx) => (
+                                <h4 className="text-xs font-black uppercase text-red-700 border-b border-red-200 pb-1 mb-2">Descontos</h4>
+                                {selectedSlip.taxBreakdown.filter(t => t.type === 'EMPLOYEE').map((tax, idx) => (
                                     <div key={idx} className="flex justify-between text-sm">
                                         <span className="text-slate-600">{tax.name}</span>
                                         <span className="font-mono font-bold text-red-500">R$ {tax.value.toFixed(2)}</span>
                                     </div>
                                 ))}
-                                {selectedSlip.taxBreakdown.length === 0 && <p className="text-xs text-gray-400 italic">Nenhum desconto.</p>}
+                                {selectedSlip.taxBreakdown.filter(t => t.type === 'EMPLOYEE').length === 0 && <p className="text-xs text-gray-400 italic">Nenhum desconto.</p>}
                                 <div className="border-t pt-2 mt-2 flex justify-between text-sm font-black text-red-700">
                                     <span>Total Desc.</span>
                                     <span>R$ {selectedSlip.discounts.toFixed(2)}</span>
@@ -279,6 +280,27 @@ export const StaffPayroll: React.FC = () => {
                         <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-200 flex justify-between items-center">
                             <span className="text-sm font-bold text-emerald-800 uppercase tracking-widest">Líquido a Receber</span>
                             <span className="text-2xl font-black text-emerald-600">R$ {selectedSlip.netTotal.toFixed(2)}</span>
+                        </div>
+
+                        {/* Encargos da Empresa (Apenas visualização gerencial) */}
+                        <div className="bg-purple-50 p-4 rounded-xl border border-purple-200 mt-4">
+                            <h4 className="text-xs font-black uppercase text-purple-700 mb-2 flex items-center gap-2"><Building2 size={12}/> Custos da Empresa (Patronal)</h4>
+                            <div className="space-y-1">
+                                {selectedSlip.taxBreakdown.filter(t => t.type === 'EMPLOYER').map((tax, idx) => (
+                                    <div key={idx} className="flex justify-between text-xs">
+                                        <span className="text-purple-800">{tax.name}</span>
+                                        <span className="font-bold text-purple-900">R$ {tax.value.toFixed(2)}</span>
+                                    </div>
+                                ))}
+                                <div className="border-t border-purple-200 pt-1 mt-1 flex justify-between text-xs font-bold text-purple-900">
+                                    <span>Total Encargos</span>
+                                    <span>R$ {selectedSlip.employerCharges.toFixed(2)}</span>
+                                </div>
+                                <div className="flex justify-between text-xs font-black text-purple-900 mt-2 pt-2 border-t border-purple-200">
+                                    <span>CUSTO TOTAL (Salário + Encargos)</span>
+                                    <span>R$ {selectedSlip.totalCompanyCost.toFixed(2)}</span>
+                                </div>
+                            </div>
                         </div>
 
                         <div className="flex gap-2 pt-2">
