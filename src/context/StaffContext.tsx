@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { User, Shift, TimeEntry, PayrollPreview, CustomRole } from '../types';
+import { User, Shift, TimeEntry, PayrollPreview, CustomRole, RHTax } from '../types';
 import { supabase } from '../lib/supabase';
 import { useRestaurant } from './RestaurantContext';
 import { useUI } from './UIContext';
@@ -9,7 +9,8 @@ interface StaffState {
   users: User[];
   shifts: Shift[];
   timeEntries: TimeEntry[];
-  roles: CustomRole[]; // Novos cargos
+  roles: CustomRole[];
+  taxes: RHTax[]; // Novos impostos
   isLoading: boolean;
 }
 
@@ -29,9 +30,13 @@ interface StaffContextType {
   deleteShift: (id: string) => Promise<void>;
   registerTime: (staffId: string, type: 'IN' | 'BREAK_START' | 'BREAK_END' | 'OUT', justification?: string) => Promise<void>;
   
-  // Novas funções para gestão manual
+  // Gestão Manual de Ponto
   addTimeEntry: (entry: Partial<TimeEntry>) => Promise<void>;
   updateTimeEntry: (entry: TimeEntry) => Promise<void>;
+
+  // Gestão de Impostos (Configurações)
+  addTax: (tax: Partial<RHTax>) => Promise<void>;
+  deleteTax: (id: string) => Promise<void>;
 
   getPayroll: (month: number, year: number) => Promise<PayrollPreview[]>;
   fetchData: () => Promise<void>;
@@ -49,50 +54,49 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     shifts: [], 
     timeEntries: [], 
     roles: [],
+    taxes: [],
     isLoading: true 
   });
 
   const fetchData = useCallback(async () => {
       if (!tenantId) return;
       
-      const [staffRes, shiftsRes, timeRes, rolesRes] = await Promise.all([
-          // Busca Staff com Join no Custom Role para pegar o nome do cargo
+      const [staffRes, shiftsRes, timeRes, rolesRes, taxesRes] = await Promise.all([
           supabase.from('staff').select('*, custom_roles(name)').eq('tenant_id', tenantId).order('name'),
           supabase.from('rh_shifts').select('*').eq('tenant_id', tenantId),
           supabase.from('rh_time_entries').select('*').eq('tenant_id', tenantId).gte('entry_date', new Date(new Date().setDate(1)).toISOString().split('T')[0]).order('entry_date', { ascending: false }),
-          supabase.from('custom_roles').select('*').eq('tenant_id', tenantId)
+          supabase.from('custom_roles').select('*').eq('tenant_id', tenantId),
+          supabase.from('rh_taxes').select('*').eq('tenant_id', tenantId)
       ]);
 
       if (staffRes.data) {
           const mappedUsers = staffRes.data.map((u: any) => ({ 
               id: u.id, 
               name: u.name, 
-              role: u.role, // Enum legado
+              role: u.role,
               customRoleId: u.custom_role_id,
               customRoleName: u.custom_roles?.name,
               email: u.email, 
               auth_user_id: u.auth_user_id, 
               allowedRoutes: u.allowed_routes || [],
               
-              // RH Basic
               department: u.department,
               hireDate: u.hire_date ? new Date(u.hire_date) : undefined,
               contractType: u.contract_type,
               baseSalary: Number(u.base_salary) || 0,
               benefitsTotal: Number(u.benefits_total) || 0,
               status: u.status,
-              shiftId: u.shift_id, // Mapeia turno
+              shiftId: u.shift_id,
               phone: u.phone,
               documentCpf: u.document_cpf,
 
-              // RH Extended
+              // Extended
               birthDate: u.birth_date ? new Date(u.birth_date) : undefined,
               mothersName: u.mothers_name,
               fathersName: u.fathers_name,
               maritalStatus: u.marital_status,
               gender: u.gender,
               educationLevel: u.education_level,
-              
               rgNumber: u.rg_number,
               rgIssuer: u.rg_issuer,
               rgState: u.rg_state,
@@ -101,7 +105,6 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               ctpsState: u.ctps_state,
               pisPasep: u.pis_pasep,
               voterRegistration: u.voter_registration,
-
               addressZip: u.address_zip,
               addressStreet: u.address_street,
               addressNumber: u.address_number,
@@ -109,7 +112,6 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               addressCity: u.address_city,
               addressState: u.address_state,
               addressComplement: u.address_complement,
-
               bankName: u.bank_name,
               bankAgency: u.bank_agency,
               bankAccount: u.bank_account,
@@ -146,11 +148,20 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               permissions: r.permissions || { allowed_modules: [], allowed_features: [] }
           }));
 
+          const mappedTaxes = (taxesRes.data || []).map(t => ({
+              id: t.id,
+              name: t.name,
+              type: t.type,
+              value: Number(t.value),
+              isActive: t.is_active
+          }));
+
           setState({ 
             users: mappedUsers, 
             shifts: mappedShifts, 
             timeEntries: mappedTime, 
             roles: mappedRoles,
+            taxes: mappedTaxes,
             isLoading: false 
           });
       }
@@ -164,6 +175,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               .on('postgres_changes', { event: '*', schema: 'public', table: 'rh_shifts', filter: `tenant_id=eq.${tenantId}` }, fetchData)
               .on('postgres_changes', { event: '*', schema: 'public', table: 'rh_time_entries', filter: `tenant_id=eq.${tenantId}` }, fetchData)
               .on('postgres_changes', { event: '*', schema: 'public', table: 'custom_roles', filter: `tenant_id=eq.${tenantId}` }, fetchData)
+              .on('postgres_changes', { event: '*', schema: 'public', table: 'rh_taxes', filter: `tenant_id=eq.${tenantId}` }, fetchData)
               .subscribe();
           return () => { supabase.removeChannel(channel); };
       }
@@ -362,11 +374,8 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       await fetchData();
   };
   
-  // --- Gestão Manual de Ponto (RH) ---
-
   const addTimeEntry = async (entry: Partial<TimeEntry>) => {
       if(!tenantId) return;
-      // Garante datas ISO para inserção
       const payload = {
           tenant_id: tenantId,
           staff_id: entry.staffId,
@@ -377,7 +386,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           clock_out: entry.clockOut ? entry.clockOut.toISOString() : null,
           justification: entry.justification,
           entry_type: 'MANUAL',
-          status: 'APPROVED' // Manual geralmente já nasce aprovado
+          status: 'APPROVED'
       };
 
       const { error } = await supabase.from('rh_time_entries').insert(payload);
@@ -401,13 +410,30 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       await fetchData();
   };
 
+  // --- Gestão de Impostos (RH) ---
+  const addTax = async (tax: Partial<RHTax>) => {
+      if (!tenantId) return;
+      const { error } = await supabase.from('rh_taxes').insert({
+          tenant_id: tenantId,
+          name: tax.name,
+          type: tax.type,
+          value: tax.value,
+          is_active: true
+      });
+      if (error) throw error;
+  };
+
+  const deleteTax = async (id: string) => {
+      const { error } = await supabase.from('rh_taxes').delete().eq('id', id);
+      if (error) throw error;
+  };
+
   const getPayroll = async (month: number, year: number): Promise<PayrollPreview[]> => {
       if (!tenantId) return [];
       
       const start = new Date(year, month, 1).toISOString().split('T')[0];
       const end = new Date(year, month + 1, 0).toISOString().split('T')[0];
 
-      // Busca todos os pontos do mês
       const { data: entries } = await supabase.from('rh_time_entries')
         .select('*')
         .eq('tenant_id', tenantId)
@@ -415,7 +441,9 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         .lte('entry_date', end)
         .eq('status', 'APPROVED');
 
-      // Consolida por colaborador
+      // Busca os impostos configurados
+      const activeTaxes = state.taxes.filter(t => t.isActive);
+
       return state.users.map(user => {
           const userEntries = (entries || []).filter(e => e.staff_id === user.id);
           
@@ -424,7 +452,6 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               if (e.clock_in && e.clock_out) {
                   const diff = new Date(e.clock_out).getTime() - new Date(e.clock_in).getTime();
                   let mins = diff / 60000;
-                  // Desconta intervalo se houver
                   if (e.break_start && e.break_end) {
                       const breakDiff = new Date(e.break_end).getTime() - new Date(e.break_start).getTime();
                       mins -= (breakDiff / 60000);
@@ -434,16 +461,32 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           });
 
           const hoursWorked = totalMins / 60;
-          const expectedHours = 220; // Padrão mensal CLT
+          const expectedHours = 220;
           const overtime = Math.max(0, hoursWorked - expectedHours);
           const baseSalary = user.baseSalary || 0;
           const hourlyRate = baseSalary / expectedHours;
 
-          const overtimeTotal = overtime * (hourlyRate * 1.5); // 50% extra
+          const overtimeTotal = overtime * (hourlyRate * 1.5);
           const benefits = user.benefitsTotal || 0;
           
           const gross = baseSalary + overtimeTotal + benefits;
-          const net = gross * 0.92; // Estimativa de descontos (INSS/FGTS simplificado)
+          
+          // Cálculo Dinâmico de Descontos (Impostos)
+          let totalDiscounts = 0;
+          const breakdown: { name: string, value: number }[] = [];
+
+          activeTaxes.forEach(tax => {
+              let val = 0;
+              if (tax.type === 'PERCENTAGE') {
+                  val = (gross * (tax.value / 100));
+              } else {
+                  val = tax.value;
+              }
+              totalDiscounts += val;
+              breakdown.push({ name: tax.name, value: val });
+          });
+
+          const net = gross - totalDiscounts;
 
           return {
               staffId: user.id,
@@ -454,9 +497,10 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               addictionals: 0,
               benefits,
               grossTotal: gross,
-              discounts: gross - net,
+              discounts: totalDiscounts,
               netTotal: net,
-              hoursWorked
+              hoursWorked,
+              taxBreakdown: breakdown // Adicionado detalhamento
           };
       });
   };
@@ -466,7 +510,8 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         state, addUser, updateUser, deleteUser,
         addRole, updateRole, deleteRole,
         addShift, deleteShift, registerTime, getPayroll,
-        addTimeEntry, updateTimeEntry, fetchData
+        addTimeEntry, updateTimeEntry, fetchData,
+        addTax, deleteTax
     }}>
       {children}
     </StaffContext.Provider>

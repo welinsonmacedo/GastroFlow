@@ -73,6 +73,14 @@ export interface TimeEntry {
     status: 'PENDING' | 'APPROVED' | 'REJECTED';
 }
 
+export interface RHTax {
+    id: string;
+    name: string;
+    type: 'PERCENTAGE' | 'FIXED';
+    value: number;
+    isActive: boolean;
+}
+
 export interface PayrollPreview {
     staffId: string;
     staffName: string;
@@ -85,6 +93,8 @@ export interface PayrollPreview {
     discounts: number;
     netTotal: number;
     hoursWorked: number;
+    // Detalhamento dos impostos aplicados
+    taxBreakdown: { name: string; value: number }[];
 }
 
 export interface DeliveryMethodConfig {

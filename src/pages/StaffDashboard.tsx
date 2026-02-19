@@ -15,6 +15,7 @@ import { StaffList } from './admin/rh/StaffList';
 import { StaffSchedules } from './admin/rh/StaffSchedules';
 import { StaffPayroll } from './admin/rh/StaffPayroll';
 import { StaffAttendance } from './admin/rh/StaffAttendance';
+import { StaffSettings } from './admin/rh/StaffSettings'; // Nova Importação
 
 export const StaffDashboard: React.FC = () => {
   const { state: restState } = useRestaurant();
@@ -51,6 +52,12 @@ export const StaffDashboard: React.FC = () => {
         label: 'Pré-Folha (💰)', 
         icon: FileText, 
         featureKey: 'rh_payroll'
+    },
+    { 
+        path: '/rh/settings', 
+        label: 'Configurações', 
+        icon: Settings, 
+        featureKey: 'rh_payroll' // Usa a mesma feature key da folha por enquanto ou criar nova
     },
   ];
 
@@ -131,6 +138,7 @@ export const StaffDashboard: React.FC = () => {
                     <Route path="/attendance" element={<StaffAttendance />} />
                     <Route path="/schedules" element={<StaffSchedules />} />
                     <Route path="/payroll" element={<StaffPayroll />} />
+                    <Route path="/settings" element={<StaffSettings />} />
                     <Route path="*" element={<Navigate to="" replace />} />
                 </Routes>
             </div>
