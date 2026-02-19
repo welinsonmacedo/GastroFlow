@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useStaff } from '../../../context/StaffContext';
+import { useRestaurant } from '../../../context/RestaurantContext'; // Importado para dados da empresa
 import { useUI } from '../../../context/UIContext';
 import { Button } from '../../../components/Button';
 import { PayrollPreview, ClosedPayroll } from '../../../types';
@@ -9,7 +10,8 @@ import { printHtml, getReportStyles } from '../../../utils/printHelper';
 import { Modal } from '../../../components/Modal';
 
 export const StaffPayroll: React.FC = () => {
-    const { getPayroll, closePayroll } = useStaff();
+    const { getPayroll, closePayroll, state: staffState } = useStaff(); // state adicionado para buscar detalhes do user
+    const { state: restState } = useRestaurant(); // state adicionado para dados da empresa
     const { showAlert, showConfirm } = useUI();
     
     const [month, setMonth] = useState(new Date().getMonth());
@@ -63,6 +65,11 @@ export const StaffPayroll: React.FC = () => {
     const totalDescontos = payrollData.reduce((acc, p) => acc + p.discounts, 0);
     const totalCustoEmpresa = payrollData.reduce((acc, p) => acc + p.totalCompanyCost, 0);
 
+    // Helpers para dados complementares
+    const getEmployeeDetails = (staffId: string) => {
+        return staffState.users.find(u => u.id === staffId);
+    };
+
     const handlePrintTable = () => {
         const html = `
             <!DOCTYPE html>
@@ -70,6 +77,7 @@ export const StaffPayroll: React.FC = () => {
             <head><title>Folha ${month+1}/${year}</title>${getReportStyles()}</head>
             <body>
                 <h1>Folha de Pagamento - ${month+1}/${year} ${isClosed ? '(FECHADA)' : '(PRÉVIA)'}</h1>
+                <h2>${restState.theme.restaurantName} - CNPJ: ${restState.businessInfo?.cnpj || 'N/A'}</h2>
                 <table>
                     <thead>
                         <tr>
@@ -112,63 +120,139 @@ export const StaffPayroll: React.FC = () => {
 
     const handlePrintSlip = (slip: PayrollPreview) => {
         const employeeTaxes = slip.taxBreakdown.filter(t => t.type !== 'EMPLOYER');
-        const employerTaxes = slip.taxBreakdown.filter(t => t.type === 'EMPLOYER');
+        const employee = getEmployeeDetails(slip.staffId);
+        const company = restState.businessInfo;
+        const theme = restState.theme;
 
         const html = `
             <!DOCTYPE html>
             <html>
             <head><title>Holerite - ${slip.staffName}</title>
             <style>
-                body { font-family: sans-serif; font-size: 12px; padding: 20px; }
-                .box { border: 1px solid #000; padding: 10px; margin-bottom: 10px; }
-                .header { text-align: center; font-weight: bold; font-size: 14px; text-transform: uppercase; margin-bottom: 20px; }
-                .row { display: flex; justify-content: space-between; margin-bottom: 5px; }
-                .title { font-weight: bold; }
-                .cols { display: flex; gap: 20px; margin-top: 20px; }
-                .col { flex: 1; border: 1px solid #ccc; padding: 10px; }
-                .col h3 { border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-top: 0; }
-                .item { display: flex; justify-content: space-between; margin-bottom: 5px; }
-                .total-row { font-weight: bold; border-top: 2px solid #000; margin-top: 10px; padding-top: 5px; font-size: 14px; }
-                .info { font-size: 10px; color: #555; margin-top: 20px; border-top: 1px dashed #ccc; padding-top: 5px; }
+                @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap');
+                body { font-family: 'Roboto Mono', monospace; font-size: 11px; padding: 20px; -webkit-print-color-adjust: exact; }
+                .holerite { border: 2px solid #000; padding: 0; max-width: 800px; margin: 0 auto; }
+                .header, .subheader, .body, .footer { border-bottom: 1px solid #000; padding: 10px; }
+                .header { display: flex; justify-content: space-between; align-items: start; }
+                .company-info h1 { margin: 0; font-size: 14px; font-weight: bold; text-transform: uppercase; }
+                .recibo-title { text-align: right; font-weight: bold; }
+                .subheader { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px; background: #f9f9f9; }
+                .field { display: flex; flex-direction: column; }
+                .field label { font-size: 9px; font-weight: bold; text-transform: uppercase; color: #555; }
+                .field span { font-size: 12px; font-weight: bold; }
+                
+                .table-row { display: flex; border-bottom: 1px dashed #ccc; padding: 4px 0; }
+                .table-header { font-weight: bold; border-bottom: 2px solid #000; padding-bottom: 5px; margin-bottom: 5px; background: #eee; }
+                .col-code { width: 50px; text-align: center; }
+                .col-desc { flex: 1; }
+                .col-ref { width: 80px; text-align: center; }
+                .col-val { width: 100px; text-align: right; }
+                
+                .footer-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 10px; }
+                .totals { display: flex; justify-content: flex-end; gap: 20px; padding: 10px; background: #eee; font-weight: bold; border-top: 1px solid #000; }
+                .total-box { text-align: right; }
+                .label { font-size: 9px; text-transform: uppercase; }
+                .val { font-size: 14px; }
+                
+                .msg { margin-top: 20px; font-size: 10px; text-align: center; font-style: italic; }
             </style>
             </head>
             <body>
-                <div class="box">
-                    <div class="header">DEMONSTRATIVO DE PAGAMENTO</div>
-                    <div class="row"><span class="title">Colaborador:</span> <span>${slip.staffName}</span></div>
-                    <div class="row"><span class="title">Referência:</span> <span>${month+1}/${year}</span></div>
-                </div>
-
-                <div class="cols">
-                    <div class="col">
-                        <h3>Vencimentos</h3>
-                        <div class="item"><span>Salário Base</span> <span>R$ ${slip.baseSalary.toFixed(2)}</span></div>
-                        ${slip.overtimeTotal > 0 ? `<div class="item"><span>Horas Extras</span> <span>R$ ${slip.overtimeTotal.toFixed(2)}</span></div>` : ''}
-                        ${slip.benefitBreakdown.map(b => `<div class="item"><span>${b.name}</span> <span>R$ ${b.value.toFixed(2)}</span></div>`).join('')}
-                        ${slip.benefits > 0 && slip.benefitBreakdown.length === 0 ? `<div class="item"><span>Benefícios Div.</span> <span>R$ ${slip.benefits.toFixed(2)}</span></div>` : ''}
-                        <div class="total-row item"><span>Total Bruto</span> <span>R$ ${slip.grossTotal.toFixed(2)}</span></div>
+                <div class="holerite">
+                    <!-- HEADER EMPRESA -->
+                    <div class="header">
+                        <div class="company-info">
+                            <h1>${company?.restaurantName || theme.restaurantName || 'Nome da Empresa'}</h1>
+                            <div>${company?.address?.street || ''}, ${company?.address?.number || ''}</div>
+                            <div>CNPJ: ${company?.cnpj || '00.000.000/0000-00'}</div>
+                        </div>
+                        <div class="recibo-title">
+                            <div>RECIBO DE PAGAMENTO DE SALÁRIO</div>
+                            <div style="margin-top: 5px; font-size: 14px;">Referência: ${String(month + 1).padStart(2, '0')}/${year}</div>
+                        </div>
                     </div>
-                    <div class="col">
-                        <h3>Descontos</h3>
-                        ${employeeTaxes.map(t => `<div class="item"><span>${t.name}</span> <span>R$ ${t.value.toFixed(2)}</span></div>`).join('')}
-                        ${employeeTaxes.length === 0 ? '<div class="item"><span>-</span> <span>-</span></div>' : ''}
-                        <div class="total-row item" style="color: red;"><span>Total Descontos</span> <span>R$ ${slip.discounts.toFixed(2)}</span></div>
+
+                    <!-- DADOS FUNCIONÁRIO -->
+                    <div class="subheader">
+                        <div class="field"><label>Código</label><span>${slip.staffId.slice(0,4).toUpperCase()}</span></div>
+                        <div class="field"><label>Nome do Funcionário</label><span>${slip.staffName}</span></div>
+                        <div class="field"><label>Cargo</label><span>${employee?.role || 'FUNCIONÁRIO'}</span></div>
+                        <div class="field"><label>Admissão</label><span>${employee?.hireDate ? new Date(employee.hireDate).toLocaleDateString() : '-'}</span></div>
+                    </div>
+
+                    <!-- CORPO (VENCIMENTOS/DESCONTOS) -->
+                    <div class="body" style="min-height: 300px;">
+                        <div class="table-row table-header">
+                            <div class="col-code">Cód.</div>
+                            <div class="col-desc">Descrição</div>
+                            <div class="col-ref">Ref.</div>
+                            <div class="col-val">Vencimentos</div>
+                            <div class="col-val">Descontos</div>
+                        </div>
+
+                        <!-- Salário Base -->
+                        <div class="table-row">
+                            <div class="col-code">001</div>
+                            <div class="col-desc">SALÁRIO BASE</div>
+                            <div class="col-ref">30d</div>
+                            <div class="col-val">${slip.baseSalary.toFixed(2)}</div>
+                            <div class="col-val"></div>
+                        </div>
+
+                        <!-- Horas Extras -->
+                        ${slip.overtimeTotal > 0 ? `
+                        <div class="table-row">
+                            <div class="col-code">002</div>
+                            <div class="col-desc">HORAS EXTRAS</div>
+                            <div class="col-ref"></div>
+                            <div class="col-val">${slip.overtimeTotal.toFixed(2)}</div>
+                            <div class="col-val"></div>
+                        </div>` : ''}
+
+                        <!-- Benefícios -->
+                        ${slip.benefitBreakdown.map((b, i) => `
+                        <div class="table-row">
+                            <div class="col-code">${100+i}</div>
+                            <div class="col-desc">${b.name.toUpperCase()}</div>
+                            <div class="col-ref"></div>
+                            <div class="col-val">${b.value.toFixed(2)}</div>
+                            <div class="col-val"></div>
+                        </div>`).join('')}
+
+                        <!-- Descontos -->
+                        ${employeeTaxes.map((t, i) => `
+                        <div class="table-row">
+                            <div class="col-code">${900+i}</div>
+                            <div class="col-desc">${t.name.toUpperCase()}</div>
+                            <div class="col-ref"></div>
+                            <div class="col-val"></div>
+                            <div class="col-val">${t.value.toFixed(2)}</div>
+                        </div>`).join('')}
+                    </div>
+
+                    <!-- TOTAIS -->
+                    <div class="totals">
+                        <div class="total-box"><div class="label">Total Vencimentos</div><div class="val">${slip.grossTotal.toFixed(2)}</div></div>
+                        <div class="total-box"><div class="label">Total Descontos</div><div class="val">${slip.discounts.toFixed(2)}</div></div>
+                        <div class="total-box" style="border: 1px solid #000; padding: 0 10px; background: #fff;"><div class="label">Líquido a Receber</div><div class="val">R$ ${slip.netTotal.toFixed(2)}</div></div>
+                    </div>
+
+                    <!-- RODAPÉ BASES -->
+                    <div class="footer">
+                        <div class="footer-grid">
+                            <div class="field"><label>Salário Base</label><span>${slip.baseSalary.toFixed(2)}</span></div>
+                            <div class="field"><label>Base Calc. INSS</label><span>${slip.grossTotal.toFixed(2)}</span></div>
+                            <div class="field"><label>Base Calc. FGTS</label><span>${slip.grossTotal.toFixed(2)}</span></div>
+                            <div class="field"><label>FGTS do Mês (8%)</label><span>${slip.fgtsValue.toFixed(2)}</span></div>
+                        </div>
                     </div>
                 </div>
-
-                <div class="box" style="margin-top: 20px; text-align: right; background: #f0f0f0;">
-                    <div class="row" style="font-size: 16px;">
-                        <span class="title">LÍQUIDO A RECEBER:</span> 
-                        <span style="font-weight: bold;">R$ ${slip.netTotal.toFixed(2)}</span>
-                    </div>
+                <div class="msg">
+                    Declaro ter recebido a importância líquida discriminada neste recibo.
+                    <br/><br/>
+                    ____________________________________________________<br/>
+                    ${slip.staffName}
                 </div>
-
-                ${employerTaxes.length > 0 ? `
-                <div class="info">
-                    <strong>Informativo de Recolhimentos da Empresa (Não descontado):</strong><br/>
-                    ${employerTaxes.map(t => `${t.name}: R$ ${t.value.toFixed(2)}`).join(' | ')}
-                </div>
-                ` : ''}
             </body>
             </html>
         `;
@@ -246,7 +330,7 @@ export const StaffPayroll: React.FC = () => {
                                     <td className="p-4 text-right font-black text-emerald-600 bg-emerald-50">R$ {p.netTotal.toFixed(2)}</td>
                                     <td className="p-4 text-right font-mono text-purple-600">R$ {p.employerCharges.toFixed(2)}</td>
                                     <td className="p-4 text-center">
-                                        <button onClick={() => setSelectedSlip(p)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Ver Detalhes">
+                                        <button onClick={() => setSelectedSlip(p)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Ver Holerite Detalhado">
                                             <Eye size={18}/>
                                         </button>
                                     </td>
@@ -259,85 +343,133 @@ export const StaffPayroll: React.FC = () => {
             </div>
 
             {/* Modal de Detalhes (Holerite) */}
-            <Modal isOpen={!!selectedSlip} onClose={() => setSelectedSlip(null)} title="Detalhes do Pagamento" variant="dialog" maxWidth="md">
+            <Modal isOpen={!!selectedSlip} onClose={() => setSelectedSlip(null)} title="Recibo de Pagamento (Holerite)" variant="dialog" maxWidth="lg">
                 {selectedSlip && (
                     <div className="space-y-6">
-                        <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                            <div className="flex justify-between items-center mb-2">
-                                <h3 className="font-bold text-lg text-slate-800">{selectedSlip.staffName}</h3>
-                                <span className="text-xs font-mono bg-white border px-2 py-1 rounded text-slate-500">Ref: {month + 1}/{year}</span>
-                            </div>
-                            <div className="text-xs text-slate-500 flex gap-4">
-                                <span>Salário Base: R$ {selectedSlip.baseSalary.toFixed(2)}</span>
-                                <span>Horas Trab.: {selectedSlip.hoursWorked.toFixed(1)}h</span>
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-6">
-                            {/* Vencimentos */}
-                            <div className="space-y-2">
-                                <h4 className="text-xs font-black uppercase text-green-700 border-b border-green-200 pb-1 mb-2">Vencimentos</h4>
-                                <div className="flex justify-between text-sm">
-                                    <span className="text-slate-600">Salário Base</span>
-                                    <span className="font-mono font-bold">R$ {selectedSlip.baseSalary.toFixed(2)}</span>
+                        {/* Wrapper Estilo Holerite */}
+                        <div className="border-2 border-slate-800 p-0 text-xs font-mono bg-white text-slate-900 shadow-sm print:shadow-none">
+                            
+                            {/* Header Empresa */}
+                            <div className="border-b border-slate-800 p-4 flex justify-between items-start bg-slate-50">
+                                <div>
+                                    <h1 className="font-bold text-sm uppercase">{restState.theme.restaurantName || "Razão Social da Empresa"}</h1>
+                                    <p>{restState.businessInfo?.address?.street || 'Endereço da Empresa'}, {restState.businessInfo?.address?.number || ''}</p>
+                                    <p>CNPJ: {restState.businessInfo?.cnpj || '00.000.000/0000-00'}</p>
                                 </div>
-                                {selectedSlip.overtimeTotal > 0 && (
-                                    <div className="flex justify-between text-sm">
-                                        <span className="text-slate-600">Horas Extras</span>
-                                        <span className="font-mono font-bold text-green-600">R$ {selectedSlip.overtimeTotal.toFixed(2)}</span>
-                                    </div>
-                                )}
-                                {selectedSlip.benefitBreakdown.map((ben, idx) => (
-                                    <div key={`ben-${idx}`} className="flex justify-between text-sm">
-                                        <span className="text-slate-600">{ben.name}</span>
-                                        <span className="font-mono font-bold text-blue-600">R$ {ben.value.toFixed(2)}</span>
-                                    </div>
-                                ))}
-                                <div className="border-t pt-2 mt-2 flex justify-between text-sm font-black text-slate-800">
-                                    <span>Total Bruto</span>
-                                    <span>R$ {selectedSlip.grossTotal.toFixed(2)}</span>
+                                <div className="text-right">
+                                    <h2 className="font-bold text-sm">RECIBO DE PAGAMENTO</h2>
+                                    <p className="font-bold mt-1">Ref: {String(month+1).padStart(2, '0')}/{year}</p>
                                 </div>
                             </div>
 
-                            {/* Descontos (Funcionário) */}
-                            <div className="space-y-2">
-                                <h4 className="text-xs font-black uppercase text-red-700 border-b border-red-200 pb-1 mb-2">Descontos</h4>
-                                {selectedSlip.taxBreakdown.filter(t => t.type === 'EMPLOYEE').map((tax, idx) => (
-                                    <div key={idx} className="flex justify-between text-sm">
-                                        <span className="text-slate-600">{tax.name}</span>
-                                        <span className="font-mono font-bold text-red-500">R$ {tax.value.toFixed(2)}</span>
-                                    </div>
-                                ))}
-                                {selectedSlip.taxBreakdown.filter(t => t.type === 'EMPLOYEE').length === 0 && <p className="text-xs text-gray-400 italic">Nenhum desconto.</p>}
-                                <div className="border-t pt-2 mt-2 flex justify-between text-sm font-black text-red-700">
-                                    <span>Total Desc.</span>
-                                    <span>R$ {selectedSlip.discounts.toFixed(2)}</span>
+                            {/* Dados do Funcionário */}
+                            <div className="border-b border-slate-800 p-2 grid grid-cols-4 gap-4 bg-white">
+                                <div>
+                                    <label className="block text-[10px] font-bold text-gray-500 uppercase">Cód.</label>
+                                    <span className="font-bold">{selectedSlip.staffId.slice(0,4).toUpperCase()}</span>
+                                </div>
+                                <div className="col-span-2">
+                                    <label className="block text-[10px] font-bold text-gray-500 uppercase">Nome do Funcionário</label>
+                                    <span className="font-bold">{selectedSlip.staffName}</span>
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] font-bold text-gray-500 uppercase">CBO / Função</label>
+                                    <span>{getEmployeeDetails(selectedSlip.staffId)?.role || 'FUNCIONÁRIO'}</span>
+                                </div>
+                                <div>
+                                     <label className="block text-[10px] font-bold text-gray-500 uppercase">Departamento</label>
+                                     <span>{getEmployeeDetails(selectedSlip.staffId)?.department || 'GERAL'}</span>
+                                </div>
+                                <div>
+                                     <label className="block text-[10px] font-bold text-gray-500 uppercase">Admissão</label>
+                                     <span>{getEmployeeDetails(selectedSlip.staffId)?.hireDate ? new Date(getEmployeeDetails(selectedSlip.staffId)!.hireDate!).toLocaleDateString() : '-'}</span>
                                 </div>
                             </div>
-                        </div>
 
-                        <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-200 flex justify-between items-center">
-                            <span className="text-sm font-bold text-emerald-800 uppercase tracking-widest">Líquido a Receber</span>
-                            <span className="text-2xl font-black text-emerald-600">R$ {selectedSlip.netTotal.toFixed(2)}</span>
-                        </div>
-
-                        {/* Encargos da Empresa (Apenas visualização gerencial) */}
-                        <div className="bg-purple-50 p-4 rounded-xl border border-purple-200 mt-4">
-                            <h4 className="text-xs font-black uppercase text-purple-700 mb-2 flex items-center gap-2"><Building2 size={12}/> Custos da Empresa (Patronal)</h4>
-                            <div className="space-y-1">
-                                {selectedSlip.taxBreakdown.filter(t => t.type === 'EMPLOYER').map((tax, idx) => (
-                                    <div key={idx} className="flex justify-between text-xs">
-                                        <span className="text-purple-800">{tax.name}</span>
-                                        <span className="font-bold text-purple-900">R$ {tax.value.toFixed(2)}</span>
-                                    </div>
-                                ))}
-                                <div className="border-t border-purple-200 pt-1 mt-1 flex justify-between text-xs font-bold text-purple-900">
-                                    <span>Total Encargos</span>
-                                    <span>R$ {selectedSlip.employerCharges.toFixed(2)}</span>
+                            {/* Corpo (Tabela) */}
+                            <div className="min-h-[300px] relative">
+                                {/* Header da Tabela */}
+                                <div className="grid grid-cols-12 border-b border-black bg-gray-100 font-bold p-1">
+                                    <div className="col-span-1 text-center">Cód</div>
+                                    <div className="col-span-5">Descrição</div>
+                                    <div className="col-span-2 text-center">Ref.</div>
+                                    <div className="col-span-2 text-right">Vencimentos</div>
+                                    <div className="col-span-2 text-right">Descontos</div>
                                 </div>
-                                <div className="flex justify-between text-xs font-black text-purple-900 mt-2 pt-2 border-t border-purple-200">
-                                    <span>CUSTO TOTAL (Salário + Encargos)</span>
-                                    <span>R$ {selectedSlip.totalCompanyCost.toFixed(2)}</span>
+                                
+                                {/* Linhas */}
+                                <div className="p-1 space-y-1">
+                                    <div className="grid grid-cols-12">
+                                        <div className="col-span-1 text-center">001</div>
+                                        <div className="col-span-5">SALÁRIO BASE</div>
+                                        <div className="col-span-2 text-center">30d</div>
+                                        <div className="col-span-2 text-right">{selectedSlip.baseSalary.toFixed(2)}</div>
+                                        <div className="col-span-2 text-right"></div>
+                                    </div>
+                                    {selectedSlip.overtimeTotal > 0 && (
+                                        <div className="grid grid-cols-12">
+                                            <div className="col-span-1 text-center">002</div>
+                                            <div className="col-span-5">HORAS EXTRAS</div>
+                                            <div className="col-span-2 text-center"></div>
+                                            <div className="col-span-2 text-right">{selectedSlip.overtimeTotal.toFixed(2)}</div>
+                                            <div className="col-span-2 text-right"></div>
+                                        </div>
+                                    )}
+                                    {selectedSlip.benefitBreakdown.map((ben, i) => (
+                                        <div key={`ben-${i}`} className="grid grid-cols-12">
+                                            <div className="col-span-1 text-center">{100+i}</div>
+                                            <div className="col-span-5">{ben.name.toUpperCase()}</div>
+                                            <div className="col-span-2 text-center"></div>
+                                            <div className="col-span-2 text-right">{ben.value.toFixed(2)}</div>
+                                            <div className="col-span-2 text-right"></div>
+                                        </div>
+                                    ))}
+                                    {selectedSlip.taxBreakdown.filter(t => t.type !== 'EMPLOYER').map((tax, i) => (
+                                        <div key={`tax-${i}`} className="grid grid-cols-12">
+                                            <div className="col-span-1 text-center">{900+i}</div>
+                                            <div className="col-span-5">{tax.name.toUpperCase()}</div>
+                                            <div className="col-span-2 text-center"></div>
+                                            <div className="col-span-2 text-right"></div>
+                                            <div className="col-span-2 text-right">{tax.value.toFixed(2)}</div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Totais */}
+                            <div className="border-t border-black bg-gray-100 p-2 grid grid-cols-12 items-center">
+                                <div className="col-span-6 font-bold text-xs"></div>
+                                <div className="col-span-2 text-right">
+                                    <div className="text-[9px] uppercase">Total Vencimentos</div>
+                                    <div className="font-bold">{selectedSlip.grossTotal.toFixed(2)}</div>
+                                </div>
+                                <div className="col-span-2 text-right">
+                                    <div className="text-[9px] uppercase">Total Descontos</div>
+                                    <div className="font-bold">{selectedSlip.discounts.toFixed(2)}</div>
+                                </div>
+                                <div className="col-span-2 text-right border border-black bg-white p-1 ml-2">
+                                    <div className="text-[9px] uppercase font-bold">Líquido a Receber</div>
+                                    <div className="font-black text-sm">R$ {selectedSlip.netTotal.toFixed(2)}</div>
+                                </div>
+                            </div>
+
+                            {/* Rodapé Bases */}
+                            <div className="border-t border-black p-2 grid grid-cols-4 gap-4 bg-white text-[10px]">
+                                <div>
+                                    <div className="font-bold text-gray-500 uppercase">Sal. Contrib. INSS</div>
+                                    <div className="font-bold">{selectedSlip.grossTotal.toFixed(2)}</div>
+                                </div>
+                                <div>
+                                    <div className="font-bold text-gray-500 uppercase">Base Calc. FGTS</div>
+                                    <div className="font-bold">{selectedSlip.grossTotal.toFixed(2)}</div>
+                                </div>
+                                <div>
+                                    <div className="font-bold text-gray-500 uppercase">FGTS do Mês</div>
+                                    <div className="font-bold">{selectedSlip.fgtsValue.toFixed(2)}</div>
+                                </div>
+                                <div>
+                                    <div className="font-bold text-gray-500 uppercase">Base Calc. IRRF</div>
+                                    <div className="font-bold">{(selectedSlip.grossTotal - selectedSlip.inssValue).toFixed(2)}</div>
                                 </div>
                             </div>
                         </div>
