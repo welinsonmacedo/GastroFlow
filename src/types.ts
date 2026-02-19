@@ -47,7 +47,7 @@ export interface CustomRole {
     permissions: RolePermissions;
 }
 
-// --- RH Types ---
+// --- HR Types ---
 export type ContractType = 'CLT' | 'PJ' | 'TEMPORARY' | 'INTERN' | 'FREELANCE';
 export type EmployeeStatus = 'ACTIVE' | 'ON_LEAVE' | 'TERMINATED' | 'VACATION';
 export type TaxRegime = 'SIMPLES_NACIONAL' | 'LUCRO_PRESUMIDO' | 'LUCRO_REAL' | 'MEI';
@@ -76,6 +76,35 @@ export interface TimeEntry {
     status: 'PENDING' | 'APPROVED' | 'REJECTED';
 }
 
+// Interfaces Novas para Cálculo Real
+export interface RhPayrollSetting {
+    id: string;
+    minWage: number;
+    inssCeiling: number;
+    irrfDependentDeduction: number;
+    fgtsRate: number;
+    validFrom: string;
+    validUntil?: string;
+}
+
+export interface RhInssBracket {
+    id: string;
+    minValue: number;
+    maxValue?: number; // Null = infinito (mas INSS tem teto na config)
+    rate: number;
+    validFrom: string;
+}
+
+export interface RhIrrfBracket {
+    id: string;
+    minValue: number;
+    maxValue?: number;
+    rate: number;
+    deduction: number;
+    validFrom: string;
+}
+
+// Mantido para compatibilidade legado, mas a lógica vai usar as novas tabelas
 export interface RHTax {
     id: string;
     name: string;
@@ -111,6 +140,11 @@ export interface PayrollPreview {
     employerCharges: number; 
     totalCompanyCost: number; 
 
+    // Detalhamento
+    inssValue: number;
+    irrfValue: number;
+    fgtsValue: number; // Informativo
+    
     taxBreakdown: { name: string; value: number; type: TaxPayerType }[];
     benefitBreakdown: { name: string; value: number }[];
 }
@@ -242,6 +276,7 @@ export interface User {
   shiftId?: string; 
   phone?: string;
   documentCpf?: string;
+  dependentsCount?: number; // Novo campo para IRRF
 
   // Extended
   birthDate?: Date;

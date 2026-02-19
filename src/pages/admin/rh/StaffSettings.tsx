@@ -5,16 +5,18 @@ import { useRestaurant } from '../../../context/RestaurantContext';
 import { useUI } from '../../../context/UIContext';
 import { Button } from '../../../components/Button';
 import { RHTax, RHBenefit, TaxPayerType, TaxCalculationBasis } from '../../../types';
-import { Plus, Trash2, Settings, Percent, DollarSign, RefreshCcw, Gift, FileText, Briefcase, Building2 } from 'lucide-react';
+import { Plus, Trash2, Settings, Percent, DollarSign, RefreshCcw, Gift, FileText, Building2, Scale, Calculator } from 'lucide-react';
 
 export const StaffSettings: React.FC = () => {
-    const { state, addTax, deleteTax, addBenefit, deleteBenefit, applyRegimeDefaults } = useStaff();
+    const { state, addTax, deleteTax, addBenefit, deleteBenefit, applyRegimeDefaults, applyLegalDefaults } = useStaff();
     const { state: restState } = useRestaurant();
     const { showAlert, showConfirm } = useUI();
 
-    // Estado para controlar a aba de impostos
-    const [taxTab, setTaxTab] = useState<TaxPayerType>('EMPLOYEE');
+    // Abas de Configuração
+    const [activeTab, setActiveTab] = useState<'LEGAL' | 'CUSTOM'>('LEGAL');
 
+    // Estado para impostos customizados
+    const [taxTab, setTaxTab] = useState<TaxPayerType>('EMPLOYEE');
     const [taxForm, setTaxForm] = useState<Partial<RHTax>>({ name: '', type: 'PERCENTAGE', value: 0, calculationBasis: 'GROSS_TOTAL' });
     const [benForm, setBenForm] = useState<Partial<RHBenefit>>({ name: '', type: 'FIXED', value: 0 });
 
@@ -22,7 +24,6 @@ export const StaffSettings: React.FC = () => {
         e.preventDefault();
         if (!taxForm.name || taxForm.value === undefined) return;
         try { 
-            // Adiciona o tipo de pagador baseado na aba atual
             await addTax({ ...taxForm, payerType: taxTab }); 
             setTaxForm({ name: '', type: 'PERCENTAGE', value: 0, calculationBasis: 'GROSS_TOTAL' }); 
             showAlert({ title: "Sucesso", message: "Item adicionado.", type: "SUCCESS" }); 
@@ -39,20 +40,30 @@ export const StaffSettings: React.FC = () => {
 
     const handleDeleteBenefit = (id: string) => { showConfirm({ title: "Excluir Benefício", message: "Tem certeza?", onConfirm: () => deleteBenefit(id) }); };
 
-    const handleResetTaxes = () => {
-        const regime = restState.businessInfo?.taxRegime || 'SIMPLES_NACIONAL';
+    const handleResetLegal = () => {
         showConfirm({
-            title: `Redefinir para ${regime.replace('_', ' ')}?`,
-            message: "Isso apagará os impostos atuais e aplicará o padrão sugerido (Colaborador e Empresa) para o regime tributário selecionado.",
-            type: 'WARNING',
+            title: "Carregar Tabela Oficial?",
+            message: "Isso irá sobrescrever as faixas de INSS e IRRF com os valores padrão de 2024/2025.",
             onConfirm: async () => {
-                await applyRegimeDefaults(regime);
-                showAlert({ title: "Redefinido", message: "Impostos atualizados conforme o regime.", type: "SUCCESS" });
+                await applyLegalDefaults();
+                showAlert({ title: "Atualizado", message: "Tabelas atualizadas com sucesso.", type: "SUCCESS" });
             }
         });
     };
 
-    // Filtra impostos pela aba
+    const handleResetCustom = () => {
+        const regime = restState.businessInfo?.taxRegime || 'SIMPLES_NACIONAL';
+        showConfirm({
+            title: `Redefinir para ${regime.replace('_', ' ')}?`,
+            message: "Isso apagará os impostos customizados atuais e aplicará o padrão sugerido.",
+            onConfirm: async () => {
+                await applyRegimeDefaults(regime);
+                showAlert({ title: "Redefinido", message: "Impostos atualizados.", type: "SUCCESS" });
+            }
+        });
+    };
+
+    // Filtra impostos pela aba custom
     const filteredTaxes = state.taxes.filter(t => (t.payerType || 'EMPLOYEE') === taxTab);
 
     return (
@@ -60,135 +71,172 @@ export const StaffSettings: React.FC = () => {
              
              {/* Header */}
              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                <h2 className="text-2xl font-black text-slate-800 flex items-center gap-2"><Settings className="text-gray-600"/> Configurações de RH</h2>
-                <p className="text-sm text-gray-500">Regras de folha de pagamento e encargos.</p>
+                <h2 className="text-2xl font-black text-slate-800 flex items-center gap-2"><Settings className="text-gray-600"/> Parâmetros de Folha</h2>
+                <p className="text-sm text-gray-500">Regras fiscais, tabelas oficiais e descontos extras.</p>
                 
-                <div className="mt-4 flex flex-col md:flex-row md:items-center justify-between bg-blue-50 p-4 rounded-xl border border-blue-100 gap-4">
-                    <div>
-                        <p className="text-xs font-bold text-blue-600 uppercase tracking-widest mb-1">Regime Tributário Atual</p>
-                        <p className="text-lg font-black text-blue-900">{restState.businessInfo?.taxRegime?.replace('_', ' ') || 'NÃO DEFINIDO'}</p>
-                    </div>
-                    <Button variant="secondary" onClick={handleResetTaxes} className="bg-white text-blue-700 border-blue-200 hover:bg-blue-100 w-full md:w-auto">
-                        <RefreshCcw size={16} className="mr-2"/> Aplicar Padrão
-                    </Button>
+                <div className="flex gap-4 mt-6 border-b">
+                    <button onClick={() => setActiveTab('LEGAL')} className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'LEGAL' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}>Tabelas Legais (INSS/IRRF)</button>
+                    <button onClick={() => setActiveTab('CUSTOM')} className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'CUSTOM' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}>Descontos & Extras</button>
                 </div>
             </div>
 
-            {/* SEÇÃO 1: IMPOSTOS E ENCARGOS */}
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                <div className="border-b border-gray-100 flex">
-                    <button 
-                        onClick={() => setTaxTab('EMPLOYEE')}
-                        className={`flex-1 py-4 text-sm font-bold flex items-center justify-center gap-2 transition-colors ${taxTab === 'EMPLOYEE' ? 'text-red-600 border-b-2 border-red-600 bg-red-50/50' : 'text-slate-500 hover:bg-gray-50'}`}
-                    >
-                        <FileText size={18}/> Descontos do Colaborador
-                    </button>
-                    <button 
-                        onClick={() => setTaxTab('EMPLOYER')}
-                        className={`flex-1 py-4 text-sm font-bold flex items-center justify-center gap-2 transition-colors ${taxTab === 'EMPLOYER' ? 'text-purple-600 border-b-2 border-purple-600 bg-purple-50/50' : 'text-slate-500 hover:bg-gray-50'}`}
-                    >
-                        <Building2 size={18}/> Encargos da Empresa
-                    </button>
-                </div>
-
-                <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="md:col-span-1 h-fit">
-                        <div className={`p-4 rounded-2xl border mb-4 ${taxTab === 'EMPLOYEE' ? 'bg-red-50 border-red-100 text-red-800' : 'bg-purple-50 border-purple-100 text-purple-800'}`}>
-                            <h4 className="font-bold text-sm mb-1">{taxTab === 'EMPLOYEE' ? 'Descontos em Folha' : 'Custo Patronal'}</h4>
-                            <p className="text-xs opacity-80">
-                                {taxTab === 'EMPLOYEE' 
-                                    ? 'Estes valores serão deduzidos do salário bruto do funcionário (ex: INSS, VT).' 
-                                    : 'Estes valores são pagos pela empresa e não descontados do funcionário (ex: FGTS, INSS Patronal).'}
-                            </p>
-                        </div>
-                        <form onSubmit={handleAddTax} className="space-y-4">
-                            <input required className="w-full border p-2.5 rounded-xl text-sm" placeholder="Nome (Ex: INSS)" value={taxForm.name} onChange={e => setTaxForm({...taxForm, name: e.target.value})} />
-                            <div className="grid grid-cols-2 gap-2">
-                                <select className="border p-2.5 rounded-xl text-sm bg-white" value={taxForm.type} onChange={e => setTaxForm({...taxForm, type: e.target.value as any})}><option value="PERCENTAGE">%</option><option value="FIXED">R$</option></select>
-                                <input required type="number" step="0.01" className="border p-2.5 rounded-xl text-sm" placeholder="Valor" value={taxForm.value} onChange={e => setTaxForm({...taxForm, value: parseFloat(e.target.value)})} />
-                            </div>
-                            
-                            {/* Seleção de Base de Cálculo */}
-                            <div>
-                                <label className="text-[10px] font-bold text-gray-500 uppercase px-1">Base de Cálculo</label>
-                                <select 
-                                    className="w-full border p-2.5 rounded-xl text-sm bg-white" 
-                                    value={taxForm.calculationBasis || 'GROSS_TOTAL'} 
-                                    onChange={e => setTaxForm({...taxForm, calculationBasis: e.target.value as any})}
-                                >
-                                    <option value="GROSS_TOTAL">Sobre Bruto Total (Base + Extras)</option>
-                                    <option value="BASE_SALARY">Sobre Salário Base (Sem Extras)</option>
-                                </select>
-                            </div>
-
-                            <Button type="submit" className={`w-full ${taxTab === 'EMPLOYEE' ? 'bg-red-600 hover:bg-red-700' : 'bg-purple-600 hover:bg-purple-700'}`}>
-                                Adicionar {taxTab === 'EMPLOYEE' ? 'Desconto' : 'Encargo'}
-                            </Button>
-                        </form>
+            {/* ABA 1: TABELAS LEGAIS */}
+            {activeTab === 'LEGAL' && (
+                <div className="space-y-6">
+                    <div className="flex justify-end">
+                        <Button onClick={handleResetLegal} variant="secondary" className="bg-white border text-blue-700">
+                            <RefreshCcw size={16} className="mr-2"/> Carregar Tabela 2024/2025
+                        </Button>
                     </div>
 
-                    <div className="md:col-span-2 space-y-3">
-                        {filteredTaxes.map(tax => (
-                            <div key={tax.id} className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex justify-between items-center group hover:border-gray-300">
-                                <div className="flex items-center gap-3">
-                                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${tax.payerType === 'EMPLOYER' ? 'bg-purple-100 text-purple-600' : 'bg-red-100 text-red-600'}`}>
-                                        {tax.type === 'PERCENTAGE' ? <Percent size={18}/> : <DollarSign size={18}/>}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* INSS Progressivo */}
+                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-orange-100">
+                            <h3 className="font-bold text-orange-700 mb-4 flex items-center gap-2"><Scale size={18}/> INSS Progressivo</h3>
+                            <div className="overflow-hidden rounded-xl border border-orange-100">
+                                <table className="w-full text-sm text-left">
+                                    <thead className="bg-orange-50 text-orange-800 text-xs font-bold uppercase">
+                                        <tr><th className="p-3">Faixa Salarial</th><th className="p-3 text-right">Alíquota</th></tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-orange-50">
+                                        {state.inssBrackets.map((b, i) => (
+                                            <tr key={b.id}>
+                                                <td className="p-3">
+                                                    R$ {b.minValue.toFixed(2)} até {b.maxValue ? `R$ ${b.maxValue.toFixed(2)}` : '...'}
+                                                </td>
+                                                <td className="p-3 text-right font-bold">{b.rate}%</td>
+                                            </tr>
+                                        ))}
+                                        {state.inssBrackets.length === 0 && <tr><td colSpan={2} className="p-4 text-center text-gray-400">Nenhuma tabela carregada.</td></tr>}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div className="mt-4 text-xs text-gray-500 bg-gray-50 p-3 rounded-lg">
+                                <strong>Teto INSS:</strong> R$ {state.legalSettings?.inssCeiling.toFixed(2) || '0.00'}
+                            </div>
+                        </div>
+
+                        {/* IRRF */}
+                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-blue-100">
+                            <h3 className="font-bold text-blue-700 mb-4 flex items-center gap-2"><Calculator size={18}/> IRRF (Imposto de Renda)</h3>
+                            <div className="overflow-hidden rounded-xl border border-blue-100">
+                                <table className="w-full text-sm text-left">
+                                    <thead className="bg-blue-50 text-blue-800 text-xs font-bold uppercase">
+                                        <tr><th className="p-3">Base de Cálculo</th><th className="p-3 text-right">Alíquota</th><th className="p-3 text-right">Dedução</th></tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-blue-50">
+                                        {state.irrfBrackets.map((b, i) => (
+                                            <tr key={b.id}>
+                                                <td className="p-3">
+                                                    {b.minValue === 0 ? 'Até' : `De R$ ${b.minValue.toFixed(2)}`} {b.maxValue ? `até R$ ${b.maxValue.toFixed(2)}` : 'em diante'}
+                                                </td>
+                                                <td className="p-3 text-right font-bold">{b.rate === 0 ? 'Isento' : `${b.rate}%`}</td>
+                                                <td className="p-3 text-right text-gray-500">R$ {b.deduction.toFixed(2)}</td>
+                                            </tr>
+                                        ))}
+                                         {state.irrfBrackets.length === 0 && <tr><td colSpan={3} className="p-4 text-center text-gray-400">Nenhuma tabela carregada.</td></tr>}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div className="mt-4 text-xs text-gray-500 bg-gray-50 p-3 rounded-lg flex justify-between">
+                                <span><strong>Dedução p/ Dependente:</strong> R$ {state.legalSettings?.irrfDependentDeduction.toFixed(2) || '0.00'}</span>
+                                <span><strong>Salário Mínimo:</strong> R$ {state.legalSettings?.minWage.toFixed(2) || '0.00'}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ABA 2: CUSTOMIZADOS (CÓDIGO ANTIGO ADAPTADO) */}
+            {activeTab === 'CUSTOM' && (
+                <>
+                    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                        <div className="border-b border-gray-100 flex">
+                            <button onClick={() => setTaxTab('EMPLOYEE')} className={`flex-1 py-4 text-sm font-bold flex items-center justify-center gap-2 transition-colors ${taxTab === 'EMPLOYEE' ? 'text-red-600 border-b-2 border-red-600 bg-red-50/50' : 'text-slate-500 hover:bg-gray-50'}`}><FileText size={18}/> Descontos Extras (Vale, Atrasos)</button>
+                            <button onClick={() => setTaxTab('EMPLOYER')} className={`flex-1 py-4 text-sm font-bold flex items-center justify-center gap-2 transition-colors ${taxTab === 'EMPLOYER' ? 'text-purple-600 border-b-2 border-purple-600 bg-purple-50/50' : 'text-slate-500 hover:bg-gray-50'}`}><Building2 size={18}/> Encargos Extras da Empresa</button>
+                        </div>
+
+                        <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div className="md:col-span-1 h-fit">
+                                <div className={`p-4 rounded-2xl border mb-4 ${taxTab === 'EMPLOYEE' ? 'bg-red-50 border-red-100 text-red-800' : 'bg-purple-50 border-purple-100 text-purple-800'}`}>
+                                    <h4 className="font-bold text-sm mb-1">{taxTab === 'EMPLOYEE' ? 'Descontos Adicionais' : 'Custo Patronal Extra'}</h4>
+                                    <p className="text-xs opacity-80">INSS e IRRF já são calculados automaticamente. Use esta área para VT, VR, Adiantamentos ou impostos específicos do regime.</p>
+                                </div>
+                                <form onSubmit={handleAddTax} className="space-y-4">
+                                    <input required className="w-full border p-2.5 rounded-xl text-sm" placeholder="Nome (Ex: Vale Transporte)" value={taxForm.name} onChange={e => setTaxForm({...taxForm, name: e.target.value})} />
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <select className="border p-2.5 rounded-xl text-sm bg-white" value={taxForm.type} onChange={e => setTaxForm({...taxForm, type: e.target.value as any})}><option value="PERCENTAGE">%</option><option value="FIXED">R$</option></select>
+                                        <input required type="number" step="0.01" className="border p-2.5 rounded-xl text-sm" placeholder="Valor" value={taxForm.value} onChange={e => setTaxForm({...taxForm, value: parseFloat(e.target.value)})} />
                                     </div>
                                     <div>
-                                        <h4 className="font-bold text-slate-800">{tax.name}</h4>
-                                        <div className="text-xs text-gray-500">
-                                            {taxTab === 'EMPLOYEE' ? 'Desconto' : 'Custo'}: <strong>{tax.type === 'PERCENTAGE' ? `${tax.value}%` : `R$ ${tax.value.toFixed(2)}`}</strong>
-                                            <span className="ml-2 px-1.5 py-0.5 bg-gray-100 rounded text-[9px] uppercase tracking-wide">
-                                                Sobre {tax.calculationBasis === 'BASE_SALARY' ? 'Base' : 'Bruto'}
-                                            </span>
+                                        <label className="text-[10px] font-bold text-gray-500 uppercase px-1">Base de Cálculo</label>
+                                        <select className="w-full border p-2.5 rounded-xl text-sm bg-white" value={taxForm.calculationBasis || 'GROSS_TOTAL'} onChange={e => setTaxForm({...taxForm, calculationBasis: e.target.value as any})}>
+                                            <option value="GROSS_TOTAL">Sobre Bruto Total</option>
+                                            <option value="BASE_SALARY">Sobre Salário Base</option>
+                                        </select>
+                                    </div>
+                                    <Button type="submit" className={`w-full ${taxTab === 'EMPLOYEE' ? 'bg-red-600 hover:bg-red-700' : 'bg-purple-600 hover:bg-purple-700'}`}>Adicionar</Button>
+                                </form>
+                            </div>
+
+                            <div className="md:col-span-2 space-y-3">
+                                {filteredTaxes.map(tax => (
+                                    <div key={tax.id} className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex justify-between items-center group hover:border-gray-300">
+                                        <div className="flex items-center gap-3">
+                                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${tax.payerType === 'EMPLOYER' ? 'bg-purple-100 text-purple-600' : 'bg-red-100 text-red-600'}`}>
+                                                {tax.type === 'PERCENTAGE' ? <Percent size={18}/> : <DollarSign size={18}/>}
+                                            </div>
+                                            <div>
+                                                <h4 className="font-bold text-slate-800">{tax.name}</h4>
+                                                <div className="text-xs text-gray-500">
+                                                    {taxTab === 'EMPLOYEE' ? 'Desconto' : 'Custo'}: <strong>{tax.type === 'PERCENTAGE' ? `${tax.value}%` : `R$ ${tax.value.toFixed(2)}`}</strong>
+                                                    <span className="ml-2 px-1.5 py-0.5 bg-gray-100 rounded text-[9px] uppercase tracking-wide">Sobre {tax.calculationBasis === 'BASE_SALARY' ? 'Base' : 'Bruto'}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <button onClick={() => handleDeleteTax(tax.id)} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"><Trash2 size={18}/></button>
+                                    </div>
+                                ))}
+                                {filteredTaxes.length === 0 && <div className="text-center p-8 text-gray-400 bg-gray-50 rounded-xl border border-dashed border-gray-200">Nenhum item configurado.</div>}
+                                <div className="flex justify-end mt-4"><button onClick={handleResetCustom} className="text-xs text-blue-600 font-bold underline">Restaurar Padrão do Regime</button></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* BENEFÍCIOS (ADIÇÕES) */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-6 border-t border-gray-200">
+                        <div className="md:col-span-1 bg-white p-6 rounded-2xl shadow-sm border border-slate-200 h-fit">
+                            <h3 className="font-bold text-green-600 mb-4 flex items-center gap-2"><Gift size={18}/> Benefícios (Adicionais)</h3>
+                            <p className="text-xs text-gray-500 mb-4">Valores que somam ao salário bruto (ex: Bônus, Gratificação).</p>
+                            <form onSubmit={handleAddBenefit} className="space-y-4">
+                                <input required className="w-full border p-2.5 rounded-xl text-sm" placeholder="Nome (Ex: Bônus Meta)" value={benForm.name} onChange={e => setBenForm({...benForm, name: e.target.value})} />
+                                <div className="grid grid-cols-2 gap-2">
+                                    <select className="border p-2.5 rounded-xl text-sm bg-white" value={benForm.type} onChange={e => setBenForm({...benForm, type: e.target.value as any})}><option value="FIXED">R$</option><option value="PERCENTAGE">%</option></select>
+                                    <input required type="number" step="0.01" className="border p-2.5 rounded-xl text-sm" placeholder="Valor" value={benForm.value} onChange={e => setBenForm({...benForm, value: parseFloat(e.target.value)})} />
+                                </div>
+                                <Button type="submit" className="w-full bg-green-600 hover:bg-green-700">Adicionar Benefício</Button>
+                            </form>
+                        </div>
+                        <div className="md:col-span-2 space-y-3">
+                            {state.benefits.map(ben => (
+                                <div key={ben.id} className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex justify-between items-center group hover:border-green-200">
+                                    <div className="flex items-center gap-3">
+                                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${ben.type === 'PERCENTAGE' ? 'bg-green-100 text-green-600' : 'bg-green-100 text-green-600'}`}>
+                                            {ben.type === 'PERCENTAGE' ? <Percent size={18}/> : <DollarSign size={18}/>}
+                                        </div>
+                                        <div>
+                                            <h4 className="font-bold text-slate-800">{ben.name}</h4>
+                                            <p className="text-xs text-gray-500">Adicional: <strong>{ben.type === 'PERCENTAGE' ? `${ben.value}%` : `R$ ${ben.value.toFixed(2)}`}</strong></p>
                                         </div>
                                     </div>
+                                    <button onClick={() => handleDeleteBenefit(ben.id)} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"><Trash2 size={18}/></button>
                                 </div>
-                                <button onClick={() => handleDeleteTax(tax.id)} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"><Trash2 size={18}/></button>
-                            </div>
-                        ))}
-                        {filteredTaxes.length === 0 && (
-                            <div className="text-center p-8 text-gray-400 bg-gray-50 rounded-xl border border-dashed border-gray-200">
-                                Nenhum {taxTab === 'EMPLOYEE' ? 'desconto' : 'encargo'} configurado.
-                            </div>
-                        )}
+                            ))}
+                            {state.benefits.length === 0 && <div className="text-center p-8 text-gray-400 bg-gray-50 rounded-xl border border-dashed border-gray-200">Nenhum benefício global configurado.</div>}
+                        </div>
                     </div>
-                </div>
-            </div>
-
-            {/* SEÇÃO 2: BENEFÍCIOS (ADIÇÕES) */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-6 border-t border-gray-200">
-                <div className="md:col-span-1 bg-white p-6 rounded-2xl shadow-sm border border-slate-200 h-fit">
-                    <h3 className="font-bold text-green-600 mb-4 flex items-center gap-2"><Gift size={18}/> Benefícios (Adicionais)</h3>
-                    <p className="text-xs text-gray-500 mb-4">Valores que somam ao salário bruto (ex: Bônus, Gratificação).</p>
-                    <form onSubmit={handleAddBenefit} className="space-y-4">
-                        <input required className="w-full border p-2.5 rounded-xl text-sm" placeholder="Nome (Ex: Bônus Meta)" value={benForm.name} onChange={e => setBenForm({...benForm, name: e.target.value})} />
-                        <div className="grid grid-cols-2 gap-2">
-                            <select className="border p-2.5 rounded-xl text-sm bg-white" value={benForm.type} onChange={e => setBenForm({...benForm, type: e.target.value as any})}><option value="FIXED">R$</option><option value="PERCENTAGE">%</option></select>
-                            <input required type="number" step="0.01" className="border p-2.5 rounded-xl text-sm" placeholder="Valor" value={benForm.value} onChange={e => setBenForm({...benForm, value: parseFloat(e.target.value)})} />
-                        </div>
-                        <Button type="submit" className="w-full bg-green-600 hover:bg-green-700">Adicionar Benefício</Button>
-                    </form>
-                </div>
-
-                <div className="md:col-span-2 space-y-3">
-                    {state.benefits.map(ben => (
-                        <div key={ben.id} className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex justify-between items-center group hover:border-green-200">
-                            <div className="flex items-center gap-3">
-                                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${ben.type === 'PERCENTAGE' ? 'bg-green-100 text-green-600' : 'bg-green-100 text-green-600'}`}>
-                                    {ben.type === 'PERCENTAGE' ? <Percent size={18}/> : <DollarSign size={18}/>}
-                                </div>
-                                <div>
-                                    <h4 className="font-bold text-slate-800">{ben.name}</h4>
-                                    <p className="text-xs text-gray-500">Adicional: <strong>{ben.type === 'PERCENTAGE' ? `${ben.value}%` : `R$ ${ben.value.toFixed(2)}`}</strong></p>
-                                </div>
-                            </div>
-                            <button onClick={() => handleDeleteBenefit(ben.id)} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"><Trash2 size={18}/></button>
-                        </div>
-                    ))}
-                    {state.benefits.length === 0 && <div className="text-center p-8 text-gray-400 bg-gray-50 rounded-xl border border-dashed border-gray-200">Nenhum benefício global configurado.</div>}
-                </div>
-            </div>
+                </>
+            )}
         </div>
     );
 };

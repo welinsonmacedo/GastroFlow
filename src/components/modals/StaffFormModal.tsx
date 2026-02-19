@@ -5,7 +5,7 @@ import { Button } from '../Button';
 import { useStaff } from '../../context/StaffContext';
 import { useUI } from '../../context/UIContext';
 import { User, Role, ContractType } from '../../types';
-import { Shield, Mail, User as UserIcon, Phone, FileText, Building2, DollarSign, Calendar, MapPin, Briefcase, CreditCard, Loader2, Clock } from 'lucide-react';
+import { Shield, Mail, User as UserIcon, Phone, FileText, Building2, DollarSign, Calendar, MapPin, Briefcase, CreditCard, Loader2, Clock, Users } from 'lucide-react';
 
 interface StaffFormModalProps {
   isOpen: boolean;
@@ -29,7 +29,7 @@ export const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose,
             setForm({ 
                 name: '', role: Role.WAITER, email: '', allowedRoutes: [], customRoleId: '',
                 department: '', phone: '', documentCpf: '', baseSalary: 0, contractType: 'CLT',
-                addressState: '', bankAccountType: 'CORRENTE', shiftId: ''
+                addressState: '', bankAccountType: 'CORRENTE', shiftId: '', dependentsCount: 0
             });
         }
     }
@@ -68,7 +68,8 @@ export const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose,
           customRoleId: form.customRoleId || undefined,
           shiftId: form.shiftId || undefined,
           baseSalary: Number(form.baseSalary) || 0,
-          benefitsTotal: Number(form.benefitsTotal) || 0
+          benefitsTotal: Number(form.benefitsTotal) || 0,
+          dependentsCount: Number(form.dependentsCount) || 0
       };
 
       try {
@@ -358,6 +359,14 @@ export const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose,
                                     <DollarSign className="absolute left-3 top-2.5 text-gray-400" size={16}/>
                                     <input type="number" step="0.01" className="w-full border pl-9 p-2.5 rounded-xl text-sm bg-white font-bold text-slate-700" placeholder="0.00" value={form.baseSalary} onChange={e => setForm({...form, baseSalary: parseFloat(e.target.value)})} />
                                 </div>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold mb-1 text-slate-600">Dependentes (IRRF)</label>
+                                <div className="relative">
+                                    <Users className="absolute left-3 top-2.5 text-gray-400" size={16}/>
+                                    <input type="number" min="0" className="w-full border pl-9 p-2.5 rounded-xl text-sm bg-white" placeholder="0" value={form.dependentsCount} onChange={e => setForm({...form, dependentsCount: parseInt(e.target.value)})} />
+                                </div>
+                                <p className="text-[10px] text-gray-400 mt-1">Usado para cálculo da dedução do IRRF.</p>
                             </div>
                             <div>
                                 <label className="block text-xs font-bold mb-1 text-slate-600">Turno de Trabalho</label>

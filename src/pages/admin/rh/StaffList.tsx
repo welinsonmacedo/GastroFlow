@@ -4,7 +4,7 @@ import { useStaff } from '../../../context/StaffContext';
 import { useUI } from '../../../context/UIContext';
 import { Button } from '../../../components/Button';
 import { User, EmployeeStatus } from '../../../types';
-import { Edit, Trash2, UserPlus, Building2, Calendar, BadgeCheck } from 'lucide-react';
+import { Edit, Trash2, UserPlus, Building2, Calendar, BadgeCheck, DollarSign } from 'lucide-react';
 import { StaffFormModal } from '../../../components/modals/StaffFormModal';
 
 export const StaffList: React.FC = () => {
@@ -35,57 +35,94 @@ export const StaffList: React.FC = () => {
                 </Button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {staffState.users.map(user => (
-                    <div key={user.id} className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden group hover:shadow-xl hover:border-pink-200 transition-all flex flex-col">
-                        <div className="p-6">
-                            <div className="flex justify-between items-start mb-4">
-                                <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 rounded-2xl bg-pink-50 flex items-center justify-center text-pink-600 font-black text-xl group-hover:bg-pink-600 group-hover:text-white transition-colors">
-                                        {user.name.charAt(0)}
-                                    </div>
-                                    <div>
-                                        <h3 className="font-black text-slate-800 tracking-tight leading-none">{user.name}</h3>
-                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">{user.role}</p>
-                                    </div>
-                                </div>
-                                <span className={`text-[9px] font-black px-2 py-1 rounded-full uppercase border ${getStatusColor(user.status)}`}>
-                                    {user.status || 'ACTIVE'}
-                                </span>
-                            </div>
-
-                            <div className="space-y-2 mt-6">
-                                <div className="flex items-center gap-3 text-xs text-slate-600">
-                                    <Building2 size={14} className="text-gray-400"/>
-                                    <span className="font-medium">{user.department || 'Setor não informado'}</span>
-                                </div>
-                                <div className="flex items-center gap-3 text-xs text-slate-600">
-                                    <Calendar size={14} className="text-gray-400"/>
-                                    <span className="font-medium">Admissão: {user.hireDate ? new Date(user.hireDate).toLocaleDateString() : '-'}</span>
-                                </div>
-                                <div className="flex items-center gap-3 text-xs text-slate-600">
-                                    <BadgeCheck size={14} className="text-gray-400"/>
-                                    <span className="font-medium">Contrato: {user.contractType || 'CLT'}</span>
-                                </div>
-                            </div>
-
-                            <div className="mt-6 pt-6 border-t border-slate-100 flex items-center justify-between">
-                                <div>
-                                    <p className="text-[10px] font-black text-gray-400 uppercase">Salário Base</p>
-                                    <p className="text-lg font-black text-slate-800">R$ {(user.baseSalary || 0).toFixed(2)}</p>
-                                </div>
-                                <div className="flex gap-1">
-                                    <button onClick={() => { setEditingUser(user); setIsModalOpen(true); }} className="p-2 text-blue-600 hover:bg-blue-50 rounded-xl transition-all">
-                                        <Edit size={18}/>
-                                    </button>
-                                    <button onClick={() => showConfirm({ title: 'Excluir', message: 'Confirma exclusão?', onConfirm: () => deleteUser(user.id) })} className="p-2 text-red-600 hover:bg-red-50 rounded-xl transition-all">
-                                        <Trash2 size={18}/>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                ))}
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left text-sm">
+                        <thead className="bg-slate-50 text-slate-500 font-bold uppercase text-xs border-b">
+                            <tr>
+                                <th className="p-4">Colaborador</th>
+                                <th className="p-4">Cargo / Função</th>
+                                <th className="p-4">Departamento</th>
+                                <th className="p-4">Admissão & Contrato</th>
+                                <th className="p-4">Salário Base</th>
+                                <th className="p-4 text-center">Status</th>
+                                <th className="p-4 text-right">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                            {staffState.users.map(user => (
+                                <tr key={user.id} className="hover:bg-slate-50 transition-colors group">
+                                    <td className="p-4">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 rounded-xl bg-pink-50 flex items-center justify-center text-pink-600 font-black text-sm shrink-0">
+                                                {user.name.charAt(0)}
+                                            </div>
+                                            <div>
+                                                <div className="font-bold text-slate-800">{user.name}</div>
+                                                <div className="text-xs text-gray-400">{user.email || 'Sem e-mail'}</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td className="p-4">
+                                        <span className="font-medium text-slate-700">{user.role}</span>
+                                        {user.customRoleName && <div className="text-[10px] text-gray-400">{user.customRoleName}</div>}
+                                    </td>
+                                    <td className="p-4 text-slate-600">
+                                        <div className="flex items-center gap-2">
+                                            <Building2 size={14} className="text-gray-400"/>
+                                            {user.department || '-'}
+                                        </div>
+                                    </td>
+                                    <td className="p-4">
+                                        <div className="flex flex-col gap-0.5">
+                                            <div className="flex items-center gap-2 text-xs text-slate-600">
+                                                <Calendar size={12} className="text-gray-400"/>
+                                                {user.hireDate ? new Date(user.hireDate).toLocaleDateString() : '-'}
+                                            </div>
+                                            <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
+                                                <BadgeCheck size={12} className="text-blue-500"/>
+                                                {user.contractType || 'CLT'}
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td className="p-4 font-mono font-bold text-slate-700">
+                                        R$ {(user.baseSalary || 0).toFixed(2)}
+                                    </td>
+                                    <td className="p-4 text-center">
+                                        <span className={`text-[10px] font-black px-2 py-1 rounded-full uppercase border ${getStatusColor(user.status)}`}>
+                                            {user.status || 'ACTIVE'}
+                                        </span>
+                                    </td>
+                                    <td className="p-4 text-right">
+                                        <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <button 
+                                                onClick={() => { setEditingUser(user); setIsModalOpen(true); }} 
+                                                className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                                                title="Editar"
+                                            >
+                                                <Edit size={16}/>
+                                            </button>
+                                            <button 
+                                                onClick={() => showConfirm({ title: 'Excluir', message: 'Confirma exclusão? O histórico financeiro será mantido, mas o acesso revogado.', onConfirm: () => deleteUser(user.id) })} 
+                                                className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                                                title="Excluir"
+                                            >
+                                                <Trash2 size={16}/>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))}
+                            {staffState.users.length === 0 && (
+                                <tr>
+                                    <td colSpan={7} className="p-10 text-center text-gray-400">
+                                        Nenhum colaborador encontrado.
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
             <StaffFormModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} userToEdit={editingUser} variant="RH" />
