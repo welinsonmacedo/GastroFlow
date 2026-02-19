@@ -5,7 +5,7 @@ import { useRestaurant } from '../../../context/RestaurantContext';
 import { useUI } from '../../../context/UIContext';
 import { Button } from '../../../components/Button';
 import { PayrollPreview, ClosedPayroll, PayrollEventType } from '../../../types';
-import { FileText, Printer, Calculator, RefreshCcw, Eye, X, Building2, Lock, Plus, Download, AlertTriangle, ArrowRight } from 'lucide-react';
+import { FileText, Printer, Calculator, RefreshCcw, Eye, X, Building2, Lock, Plus, Download, AlertTriangle, ArrowRight, Calendar, CheckSquare, Square } from 'lucide-react';
 import { printHtml, getReportStyles } from '../../../utils/printHelper';
 import { Modal } from '../../../components/Modal';
 
@@ -31,6 +31,11 @@ export const StaffPayroll: React.FC = () => {
     // Estados para Calculadora de Eventos
     const [calcMode, setCalcMode] = useState<'MANUAL' | 'DAYS' | 'HOURS'>('MANUAL');
     const [calcQty, setCalcQty] = useState<number>(0);
+    
+    // Estados Específicos para Faltas
+    const [absenceDate, setAbsenceDate] = useState(new Date().toISOString().split('T')[0]);
+    const [isJustified, setIsJustified] = useState(false);
+    const [deductDSR, setDeductDSR] = useState(false);
 
     const loadData = async () => {
         setLoading(true);
@@ -48,6 +53,17 @@ export const StaffPayroll: React.FC = () => {
 
     useEffect(() => { loadData(); }, [month, year]);
 
+    // Resetar estados auxiliares ao mudar o tipo de evento
+    useEffect(() => {
+        if (eventForm.type === 'DEDUCTION') {
+            setCalcMode('DAYS');
+            setCalcQty(1);
+        } else {
+            // Se não for dedução, reseta defaults
+            if (calcMode === 'DAYS' && eventForm.type !== 'DEDUCTION') setCalcMode('MANUAL');
+        }
+    }, [eventForm.type]);
+
     // Efeito para Calcular Valor Automaticamente
     useEffect(() => {
         if (calcMode === 'MANUAL' || !eventForm.staffId) return;
@@ -56,20 +72,37 @@ export const StaffPayroll: React.FC = () => {
         if (!user || !user.baseSalary) return;
 
         let finalValue = 0;
-        if (calcMode === 'DAYS') {
+
+        // Lógica Específica para Faltas (DEDUCTION com modo DAYS)
+        if (eventForm.type === 'DEDUCTION' && calcMode === 'DAYS') {
+            if (isJustified) {
+                finalValue = 0; // Falta justificada não desconta (ou desconta 0 para registro)
+            } else {
+                const dayValue = user.baseSalary / 30;
+                let daysToDeduct = calcQty;
+                
+                // Se descontar DSR, adiciona 1 dia (ou proporcional, aqui simplificado para 1 dia cheio)
+                if (deductDSR) {
+                    daysToDeduct += 1; 
+                }
+                
+                finalValue = dayValue * daysToDeduct;
+            }
+        } 
+        // Lógica Genérica para outros tipos
+        else if (calcMode === 'DAYS') {
             // Regra: Salário / 30 dias
             const dayValue = user.baseSalary / 30;
             finalValue = dayValue * calcQty;
         } else if (calcMode === 'HOURS') {
             // Regra: Salário / 220 horas (Padrão CLT mensal)
-            // Futuramente pode usar workModel do user para divisor exato (180, 220, etc)
             const hourValue = user.baseSalary / 220;
             finalValue = hourValue * calcQty;
         }
 
         setEventForm(prev => ({ ...prev, value: parseFloat(finalValue.toFixed(2)) }));
 
-    }, [calcQty, calcMode, eventForm.staffId, staffState.users]);
+    }, [calcQty, calcMode, eventForm.staffId, staffState.users, eventForm.type, isJustified, deductDSR]);
 
     const handleClosePayroll = () => {
         showConfirm({
@@ -92,14 +125,24 @@ export const StaffPayroll: React.FC = () => {
     };
 
     const handleAddEvent = async () => {
-        if (!eventForm.staffId || !eventForm.value) return;
+        if (!eventForm.staffId) return; // Valor pode ser 0 se for falta justificada
         try {
-            // Se calculou automático, sugere descrição se estiver vazia
+            // Se calculou automático, constrói descrição rica
             let finalDesc = eventForm.description;
-            if (!finalDesc && calcMode !== 'MANUAL') {
-                const label = calcMode === 'DAYS' ? 'dias' : 'horas';
-                const typeLabel = eventForm.type === 'DEDUCTION' ? 'Falta' : 'Extra';
-                finalDesc = `${typeLabel}: ${calcQty} ${label}`;
+            if (!finalDesc) {
+                if (eventForm.type === 'DEDUCTION' && calcMode === 'DAYS') {
+                     const dateStr = new Date(absenceDate).toLocaleDateString('pt-BR');
+                     if (isJustified) {
+                         finalDesc = `Falta Justificada em ${dateStr}`;
+                     } else {
+                         finalDesc = `Falta Injustificada (${calcQty}d) em ${dateStr}`;
+                         if (deductDSR) finalDesc += " + DSR";
+                     }
+                } else if (calcMode !== 'MANUAL') {
+                    const label = calcMode === 'DAYS' ? 'dias' : 'horas';
+                    const typeLabel = eventForm.type === 'DEDUCTION' ? 'Falta/Desc' : 'Extra';
+                    finalDesc = `${typeLabel}: ${calcQty} ${label}`;
+                }
             }
 
             await addPayrollEvent({ 
@@ -339,6 +382,10 @@ export const StaffPayroll: React.FC = () => {
                                 setCalcMode('MANUAL');
                                 setCalcQty(0);
                                 setIsEventModalOpen(true); 
+                                // Resetar estados de falta
+                                setIsJustified(false);
+                                setDeductDSR(false);
+                                setAbsenceDate(new Date().toISOString().split('T')[0]);
                             }} className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm">
                                 <Plus size={16} className="mr-2"/> Lançar Evento
                             </Button>
@@ -468,29 +515,77 @@ export const StaffPayroll: React.FC = () => {
                                     Por Horas (1/220)
                                 </button>
                             </div>
-
-                            {calcMode !== 'MANUAL' && (
-                                <div className="flex items-center gap-3 mb-4 animate-fade-in">
-                                    <div className="flex-1">
-                                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">
-                                            Quantidade ({calcMode === 'DAYS' ? 'Dias' : 'Horas'})
-                                        </label>
-                                        <input 
-                                            type="number" 
-                                            step="0.5"
-                                            className="w-full border p-2 rounded-lg font-bold text-center" 
-                                            value={calcQty} 
-                                            onChange={e => setCalcQty(parseFloat(e.target.value))} 
-                                        />
-                                    </div>
-                                    <ArrowRight size={16} className="text-gray-400 mt-5"/>
-                                    <div className="flex-1">
-                                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Valor Calculado</label>
-                                        <div className="w-full bg-blue-100 p-2 rounded-lg text-blue-700 font-black text-center">
-                                            R$ {eventForm.value.toFixed(2)}
+                            
+                            {/* CONTROLE ESPECÍFICO PARA FALTAS (DEDUÇÃO + DIAS) */}
+                            {eventForm.type === 'DEDUCTION' && calcMode === 'DAYS' ? (
+                                <div className="space-y-4 animate-fade-in border-t border-b border-gray-200 py-3 mb-3">
+                                    <div>
+                                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Data da Falta</label>
+                                        <div className="relative">
+                                            <Calendar size={16} className="absolute left-3 top-2.5 text-gray-400"/>
+                                            <input type="date" className="w-full border pl-10 p-2 rounded-lg text-sm bg-white" value={absenceDate} onChange={e => setAbsenceDate(e.target.value)} />
                                         </div>
                                     </div>
+                                    
+                                    <div className="flex gap-4">
+                                        <label className={`flex items-center gap-2 cursor-pointer p-2 rounded-lg border flex-1 transition-all ${isJustified ? 'bg-green-50 border-green-200' : 'bg-white border-gray-200'}`}>
+                                            <input type="checkbox" className="hidden" checked={isJustified} onChange={e => setIsJustified(e.target.checked)} />
+                                            <div className={`w-4 h-4 border rounded flex items-center justify-center ${isJustified ? 'bg-green-600 border-green-600' : 'bg-white border-gray-300'}`}>
+                                                {isJustified && <CheckSquare size={12} className="text-white"/>}
+                                            </div>
+                                            <span className="text-xs font-bold text-slate-700">Falta Justificada?</span>
+                                        </label>
+                                        
+                                        {!isJustified && (
+                                            <label className={`flex items-center gap-2 cursor-pointer p-2 rounded-lg border flex-1 transition-all ${deductDSR ? 'bg-red-50 border-red-200' : 'bg-white border-gray-200'}`}>
+                                                <input type="checkbox" className="hidden" checked={deductDSR} onChange={e => setDeductDSR(e.target.checked)} />
+                                                <div className={`w-4 h-4 border rounded flex items-center justify-center ${deductDSR ? 'bg-red-600 border-red-600' : 'bg-white border-gray-300'}`}>
+                                                    {deductDSR && <CheckSquare size={12} className="text-white"/>}
+                                                </div>
+                                                <span className="text-xs font-bold text-slate-700">Descontar DSR?</span>
+                                            </label>
+                                        )}
+                                    </div>
+                                    
+                                    {!isJustified && (
+                                         <div className="flex items-center gap-3">
+                                            <div className="flex-1">
+                                                <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Qtd Dias</label>
+                                                <input type="number" step="0.5" className="w-full border p-2 rounded-lg font-bold text-center" value={calcQty} onChange={e => setCalcQty(parseFloat(e.target.value))} />
+                                            </div>
+                                            <ArrowRight size={16} className="text-gray-400 mt-5"/>
+                                            <div className="flex-1">
+                                                <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Desconto Calc.</label>
+                                                <div className="w-full bg-red-100 p-2 rounded-lg text-red-700 font-black text-center">R$ {eventForm.value.toFixed(2)}</div>
+                                            </div>
+                                         </div>
+                                    )}
                                 </div>
+                            ) : (
+                                // CONTROLE PADRÃO PARA OUTROS TIPOS
+                                calcMode !== 'MANUAL' && (
+                                    <div className="flex items-center gap-3 mb-4 animate-fade-in">
+                                        <div className="flex-1">
+                                            <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">
+                                                Quantidade ({calcMode === 'DAYS' ? 'Dias' : 'Horas'})
+                                            </label>
+                                            <input 
+                                                type="number" 
+                                                step="0.5"
+                                                className="w-full border p-2 rounded-lg font-bold text-center" 
+                                                value={calcQty} 
+                                                onChange={e => setCalcQty(parseFloat(e.target.value))} 
+                                            />
+                                        </div>
+                                        <ArrowRight size={16} className="text-gray-400 mt-5"/>
+                                        <div className="flex-1">
+                                            <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Valor Calculado</label>
+                                            <div className="w-full bg-blue-100 p-2 rounded-lg text-blue-700 font-black text-center">
+                                                R$ {eventForm.value.toFixed(2)}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )
                             )}
 
                             <div>
@@ -509,7 +604,7 @@ export const StaffPayroll: React.FC = () => {
 
                     <div>
                         <label className="text-xs font-bold text-gray-500 uppercase">Descrição</label>
-                        <input className="w-full border p-2.5 rounded-xl" placeholder={calcMode !== 'MANUAL' ? "Calculado automaticamente (pode editar)" : "Ex: Falta dia 15/05"} value={eventForm.description} onChange={e => setEventForm({...eventForm, description: e.target.value})} />
+                        <input className="w-full border p-2.5 rounded-xl" placeholder={calcMode !== 'MANUAL' ? "Calculado automaticamente (pode editar)" : "Ex: Meta batida"} value={eventForm.description} onChange={e => setEventForm({...eventForm, description: e.target.value})} />
                     </div>
                     <Button onClick={handleAddEvent} className="w-full py-4 text-lg font-bold">Confirmar Lançamento</Button>
                 </div>
