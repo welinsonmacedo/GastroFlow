@@ -460,8 +460,8 @@ export const StaffPayroll: React.FC = () => {
             </div>
 
             {/* Modal de Lançamento de Eventos (MELHORADO) */}
-            <Modal isOpen={isEventModalOpen} onClose={() => setIsEventModalOpen(false)} title="Lançamento Variável" variant="dialog" maxWidth="md">
-                <div className="space-y-6">
+            <Modal isOpen={isEventModalOpen} onClose={() => setIsEventModalOpen(false)} title="Lançamento Variável" variant="page">
+                <div className="space-y-6 max-w-4xl mx-auto">
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <label className="text-xs font-bold text-gray-500 uppercase">Colaborador</label>
