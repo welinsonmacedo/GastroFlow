@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { useRestaurant } from '../context/RestaurantContext';
 import { useAuth } from '../context/AuthProvider';
 import { SystemModule } from '../types';
-import { ChefHat, Coffee, Truck, ShoppingBag, ArrowRight, LogOut, Grid, Briefcase, Settings, DollarSign, Store, Package, Users, Clock } from 'lucide-react';
+import { ChefHat, Coffee, Truck, ShoppingBag, ArrowRight, LogOut, Grid, Briefcase, Settings, DollarSign, Store, Package, Users, Clock, LifeBuoy } from 'lucide-react';
 import { Button } from '../components/Button';
 
 const ModuleCard = ({ 
@@ -16,7 +16,7 @@ const ModuleCard = ({
     colorClass, 
     onClick 
 }: { 
-    type: SystemModule | 'TIME_CLOCK', 
+    type: SystemModule | 'TIME_CLOCK' | 'SUPPORT', 
     title: string, 
     desc: string, 
     icon: React.ElementType, 
@@ -66,6 +66,11 @@ export const ModuleSelector: React.FC = () => {
 
     const handleTimeClock = () => {
         navigate('/time-clock');
+    };
+
+    const handleSupport = () => {
+        const message = encodeURIComponent(`Olá! Sou do restaurante ${tenantName} e preciso de ajuda com o sistema.`);
+        window.open(`https://wa.me/5534991448794?text=${message}`, '_blank');
     };
 
     return (
@@ -131,6 +136,9 @@ export const ModuleSelector: React.FC = () => {
                     {(allowed.includes('CONFIG') || authState.currentUser?.role === 'ADMIN') && (
                         <ModuleCard type="CONFIG" title="Configurações" desc="Dados da empresa e segurança." icon={Settings} colorClass="text-gray-500" onClick={() => handleSelect('CONFIG')} />
                     )}
+
+                    {/* Suporte */}
+                    <ModuleCard type="SUPPORT" title="Suporte & Ajuda" desc="Precisa de algo? Fale com nossos especialistas." icon={LifeBuoy} colorClass="text-lime-500" onClick={handleSupport} />
                 </div>
             </main>
         </div>

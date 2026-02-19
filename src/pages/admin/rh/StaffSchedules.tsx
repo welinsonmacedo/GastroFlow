@@ -4,13 +4,14 @@ import { useStaff } from '../../../context/StaffContext';
 import { useUI } from '../../../context/UIContext';
 import { Button } from '../../../components/Button';
 import { Shift } from '../../../types';
-import { Plus, Clock, Trash2, Calendar, LayoutGrid, Info, Check } from 'lucide-react';
+import { Plus, Clock, Trash2, Calendar, Edit, Users, ArrowRight } from 'lucide-react';
 import { Modal } from '../../../components/Modal';
 
 export const StaffSchedules: React.FC = () => {
     const { state: staffState, addShift, deleteShift } = useStaff();
     const { showAlert, showConfirm } = useUI();
     
+    const [activeView, setActiveView] = useState<'SHIFTS' | 'ASSIGNMENT'>('SHIFTS');
     const [isShiftModalOpen, setIsShiftModalOpen] = useState(false);
     const [shiftForm, setShiftForm] = useState<Partial<Shift>>({
         name: '', startTime: '08:00', endTime: '16:00', breakMinutes: 60, nightShift: false
@@ -27,41 +28,101 @@ export const StaffSchedules: React.FC = () => {
         <div className="space-y-6 animate-fade-in">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-200 gap-4">
                 <div>
-                    <h2 className="text-2xl font-black text-slate-800 flex items-center gap-2"><Calendar className="text-pink-600"/> Gestão de Turnos</h2>
-                    <p className="text-sm text-gray-500">Defina os horários padrão de trabalho da casa.</p>
+                    <h2 className="text-2xl font-black text-slate-800 flex items-center gap-2"><Calendar className="text-pink-600"/> Gestão de Escalas</h2>
+                    <p className="text-sm text-gray-500">Definição de turnos e alocação de equipe.</p>
                 </div>
-                <Button onClick={() => setIsShiftModalOpen(true)} className="bg-slate-900"><Plus size={18}/> Novo Turno</Button>
+                <div className="flex gap-2">
+                    <button onClick={() => setActiveView('SHIFTS')} className={`px-4 py-2 rounded-lg text-xs font-bold transition-all border ${activeView === 'SHIFTS' ? 'bg-pink-600 text-white border-pink-600' : 'bg-white text-gray-500 border-gray-200'}`}>Modelos de Turno</button>
+                    <button onClick={() => setActiveView('ASSIGNMENT')} className={`px-4 py-2 rounded-lg text-xs font-bold transition-all border ${activeView === 'ASSIGNMENT' ? 'bg-pink-600 text-white border-pink-600' : 'bg-white text-gray-500 border-gray-200'}`}>Atribuição (Lista)</button>
+                </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {staffState.shifts.map(shift => (
-                    <div key={shift.id} className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:border-pink-300 transition-all group">
-                        <div className="flex justify-between items-start mb-4">
-                            <div className="bg-pink-50 p-3 rounded-2xl text-pink-600"><Clock size={20}/></div>
-                            <button onClick={() => showConfirm({ title: "Excluir Turno", message: "Deseja remover este modelo?", onConfirm: () => deleteShift(shift.id) })} className="text-gray-300 hover:text-red-500 transition-colors"><Trash2 size={16}/></button>
-                        </div>
-                        <h3 className="font-black text-slate-800 text-lg">{shift.name}</h3>
-                        <div className="mt-4 flex flex-col gap-2">
-                            <div className="flex justify-between text-sm"><span className="text-gray-400 font-bold">Início:</span><span className="font-mono font-black">{shift.startTime}</span></div>
-                            <div className="flex justify-between text-sm"><span className="text-gray-400 font-bold">Fim:</span><span className="font-mono font-black">{shift.endTime}</span></div>
-                            <div className="flex justify-between text-sm"><span className="text-gray-400 font-bold">Intervalo:</span><span className="font-bold text-blue-600">{shift.breakMinutes}m</span></div>
-                        </div>
+            {/* ABA 1: MODELOS DE TURNO (LISTA) */}
+            {activeView === 'SHIFTS' && (
+                <>
+                    <div className="flex justify-end">
+                        <Button onClick={() => setIsShiftModalOpen(true)} className="bg-slate-900"><Plus size={18}/> Novo Turno</Button>
                     </div>
-                ))}
-                {staffState.shifts.length === 0 && (
-                    <div className="col-span-full py-12 text-center text-gray-400 bg-white rounded-3xl border-2 border-dashed border-gray-100">
-                        Nenhum turno cadastrado. Comece criando os horários da sua equipe.
-                    </div>
-                )}
-            </div>
 
-            <div className="bg-pink-50 p-6 rounded-3xl border border-pink-100 flex gap-4">
-                 <div className="bg-pink-500 text-white p-2 rounded-full h-fit"><Info size={20}/></div>
-                 <div>
-                     <h4 className="font-bold text-pink-900">Como gerenciar a Escala Semanal?</h4>
-                     <p className="text-sm text-pink-700 leading-relaxed mt-1">A Escala Semanal permite associar cada colaborador aos turnos acima dia após dia. A funcionalidade de Grade Completa com arraste de colaboradores está sendo sincronizada com o calendário do gestor.</p>
-                 </div>
-            </div>
+                    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                        <table className="w-full text-left text-sm">
+                            <thead className="bg-pink-50 text-pink-800 font-bold uppercase text-xs">
+                                <tr>
+                                    <th className="p-4">Nome do Turno</th>
+                                    <th className="p-4">Horário</th>
+                                    <th className="p-4">Intervalo</th>
+                                    <th className="p-4 text-center">Tipo</th>
+                                    <th className="p-4 text-right">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-pink-50">
+                                {staffState.shifts.map(shift => (
+                                    <tr key={shift.id} className="hover:bg-slate-50 transition-colors">
+                                        <td className="p-4 font-bold text-slate-700">{shift.name}</td>
+                                        <td className="p-4 font-mono text-slate-600">{shift.startTime} - {shift.endTime}</td>
+                                        <td className="p-4 text-blue-600 font-bold">{shift.breakMinutes} min</td>
+                                        <td className="p-4 text-center">
+                                            {shift.nightShift ? 
+                                                <span className="bg-slate-800 text-white px-2 py-1 rounded text-[10px] uppercase font-bold">Noturno</span> : 
+                                                <span className="bg-yellow-100 text-yellow-700 px-2 py-1 rounded text-[10px] uppercase font-bold">Diurno</span>
+                                            }
+                                        </td>
+                                        <td className="p-4 text-right">
+                                            <button onClick={() => showConfirm({ title: "Excluir Turno", message: "Deseja remover este modelo?", onConfirm: () => deleteShift(shift.id) })} className="text-red-400 hover:text-red-600 p-2 rounded hover:bg-red-50 transition-colors"><Trash2 size={16}/></button>
+                                        </td>
+                                    </tr>
+                                ))}
+                                {staffState.shifts.length === 0 && <tr><td colSpan={5} className="p-8 text-center text-gray-400">Nenhum turno cadastrado.</td></tr>}
+                            </tbody>
+                        </table>
+                    </div>
+                </>
+            )}
+
+            {/* ABA 2: ATRIBUIÇÃO (LISTA DE COLABORADORES X TURNO) */}
+            {activeView === 'ASSIGNMENT' && (
+                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div className="p-4 bg-gray-50 border-b text-xs text-gray-500 font-bold uppercase tracking-widest flex items-center gap-2">
+                        <Users size={14}/> Atribuição de Turno Padrão
+                    </div>
+                    <table className="w-full text-left text-sm">
+                        <thead className="bg-white border-b text-slate-500 font-bold text-xs uppercase">
+                            <tr>
+                                <th className="p-4">Colaborador</th>
+                                <th className="p-4">Cargo</th>
+                                <th className="p-4">Turno Atual</th>
+                                <th className="p-4 text-right">Detalhes</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                            {staffState.users.map(user => {
+                                const currentShift = staffState.shifts.find(s => s.id === user.shiftId);
+                                return (
+                                    <tr key={user.id} className="hover:bg-slate-50 transition-colors">
+                                        <td className="p-4 font-bold text-slate-800">{user.name}</td>
+                                        <td className="p-4 text-slate-500">{user.role}</td>
+                                        <td className="p-4">
+                                            {currentShift ? (
+                                                <div className="flex flex-col">
+                                                    <span className="font-bold text-slate-700">{currentShift.name}</span>
+                                                    <span className="text-xs text-slate-400 font-mono">{currentShift.startTime} - {currentShift.endTime}</span>
+                                                </div>
+                                            ) : (
+                                                <span className="text-red-400 italic text-xs">Sem turno definido</span>
+                                            )}
+                                        </td>
+                                        <td className="p-4 text-right">
+                                            <button className="text-blue-600 hover:underline text-xs font-bold flex items-center justify-end gap-1">
+                                                Editar Cadastro <ArrowRight size={12}/>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                </div>
+            )}
 
             {/* Modal Turno */}
             <Modal isOpen={isShiftModalOpen} onClose={() => setIsShiftModalOpen(false)} title="Novo Modelo de Turno" variant="dialog" maxWidth="sm">

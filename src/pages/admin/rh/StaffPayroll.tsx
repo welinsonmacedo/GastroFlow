@@ -3,27 +3,32 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useStaff } from '../../../context/StaffContext';
 import { useUI } from '../../../context/UIContext';
 import { Button } from '../../../components/Button';
-import { PayrollPreview } from '../../../types';
-import { FileText, Printer, Calculator, RefreshCcw, Eye, X, Building2 } from 'lucide-react';
+import { PayrollPreview, ClosedPayroll } from '../../../types';
+import { FileText, Printer, Calculator, RefreshCcw, Eye, X, Building2, Lock, CheckCircle } from 'lucide-react';
 import { printHtml, getReportStyles } from '../../../utils/printHelper';
 import { Modal } from '../../../components/Modal';
 
 export const StaffPayroll: React.FC = () => {
-    const { getPayroll } = useStaff();
-    const { showAlert } = useUI();
+    const { getPayroll, closePayroll } = useStaff();
+    const { showAlert, showConfirm } = useUI();
     
     const [month, setMonth] = useState(new Date().getMonth());
     const [year, setYear] = useState(new Date().getFullYear());
     const [payrollData, setPayrollData] = useState<PayrollPreview[]>([]);
+    const [closedInfo, setClosedInfo] = useState<ClosedPayroll | undefined>(undefined);
+    const [isClosed, setIsClosed] = useState(false);
     const [loading, setLoading] = useState(false);
     
+    // Estado para o Modal de Detalhes
     const [selectedSlip, setSelectedSlip] = useState<PayrollPreview | null>(null);
 
     const loadData = async () => {
         setLoading(true);
         try {
             const data = await getPayroll(month, year);
-            setPayrollData(data);
+            setPayrollData(data.payroll);
+            setIsClosed(data.isClosed);
+            setClosedInfo(data.closedInfo);
         } catch (e) {
             showAlert({ title: "Erro", message: "Falha ao gerar folha.", type: "ERROR" });
         } finally {
@@ -32,6 +37,26 @@ export const StaffPayroll: React.FC = () => {
     };
 
     useEffect(() => { loadData(); }, [month, year]);
+
+    const handleClosePayroll = () => {
+        showConfirm({
+            title: "Fechar Folha de Pagamento?",
+            message: "Ao fechar a folha, os valores serão salvos permanentemente e não poderão ser alterados. Confirme apenas se todos os lançamentos estiverem corretos.",
+            confirmText: "Confirmar Fechamento",
+            onConfirm: async () => {
+                try {
+                    setLoading(true);
+                    await closePayroll(month, year);
+                    await loadData();
+                    showAlert({ title: "Sucesso", message: "Folha fechada e arquivada.", type: "SUCCESS" });
+                } catch (error: any) {
+                    showAlert({ title: "Erro", message: error.message || "Erro ao fechar folha.", type: "ERROR" });
+                } finally {
+                    setLoading(false);
+                }
+            }
+        });
+    };
 
     const totalBruto = payrollData.reduce((acc, p) => acc + p.grossTotal, 0);
     const totalLiquido = payrollData.reduce((acc, p) => acc + p.netTotal, 0);
@@ -42,9 +67,9 @@ export const StaffPayroll: React.FC = () => {
         const html = `
             <!DOCTYPE html>
             <html>
-            <head><title>Pré-Folha ${month+1}/${year}</title>${getReportStyles()}</head>
+            <head><title>Folha ${month+1}/${year}</title>${getReportStyles()}</head>
             <body>
-                <h1>Folha de Pagamento - ${month+1}/${year}</h1>
+                <h1>Folha de Pagamento - ${month+1}/${year} ${isClosed ? '(FECHADA)' : '(PRÉVIA)'}</h1>
                 <table>
                     <thead>
                         <tr>
@@ -154,8 +179,15 @@ export const StaffPayroll: React.FC = () => {
         <div className="space-y-6 animate-fade-in">
             <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-200 gap-4">
                 <div>
-                    <h2 className="text-2xl font-black text-slate-800 flex items-center gap-2"><Calculator className="text-pink-600"/> Pré-Folha de Pagamento</h2>
-                    <p className="text-sm text-gray-500">Cálculo de salários e custo total da folha.</p>
+                    <h2 className="text-2xl font-black text-slate-800 flex items-center gap-2">
+                        {isClosed ? <Lock size={24} className="text-red-500"/> : <Calculator size={24} className="text-pink-600"/>} 
+                        {isClosed ? 'Folha Fechada (Histórico)' : 'Pré-Folha de Pagamento'}
+                    </h2>
+                    <p className="text-sm text-gray-500">
+                        {isClosed 
+                            ? `Fechado em ${closedInfo?.closedAt?.toLocaleDateString()} por ${closedInfo?.closedBy}`
+                            : 'Cálculo de salários e custo total da folha.'}
+                    </p>
                 </div>
                 
                 <div className="flex flex-wrap items-center gap-3">
@@ -167,6 +199,13 @@ export const StaffPayroll: React.FC = () => {
                             <option value={2025}>2025</option><option value={2026}>2026</option>
                         </select>
                     </div>
+                    
+                    {!isClosed && (
+                        <Button onClick={handleClosePayroll} className="bg-red-600 hover:bg-red-700 text-white shadow-lg">
+                            <Lock size={16} className="mr-2"/> Fechar Folha
+                        </Button>
+                    )}
+                    
                     <Button onClick={loadData} disabled={loading} variant="secondary" className="px-3">
                         <RefreshCcw size={18} className={loading ? "animate-spin" : ""}/>
                     </Button>

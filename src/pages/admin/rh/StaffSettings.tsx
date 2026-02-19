@@ -5,7 +5,8 @@ import { useRestaurant } from '../../../context/RestaurantContext';
 import { useUI } from '../../../context/UIContext';
 import { Button } from '../../../components/Button';
 import { RHTax, RHBenefit, TaxPayerType, TaxCalculationBasis } from '../../../types';
-import { Plus, Trash2, Settings, Percent, DollarSign, RefreshCcw, Gift, FileText, Building2, Scale, Calculator } from 'lucide-react';
+import { Plus, Trash2, Settings, Percent, DollarSign, RefreshCcw, Gift, FileText, Building2, Scale, Calculator, Edit3 } from 'lucide-react';
+import { LegalSettingsModal } from '../../../components/modals/LegalSettingsModal';
 
 export const StaffSettings: React.FC = () => {
     const { state, addTax, deleteTax, addBenefit, deleteBenefit, applyRegimeDefaults, applyLegalDefaults } = useStaff();
@@ -14,6 +15,7 @@ export const StaffSettings: React.FC = () => {
 
     // Abas de Configuração
     const [activeTab, setActiveTab] = useState<'LEGAL' | 'CUSTOM'>('LEGAL');
+    const [isLegalModalOpen, setIsLegalModalOpen] = useState(false);
 
     // Estado para impostos customizados
     const [taxTab, setTaxTab] = useState<TaxPayerType>('EMPLOYEE');
@@ -83,10 +85,18 @@ export const StaffSettings: React.FC = () => {
             {/* ABA 1: TABELAS LEGAIS */}
             {activeTab === 'LEGAL' && (
                 <div className="space-y-6">
-                    <div className="flex justify-end">
-                        <Button onClick={handleResetLegal} variant="secondary" className="bg-white border text-blue-700">
-                            <RefreshCcw size={16} className="mr-2"/> Carregar Tabela 2024/2025
-                        </Button>
+                    <div className="flex justify-between items-center bg-blue-50 p-4 rounded-xl border border-blue-100">
+                        <div className="text-xs text-blue-800">
+                            <strong>Vigência Atual:</strong> {state.legalSettings?.validFrom ? new Date(state.legalSettings.validFrom).toLocaleDateString() : 'N/A'}
+                        </div>
+                        <div className="flex gap-2">
+                            <Button onClick={() => setIsLegalModalOpen(true)} className="bg-blue-600 text-white shadow-lg">
+                                <Edit3 size={16} className="mr-2"/> Editar Tabelas
+                            </Button>
+                            <Button onClick={handleResetLegal} variant="secondary" className="bg-white border text-blue-700">
+                                <RefreshCcw size={16} className="mr-2"/> Restaurar Padrão
+                            </Button>
+                        </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -237,6 +247,9 @@ export const StaffSettings: React.FC = () => {
                     </div>
                 </>
             )}
+
+            {/* Modal de Configuração Legal */}
+            <LegalSettingsModal isOpen={isLegalModalOpen} onClose={() => setIsLegalModalOpen(false)} />
         </div>
     );
 };

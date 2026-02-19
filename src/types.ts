@@ -149,6 +149,17 @@ export interface PayrollPreview {
     benefitBreakdown: { name: string; value: number }[];
 }
 
+export interface ClosedPayroll {
+    id: string;
+    month: number;
+    year: number;
+    totalCost: number;
+    totalNet: number;
+    employeeCount: number;
+    closedAt: Date;
+    closedBy: string;
+}
+
 export interface DeliveryMethodConfig {
     id: string;
     name: string; 
