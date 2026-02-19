@@ -4,7 +4,7 @@ import { useStaff } from '../../../context/StaffContext';
 import { useRestaurant } from '../../../context/RestaurantContext';
 import { useUI } from '../../../context/UIContext';
 import { Button } from '../../../components/Button';
-import { RHTax, RHBenefit, TaxPayerType } from '../../../types';
+import { RHTax, RHBenefit, TaxPayerType, TaxCalculationBasis } from '../../../types';
 import { Plus, Trash2, Settings, Percent, DollarSign, RefreshCcw, Gift, FileText, Briefcase, Building2 } from 'lucide-react';
 
 export const StaffSettings: React.FC = () => {
@@ -15,7 +15,7 @@ export const StaffSettings: React.FC = () => {
     // Estado para controlar a aba de impostos
     const [taxTab, setTaxTab] = useState<TaxPayerType>('EMPLOYEE');
 
-    const [taxForm, setTaxForm] = useState<Partial<RHTax>>({ name: '', type: 'PERCENTAGE', value: 0 });
+    const [taxForm, setTaxForm] = useState<Partial<RHTax>>({ name: '', type: 'PERCENTAGE', value: 0, calculationBasis: 'GROSS_TOTAL' });
     const [benForm, setBenForm] = useState<Partial<RHBenefit>>({ name: '', type: 'FIXED', value: 0 });
 
     const handleAddTax = async (e: React.FormEvent) => {
@@ -24,7 +24,7 @@ export const StaffSettings: React.FC = () => {
         try { 
             // Adiciona o tipo de pagador baseado na aba atual
             await addTax({ ...taxForm, payerType: taxTab }); 
-            setTaxForm({ name: '', type: 'PERCENTAGE', value: 0 }); 
+            setTaxForm({ name: '', type: 'PERCENTAGE', value: 0, calculationBasis: 'GROSS_TOTAL' }); 
             showAlert({ title: "Sucesso", message: "Item adicionado.", type: "SUCCESS" }); 
         } catch (e) { showAlert({ title: "Erro", message: "Falha ao salvar.", type: "ERROR" }); }
     };
@@ -107,6 +107,20 @@ export const StaffSettings: React.FC = () => {
                                 <select className="border p-2.5 rounded-xl text-sm bg-white" value={taxForm.type} onChange={e => setTaxForm({...taxForm, type: e.target.value as any})}><option value="PERCENTAGE">%</option><option value="FIXED">R$</option></select>
                                 <input required type="number" step="0.01" className="border p-2.5 rounded-xl text-sm" placeholder="Valor" value={taxForm.value} onChange={e => setTaxForm({...taxForm, value: parseFloat(e.target.value)})} />
                             </div>
+                            
+                            {/* Seleção de Base de Cálculo */}
+                            <div>
+                                <label className="text-[10px] font-bold text-gray-500 uppercase px-1">Base de Cálculo</label>
+                                <select 
+                                    className="w-full border p-2.5 rounded-xl text-sm bg-white" 
+                                    value={taxForm.calculationBasis || 'GROSS_TOTAL'} 
+                                    onChange={e => setTaxForm({...taxForm, calculationBasis: e.target.value as any})}
+                                >
+                                    <option value="GROSS_TOTAL">Sobre Bruto Total (Base + Extras)</option>
+                                    <option value="BASE_SALARY">Sobre Salário Base (Sem Extras)</option>
+                                </select>
+                            </div>
+
                             <Button type="submit" className={`w-full ${taxTab === 'EMPLOYEE' ? 'bg-red-600 hover:bg-red-700' : 'bg-purple-600 hover:bg-purple-700'}`}>
                                 Adicionar {taxTab === 'EMPLOYEE' ? 'Desconto' : 'Encargo'}
                             </Button>
@@ -122,7 +136,12 @@ export const StaffSettings: React.FC = () => {
                                     </div>
                                     <div>
                                         <h4 className="font-bold text-slate-800">{tax.name}</h4>
-                                        <p className="text-xs text-gray-500">{taxTab === 'EMPLOYEE' ? 'Desconto' : 'Custo'}: <strong>{tax.type === 'PERCENTAGE' ? `${tax.value}%` : `R$ ${tax.value.toFixed(2)}`}</strong></p>
+                                        <div className="text-xs text-gray-500">
+                                            {taxTab === 'EMPLOYEE' ? 'Desconto' : 'Custo'}: <strong>{tax.type === 'PERCENTAGE' ? `${tax.value}%` : `R$ ${tax.value.toFixed(2)}`}</strong>
+                                            <span className="ml-2 px-1.5 py-0.5 bg-gray-100 rounded text-[9px] uppercase tracking-wide">
+                                                Sobre {tax.calculationBasis === 'BASE_SALARY' ? 'Base' : 'Bruto'}
+                                            </span>
+                                        </div>
                                     </div>
                                 </div>
                                 <button onClick={() => handleDeleteTax(tax.id)} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"><Trash2 size={18}/></button>

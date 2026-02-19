@@ -47,11 +47,12 @@ export interface CustomRole {
     permissions: RolePermissions;
 }
 
-// --- HR Types ---
+// --- RH Types ---
 export type ContractType = 'CLT' | 'PJ' | 'TEMPORARY' | 'INTERN' | 'FREELANCE';
 export type EmployeeStatus = 'ACTIVE' | 'ON_LEAVE' | 'TERMINATED' | 'VACATION';
 export type TaxRegime = 'SIMPLES_NACIONAL' | 'LUCRO_PRESUMIDO' | 'LUCRO_REAL' | 'MEI';
 export type TaxPayerType = 'EMPLOYEE' | 'EMPLOYER';
+export type TaxCalculationBasis = 'GROSS_TOTAL' | 'BASE_SALARY';
 
 export interface Shift {
     id: string;
@@ -80,7 +81,8 @@ export interface RHTax {
     name: string;
     type: 'PERCENTAGE' | 'FIXED';
     value: number;
-    payerType: TaxPayerType; // Novo campo: Quem paga?
+    payerType: TaxPayerType; 
+    calculationBasis: TaxCalculationBasis; 
     isActive: boolean;
 }
 
@@ -99,15 +101,15 @@ export interface PayrollPreview {
     overtimeTotal: number;
     absencesTotal: number;
     addictionals: number;
-    benefits: number; // Total calculado
+    benefits: number; 
     grossTotal: number;
     discounts: number;
     netTotal: number;
     hoursWorked: number;
     
-    // Novos campos de custo empresa
-    employerCharges: number; // Total de encargos patronais
-    totalCompanyCost: number; // Bruto + Encargos + Benefícios da empresa
+    // Custos da Empresa
+    employerCharges: number; 
+    totalCompanyCost: number; 
 
     taxBreakdown: { name: string; value: number; type: TaxPayerType }[];
     benefitBreakdown: { name: string; value: number }[];
@@ -230,26 +232,24 @@ export interface User {
   customRoleName?: string;
   allowedRoutes?: string[];
   
-  // RH Fields - Basic
+  // RH Fields
   department?: string;
   hireDate?: Date;
   contractType?: ContractType;
   baseSalary?: number;
-  benefitsTotal?: number; // Manual override ou histórico
+  benefitsTotal?: number; 
   status?: EmployeeStatus;
   shiftId?: string; 
   phone?: string;
   documentCpf?: string;
 
-  // RH Fields - Extended (Personal)
+  // Extended
   birthDate?: Date;
   mothersName?: string;
   fathersName?: string;
   maritalStatus?: string;
   gender?: string;
   educationLevel?: string;
-
-  // RH Fields - Documents
   rgNumber?: string;
   rgIssuer?: string;
   rgState?: string;
@@ -258,8 +258,6 @@ export interface User {
   ctpsState?: string;
   pisPasep?: string;
   voterRegistration?: string;
-
-  // RH Fields - Address
   addressZip?: string;
   addressStreet?: string;
   addressNumber?: string;
@@ -267,8 +265,6 @@ export interface User {
   addressCity?: string;
   addressState?: string;
   addressComplement?: string;
-
-  // RH Fields - Bank
   bankName?: string;
   bankAgency?: string;
   bankAccount?: string;

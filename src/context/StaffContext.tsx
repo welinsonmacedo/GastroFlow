@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { User, Shift, TimeEntry, PayrollPreview, CustomRole, RHTax, RHBenefit, TaxRegime, TaxPayerType } from '../types';
+import { User, Shift, TimeEntry, PayrollPreview, CustomRole, RHTax, RHBenefit, TaxRegime, TaxPayerType, TaxCalculationBasis } from '../types';
 import { supabase } from '../lib/supabase';
 import { useRestaurant } from './RestaurantContext';
 import { useUI } from './UIContext';
@@ -162,6 +162,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               type: t.type,
               value: Number(t.value),
               payerType: (t.payer_type || 'EMPLOYEE') as TaxPayerType,
+              calculationBasis: (t.calculation_basis || 'GROSS_TOTAL') as TaxCalculationBasis,
               isActive: t.is_active
           }));
 
@@ -437,7 +438,8 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           name: tax.name,
           type: tax.type,
           value: tax.value,
-          payer_type: tax.payerType, // Salva quem paga (Empresa ou Funcionário)
+          payer_type: tax.payerType,
+          calculation_basis: tax.calculationBasis,
           is_active: true
       });
       if (error) throw error;
@@ -457,22 +459,23 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const defaults: Partial<RHTax>[] = [];
       
       if (regime === 'SIMPLES_NACIONAL' || regime === 'MEI') {
-           // Descontados do funcionário
-           defaults.push({ name: 'INSS (Folha)', type: 'PERCENTAGE', value: 8, payerType: 'EMPLOYEE' });
-           defaults.push({ name: 'Vale Transporte (Desc)', type: 'PERCENTAGE', value: 6, payerType: 'EMPLOYEE' });
+           // Descontos do Colaborador
+           defaults.push({ name: 'INSS (Folha)', type: 'PERCENTAGE', value: 8, payerType: 'EMPLOYEE', calculationBasis: 'GROSS_TOTAL' });
+           defaults.push({ name: 'Vale Transporte (Desc)', type: 'PERCENTAGE', value: 6, payerType: 'EMPLOYEE', calculationBasis: 'BASE_SALARY' });
            
-           // Encargos da empresa (FGTS 8% - não desconta do funcionário, é custo extra)
-           defaults.push({ name: 'FGTS (8%)', type: 'PERCENTAGE', value: 8, payerType: 'EMPLOYER' }); 
+           // Encargos da Empresa (Simples: INSS Patronal incluso no DAS, exceto Anexo IV. FGTS normal)
+           defaults.push({ name: 'FGTS (8%)', type: 'PERCENTAGE', value: 8, payerType: 'EMPLOYER', calculationBasis: 'GROSS_TOTAL' }); 
       } else {
            // Lucro Real / Presumido
            // Descontos
-           defaults.push({ name: 'INSS (Folha)', type: 'PERCENTAGE', value: 11, payerType: 'EMPLOYEE' }); 
-           defaults.push({ name: 'IRRF (Estimado)', type: 'PERCENTAGE', value: 7.5, payerType: 'EMPLOYEE' });
-           defaults.push({ name: 'Vale Transporte', type: 'PERCENTAGE', value: 6, payerType: 'EMPLOYEE' });
+           defaults.push({ name: 'INSS (Folha)', type: 'PERCENTAGE', value: 9, payerType: 'EMPLOYEE', calculationBasis: 'GROSS_TOTAL' }); 
+           defaults.push({ name: 'IRRF (Estimado)', type: 'PERCENTAGE', value: 7.5, payerType: 'EMPLOYEE', calculationBasis: 'GROSS_TOTAL' });
+           defaults.push({ name: 'Vale Transporte', type: 'PERCENTAGE', value: 6, payerType: 'EMPLOYEE', calculationBasis: 'BASE_SALARY' });
 
            // Encargos
-           defaults.push({ name: 'FGTS (8%)', type: 'PERCENTAGE', value: 8, payerType: 'EMPLOYER' });
-           defaults.push({ name: 'INSS Patronal', type: 'PERCENTAGE', value: 20, payerType: 'EMPLOYER' });
+           defaults.push({ name: 'FGTS (8%)', type: 'PERCENTAGE', value: 8, payerType: 'EMPLOYER', calculationBasis: 'GROSS_TOTAL' });
+           defaults.push({ name: 'INSS Patronal', type: 'PERCENTAGE', value: 20, payerType: 'EMPLOYER', calculationBasis: 'GROSS_TOTAL' });
+           defaults.push({ name: 'Sistema S + Terceiros', type: 'PERCENTAGE', value: 5.8, payerType: 'EMPLOYER', calculationBasis: 'GROSS_TOTAL' });
       }
       
       const inserts = defaults.map(d => ({
@@ -481,6 +484,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           type: d.type,
           value: d.value,
           payer_type: d.payerType,
+          calculation_basis: d.calculationBasis,
           is_active: true
       }));
 
@@ -523,6 +527,8 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const activeTaxes = state.taxes.filter(t => t.isActive);
       const activeBenefits = state.benefits.filter(b => b.isActive);
 
+      const STANDARD_MONTHLY_HOURS = 220; // CLT Padrão
+
       return state.users.map(user => {
           const userEntries = (entries || []).filter(e => e.staff_id === user.id);
           
@@ -540,12 +546,14 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           });
 
           const hoursWorked = totalMins / 60;
-          const expectedHours = 220;
-          const overtime = Math.max(0, hoursWorked - expectedHours);
           const baseSalary = user.baseSalary || 0;
-          const hourlyRate = baseSalary / expectedHours;
-
-          const overtimeTotal = overtime * (hourlyRate * 1.5);
+          const hourlyRate = baseSalary / STANDARD_MONTHLY_HOURS;
+          
+          // Cálculo de Hora Extra (50% padrão)
+          // Se trabalhou mais que 220 horas (simplificado)
+          // Em um sistema completo, verificaria dia a dia (feriados 100%, etc)
+          const overtimeHours = Math.max(0, hoursWorked - STANDARD_MONTHLY_HOURS);
+          const overtimeTotal = overtimeHours * (hourlyRate * 1.5); 
           
           // Cálculo de Benefícios (Adições)
           let totalBenefits = user.benefitsTotal || 0; // Manual
@@ -564,18 +572,17 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           
           const gross = baseSalary + overtimeTotal + totalBenefits;
           
-          // Separação de Impostos (Dedução vs Encargo)
+          // Separação de Impostos (Dedução vs Encargo) e Base de Cálculo (Base vs Bruto)
           let employeeDeductions = 0;
           let employerCharges = 0;
           const taxBreakdown: { name: string, value: number, type: TaxPayerType }[] = [];
 
           activeTaxes.forEach(tax => {
               let val = 0;
-              // Base de cálculo simplificada: Salário Base + Hora Extra (Geralmente)
-              const calculationBase = baseSalary + overtimeTotal;
+              const basisAmount = tax.calculationBasis === 'BASE_SALARY' ? baseSalary : gross;
 
               if (tax.type === 'PERCENTAGE') {
-                  val = (calculationBase * (tax.value / 100));
+                  val = (basisAmount * (tax.value / 100));
               } else {
                   val = tax.value;
               }
