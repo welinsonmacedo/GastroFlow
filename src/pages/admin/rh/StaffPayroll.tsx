@@ -1,17 +1,17 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useStaff } from '../../../context/StaffContext';
-import { useRestaurant } from '../../../context/RestaurantContext'; // Adicionado para dados da empresa
+import { useRestaurant } from '../../../context/RestaurantContext'; 
 import { useUI } from '../../../context/UIContext';
 import { Button } from '../../../components/Button';
 import { PayrollPreview, ClosedPayroll, PayrollEventType } from '../../../types';
-import { FileText, Printer, Calculator, RefreshCcw, Eye, X, Building2, Lock, Plus, Download, AlertTriangle } from 'lucide-react';
+import { FileText, Printer, Calculator, RefreshCcw, Eye, X, Building2, Lock, Plus, Download, AlertTriangle, ArrowRight } from 'lucide-react';
 import { printHtml, getReportStyles } from '../../../utils/printHelper';
 import { Modal } from '../../../components/Modal';
 
 export const StaffPayroll: React.FC = () => {
     const { getPayroll, closePayroll, addPayrollEvent, state: staffState } = useStaff();
-    const { state: restState } = useRestaurant(); // Adicionado
+    const { state: restState } = useRestaurant(); 
     const { showAlert, showConfirm } = useUI();
     
     const [month, setMonth] = useState(new Date().getMonth());
@@ -27,6 +27,10 @@ export const StaffPayroll: React.FC = () => {
     // Modal Eventos
     const [isEventModalOpen, setIsEventModalOpen] = useState(false);
     const [eventForm, setEventForm] = useState({ staffId: '', type: 'BONUS', value: 0, description: '' });
+    
+    // Estados para Calculadora de Eventos
+    const [calcMode, setCalcMode] = useState<'MANUAL' | 'DAYS' | 'HOURS'>('MANUAL');
+    const [calcQty, setCalcQty] = useState<number>(0);
 
     const loadData = async () => {
         setLoading(true);
@@ -43,6 +47,29 @@ export const StaffPayroll: React.FC = () => {
     };
 
     useEffect(() => { loadData(); }, [month, year]);
+
+    // Efeito para Calcular Valor Automaticamente
+    useEffect(() => {
+        if (calcMode === 'MANUAL' || !eventForm.staffId) return;
+
+        const user = staffState.users.find(u => u.id === eventForm.staffId);
+        if (!user || !user.baseSalary) return;
+
+        let finalValue = 0;
+        if (calcMode === 'DAYS') {
+            // Regra: Salário / 30 dias
+            const dayValue = user.baseSalary / 30;
+            finalValue = dayValue * calcQty;
+        } else if (calcMode === 'HOURS') {
+            // Regra: Salário / 220 horas (Padrão CLT mensal)
+            // Futuramente pode usar workModel do user para divisor exato (180, 220, etc)
+            const hourValue = user.baseSalary / 220;
+            finalValue = hourValue * calcQty;
+        }
+
+        setEventForm(prev => ({ ...prev, value: parseFloat(finalValue.toFixed(2)) }));
+
+    }, [calcQty, calcMode, eventForm.staffId, staffState.users]);
 
     const handleClosePayroll = () => {
         showConfirm({
@@ -67,12 +94,20 @@ export const StaffPayroll: React.FC = () => {
     const handleAddEvent = async () => {
         if (!eventForm.staffId || !eventForm.value) return;
         try {
+            // Se calculou automático, sugere descrição se estiver vazia
+            let finalDesc = eventForm.description;
+            if (!finalDesc && calcMode !== 'MANUAL') {
+                const label = calcMode === 'DAYS' ? 'dias' : 'horas';
+                const typeLabel = eventForm.type === 'DEDUCTION' ? 'Falta' : 'Extra';
+                finalDesc = `${typeLabel}: ${calcQty} ${label}`;
+            }
+
             await addPayrollEvent({ 
                 staffId: eventForm.staffId, 
                 month, year, 
                 type: eventForm.type as PayrollEventType, 
                 value: Number(eventForm.value), 
-                description: eventForm.description 
+                description: finalDesc 
             });
             showAlert({ title: "Lançado", message: "Evento adicionado à pré-folha.", type: "SUCCESS" });
             setIsEventModalOpen(false);
@@ -194,7 +229,7 @@ export const StaffPayroll: React.FC = () => {
                             <div class="col-val"></div>
                         </div>` : ''}
 
-                        <!-- Benefícios -->
+                        <!-- Benefícios e Eventos -->
                         ${slip.benefitBreakdown.map((b, i) => `
                         <div class="table-row">
                             <div class="col-code">${100+i}</div>
@@ -204,7 +239,25 @@ export const StaffPayroll: React.FC = () => {
                             <div class="col-val"></div>
                         </div>`).join('')}
 
-                        <!-- Descontos -->
+                        ${slip.eventBreakdown.filter(e => e.type === 'CREDIT').map((e, i) => `
+                        <div class="table-row">
+                            <div class="col-code">${200+i}</div>
+                            <div class="col-desc">${e.name.toUpperCase()}</div>
+                            <div class="col-ref"></div>
+                            <div class="col-val">${e.value.toFixed(2)}</div>
+                            <div class="col-val"></div>
+                        </div>`).join('')}
+
+                        ${slip.eventBreakdown.filter(e => e.type === 'DEBIT').map((e, i) => `
+                        <div class="table-row">
+                            <div class="col-code">${500+i}</div>
+                            <div class="col-desc">${e.name.toUpperCase()}</div>
+                            <div class="col-ref"></div>
+                            <div class="col-val"></div>
+                            <div class="col-val">${e.value.toFixed(2)}</div>
+                        </div>`).join('')}
+
+                        <!-- Descontos Impostos -->
                         ${employeeTaxes.map((t, i) => `
                         <div class="table-row">
                             <div class="col-code">${900+i}</div>
@@ -248,6 +301,11 @@ export const StaffPayroll: React.FC = () => {
     const totalLiquido = payrollData.reduce((acc, p) => acc + p.netTotal, 0);
     const totalCustoEmpresa = payrollData.reduce((acc, p) => acc + p.totalCompanyCost, 0);
 
+    const getSelectedUserSalary = () => {
+        const user = staffState.users.find(u => u.id === eventForm.staffId);
+        return user ? user.baseSalary || 0 : 0;
+    };
+
     return (
         <div className="space-y-6 animate-fade-in">
             {/* Header de Controle */}
@@ -276,7 +334,12 @@ export const StaffPayroll: React.FC = () => {
                     
                     {!isClosed && (
                         <>
-                            <Button onClick={() => { setEventForm({ staffId: '', type: 'BONUS', value: 0, description: '' }); setIsEventModalOpen(true); }} className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm">
+                            <Button onClick={() => { 
+                                setEventForm({ staffId: '', type: 'BONUS', value: 0, description: '' }); 
+                                setCalcMode('MANUAL');
+                                setCalcQty(0);
+                                setIsEventModalOpen(true); 
+                            }} className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm">
                                 <Plus size={16} className="mr-2"/> Lançar Evento
                             </Button>
                             <Button onClick={handleClosePayroll} className="bg-red-600 hover:bg-red-700 text-white shadow-sm">
@@ -349,39 +412,110 @@ export const StaffPayroll: React.FC = () => {
                 </div>
             </div>
 
-            {/* Modal de Lançamento de Eventos */}
-            <Modal isOpen={isEventModalOpen} onClose={() => setIsEventModalOpen(false)} title="Lançamento Variável" variant="dialog" maxWidth="sm">
-                <div className="space-y-4">
-                    <div>
-                        <label className="text-xs font-bold text-gray-500 uppercase">Colaborador</label>
-                        <select className="w-full border p-2.5 rounded-xl bg-white" value={eventForm.staffId} onChange={e => setEventForm({...eventForm, staffId: e.target.value})}>
-                            <option value="">Selecione...</option>
-                            {staffState.users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-                        </select>
+            {/* Modal de Lançamento de Eventos (MELHORADO) */}
+            <Modal isOpen={isEventModalOpen} onClose={() => setIsEventModalOpen(false)} title="Lançamento Variável" variant="dialog" maxWidth="md">
+                <div className="space-y-6">
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="text-xs font-bold text-gray-500 uppercase">Colaborador</label>
+                            <select className="w-full border p-2.5 rounded-xl bg-white" value={eventForm.staffId} onChange={e => setEventForm({...eventForm, staffId: e.target.value})}>
+                                <option value="">Selecione...</option>
+                                {staffState.users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="text-xs font-bold text-gray-500 uppercase">Tipo de Evento</label>
+                            <select className="w-full border p-2.5 rounded-xl bg-white" value={eventForm.type} onChange={e => setEventForm({...eventForm, type: e.target.value})}>
+                                <option value="BONUS">Bônus / Gratificação</option>
+                                <option value="COMMISSION">Comissão</option>
+                                <option value="DEDUCTION">Falta / Desconto</option>
+                                <option value="ADVANCE">Adiantamento Salarial</option>
+                                <option value="FOOD_VOUCHER">Vale Alimentação (Desc)</option>
+                                <option value="NIGHT_SHIFT">Adicional Noturno (Manual)</option>
+                            </select>
+                        </div>
                     </div>
-                    <div>
-                        <label className="text-xs font-bold text-gray-500 uppercase">Tipo de Evento</label>
-                        <select className="w-full border p-2.5 rounded-xl bg-white" value={eventForm.type} onChange={e => setEventForm({...eventForm, type: e.target.value})}>
-                            <option value="BONUS">Bônus / Gratificação</option>
-                            <option value="COMMISSION">Comissão</option>
-                            <option value="DEDUCTION">Falta / Desconto</option>
-                            <option value="ADVANCE">Adiantamento Salarial</option>
-                            <option value="FOOD_VOUCHER">Vale Alimentação (Desc)</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label className="text-xs font-bold text-gray-500 uppercase">Valor (R$)</label>
-                        <input type="number" step="0.01" className="w-full border p-2.5 rounded-xl font-bold" value={eventForm.value} onChange={e => setEventForm({...eventForm, value: parseFloat(e.target.value)})} />
-                    </div>
+
+                    {/* ÁREA DE CÁLCULO INTELIGENTE */}
+                    {eventForm.staffId && (
+                        <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                            <div className="flex justify-between items-center mb-4">
+                                <h4 className="text-xs font-black text-slate-500 uppercase flex items-center gap-2">
+                                    <Calculator size={14}/> Calculadora
+                                </h4>
+                                <div className="text-xs text-slate-400">
+                                    Base: R$ {getSelectedUserSalary().toFixed(2)}
+                                </div>
+                            </div>
+                            
+                            <div className="flex gap-2 mb-4">
+                                <button 
+                                    onClick={() => setCalcMode('MANUAL')} 
+                                    className={`flex-1 py-2 text-xs font-bold rounded-lg border transition-all ${calcMode === 'MANUAL' ? 'bg-white border-blue-500 text-blue-600 shadow-sm' : 'border-transparent text-gray-500 hover:bg-white'}`}
+                                >
+                                    Valor Manual
+                                </button>
+                                <button 
+                                    onClick={() => setCalcMode('DAYS')} 
+                                    className={`flex-1 py-2 text-xs font-bold rounded-lg border transition-all ${calcMode === 'DAYS' ? 'bg-white border-blue-500 text-blue-600 shadow-sm' : 'border-transparent text-gray-500 hover:bg-white'}`}
+                                >
+                                    Por Dias (1/30)
+                                </button>
+                                <button 
+                                    onClick={() => setCalcMode('HOURS')} 
+                                    className={`flex-1 py-2 text-xs font-bold rounded-lg border transition-all ${calcMode === 'HOURS' ? 'bg-white border-blue-500 text-blue-600 shadow-sm' : 'border-transparent text-gray-500 hover:bg-white'}`}
+                                >
+                                    Por Horas (1/220)
+                                </button>
+                            </div>
+
+                            {calcMode !== 'MANUAL' && (
+                                <div className="flex items-center gap-3 mb-4 animate-fade-in">
+                                    <div className="flex-1">
+                                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">
+                                            Quantidade ({calcMode === 'DAYS' ? 'Dias' : 'Horas'})
+                                        </label>
+                                        <input 
+                                            type="number" 
+                                            step="0.5"
+                                            className="w-full border p-2 rounded-lg font-bold text-center" 
+                                            value={calcQty} 
+                                            onChange={e => setCalcQty(parseFloat(e.target.value))} 
+                                        />
+                                    </div>
+                                    <ArrowRight size={16} className="text-gray-400 mt-5"/>
+                                    <div className="flex-1">
+                                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Valor Calculado</label>
+                                        <div className="w-full bg-blue-100 p-2 rounded-lg text-blue-700 font-black text-center">
+                                            R$ {eventForm.value.toFixed(2)}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            <div>
+                                <label className="text-xs font-bold text-gray-500 uppercase">Valor Final (R$)</label>
+                                <input 
+                                    type="number" 
+                                    step="0.01" 
+                                    className={`w-full border p-3 rounded-xl font-black text-lg ${eventForm.type === 'DEDUCTION' ? 'text-red-600' : 'text-green-600'} ${calcMode !== 'MANUAL' ? 'bg-gray-100' : 'bg-white'}`} 
+                                    value={eventForm.value} 
+                                    onChange={e => setEventForm({...eventForm, value: parseFloat(e.target.value)})}
+                                    readOnly={calcMode !== 'MANUAL'} 
+                                />
+                            </div>
+                        </div>
+                    )}
+
                     <div>
                         <label className="text-xs font-bold text-gray-500 uppercase">Descrição</label>
-                        <input className="w-full border p-2.5 rounded-xl" placeholder="Ex: Meta batida" value={eventForm.description} onChange={e => setEventForm({...eventForm, description: e.target.value})} />
+                        <input className="w-full border p-2.5 rounded-xl" placeholder={calcMode !== 'MANUAL' ? "Calculado automaticamente (pode editar)" : "Ex: Falta dia 15/05"} value={eventForm.description} onChange={e => setEventForm({...eventForm, description: e.target.value})} />
                     </div>
-                    <Button onClick={handleAddEvent} className="w-full py-3">Salvar Lançamento</Button>
+                    <Button onClick={handleAddEvent} className="w-full py-4 text-lg font-bold">Confirmar Lançamento</Button>
                 </div>
             </Modal>
             
-            {/* Modal de Holerite (Recibo de Pagamento) */}
+            {/* Modal de Holerite (Recibo de Pagamento) - MANTIDO IDÊNTICO */}
             <Modal isOpen={!!selectedSlip} onClose={() => setSelectedSlip(null)} title="Recibo de Pagamento (Holerite)" variant="dialog" maxWidth="4xl">
                 {selectedSlip && (
                     <div className="space-y-6">
@@ -461,6 +595,24 @@ export const StaffPayroll: React.FC = () => {
                                             <div className="col-span-2 text-center"></div>
                                             <div className="col-span-2 text-right">{ben.value.toFixed(2)}</div>
                                             <div className="col-span-2 text-right"></div>
+                                        </div>
+                                    ))}
+                                    {selectedSlip.eventBreakdown.filter(e => e.type === 'CREDIT').map((evt, i) => (
+                                        <div key={`evt-c-${i}`} className="grid grid-cols-12">
+                                            <div className="col-span-1 text-center">{200+i}</div>
+                                            <div className="col-span-5">{evt.name.toUpperCase()}</div>
+                                            <div className="col-span-2 text-center"></div>
+                                            <div className="col-span-2 text-right">{evt.value.toFixed(2)}</div>
+                                            <div className="col-span-2 text-right"></div>
+                                        </div>
+                                    ))}
+                                    {selectedSlip.eventBreakdown.filter(e => e.type === 'DEBIT').map((evt, i) => (
+                                        <div key={`evt-d-${i}`} className="grid grid-cols-12">
+                                            <div className="col-span-1 text-center">{500+i}</div>
+                                            <div className="col-span-5">{evt.name.toUpperCase()}</div>
+                                            <div className="col-span-2 text-center"></div>
+                                            <div className="col-span-2 text-right"></div>
+                                            <div className="col-span-2 text-right">{evt.value.toFixed(2)}</div>
                                         </div>
                                     ))}
                                     {selectedSlip.taxBreakdown.filter(t => t.type !== 'EMPLOYER').map((tax, i) => (
