@@ -1,14 +1,14 @@
 
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X, ArrowLeft } from 'lucide-react';
+import { X, Minus, Square } from 'lucide-react';
 
 interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
   title: string;
   children: React.ReactNode;
-  variant?: 'page' | 'dialog'; // 'page' = Full Screen (Sidebar Aware), 'dialog' = Popup
+  variant?: 'page' | 'dialog'; // 'page' = 100% Fullscreen, 'dialog' = Floating Window (98%)
   maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | '5xl' | 'full'; 
 }
 
@@ -38,83 +38,62 @@ export const Modal: React.FC<ModalProps> = ({
 
   if (!isOpen || !mounted) return null;
 
-  // Renderiza o conteúdo baseado na variante
-  const content = variant === 'page' ? (
-    // --- VARIANT: PAGE (Sidebar Aware) ---
-    // z-[60] para garantir que fique acima da sidebar (z-50) e navbar (z-50)
-    <div className="fixed inset-0 z-[60] bg-gray-50 flex flex-col animate-fade-in md:left-72">
-        {/* Header Compacto */}
-        <div className="bg-white border-b px-4 py-3 flex justify-between items-center shrink-0 shadow-sm safe-area-top relative z-10">
-          <div className="flex items-center gap-3">
-            {/* Botão Voltar sempre visível e com z-index garantido */}
-            <button 
-              onClick={onClose} 
-              className="p-2 -ml-2 text-gray-600 hover:bg-gray-100 rounded-full transition-colors flex items-center gap-2 group relative z-20"
-              title="Voltar"
-            >
-               <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform"/>
-            </button>
-            <h2 className="text-lg font-bold text-gray-800 line-clamp-1">{title}</h2>
-          </div>
-          <button 
-            onClick={onClose} 
-            className="hidden md:block p-2 bg-gray-100 hover:bg-red-50 hover:text-red-500 rounded-full transition-colors"
-            title="Fechar (Esc)"
-          >
-            <X size={20}/>
-          </button>
-        </div>
-
-        {/* Content Scrollable Area - Full Height without padding constraints */}
-        <div className="flex-1 overflow-y-auto safe-area-bottom">
-          <div className="w-full max-w-full lg:max-w-7xl mx-auto p-3 md:p-6 min-h-full">
-            {children}
-          </div>
-        </div>
-    </div>
-  ) : (
-    // --- VARIANT: DIALOG (Centered Popup) ---
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-fade-in">
+  // Renderiza o conteúdo como uma JANELA DE SISTEMA
+  const content = (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in overflow-hidden">
       <div 
-        className={`bg-white rounded-2xl shadow-2xl w-full flex flex-col max-h-[90vh] relative overflow-hidden flex-shrink-0 transition-all
-          ${maxWidth === 'sm' ? 'max-w-sm' : ''}
-          ${maxWidth === 'md' ? 'max-w-md' : ''}
-          ${maxWidth === 'lg' ? 'max-w-lg' : ''}
-          ${maxWidth === 'xl' ? 'max-w-xl' : ''}
-          ${maxWidth === '2xl' ? 'max-w-2xl' : ''}
-          ${maxWidth === '3xl' ? 'max-w-3xl' : ''}
-          ${maxWidth === '4xl' ? 'max-w-4xl' : ''}
-          ${maxWidth === '5xl' ? 'max-w-5xl' : ''}
-          ${maxWidth === 'full' ? 'max-w-[95%] h-[90vh]' : ''}
+        className={`
+          flex flex-col bg-slate-50 shadow-2xl overflow-hidden relative
+          ${variant === 'page' ? 'w-full h-full rounded-none' : 'w-[98vw] h-[95vh] rounded-xl border border-slate-600/50'}
         `}
+        role="dialog"
+        aria-modal="true"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex justify-between items-center p-4 border-b bg-gray-50 shrink-0">
-          <div className="flex items-center gap-3">
+        {/* --- BARRA DE TÍTULO DA JANELA (WINDOW HEADER) --- */}
+        <div 
+          className="h-10 bg-slate-200 border-b border-slate-300 flex justify-between items-center px-3 shrink-0 select-none cursor-default"
+          onDoubleClick={(e) => {
+             // Simula maximizar/restaurar se fosse desktop app real
+             e.preventDefault();
+          }}
+        >
+          {/* Título e Ícone */}
+          <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
+            <div className="w-3 h-3 bg-slate-400 rounded-full"></div>
+            <span className="uppercase tracking-wide">{title}</span>
+          </div>
+
+          {/* Controles da Janela (Window Controls) */}
+          <div className="flex items-center gap-1">
+             {/* Botões Decorativos (Minimizar/Maximizar) */}
+             <button className="w-8 h-6 flex items-center justify-center hover:bg-slate-300 rounded transition-colors text-slate-400">
+                <Minus size={12} strokeWidth={3} />
+             </button>
+             <button className="w-8 h-6 flex items-center justify-center hover:bg-slate-300 rounded transition-colors text-slate-400">
+                <Square size={10} strokeWidth={3} />
+             </button>
+             
+             {/* Botão Fechar (Funcional) */}
              <button 
                 onClick={onClose} 
-                className="p-1 -ml-1 text-gray-500 hover:text-gray-800 hover:bg-gray-200 rounded-full transition-colors md:hidden"
-                title="Voltar"
+                className="w-10 h-6 flex items-center justify-center bg-red-500 hover:bg-red-600 text-white rounded transition-colors ml-1 shadow-sm"
+                title="Fechar (Esc)"
              >
-                <ArrowLeft size={20}/>
+                <X size={14} strokeWidth={3} />
              </button>
-             <h3 className="font-bold text-lg text-gray-800">{title}</h3>
           </div>
-          <button 
-            onClick={onClose} 
-            className="p-2 hover:bg-gray-200 rounded-full text-gray-500 hover:text-red-500 transition-colors"
-          >
-            <X size={20}/>
-          </button>
         </div>
-        
-        <div className="p-4 md:p-6 overflow-y-auto custom-scrollbar">
-          {children}
+
+        {/* --- ÁREA DE CONTEÚDO (SCROLLABLE) --- */}
+        <div className="flex-1 overflow-y-auto overflow-x-hidden bg-gray-50 custom-scrollbar relative">
+           <div className={`min-h-full ${variant === 'page' ? 'p-0' : 'p-4 md:p-6'} max-w-[1920px] mx-auto`}>
+              {children}
+           </div>
         </div>
       </div>
     </div>
   );
 
-  // Usa Portal para renderizar no final do body
   return createPortal(content, document.body);
 };

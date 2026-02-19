@@ -350,9 +350,9 @@ export const StaffPayroll: React.FC = () => {
     };
 
     return (
-        <div className="space-y-6 animate-fade-in">
+        <div className="w-full h-full flex flex-col space-y-6 animate-fade-in p-6">
             {/* Header de Controle */}
-            <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-200 gap-4">
+            <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-200 gap-4 shrink-0">
                 <div>
                     <h2 className="text-2xl font-black text-slate-800 flex items-center gap-2">
                         {isClosed ? <Lock size={24} className="text-red-500"/> : <Calculator size={24} className="text-pink-600"/>} 
@@ -367,10 +367,10 @@ export const StaffPayroll: React.FC = () => {
                 
                 <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto">
                     <div className="flex items-center gap-2 bg-gray-100 p-1 rounded-xl mr-2">
-                        <select className="bg-transparent text-sm font-bold p-2 outline-none" value={month} onChange={e => setMonth(parseInt(e.target.value))}>
+                        <select className="bg-transparent text-sm font-bold p-2 outline-none cursor-pointer" value={month} onChange={e => setMonth(parseInt(e.target.value))}>
                             {['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'].map((m, i) => <option key={i} value={i}>{m}</option>)}
                         </select>
-                        <select className="bg-transparent text-sm font-bold p-2 outline-none" value={year} onChange={e => setYear(parseInt(e.target.value))}>
+                        <select className="bg-transparent text-sm font-bold p-2 outline-none cursor-pointer" value={year} onChange={e => setYear(parseInt(e.target.value))}>
                             <option value={2025}>2025</option><option value={2026}>2026</option>
                         </select>
                     </div>
@@ -405,26 +405,26 @@ export const StaffPayroll: React.FC = () => {
             </div>
 
             {/* KPIs */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 shrink-0">
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200"><p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Total Bruto</p><p className="text-2xl font-black text-slate-800">R$ {totalBruto.toFixed(2)}</p></div>
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200"><p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Líquido a Pagar</p><p className="text-2xl font-black text-emerald-600">R$ {totalLiquido.toFixed(2)}</p></div>
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200"><p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Custo Total Empresa</p><p className="text-2xl font-black text-slate-900">R$ {totalCustoEmpresa.toFixed(2)}</p></div>
             </div>
 
             {/* Tabela Detalhada */}
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                <div className="overflow-x-auto">
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex-1 flex flex-col">
+                <div className="overflow-x-auto flex-1 custom-scrollbar">
                     <table className="w-full text-left text-xs">
-                        <thead className="bg-slate-50 text-slate-500 font-black uppercase tracking-widest border-b">
+                        <thead className="bg-slate-50 text-slate-500 font-black uppercase tracking-widest border-b sticky top-0 z-10">
                             <tr>
-                                <th className="p-4">Colaborador</th>
-                                <th className="p-4 text-right">Base</th>
-                                <th className="p-4 text-right">H.Extra / Adic.</th>
-                                <th className="p-4 text-right">Variáveis</th>
-                                <th className="p-4 text-right">Bruto</th>
-                                <th className="p-4 text-right text-red-600">Descontos</th>
+                                <th className="p-4 bg-slate-50">Colaborador</th>
+                                <th className="p-4 text-right bg-slate-50">Base</th>
+                                <th className="p-4 text-right bg-slate-50">H.Extra / Adic.</th>
+                                <th className="p-4 text-right bg-slate-50">Variáveis</th>
+                                <th className="p-4 text-right bg-slate-50">Bruto</th>
+                                <th className="p-4 text-right text-red-600 bg-slate-50">Descontos</th>
                                 <th className="p-4 text-right bg-emerald-50 text-emerald-800">Líquido</th>
-                                <th className="p-4 text-center">Holerite</th>
+                                <th className="p-4 text-center bg-slate-50">Holerite</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y text-sm">
@@ -459,12 +459,12 @@ export const StaffPayroll: React.FC = () => {
                 </div>
             </div>
 
-            {/* Modal de Lançamento de Eventos (LAYOUT OTIMIZADO) */}
+            {/* Modal de Lançamento de Eventos */}
             <Modal isOpen={isEventModalOpen} onClose={() => setIsEventModalOpen(false)} title="Lançamento Variável" variant="page">
-                <div className="max-w-7xl mx-auto space-y-6">
+                <div className="max-w-7xl mx-auto space-y-6 pt-6">
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
                         
-                        {/* COLUNA ESQUERDA: DADOS DO LANÇAMENTO (5 cols em telas grandes) */}
+                        {/* COLUNA ESQUERDA: DADOS DO LANÇAMENTO */}
                         <div className="lg:col-span-5 space-y-6">
                             <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
                                 <h3 className="font-bold text-gray-800 mb-4 border-b pb-2 flex items-center gap-2">
@@ -498,7 +498,7 @@ export const StaffPayroll: React.FC = () => {
                             </div>
                         </div>
 
-                        {/* COLUNA DIREITA: CALCULADORA (7 cols em telas grandes) */}
+                        {/* COLUNA DIREITA: CALCULADORA */}
                         <div className="lg:col-span-7">
                              {eventForm.staffId ? (
                                 <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200 h-full flex flex-col justify-between">
@@ -513,29 +513,14 @@ export const StaffPayroll: React.FC = () => {
                                         </div>
                                         
                                         <div className="flex gap-2 mb-6">
-                                            <button 
-                                                onClick={() => setCalcMode('MANUAL')} 
-                                                className={`flex-1 py-3 text-xs font-bold rounded-xl border-2 transition-all ${calcMode === 'MANUAL' ? 'bg-white border-blue-500 text-blue-600 shadow-sm' : 'border-transparent bg-white/50 text-gray-500 hover:bg-white'}`}
-                                            >
-                                                Manual
-                                            </button>
-                                            <button 
-                                                onClick={() => setCalcMode('DAYS')} 
-                                                className={`flex-1 py-3 text-xs font-bold rounded-xl border-2 transition-all ${calcMode === 'DAYS' ? 'bg-white border-blue-500 text-blue-600 shadow-sm' : 'border-transparent bg-white/50 text-gray-500 hover:bg-white'}`}
-                                            >
-                                                Dias (1/30)
-                                            </button>
-                                            <button 
-                                                onClick={() => setCalcMode('HOURS')} 
-                                                className={`flex-1 py-3 text-xs font-bold rounded-xl border-2 transition-all ${calcMode === 'HOURS' ? 'bg-white border-blue-500 text-blue-600 shadow-sm' : 'border-transparent bg-white/50 text-gray-500 hover:bg-white'}`}
-                                            >
-                                                Horas (1/220)
-                                            </button>
+                                            <button onClick={() => setCalcMode('MANUAL')} className={`flex-1 py-3 text-xs font-bold rounded-xl border-2 transition-all ${calcMode === 'MANUAL' ? 'bg-white border-blue-500 text-blue-600 shadow-sm' : 'border-transparent bg-white/50 text-gray-500 hover:bg-white'}`}>Manual</button>
+                                            <button onClick={() => setCalcMode('DAYS')} className={`flex-1 py-3 text-xs font-bold rounded-xl border-2 transition-all ${calcMode === 'DAYS' ? 'bg-white border-blue-500 text-blue-600 shadow-sm' : 'border-transparent bg-white/50 text-gray-500 hover:bg-white'}`}>Dias (1/30)</button>
+                                            <button onClick={() => setCalcMode('HOURS')} className={`flex-1 py-3 text-xs font-bold rounded-xl border-2 transition-all ${calcMode === 'HOURS' ? 'bg-white border-blue-500 text-blue-600 shadow-sm' : 'border-transparent bg-white/50 text-gray-500 hover:bg-white'}`}>Horas (1/220)</button>
                                         </div>
                                         
                                         {/* PAINEL DINÂMICO DE CÁLCULO */}
                                         <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-inner">
-                                            {/* MODO FALTA (DEDUCTION + DAYS) */}
+                                            {/* MODO FALTA */}
                                             {eventForm.type === 'DEDUCTION' && calcMode === 'DAYS' ? (
                                                 <div className="space-y-4 animate-fade-in">
                                                     <div className="grid grid-cols-2 gap-4">
@@ -549,9 +534,7 @@ export const StaffPayroll: React.FC = () => {
                                                         <div className="flex items-end">
                                                             <label className={`flex items-center gap-2 cursor-pointer p-2.5 rounded-lg border w-full transition-all ${isJustified ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
                                                                 <input type="checkbox" className="hidden" checked={isJustified} onChange={e => setIsJustified(e.target.checked)} />
-                                                                <div className={`w-4 h-4 border rounded flex items-center justify-center ${isJustified ? 'bg-green-600 border-green-600' : 'bg-white border-gray-300'}`}>
-                                                                    {isJustified && <CheckSquare size={12} className="text-white"/>}
-                                                                </div>
+                                                                <div className={`w-4 h-4 border rounded flex items-center justify-center ${isJustified ? 'bg-green-600 border-green-600' : 'bg-white border-gray-300'}`}>{isJustified && <CheckSquare size={12} className="text-white"/>}</div>
                                                                 <span className="text-xs font-bold text-slate-700">Justificada? (R$ 0)</span>
                                                             </label>
                                                         </div>
@@ -563,12 +546,9 @@ export const StaffPayroll: React.FC = () => {
                                                                 <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Qtd Dias</label>
                                                                 <input type="number" step="0.5" className="w-full border p-2.5 rounded-lg font-bold text-center bg-gray-50 focus:bg-white" value={calcQty} onChange={e => setCalcQty(parseFloat(e.target.value))} />
                                                             </div>
-                                                            
                                                             <label className={`flex-1 flex items-center gap-2 cursor-pointer p-2.5 rounded-lg border transition-all h-[42px] mt-5 ${deductDSR ? 'bg-red-50 border-red-200' : 'bg-gray-50 border-gray-200'}`}>
                                                                 <input type="checkbox" className="hidden" checked={deductDSR} onChange={e => setDeductDSR(e.target.checked)} />
-                                                                <div className={`w-4 h-4 border rounded flex items-center justify-center ${deductDSR ? 'bg-red-600 border-red-600' : 'bg-white border-gray-300'}`}>
-                                                                    {deductDSR && <CheckSquare size={12} className="text-white"/>}
-                                                                </div>
+                                                                <div className={`w-4 h-4 border rounded flex items-center justify-center ${deductDSR ? 'bg-red-600 border-red-600' : 'bg-white border-gray-300'}`}>{deductDSR && <CheckSquare size={12} className="text-white"/>}</div>
                                                                 <span className="text-xs font-bold text-slate-700">Descontar DSR (+1 Dia)</span>
                                                             </label>
                                                         </div>
@@ -579,47 +559,28 @@ export const StaffPayroll: React.FC = () => {
                                                 calcMode !== 'MANUAL' ? (
                                                     <div className="flex items-center gap-4 animate-fade-in">
                                                         <div className="flex-1">
-                                                            <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">
-                                                                Quantidade ({calcMode === 'DAYS' ? 'Dias' : 'Horas'})
-                                                            </label>
-                                                            <input 
-                                                                type="number" 
-                                                                step="0.5"
-                                                                className="w-full border p-3 rounded-xl font-bold text-center text-lg" 
-                                                                value={calcQty} 
-                                                                onChange={e => setCalcQty(parseFloat(e.target.value))} 
-                                                            />
+                                                            <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Quantidade ({calcMode === 'DAYS' ? 'Dias' : 'Horas'})</label>
+                                                            <input type="number" step="0.5" className="w-full border p-3 rounded-xl font-bold text-center text-lg" value={calcQty} onChange={e => setCalcQty(parseFloat(e.target.value))} />
                                                         </div>
                                                         <div className="text-gray-300 pt-5"><ArrowRight size={24}/></div>
                                                         <div className="flex-1">
                                                             <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Resultado</label>
-                                                            <div className="w-full bg-gray-100 p-3 rounded-xl font-mono text-center text-gray-600 font-bold border border-gray-200">
-                                                                Ref: {calcQty} {calcMode === 'DAYS' ? 'd' : 'h'}
-                                                            </div>
+                                                            <div className="w-full bg-gray-100 p-3 rounded-xl font-mono text-center text-gray-600 font-bold border border-gray-200">Ref: {calcQty} {calcMode === 'DAYS' ? 'd' : 'h'}</div>
                                                         </div>
                                                     </div>
                                                 ) : (
-                                                    <div className="text-center py-6 text-gray-400 text-sm italic">
-                                                        Modo manual selecionado. Digite o valor final abaixo.
-                                                    </div>
+                                                    <div className="text-center py-6 text-gray-400 text-sm italic">Modo manual selecionado. Digite o valor final abaixo.</div>
                                                 )
                                             )}
                                         </div>
                                     </div>
 
-                                    {/* RESULTADO FINAL (Big Input) */}
+                                    {/* RESULTADO FINAL */}
                                     <div className="mt-6 pt-6 border-t border-slate-200">
                                         <label className="text-xs font-bold text-gray-500 uppercase block mb-2">Valor Final do Lançamento</label>
                                         <div className="relative">
                                             <span className="absolute left-4 top-4 text-gray-400 font-bold">R$</span>
-                                            <input 
-                                                type="number" 
-                                                step="0.01" 
-                                                className={`w-full border-2 p-4 pl-12 rounded-2xl font-black text-3xl outline-none transition-all ${eventForm.type === 'DEDUCTION' ? 'text-red-600 border-red-100 focus:border-red-400' : 'text-green-600 border-green-100 focus:border-green-400'} ${calcMode !== 'MANUAL' ? 'bg-gray-50' : 'bg-white'}`} 
-                                                value={eventForm.value} 
-                                                onChange={e => setEventForm({...eventForm, value: parseFloat(e.target.value)})}
-                                                readOnly={calcMode !== 'MANUAL'} 
-                                            />
+                                            <input type="number" step="0.01" className={`w-full border-2 p-4 pl-12 rounded-2xl font-black text-3xl outline-none transition-all ${eventForm.type === 'DEDUCTION' ? 'text-red-600 border-red-100 focus:border-red-400' : 'text-green-600 border-green-100 focus:border-green-400'} ${calcMode !== 'MANUAL' ? 'bg-gray-50' : 'bg-white'}`} value={eventForm.value} onChange={e => setEventForm({...eventForm, value: parseFloat(e.target.value)})} readOnly={calcMode !== 'MANUAL'} />
                                         </div>
                                         <Button onClick={handleAddEvent} className="w-full py-4 mt-4 text-lg font-bold shadow-lg">Confirmar Lançamento</Button>
                                     </div>
@@ -657,131 +618,42 @@ export const StaffPayroll: React.FC = () => {
 
                             {/* Dados do Funcionário */}
                             <div className="border-b border-slate-800 p-2 grid grid-cols-4 gap-4 bg-white">
-                                <div>
-                                    <label className="block text-[10px] font-bold text-gray-500 uppercase">Cód.</label>
-                                    <span className="font-bold">{selectedSlip.staffId.slice(0,4).toUpperCase()}</span>
-                                </div>
-                                <div className="col-span-2">
-                                    <label className="block text-[10px] font-bold text-gray-500 uppercase">Nome do Funcionário</label>
-                                    <span className="font-bold">{selectedSlip.staffName}</span>
-                                </div>
-                                <div>
-                                    <label className="block text-[10px] font-bold text-gray-500 uppercase">CBO / Função</label>
-                                    <span>{staffState.users.find(u => u.id === selectedSlip.staffId)?.role || 'FUNCIONÁRIO'}</span>
-                                </div>
-                                <div>
-                                     <label className="block text-[10px] font-bold text-gray-500 uppercase">Departamento</label>
-                                     <span>{staffState.users.find(u => u.id === selectedSlip.staffId)?.department || 'GERAL'}</span>
-                                </div>
-                                <div>
-                                     <label className="block text-[10px] font-bold text-gray-500 uppercase">Admissão</label>
-                                     <span>{staffState.users.find(u => u.id === selectedSlip.staffId)?.hireDate ? new Date(staffState.users.find(u => u.id === selectedSlip.staffId)!.hireDate!).toLocaleDateString() : '-'}</span>
-                                </div>
+                                <div><label className="block text-[10px] font-bold text-gray-500 uppercase">Cód.</label><span className="font-bold">{selectedSlip.staffId.slice(0,4).toUpperCase()}</span></div>
+                                <div className="col-span-2"><label className="block text-[10px] font-bold text-gray-500 uppercase">Nome do Funcionário</label><span className="font-bold">{selectedSlip.staffName}</span></div>
+                                <div><label className="block text-[10px] font-bold text-gray-500 uppercase">CBO / Função</label><span>{staffState.users.find(u => u.id === selectedSlip.staffId)?.role || 'FUNCIONÁRIO'}</span></div>
+                                <div><label className="block text-[10px] font-bold text-gray-500 uppercase">Departamento</label><span>{staffState.users.find(u => u.id === selectedSlip.staffId)?.department || 'GERAL'}</span></div>
+                                <div><label className="block text-[10px] font-bold text-gray-500 uppercase">Admissão</label><span>{staffState.users.find(u => u.id === selectedSlip.staffId)?.hireDate ? new Date(staffState.users.find(u => u.id === selectedSlip.staffId)!.hireDate!).toLocaleDateString() : '-'}</span></div>
                             </div>
 
                             {/* Corpo (Tabela) */}
                             <div className="min-h-[300px] relative">
-                                {/* Header da Tabela */}
                                 <div className="grid grid-cols-12 border-b border-black bg-gray-100 font-bold p-1">
-                                    <div className="col-span-1 text-center">Cód</div>
-                                    <div className="col-span-5">Descrição</div>
-                                    <div className="col-span-2 text-center">Ref.</div>
-                                    <div className="col-span-2 text-right">Vencimentos</div>
-                                    <div className="col-span-2 text-right">Descontos</div>
+                                    <div className="col-span-1 text-center">Cód</div><div className="col-span-5">Descrição</div><div className="col-span-2 text-center">Ref.</div><div className="col-span-2 text-right">Vencimentos</div><div className="col-span-2 text-right">Descontos</div>
                                 </div>
-                                
-                                {/* Linhas */}
                                 <div className="p-1 space-y-1">
-                                    <div className="grid grid-cols-12">
-                                        <div className="col-span-1 text-center">001</div>
-                                        <div className="col-span-5">SALÁRIO BASE</div>
-                                        <div className="col-span-2 text-center">30d</div>
-                                        <div className="col-span-2 text-right">{selectedSlip.baseSalary.toFixed(2)}</div>
-                                        <div className="col-span-2 text-right"></div>
-                                    </div>
-                                    {(selectedSlip.overtime50 + selectedSlip.overtime100) > 0 && (
-                                        <div className="grid grid-cols-12">
-                                            <div className="col-span-1 text-center">002</div>
-                                            <div className="col-span-5">HORAS EXTRAS</div>
-                                            <div className="col-span-2 text-center"></div>
-                                            <div className="col-span-2 text-right">{(selectedSlip.overtime50 + selectedSlip.overtime100).toFixed(2)}</div>
-                                            <div className="col-span-2 text-right"></div>
-                                        </div>
-                                    )}
-                                    {selectedSlip.benefitBreakdown.map((ben, i) => (
-                                        <div key={`ben-${i}`} className="grid grid-cols-12">
-                                            <div className="col-span-1 text-center">{100+i}</div>
-                                            <div className="col-span-5">{ben.name.toUpperCase()}</div>
-                                            <div className="col-span-2 text-center"></div>
-                                            <div className="col-span-2 text-right">{ben.value.toFixed(2)}</div>
-                                            <div className="col-span-2 text-right"></div>
-                                        </div>
-                                    ))}
-                                    {selectedSlip.eventBreakdown.filter(e => e.type === 'CREDIT').map((evt, i) => (
-                                        <div key={`evt-c-${i}`} className="grid grid-cols-12">
-                                            <div className="col-span-1 text-center">{200+i}</div>
-                                            <div className="col-span-5">{evt.name.toUpperCase()}</div>
-                                            <div className="col-span-2 text-center"></div>
-                                            <div className="col-span-2 text-right">{evt.value.toFixed(2)}</div>
-                                            <div className="col-span-2 text-right"></div>
-                                        </div>
-                                    ))}
-                                    {selectedSlip.eventBreakdown.filter(e => e.type === 'DEBIT').map((evt, i) => (
-                                        <div key={`evt-d-${i}`} className="grid grid-cols-12">
-                                            <div className="col-span-1 text-center">{500+i}</div>
-                                            <div className="col-span-5">{evt.name.toUpperCase()}</div>
-                                            <div className="col-span-2 text-center"></div>
-                                            <div className="col-span-2 text-right"></div>
-                                            <div className="col-span-2 text-right">{evt.value.toFixed(2)}</div>
-                                        </div>
-                                    ))}
-                                    {selectedSlip.taxBreakdown.filter(t => t.type !== 'EMPLOYER').map((tax, i) => (
-                                        <div key={`tax-${i}`} className="grid grid-cols-12">
-                                            <div className="col-span-1 text-center">{900+i}</div>
-                                            <div className="col-span-5">{tax.name.toUpperCase()}</div>
-                                            <div className="col-span-2 text-center"></div>
-                                            <div className="col-span-2 text-right"></div>
-                                            <div className="col-span-2 text-right">{tax.value.toFixed(2)}</div>
-                                        </div>
-                                    ))}
+                                    <div className="grid grid-cols-12"><div className="col-span-1 text-center">001</div><div className="col-span-5">SALÁRIO BASE</div><div className="col-span-2 text-center">30d</div><div className="col-span-2 text-right">{selectedSlip.baseSalary.toFixed(2)}</div><div className="col-span-2 text-right"></div></div>
+                                    {(selectedSlip.overtime50 + selectedSlip.overtime100) > 0 && (<div className="grid grid-cols-12"><div className="col-span-1 text-center">002</div><div className="col-span-5">HORAS EXTRAS</div><div className="col-span-2 text-center"></div><div className="col-span-2 text-right">{(selectedSlip.overtime50 + selectedSlip.overtime100).toFixed(2)}</div><div className="col-span-2 text-right"></div></div>)}
+                                    {selectedSlip.benefitBreakdown.map((ben, i) => (<div key={`ben-${i}`} className="grid grid-cols-12"><div className="col-span-1 text-center">{100+i}</div><div className="col-span-5">{ben.name.toUpperCase()}</div><div className="col-span-2 text-center"></div><div className="col-span-2 text-right">{ben.value.toFixed(2)}</div><div className="col-span-2 text-right"></div></div>))}
+                                    {selectedSlip.eventBreakdown.filter(e => e.type === 'CREDIT').map((evt, i) => (<div key={`evt-c-${i}`} className="grid grid-cols-12"><div className="col-span-1 text-center">{200+i}</div><div className="col-span-5">{evt.name.toUpperCase()}</div><div className="col-span-2 text-center"></div><div className="col-span-2 text-right">{evt.value.toFixed(2)}</div><div className="col-span-2 text-right"></div></div>))}
+                                    {selectedSlip.eventBreakdown.filter(e => e.type === 'DEBIT').map((evt, i) => (<div key={`evt-d-${i}`} className="grid grid-cols-12"><div className="col-span-1 text-center">{500+i}</div><div className="col-span-5">{evt.name.toUpperCase()}</div><div className="col-span-2 text-center"></div><div className="col-span-2 text-right"></div><div className="col-span-2 text-right">{evt.value.toFixed(2)}</div></div>))}
+                                    {selectedSlip.taxBreakdown.filter(t => t.type !== 'EMPLOYER').map((tax, i) => (<div key={`tax-${i}`} className="grid grid-cols-12"><div className="col-span-1 text-center">{900+i}</div><div className="col-span-5">{tax.name.toUpperCase()}</div><div className="col-span-2 text-center"></div><div className="col-span-2 text-right"></div><div className="col-span-2 text-right">{tax.value.toFixed(2)}</div></div>))}
                                 </div>
                             </div>
 
                             {/* Totais */}
                             <div className="border-t border-black bg-gray-100 p-2 grid grid-cols-12 items-center">
                                 <div className="col-span-6 font-bold text-xs"></div>
-                                <div className="col-span-2 text-right">
-                                    <div className="text-[9px] uppercase">Total Vencimentos</div>
-                                    <div className="font-bold">{selectedSlip.grossTotal.toFixed(2)}</div>
-                                </div>
-                                <div className="col-span-2 text-right">
-                                    <div className="text-[9px] uppercase">Total Descontos</div>
-                                    <div className="font-bold">{selectedSlip.discounts.toFixed(2)}</div>
-                                </div>
-                                <div className="col-span-2 text-right border border-black bg-white p-1 ml-2">
-                                    <div className="text-[9px] uppercase font-bold">Líquido a Receber</div>
-                                    <div className="font-black text-sm">R$ {selectedSlip.netTotal.toFixed(2)}</div>
-                                </div>
+                                <div className="col-span-2 text-right"><div className="text-[9px] uppercase">Total Vencimentos</div><div className="font-bold">{selectedSlip.grossTotal.toFixed(2)}</div></div>
+                                <div className="col-span-2 text-right"><div className="text-[9px] uppercase">Total Descontos</div><div className="font-bold">{selectedSlip.discounts.toFixed(2)}</div></div>
+                                <div className="col-span-2 text-right border border-black bg-white p-1 ml-2"><div className="text-[9px] uppercase font-bold">Líquido a Receber</div><div className="font-black text-sm">R$ {selectedSlip.netTotal.toFixed(2)}</div></div>
                             </div>
 
                             {/* Rodapé Bases */}
                             <div className="border-t border-black p-2 grid grid-cols-4 gap-4 bg-white text-[10px]">
-                                <div>
-                                    <div className="font-bold text-gray-500 uppercase">Sal. Contrib. INSS</div>
-                                    <div className="font-bold">{selectedSlip.grossTotal.toFixed(2)}</div>
-                                </div>
-                                <div>
-                                    <div className="font-bold text-gray-500 uppercase">Base Calc. FGTS</div>
-                                    <div className="font-bold">{selectedSlip.grossTotal.toFixed(2)}</div>
-                                </div>
-                                <div>
-                                    <div className="font-bold text-gray-500 uppercase">FGTS do Mês</div>
-                                    <div className="font-bold">{selectedSlip.fgtsValue.toFixed(2)}</div>
-                                </div>
-                                <div>
-                                    <div className="font-bold text-gray-500 uppercase">Base Calc. IRRF</div>
-                                    <div className="font-bold">{(selectedSlip.grossTotal - selectedSlip.inssValue).toFixed(2)}</div>
-                                </div>
+                                <div><div className="font-bold text-gray-500 uppercase">Sal. Contrib. INSS</div><div className="font-bold">{selectedSlip.grossTotal.toFixed(2)}</div></div>
+                                <div><div className="font-bold text-gray-500 uppercase">Base Calc. FGTS</div><div className="font-bold">{selectedSlip.grossTotal.toFixed(2)}</div></div>
+                                <div><div className="font-bold text-gray-500 uppercase">FGTS do Mês</div><div className="font-bold">{selectedSlip.fgtsValue.toFixed(2)}</div></div>
+                                <div><div className="font-bold text-gray-500 uppercase">Base Calc. IRRF</div><div className="font-bold">{(selectedSlip.grossTotal - selectedSlip.inssValue).toFixed(2)}</div></div>
                             </div>
                         </div>
 
