@@ -3,12 +3,13 @@ import React, { createContext, useContext, useEffect, useState, useCallback } fr
 import { 
     User, Shift, TimeEntry, PayrollPreview, CustomRole, 
     RHTax, RHBenefit, TaxRegime, TaxPayerType, TaxCalculationBasis,
-    RhPayrollSetting, RhInssBracket, RhIrrfBracket, ClosedPayroll
+    RhPayrollSetting, RhInssBracket, RhIrrfBracket, ClosedPayroll,
+    PayrollEvent, PayrollEventType
 } from '../types';
 import { supabase } from '../lib/supabase';
 import { useRestaurant } from './RestaurantContext';
 import { useUI } from './UIContext';
-import { useAuth } from './AuthProvider'; // Para pegar o nome de quem fechou
+import { useAuth } from './AuthProvider'; 
 
 interface StaffState {
   users: User[];
@@ -20,6 +21,7 @@ interface StaffState {
   legalSettings: RhPayrollSetting | null;
   inssBrackets: RhInssBracket[];
   irrfBrackets: RhIrrfBracket[];
+  payrollEvents: PayrollEvent[];
   isLoading: boolean;
 }
 
@@ -48,6 +50,9 @@ interface StaffContextType {
   addBenefit: (benefit: Partial<RHBenefit>) => Promise<void>;
   deleteBenefit: (id: string) => Promise<void>;
 
+  addPayrollEvent: (event: Partial<PayrollEvent>) => Promise<void>;
+  deletePayrollEvent: (id: string) => Promise<void>;
+
   getPayroll: (month: number, year: number) => Promise<{ payroll: PayrollPreview[], isClosed: boolean, closedInfo?: ClosedPayroll }>;
   closePayroll: (month: number, year: number) => Promise<void>;
   fetchData: () => Promise<void>;
@@ -63,7 +68,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   
   const [state, setState] = useState<StaffState>({ 
     users: [], shifts: [], timeEntries: [], roles: [], taxes: [], benefits: [],
-    legalSettings: null, inssBrackets: [], irrfBrackets: [], isLoading: true 
+    legalSettings: null, inssBrackets: [], irrfBrackets: [], payrollEvents: [], isLoading: true 
   });
 
   const fetchData = useCallback(async () => {
@@ -89,9 +94,10 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               id: u.id, name: u.name, role: u.role, customRoleId: u.custom_role_id, customRoleName: u.custom_roles?.name,
               email: u.email, auth_user_id: u.auth_user_id, allowedRoutes: u.allowed_routes || [],
               department: u.department, hireDate: u.hire_date ? new Date(u.hire_date) : undefined, contractType: u.contract_type,
+              workModel: u.work_model || '44H_WEEKLY',
               baseSalary: Number(u.base_salary) || 0, benefitsTotal: Number(u.benefits_total) || 0, status: u.status,
               shiftId: u.shift_id, phone: u.phone, documentCpf: u.document_cpf, dependentsCount: u.dependents_count || 0,
-              // Extended fields omitted for brevity but should be here
+              bankHoursBalance: Number(u.bank_hours_balance) || 0
           }));
 
           const legalSettings: RhPayrollSetting | null = settingsRes.data ? {
@@ -142,7 +148,8 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
           setState({ 
             users: mappedUsers, shifts: mappedShifts, timeEntries: mappedTime, roles: mappedRoles,
-            taxes: mappedTaxes, benefits: mappedBenefits, legalSettings, inssBrackets, irrfBrackets, isLoading: false 
+            taxes: mappedTaxes, benefits: mappedBenefits, legalSettings, inssBrackets, irrfBrackets, 
+            payrollEvents: [], isLoading: false 
           });
       }
   }, [tenantId]);
@@ -175,6 +182,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           tenant_id: tenantId, name: user.name, role: user.role, custom_role_id: user.customRoleId || null,
           pin: '0000', email: user.email, allowed_routes: user.allowedRoutes, department: user.department,
           hire_date: user.hireDate?.toISOString().split('T')[0], contract_type: user.contractType,
+          work_model: user.workModel,
           base_salary: user.baseSalary, benefits_total: user.benefitsTotal, status: user.status,
           shift_id: user.shiftId || null, phone: user.phone, document_cpf: user.documentCpf, dependents_count: user.dependentsCount || 0,
       });
@@ -188,7 +196,8 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           name: user.name, role: user.role, custom_role_id: user.customRoleId || null,
           email: user.email, allowed_routes: user.allowedRoutes, department: user.department,
           hire_date: user.hireDate ? new Date(user.hireDate).toISOString().split('T')[0] : null,
-          contract_type: user.contractType, base_salary: user.baseSalary, benefits_total: user.benefitsTotal,
+          contract_type: user.contractType, work_model: user.workModel,
+          base_salary: user.baseSalary, benefits_total: user.benefitsTotal,
           status: user.status, shift_id: user.shiftId || null, phone: user.phone, document_cpf: user.documentCpf,
           dependents_count: user.dependentsCount || 0,
       }).eq('id', user.id);
@@ -203,6 +212,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const deleteRole = async (roleId: string) => { const { error } = await supabase.from('custom_roles').delete().eq('id', roleId); if (error) throw error; };
   const addShift = async (shift: Partial<Shift>) => { if(!tenantId) return; await supabase.from('rh_shifts').insert({ tenant_id: tenantId, name: shift.name, start_time: shift.startTime, end_time: shift.endTime, break_minutes: shift.breakMinutes, tolerance_minutes: shift.toleranceMinutes, night_shift: shift.nightShift }); };
   const deleteShift = async (id: string) => { await supabase.from('rh_shifts').delete().eq('id', id); };
+  
   const registerTime = async (staffId: string, type: 'IN' | 'BREAK_START' | 'BREAK_END' | 'OUT', justification?: string) => {
       if(!tenantId) return;
       const today = new Date().toISOString().split('T')[0];
@@ -276,6 +286,20 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const addBenefit = async (benefit: Partial<RHBenefit>) => { if (!tenantId) return; await supabase.from('rh_benefits').insert({ tenant_id: tenantId, name: benefit.name, type: benefit.type, value: benefit.value, is_active: true }); };
   const deleteBenefit = async (id: string) => { await supabase.from('rh_benefits').delete().eq('id', id); };
 
+  // --- EVENTOS VARIÁVEIS ---
+  const addPayrollEvent = async (event: Partial<PayrollEvent>) => {
+      if(!tenantId) return;
+      const { error } = await supabase.from('rh_payroll_events').insert({
+          tenant_id: tenantId, staff_id: event.staffId, month: event.month, year: event.year,
+          type: event.type, description: event.description, value: event.value, created_by: authState.currentUser?.id
+      });
+      if(error) throw error;
+  };
+  
+  const deletePayrollEvent = async (id: string) => {
+      await supabase.from('rh_payroll_events').delete().eq('id', id);
+  };
+
   const calculateINSS = (grossSalary: number): number => {
       let totalINSS = 0;
       const brackets = state.inssBrackets;
@@ -301,11 +325,9 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       return (basis * (bracket.rate / 100)) - bracket.deduction;
   };
 
-  // Retorna Payroll + Info de Fechamento (se houver)
   const getPayroll = async (month: number, year: number): Promise<{ payroll: PayrollPreview[], isClosed: boolean, closedInfo?: ClosedPayroll }> => {
       if (!tenantId) return { payroll: [], isClosed: false };
       
-      // 1. Verificar se existe folha fechada para este período
       const { data: closedPayroll } = await supabase.from('rh_closed_payrolls')
         .select('*')
         .eq('tenant_id', tenantId)
@@ -313,16 +335,11 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         .eq('year', year)
         .maybeSingle();
 
-      // SE FECHADA: Retorna dados do histórico
       if (closedPayroll) {
-          const { data: items } = await supabase.from('rh_closed_payroll_items')
-            .select('*')
-            .eq('payroll_id', closedPayroll.id);
-          
+          const { data: items } = await supabase.from('rh_closed_payroll_items').select('*').eq('payroll_id', closedPayroll.id);
           const historyItems = (items || []).map((i: any) => ({
               staffId: i.staff_id, staffName: i.staff_name, baseSalary: Number(i.base_salary),
               grossTotal: Number(i.gross_total), netTotal: Number(i.net_total), discounts: Number(i.total_discounts),
-              // Detalhes JSON salvos
               ...i.details
           }));
 
@@ -338,50 +355,122 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           };
       }
 
-      // SE ABERTA: Calcula em tempo real (mesma lógica anterior)
+      // CÁLCULO DINÂMICO
       const start = new Date(year, month, 1).toISOString().split('T')[0];
       const end = new Date(year, month + 1, 0).toISOString().split('T')[0];
+      
+      // Buscar Ponto
       const { data: entries } = await supabase.from('rh_time_entries').select('*').eq('tenant_id', tenantId).gte('entry_date', start).lte('entry_date', end).eq('status', 'APPROVED');
+      
+      // Buscar Eventos Variáveis
+      const { data: events } = await supabase.from('rh_payroll_events').select('*').eq('tenant_id', tenantId).eq('month', month).eq('year', year);
+
       const activeTaxes = state.taxes.filter(t => t.isActive);
       const activeBenefits = state.benefits.filter(b => b.isActive);
       const fgtsRate = state.legalSettings?.fgtsRate || 8;
-      const STANDARD_MONTHLY_HOURS = 220; 
+      
+      // Mapeia dias úteis e DSR se necessário, mas vamos simplificar com carga mensal
+      const STANDARD_HOURS_MAP: Record<string, number> = {
+          '44H_WEEKLY': 220,
+          '12X36': 180, // Média 15 dias * 12h
+          'PART_TIME': 110,
+          'INTERMITTENT': 0, // Paga por hora
+          'ROTATING': 220
+      };
 
       const livePayroll = state.users.map(user => {
+          // 1. Horas Trabalhadas
           const userEntries = (entries || []).filter(e => e.staff_id === user.id);
           let totalMins = 0;
+          let nightMins = 0; // Adicional noturno
+          
           userEntries.forEach(e => {
               if (e.clock_in && e.clock_out) {
-                  const diff = new Date(e.clock_out).getTime() - new Date(e.clock_in).getTime();
+                  const inTime = new Date(e.clock_in);
+                  const outTime = new Date(e.clock_out);
+                  const diff = outTime.getTime() - inTime.getTime();
                   let mins = diff / 60000;
-                  if (e.break_start && e.break_end) mins -= ((new Date(e.break_end).getTime() - new Date(e.break_start).getTime()) / 60000);
+                  
+                  if (e.break_start && e.break_end) {
+                       mins -= ((new Date(e.break_end).getTime() - new Date(e.break_start).getTime()) / 60000);
+                  }
                   totalMins += Math.max(0, mins);
+
+                  // Cálculo simplificado noturno (22:00 - 05:00)
+                  // Detecta se cruzou a noite
+                  const inHour = inTime.getHours();
+                  const outHour = outTime.getHours();
+                  // Lógica completa seria complexa, aqui vamos estimar se o turno é noturno
+                  // Se o turno cruza meia noite ou começa depois das 22h
+                  if (inHour >= 22 || outHour < 5 || outTime.getDate() > inTime.getDate()) {
+                      // Estima que tudo foi noturno se shiftId diz nightShift, senão calcula proporcional
+                      // Para simplificar neste MVP, assumimos 20% do tempo total se for turno da noite
+                      const shift = state.shifts.find(s => s.id === user.shiftId);
+                      if (shift?.nightShift) {
+                          nightMins += mins;
+                      }
+                  }
               }
           });
 
           const hoursWorked = totalMins / 60;
+          const targetHours = STANDARD_HOURS_MAP[user.workModel || '44H_WEEKLY'] || 220;
           const baseSalary = user.baseSalary || 0;
-          const hourlyRate = baseSalary / STANDARD_MONTHLY_HOURS;
-          const overtimeHours = Math.max(0, hoursWorked - STANDARD_MONTHLY_HOURS);
-          const overtimeTotal = overtimeHours * (hourlyRate * 1.5); 
-          let totalBenefits = user.benefitsTotal || 0; 
-          const benefitBreakdown: { name: string, value: number }[] = [];
+          const hourlyRate = targetHours > 0 ? baseSalary / targetHours : 0;
           
+          // Banco de Horas / Extra
+          const balance = hoursWorked - targetHours;
+          const overtimeHours = Math.max(0, balance); // Positivo = Extra
+          const underHours = Math.min(0, balance); // Negativo = Falta
+          
+          // Cálculo financeiro de Extras (50% dia normal, 100% domingo/feriado - simplificado para 50%)
+          // Melhoria: Iterar dias para saber se foi domingo
+          let overtime50Val = overtimeHours * (hourlyRate * 1.5);
+          let overtime100Val = 0; // Implementar checagem de domingo
+
+          const nightShiftAdd = (nightMins / 60) * (hourlyRate * 0.20); // 20% sobre hora normal
+
+          // Eventos Variáveis
+          const userEvents = (events || []).filter((ev: any) => ev.staff_id === user.id);
+          let eventAdditions = 0;
+          let eventDeductions = 0;
+          let advances = 0;
+          const eventBreakdown: any[] = [];
+          
+          userEvents.forEach((ev: any) => {
+              if (['BONUS', 'COMMISSION', 'INSALUBRITY', 'DANGEROUSNESS', 'NIGHT_SHIFT'].includes(ev.type)) {
+                  eventAdditions += Number(ev.value);
+                  eventBreakdown.push({ name: ev.description || ev.type, value: Number(ev.value), type: 'CREDIT' });
+              } else if (['DEDUCTION', 'FOOD_VOUCHER'].includes(ev.type)) {
+                  eventDeductions += Number(ev.value);
+                  eventBreakdown.push({ name: ev.description || ev.type, value: Number(ev.value), type: 'DEBIT' });
+              } else if (ev.type === 'ADVANCE') {
+                  advances += Number(ev.value);
+                  eventBreakdown.push({ name: 'Adiantamento', value: Number(ev.value), type: 'DEBIT' });
+              }
+          });
+
+          // Benefícios Fixos (Recorrentes)
+          let benefitsValue = user.benefitsTotal || 0;
+          const benefitBreakdown: { name: string, value: number }[] = [];
           activeBenefits.forEach(ben => {
                let val = ben.type === 'PERCENTAGE' ? (baseSalary * (ben.value / 100)) : ben.value;
-               totalBenefits += val;
+               benefitsValue += val;
                benefitBreakdown.push({ name: ben.name, value: val });
           });
-          
-          const gross = baseSalary + overtimeTotal + totalBenefits;
+
+          // Total Bruto
+          const gross = baseSalary + overtime50Val + overtime100Val + nightShiftAdd + benefitsValue + eventAdditions;
+
+          // Impostos
           const inssValue = calculateINSS(gross);
           const irrfValue = calculateIRRF(gross, inssValue, user.dependentsCount || 0);
           
-          let otherDeductions = 0;
+          let otherDeductions = eventDeductions + advances; // Inclui eventos manuais de desconto
           let otherEmployerCharges = 0;
           const taxBreakdown: { name: string, value: number, type: TaxPayerType }[] = [];
 
-          if (inssValue > 0) taxBreakdown.push({ name: 'INSS (Progressivo)', value: inssValue, type: 'EMPLOYEE' });
+          if (inssValue > 0) taxBreakdown.push({ name: 'INSS', value: inssValue, type: 'EMPLOYEE' });
           if (irrfValue > 0) taxBreakdown.push({ name: 'IRRF', value: irrfValue, type: 'EMPLOYEE' });
 
           activeTaxes.forEach(tax => {
@@ -389,23 +478,28 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               const basisAmount = tax.calculationBasis === 'BASE_SALARY' ? baseSalary : gross;
               if (tax.type === 'PERCENTAGE') val = (basisAmount * (tax.value / 100));
               else val = tax.value;
+              
               if (tax.payerType === 'EMPLOYER') otherEmployerCharges += val;
               else otherDeductions += val;
+              
               taxBreakdown.push({ name: tax.name, value: val, type: tax.payerType });
           });
 
           const totalEmployeeDeductions = inssValue + irrfValue + otherDeductions;
           const net = gross - totalEmployeeDeductions;
+          
           const fgtsValue = gross * (fgtsRate / 100);
           taxBreakdown.push({ name: `FGTS (${fgtsRate}%)`, value: fgtsValue, type: 'EMPLOYER' });
           const totalEmployerCharges = fgtsValue + otherEmployerCharges;
           const totalCompanyCost = gross + totalEmployerCharges;
 
           return {
-              staffId: user.id, staffName: user.name, baseSalary, overtimeTotal, absencesTotal: 0, addictionals: 0,
-              benefits: totalBenefits, grossTotal: gross, discounts: totalEmployeeDeductions, netTotal: net, hoursWorked,
+              staffId: user.id, staffName: user.name, baseSalary, 
+              overtime50: overtime50Val, overtime100: overtime100Val, nightShiftAdd, bankOfHoursBalance: balance,
+              absencesTotal: underHours, addictionals: 0, eventsValue: eventAdditions,
+              benefits: benefitsValue, grossTotal: gross, discounts: totalEmployeeDeductions, advances, netTotal: net, hoursWorked,
               employerCharges: totalEmployerCharges, totalCompanyCost, inssValue, irrfValue, fgtsValue,
-              taxBreakdown, benefitBreakdown
+              taxBreakdown, benefitBreakdown, eventBreakdown
           };
       });
 
@@ -414,8 +508,6 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const closePayroll = async (month: number, year: number) => {
       if (!tenantId) return;
-
-      // 1. Calcula a folha atual
       const { payroll, isClosed } = await getPayroll(month, year);
       if (isClosed) throw new Error("Esta folha já está fechada.");
 
@@ -423,7 +515,6 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const totalNet = payroll.reduce((acc, p) => acc + p.netTotal, 0);
       const userName = authState.currentUser?.name || 'Admin';
 
-      // 2. Cria registro na tabela cabeçalho
       const { data: closedHeader, error: headerError } = await supabase.from('rh_closed_payrolls').insert({
           tenant_id: tenantId, month, year,
           total_cost: totalCost, total_net: totalNet, employee_count: payroll.length,
@@ -432,7 +523,6 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
       if (headerError) throw headerError;
 
-      // 3. Salva itens individuais (Snapshot)
       const itemsToInsert = payroll.map(p => ({
           payroll_id: closedHeader.id,
           tenant_id: tenantId,
@@ -442,26 +532,36 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           gross_total: p.grossTotal,
           net_total: p.netTotal,
           total_discounts: p.discounts,
-          details: { // Salva tudo que é necessário para reconstruir o holerite
-              overtimeTotal: p.overtimeTotal,
+          details: { 
+              overtime50: p.overtime50,
+              overtime100: p.overtime100,
+              nightShiftAdd: p.nightShiftAdd,
               benefits: p.benefits,
+              eventsValue: p.eventsValue,
+              advances: p.advances,
               employerCharges: p.employerCharges,
               totalCompanyCost: p.totalCompanyCost,
               hoursWorked: p.hoursWorked,
+              bankOfHoursBalance: p.bankOfHoursBalance,
               inssValue: p.inssValue,
               irrfValue: p.irrfValue,
               fgtsValue: p.fgtsValue,
               taxBreakdown: p.taxBreakdown,
-              benefitBreakdown: p.benefitBreakdown
+              benefitBreakdown: p.benefitBreakdown,
+              eventBreakdown: p.eventBreakdown
           }
       }));
 
       const { error: itemsError } = await supabase.from('rh_closed_payroll_items').insert(itemsToInsert);
       if (itemsError) {
-          // Rollback header se falhar itens (manual, já que supabase não tem transaction via client simples)
           await supabase.from('rh_closed_payrolls').delete().eq('id', closedHeader.id);
           throw itemsError;
       }
+      
+      // Atualizar Saldo de Banco de Horas no Staff
+      // (Opcional: Zerar se pagou ou acumular)
+      // Neste modelo simples, estamos pagando tudo como hora extra na folha, então não acumulamos.
+      // Se quiser acumular, precisaria de lógica de "Compensar vs Pagar".
   };
 
   return (
@@ -472,7 +572,8 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         addTimeEntry, updateTimeEntry, fetchData,
         saveLegalSettings, saveInssBrackets, saveIrrfBrackets, applyLegalDefaults,
         addTax, deleteTax, applyRegimeDefaults,
-        addBenefit, deleteBenefit
+        addBenefit, deleteBenefit,
+        addPayrollEvent, deletePayrollEvent
     }}>
       {children}
     </StaffContext.Provider>

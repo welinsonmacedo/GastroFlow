@@ -49,10 +49,12 @@ export interface CustomRole {
 
 // --- HR Types ---
 export type ContractType = 'CLT' | 'PJ' | 'TEMPORARY' | 'INTERN' | 'FREELANCE';
+export type WorkModel = '44H_WEEKLY' | '12X36' | 'PART_TIME' | 'INTERMITTENT' | 'ROTATING';
 export type EmployeeStatus = 'ACTIVE' | 'ON_LEAVE' | 'TERMINATED' | 'VACATION';
 export type TaxRegime = 'SIMPLES_NACIONAL' | 'LUCRO_PRESUMIDO' | 'LUCRO_REAL' | 'MEI';
 export type TaxPayerType = 'EMPLOYEE' | 'EMPLOYER';
 export type TaxCalculationBasis = 'GROSS_TOTAL' | 'BASE_SALARY';
+export type PayrollEventType = 'BONUS' | 'COMMISSION' | 'DEDUCTION' | 'ADVANCE' | 'NIGHT_SHIFT' | 'INSALUBRITY' | 'DANGEROUSNESS' | 'FOOD_VOUCHER';
 
 export interface Shift {
     id: string;
@@ -76,6 +78,16 @@ export interface TimeEntry {
     status: 'PENDING' | 'APPROVED' | 'REJECTED';
 }
 
+export interface PayrollEvent {
+    id: string;
+    staffId: string;
+    month: number;
+    year: number;
+    type: PayrollEventType;
+    description: string;
+    value: number;
+}
+
 // Interfaces Novas para Cálculo Real
 export interface RhPayrollSetting {
     id: string;
@@ -90,7 +102,7 @@ export interface RhPayrollSetting {
 export interface RhInssBracket {
     id: string;
     minValue: number;
-    maxValue?: number; // Null = infinito (mas INSS tem teto na config)
+    maxValue?: number; // Null = infinito
     rate: number;
     validFrom: string;
 }
@@ -104,7 +116,6 @@ export interface RhIrrfBracket {
     validFrom: string;
 }
 
-// Mantido para compatibilidade legado, mas a lógica vai usar as novas tabelas
 export interface RHTax {
     id: string;
     name: string;
@@ -127,12 +138,22 @@ export interface PayrollPreview {
     staffId: string;
     staffName: string;
     baseSalary: number;
-    overtimeTotal: number;
+    
+    // Horas Extras e Adicionais
+    overtime50: number; // Valor R$
+    overtime100: number; // Valor R$
+    nightShiftAdd: number; // Adicional Noturno R$
+    bankOfHoursBalance: number; // Saldo em horas
+    
     absencesTotal: number;
-    addictionals: number;
-    benefits: number; 
+    addictionals: number; // Insalubridade/Periculosidade
+    eventsValue: number; // Bônus/Comissões manuais
+    
+    benefits: number;
+
     grossTotal: number;
-    discounts: number;
+    discounts: number; // Total descontos
+    advances: number; // Adiantamentos
     netTotal: number;
     hoursWorked: number;
     
@@ -140,13 +161,14 @@ export interface PayrollPreview {
     employerCharges: number; 
     totalCompanyCost: number; 
 
-    // Detalhamento
+    // Detalhamento Impostos
     inssValue: number;
     irrfValue: number;
-    fgtsValue: number; // Informativo
+    fgtsValue: number; 
     
     taxBreakdown: { name: string; value: number; type: TaxPayerType }[];
     benefitBreakdown: { name: string; value: number }[];
+    eventBreakdown: { name: string; value: number; type: 'CREDIT' | 'DEBIT' }[];
 }
 
 export interface ClosedPayroll {
@@ -197,8 +219,6 @@ export interface DeliveryInfo {
     paymentStatus?: 'PENDING' | 'PAID';
 }
 
-export type PlanType = 'FREE' | 'PRO' | 'ENTERPRISE';
-
 export interface PlanLimits {
     maxTables: number;
     maxProducts: number;
@@ -214,6 +234,8 @@ export interface PlanLimits {
     allowCustomization?: boolean;
     allowHR?: boolean;
 }
+
+export type PlanType = 'FREE' | 'PRO' | 'ENTERPRISE';
 
 export interface Plan {
     id: string;
@@ -281,13 +303,15 @@ export interface User {
   department?: string;
   hireDate?: Date;
   contractType?: ContractType;
+  workModel?: WorkModel; // Novo campo
   baseSalary?: number;
   benefitsTotal?: number; 
   status?: EmployeeStatus;
   shiftId?: string; 
   phone?: string;
   documentCpf?: string;
-  dependentsCount?: number; // Novo campo para IRRF
+  dependentsCount?: number;
+  bankHoursBalance?: number; // Saldo de horas atual
 
   // Extended
   birthDate?: Date;
