@@ -459,154 +459,179 @@ export const StaffPayroll: React.FC = () => {
                 </div>
             </div>
 
-            {/* Modal de Lançamento de Eventos (MELHORADO) */}
+            {/* Modal de Lançamento de Eventos (LAYOUT OTIMIZADO) */}
             <Modal isOpen={isEventModalOpen} onClose={() => setIsEventModalOpen(false)} title="Lançamento Variável" variant="page">
-                <div className="space-y-6 max-w-4xl mx-auto">
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="text-xs font-bold text-gray-500 uppercase">Colaborador</label>
-                            <select className="w-full border p-2.5 rounded-xl bg-white" value={eventForm.staffId} onChange={e => setEventForm({...eventForm, staffId: e.target.value})}>
-                                <option value="">Selecione...</option>
-                                {staffState.users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-                            </select>
-                        </div>
-                        <div>
-                            <label className="text-xs font-bold text-gray-500 uppercase">Tipo de Evento</label>
-                            <select className="w-full border p-2.5 rounded-xl bg-white" value={eventForm.type} onChange={e => setEventForm({...eventForm, type: e.target.value})}>
-                                <option value="BONUS">Bônus / Gratificação</option>
-                                <option value="COMMISSION">Comissão</option>
-                                <option value="DEDUCTION">Falta / Desconto</option>
-                                <option value="ADVANCE">Adiantamento Salarial</option>
-                                <option value="FOOD_VOUCHER">Vale Alimentação (Desc)</option>
-                                <option value="NIGHT_SHIFT">Adicional Noturno (Manual)</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    {/* ÁREA DE CÁLCULO INTELIGENTE */}
-                    {eventForm.staffId && (
-                        <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                            <div className="flex justify-between items-center mb-4">
-                                <h4 className="text-xs font-black text-slate-500 uppercase flex items-center gap-2">
-                                    <Calculator size={14}/> Calculadora
-                                </h4>
-                                <div className="text-xs text-slate-400">
-                                    Base: R$ {getSelectedUserSalary().toFixed(2)}
+                <div className="max-w-7xl mx-auto space-y-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                        
+                        {/* COLUNA ESQUERDA: DADOS DO LANÇAMENTO (5 cols em telas grandes) */}
+                        <div className="lg:col-span-5 space-y-6">
+                            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                                <h3 className="font-bold text-gray-800 mb-4 border-b pb-2 flex items-center gap-2">
+                                    <FileText size={18} className="text-blue-600"/> Dados do Evento
+                                </h3>
+                                
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="text-xs font-bold text-gray-500 uppercase">Colaborador</label>
+                                        <select className="w-full border p-3 rounded-xl bg-white mt-1" value={eventForm.staffId} onChange={e => setEventForm({...eventForm, staffId: e.target.value})}>
+                                            <option value="">Selecione...</option>
+                                            {staffState.users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="text-xs font-bold text-gray-500 uppercase">Tipo de Evento</label>
+                                        <select className="w-full border p-3 rounded-xl bg-white mt-1" value={eventForm.type} onChange={e => setEventForm({...eventForm, type: e.target.value})}>
+                                            <option value="BONUS">Bônus / Gratificação</option>
+                                            <option value="COMMISSION">Comissão</option>
+                                            <option value="DEDUCTION">Falta / Desconto</option>
+                                            <option value="ADVANCE">Adiantamento Salarial</option>
+                                            <option value="FOOD_VOUCHER">Vale Alimentação (Desc)</option>
+                                            <option value="NIGHT_SHIFT">Adicional Noturno (Manual)</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="text-xs font-bold text-gray-500 uppercase">Descrição</label>
+                                        <input className="w-full border p-3 rounded-xl mt-1" placeholder={calcMode !== 'MANUAL' ? "Calculado automaticamente..." : "Ex: Meta batida"} value={eventForm.description} onChange={e => setEventForm({...eventForm, description: e.target.value})} />
+                                    </div>
                                 </div>
                             </div>
-                            
-                            <div className="flex gap-2 mb-4">
-                                <button 
-                                    onClick={() => setCalcMode('MANUAL')} 
-                                    className={`flex-1 py-2 text-xs font-bold rounded-lg border transition-all ${calcMode === 'MANUAL' ? 'bg-white border-blue-500 text-blue-600 shadow-sm' : 'border-transparent text-gray-500 hover:bg-white'}`}
-                                >
-                                    Valor Manual
-                                </button>
-                                <button 
-                                    onClick={() => setCalcMode('DAYS')} 
-                                    className={`flex-1 py-2 text-xs font-bold rounded-lg border transition-all ${calcMode === 'DAYS' ? 'bg-white border-blue-500 text-blue-600 shadow-sm' : 'border-transparent text-gray-500 hover:bg-white'}`}
-                                >
-                                    Por Dias (1/30)
-                                </button>
-                                <button 
-                                    onClick={() => setCalcMode('HOURS')} 
-                                    className={`flex-1 py-2 text-xs font-bold rounded-lg border transition-all ${calcMode === 'HOURS' ? 'bg-white border-blue-500 text-blue-600 shadow-sm' : 'border-transparent text-gray-500 hover:bg-white'}`}
-                                >
-                                    Por Horas (1/220)
-                                </button>
-                            </div>
-                            
-                            {/* CONTROLE ESPECÍFICO PARA FALTAS (DEDUÇÃO + DIAS) */}
-                            {eventForm.type === 'DEDUCTION' && calcMode === 'DAYS' ? (
-                                <div className="space-y-4 animate-fade-in border-t border-b border-gray-200 py-3 mb-3">
+                        </div>
+
+                        {/* COLUNA DIREITA: CALCULADORA (7 cols em telas grandes) */}
+                        <div className="lg:col-span-7">
+                             {eventForm.staffId ? (
+                                <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200 h-full flex flex-col justify-between">
                                     <div>
-                                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Data da Falta</label>
-                                        <div className="relative">
-                                            <Calendar size={16} className="absolute left-3 top-2.5 text-gray-400"/>
-                                            <input type="date" className="w-full border pl-10 p-2 rounded-lg text-sm bg-white" value={absenceDate} onChange={e => setAbsenceDate(e.target.value)} />
+                                        <div className="flex justify-between items-center mb-6">
+                                            <h4 className="text-sm font-black text-slate-600 uppercase flex items-center gap-2">
+                                                <Calculator size={18}/> Calculadora Automática
+                                            </h4>
+                                            <div className="text-xs bg-white px-3 py-1 rounded-lg border text-slate-500 font-mono">
+                                                Base: R$ {getSelectedUserSalary().toFixed(2)}
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="flex gap-2 mb-6">
+                                            <button 
+                                                onClick={() => setCalcMode('MANUAL')} 
+                                                className={`flex-1 py-3 text-xs font-bold rounded-xl border-2 transition-all ${calcMode === 'MANUAL' ? 'bg-white border-blue-500 text-blue-600 shadow-sm' : 'border-transparent bg-white/50 text-gray-500 hover:bg-white'}`}
+                                            >
+                                                Manual
+                                            </button>
+                                            <button 
+                                                onClick={() => setCalcMode('DAYS')} 
+                                                className={`flex-1 py-3 text-xs font-bold rounded-xl border-2 transition-all ${calcMode === 'DAYS' ? 'bg-white border-blue-500 text-blue-600 shadow-sm' : 'border-transparent bg-white/50 text-gray-500 hover:bg-white'}`}
+                                            >
+                                                Dias (1/30)
+                                            </button>
+                                            <button 
+                                                onClick={() => setCalcMode('HOURS')} 
+                                                className={`flex-1 py-3 text-xs font-bold rounded-xl border-2 transition-all ${calcMode === 'HOURS' ? 'bg-white border-blue-500 text-blue-600 shadow-sm' : 'border-transparent bg-white/50 text-gray-500 hover:bg-white'}`}
+                                            >
+                                                Horas (1/220)
+                                            </button>
+                                        </div>
+                                        
+                                        {/* PAINEL DINÂMICO DE CÁLCULO */}
+                                        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-inner">
+                                            {/* MODO FALTA (DEDUCTION + DAYS) */}
+                                            {eventForm.type === 'DEDUCTION' && calcMode === 'DAYS' ? (
+                                                <div className="space-y-4 animate-fade-in">
+                                                    <div className="grid grid-cols-2 gap-4">
+                                                        <div>
+                                                            <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Data da Ocorrência</label>
+                                                            <div className="relative">
+                                                                <Calendar size={16} className="absolute left-3 top-3 text-gray-400"/>
+                                                                <input type="date" className="w-full border pl-10 p-2.5 rounded-lg text-sm bg-gray-50 focus:bg-white transition-colors" value={absenceDate} onChange={e => setAbsenceDate(e.target.value)} />
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex items-end">
+                                                            <label className={`flex items-center gap-2 cursor-pointer p-2.5 rounded-lg border w-full transition-all ${isJustified ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
+                                                                <input type="checkbox" className="hidden" checked={isJustified} onChange={e => setIsJustified(e.target.checked)} />
+                                                                <div className={`w-4 h-4 border rounded flex items-center justify-center ${isJustified ? 'bg-green-600 border-green-600' : 'bg-white border-gray-300'}`}>
+                                                                    {isJustified && <CheckSquare size={12} className="text-white"/>}
+                                                                </div>
+                                                                <span className="text-xs font-bold text-slate-700">Justificada? (R$ 0)</span>
+                                                            </label>
+                                                        </div>
+                                                    </div>
+
+                                                    {!isJustified && (
+                                                        <div className="flex gap-4 items-center pt-2">
+                                                            <div className="w-32">
+                                                                <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Qtd Dias</label>
+                                                                <input type="number" step="0.5" className="w-full border p-2.5 rounded-lg font-bold text-center bg-gray-50 focus:bg-white" value={calcQty} onChange={e => setCalcQty(parseFloat(e.target.value))} />
+                                                            </div>
+                                                            
+                                                            <label className={`flex-1 flex items-center gap-2 cursor-pointer p-2.5 rounded-lg border transition-all h-[42px] mt-5 ${deductDSR ? 'bg-red-50 border-red-200' : 'bg-gray-50 border-gray-200'}`}>
+                                                                <input type="checkbox" className="hidden" checked={deductDSR} onChange={e => setDeductDSR(e.target.checked)} />
+                                                                <div className={`w-4 h-4 border rounded flex items-center justify-center ${deductDSR ? 'bg-red-600 border-red-600' : 'bg-white border-gray-300'}`}>
+                                                                    {deductDSR && <CheckSquare size={12} className="text-white"/>}
+                                                                </div>
+                                                                <span className="text-xs font-bold text-slate-700">Descontar DSR (+1 Dia)</span>
+                                                            </label>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                // MODO GENÉRICO
+                                                calcMode !== 'MANUAL' ? (
+                                                    <div className="flex items-center gap-4 animate-fade-in">
+                                                        <div className="flex-1">
+                                                            <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">
+                                                                Quantidade ({calcMode === 'DAYS' ? 'Dias' : 'Horas'})
+                                                            </label>
+                                                            <input 
+                                                                type="number" 
+                                                                step="0.5"
+                                                                className="w-full border p-3 rounded-xl font-bold text-center text-lg" 
+                                                                value={calcQty} 
+                                                                onChange={e => setCalcQty(parseFloat(e.target.value))} 
+                                                            />
+                                                        </div>
+                                                        <div className="text-gray-300 pt-5"><ArrowRight size={24}/></div>
+                                                        <div className="flex-1">
+                                                            <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Resultado</label>
+                                                            <div className="w-full bg-gray-100 p-3 rounded-xl font-mono text-center text-gray-600 font-bold border border-gray-200">
+                                                                Ref: {calcQty} {calcMode === 'DAYS' ? 'd' : 'h'}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <div className="text-center py-6 text-gray-400 text-sm italic">
+                                                        Modo manual selecionado. Digite o valor final abaixo.
+                                                    </div>
+                                                )
+                                            )}
                                         </div>
                                     </div>
-                                    
-                                    <div className="flex gap-4">
-                                        <label className={`flex items-center gap-2 cursor-pointer p-2 rounded-lg border flex-1 transition-all ${isJustified ? 'bg-green-50 border-green-200' : 'bg-white border-gray-200'}`}>
-                                            <input type="checkbox" className="hidden" checked={isJustified} onChange={e => setIsJustified(e.target.checked)} />
-                                            <div className={`w-4 h-4 border rounded flex items-center justify-center ${isJustified ? 'bg-green-600 border-green-600' : 'bg-white border-gray-300'}`}>
-                                                {isJustified && <CheckSquare size={12} className="text-white"/>}
-                                            </div>
-                                            <span className="text-xs font-bold text-slate-700">Falta Justificada?</span>
-                                        </label>
-                                        
-                                        {!isJustified && (
-                                            <label className={`flex items-center gap-2 cursor-pointer p-2 rounded-lg border flex-1 transition-all ${deductDSR ? 'bg-red-50 border-red-200' : 'bg-white border-gray-200'}`}>
-                                                <input type="checkbox" className="hidden" checked={deductDSR} onChange={e => setDeductDSR(e.target.checked)} />
-                                                <div className={`w-4 h-4 border rounded flex items-center justify-center ${deductDSR ? 'bg-red-600 border-red-600' : 'bg-white border-gray-300'}`}>
-                                                    {deductDSR && <CheckSquare size={12} className="text-white"/>}
-                                                </div>
-                                                <span className="text-xs font-bold text-slate-700">Descontar DSR?</span>
-                                            </label>
-                                        )}
-                                    </div>
-                                    
-                                    {!isJustified && (
-                                         <div className="flex items-center gap-3">
-                                            <div className="flex-1">
-                                                <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Qtd Dias</label>
-                                                <input type="number" step="0.5" className="w-full border p-2 rounded-lg font-bold text-center" value={calcQty} onChange={e => setCalcQty(parseFloat(e.target.value))} />
-                                            </div>
-                                            <ArrowRight size={16} className="text-gray-400 mt-5"/>
-                                            <div className="flex-1">
-                                                <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Desconto Calc.</label>
-                                                <div className="w-full bg-red-100 p-2 rounded-lg text-red-700 font-black text-center">R$ {eventForm.value.toFixed(2)}</div>
-                                            </div>
-                                         </div>
-                                    )}
-                                </div>
-                            ) : (
-                                // CONTROLE PADRÃO PARA OUTROS TIPOS
-                                calcMode !== 'MANUAL' && (
-                                    <div className="flex items-center gap-3 mb-4 animate-fade-in">
-                                        <div className="flex-1">
-                                            <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">
-                                                Quantidade ({calcMode === 'DAYS' ? 'Dias' : 'Horas'})
-                                            </label>
+
+                                    {/* RESULTADO FINAL (Big Input) */}
+                                    <div className="mt-6 pt-6 border-t border-slate-200">
+                                        <label className="text-xs font-bold text-gray-500 uppercase block mb-2">Valor Final do Lançamento</label>
+                                        <div className="relative">
+                                            <span className="absolute left-4 top-4 text-gray-400 font-bold">R$</span>
                                             <input 
                                                 type="number" 
-                                                step="0.5"
-                                                className="w-full border p-2 rounded-lg font-bold text-center" 
-                                                value={calcQty} 
-                                                onChange={e => setCalcQty(parseFloat(e.target.value))} 
+                                                step="0.01" 
+                                                className={`w-full border-2 p-4 pl-12 rounded-2xl font-black text-3xl outline-none transition-all ${eventForm.type === 'DEDUCTION' ? 'text-red-600 border-red-100 focus:border-red-400' : 'text-green-600 border-green-100 focus:border-green-400'} ${calcMode !== 'MANUAL' ? 'bg-gray-50' : 'bg-white'}`} 
+                                                value={eventForm.value} 
+                                                onChange={e => setEventForm({...eventForm, value: parseFloat(e.target.value)})}
+                                                readOnly={calcMode !== 'MANUAL'} 
                                             />
                                         </div>
-                                        <ArrowRight size={16} className="text-gray-400 mt-5"/>
-                                        <div className="flex-1">
-                                            <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Valor Calculado</label>
-                                            <div className="w-full bg-blue-100 p-2 rounded-lg text-blue-700 font-black text-center">
-                                                R$ {eventForm.value.toFixed(2)}
-                                            </div>
-                                        </div>
+                                        <Button onClick={handleAddEvent} className="w-full py-4 mt-4 text-lg font-bold shadow-lg">Confirmar Lançamento</Button>
                                     </div>
-                                )
-                            )}
-
-                            <div>
-                                <label className="text-xs font-bold text-gray-500 uppercase">Valor Final (R$)</label>
-                                <input 
-                                    type="number" 
-                                    step="0.01" 
-                                    className={`w-full border p-3 rounded-xl font-black text-lg ${eventForm.type === 'DEDUCTION' ? 'text-red-600' : 'text-green-600'} ${calcMode !== 'MANUAL' ? 'bg-gray-100' : 'bg-white'}`} 
-                                    value={eventForm.value} 
-                                    onChange={e => setEventForm({...eventForm, value: parseFloat(e.target.value)})}
-                                    readOnly={calcMode !== 'MANUAL'} 
-                                />
-                            </div>
+                                </div>
+                             ) : (
+                                 <div className="bg-gray-50 border-2 border-dashed border-gray-200 rounded-2xl h-full flex flex-col items-center justify-center text-gray-400 p-10">
+                                     <Calculator size={48} className="mb-4 opacity-20"/>
+                                     <p>Selecione um colaborador para habilitar a calculadora.</p>
+                                 </div>
+                             )}
                         </div>
-                    )}
-
-                    <div>
-                        <label className="text-xs font-bold text-gray-500 uppercase">Descrição</label>
-                        <input className="w-full border p-2.5 rounded-xl" placeholder={calcMode !== 'MANUAL' ? "Calculado automaticamente (pode editar)" : "Ex: Meta batida"} value={eventForm.description} onChange={e => setEventForm({...eventForm, description: e.target.value})} />
                     </div>
-                    <Button onClick={handleAddEvent} className="w-full py-4 text-lg font-bold">Confirmar Lançamento</Button>
                 </div>
             </Modal>
             

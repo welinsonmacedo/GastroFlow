@@ -40,11 +40,11 @@ export const Modal: React.FC<ModalProps> = ({
 
   // Renderiza o conteúdo baseado na variante
   const content = variant === 'page' ? (
-    // --- VARIANT: PAGE (Full Screen) ---
+    // --- VARIANT: PAGE (Sidebar Aware) ---
     // z-[60] para garantir que fique acima da sidebar (z-50) e navbar (z-50)
-    <div className="fixed inset-0 z-[60] bg-gray-50 flex flex-col animate-fade-in">
-        {/* Header */}
-        <div className="bg-white border-b px-4 md:px-6 py-4 flex justify-between items-center shrink-0 shadow-sm safe-area-top relative z-10">
+    <div className="fixed inset-0 z-[60] bg-gray-50 flex flex-col animate-fade-in md:left-72">
+        {/* Header Compacto */}
+        <div className="bg-white border-b px-4 py-3 flex justify-between items-center shrink-0 shadow-sm safe-area-top relative z-10">
           <div className="flex items-center gap-3">
             {/* Botão Voltar sempre visível e com z-index garantido */}
             <button 
@@ -52,9 +52,9 @@ export const Modal: React.FC<ModalProps> = ({
               className="p-2 -ml-2 text-gray-600 hover:bg-gray-100 rounded-full transition-colors flex items-center gap-2 group relative z-20"
               title="Voltar"
             >
-               <ArrowLeft size={24} className="group-hover:-translate-x-1 transition-transform"/>
+               <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform"/>
             </button>
-            <h2 className="text-xl font-bold text-gray-800 line-clamp-1">{title}</h2>
+            <h2 className="text-lg font-bold text-gray-800 line-clamp-1">{title}</h2>
           </div>
           <button 
             onClick={onClose} 
@@ -67,7 +67,7 @@ export const Modal: React.FC<ModalProps> = ({
 
         {/* Content Scrollable Area - Full Height without padding constraints */}
         <div className="flex-1 overflow-y-auto safe-area-bottom">
-          <div className="max-w-6xl mx-auto p-4 md:p-8 min-h-full">
+          <div className="w-full max-w-full lg:max-w-7xl mx-auto p-3 md:p-6 min-h-full">
             {children}
           </div>
         </div>
@@ -76,7 +76,7 @@ export const Modal: React.FC<ModalProps> = ({
     // --- VARIANT: DIALOG (Centered Popup) ---
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4 animate-fade-in">
       <div 
-        className={`bg-white rounded-2xl shadow-2xl w-full flex flex-col max-h-[95vh] relative overflow-hidden flex-shrink-0
+        className={`bg-white rounded-2xl shadow-2xl w-full flex flex-col max-h-[90vh] relative overflow-hidden flex-shrink-0 transition-all
           ${maxWidth === 'sm' ? 'max-w-sm' : ''}
           ${maxWidth === 'md' ? 'max-w-md' : ''}
           ${maxWidth === 'lg' ? 'max-w-lg' : ''}
@@ -85,15 +85,15 @@ export const Modal: React.FC<ModalProps> = ({
           ${maxWidth === '3xl' ? 'max-w-3xl' : ''}
           ${maxWidth === '4xl' ? 'max-w-4xl' : ''}
           ${maxWidth === '5xl' ? 'max-w-5xl' : ''}
-          ${maxWidth === 'full' ? 'max-w-full m-4' : ''}
+          ${maxWidth === 'full' ? 'max-w-[95%] h-[90vh]' : ''}
         `}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex justify-between items-center p-5 border-b bg-gray-50 shrink-0">
+        <div className="flex justify-between items-center p-4 border-b bg-gray-50 shrink-0">
           <div className="flex items-center gap-3">
              <button 
                 onClick={onClose} 
-                className="p-1 -ml-1 text-gray-500 hover:text-gray-800 hover:bg-gray-200 rounded-full transition-colors"
+                className="p-1 -ml-1 text-gray-500 hover:text-gray-800 hover:bg-gray-200 rounded-full transition-colors md:hidden"
                 title="Voltar"
              >
                 <ArrowLeft size={20}/>
@@ -108,7 +108,7 @@ export const Modal: React.FC<ModalProps> = ({
           </button>
         </div>
         
-        <div className="p-6 overflow-y-auto">
+        <div className="p-4 md:p-6 overflow-y-auto custom-scrollbar">
           {children}
         </div>
       </div>
