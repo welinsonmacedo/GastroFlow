@@ -74,7 +74,7 @@ export const Modal: React.FC<ModalProps> = ({
     </div>
   ) : (
     // --- VARIANT: DIALOG (Centered Popup) ---
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4 animate-fade-in">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-fade-in">
       <div 
         className={`bg-white rounded-2xl shadow-2xl w-full flex flex-col max-h-[90vh] relative overflow-hidden flex-shrink-0 transition-all
           ${maxWidth === 'sm' ? 'max-w-sm' : ''}
