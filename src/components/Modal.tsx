@@ -9,7 +9,7 @@ interface ModalProps {
   title: string;
   children: React.ReactNode;
   variant?: 'page' | 'dialog'; // 'page' = Full Screen (Sidebar Aware), 'dialog' = Popup
-  maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl'; // Only for 'dialog'
+  maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | '5xl' | 'full'; 
 }
 
 export const Modal: React.FC<ModalProps> = ({ 
@@ -42,7 +42,6 @@ export const Modal: React.FC<ModalProps> = ({
   const content = variant === 'page' ? (
     // --- VARIANT: PAGE (Full Screen) ---
     // z-[60] para garantir que fique acima da sidebar (z-50) e navbar (z-50)
-    // Removido md:left-72 para não deixar espaço da sidebar antiga
     <div className="fixed inset-0 z-[60] bg-gray-50 flex flex-col animate-fade-in">
         {/* Header */}
         <div className="bg-white border-b px-4 md:px-6 py-4 flex justify-between items-center shrink-0 shadow-sm safe-area-top relative z-10">
@@ -83,6 +82,10 @@ export const Modal: React.FC<ModalProps> = ({
           ${maxWidth === 'lg' ? 'max-w-lg' : ''}
           ${maxWidth === 'xl' ? 'max-w-xl' : ''}
           ${maxWidth === '2xl' ? 'max-w-2xl' : ''}
+          ${maxWidth === '3xl' ? 'max-w-3xl' : ''}
+          ${maxWidth === '4xl' ? 'max-w-4xl' : ''}
+          ${maxWidth === '5xl' ? 'max-w-5xl' : ''}
+          ${maxWidth === 'full' ? 'max-w-full m-4' : ''}
         `}
         onClick={(e) => e.stopPropagation()}
       >

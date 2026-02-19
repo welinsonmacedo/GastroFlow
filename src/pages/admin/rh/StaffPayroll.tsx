@@ -330,7 +330,7 @@ export const StaffPayroll: React.FC = () => {
                                     <td className="p-4 text-right font-black text-emerald-600 bg-emerald-50">R$ {p.netTotal.toFixed(2)}</td>
                                     <td className="p-4 text-right font-mono text-purple-600">R$ {p.employerCharges.toFixed(2)}</td>
                                     <td className="p-4 text-center">
-                                        <button onClick={() => setSelectedSlip(p)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Ver Holerite Detalhado">
+                                        <button onClick={() => setSelectedSlip(p)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Ver Detalhes">
                                             <Eye size={18}/>
                                         </button>
                                     </td>
@@ -343,7 +343,7 @@ export const StaffPayroll: React.FC = () => {
             </div>
 
             {/* Modal de Detalhes (Holerite) */}
-            <Modal isOpen={!!selectedSlip} onClose={() => setSelectedSlip(null)} title="Recibo de Pagamento (Holerite)" variant="dialog" maxWidth="lg">
+            <Modal isOpen={!!selectedSlip} onClose={() => setSelectedSlip(null)} title="Recibo de Pagamento (Holerite)" variant="dialog" maxWidth="4xl">
                 {selectedSlip && (
                     <div className="space-y-6">
                         {/* Wrapper Estilo Holerite */}
