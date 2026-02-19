@@ -116,7 +116,8 @@ export const StaffPayroll: React.FC = () => {
                         <h3>Vencimentos</h3>
                         <div class="item"><span>Salário Base</span> <span>R$ ${slip.baseSalary.toFixed(2)}</span></div>
                         ${slip.overtimeTotal > 0 ? `<div class="item"><span>Horas Extras</span> <span>R$ ${slip.overtimeTotal.toFixed(2)}</span></div>` : ''}
-                        ${slip.benefits > 0 ? `<div class="item"><span>Benefícios</span> <span>R$ ${slip.benefits.toFixed(2)}</span></div>` : ''}
+                        ${slip.benefitBreakdown.map(b => `<div class="item"><span>${b.name}</span> <span>R$ ${b.value.toFixed(2)}</span></div>`).join('')}
+                        ${slip.benefits > 0 && slip.benefitBreakdown.length === 0 ? `<div class="item"><span>Benefícios Div.</span> <span>R$ ${slip.benefits.toFixed(2)}</span></div>` : ''}
                         <div class="total-row item"><span>Total Bruto</span> <span>R$ ${slip.grossTotal.toFixed(2)}</span></div>
                     </div>
                     <div class="col">
@@ -144,7 +145,7 @@ export const StaffPayroll: React.FC = () => {
             <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-200 gap-4">
                 <div>
                     <h2 className="text-2xl font-black text-slate-800 flex items-center gap-2"><Calculator className="text-pink-600"/> Pré-Folha de Pagamento</h2>
-                    <p className="text-sm text-gray-500">Consolidação automática de salários e horas extras.</p>
+                    <p className="text-sm text-gray-500">Consolidação automática de salários, benefícios e descontos.</p>
                 </div>
                 
                 <div className="flex flex-wrap items-center gap-3">
@@ -237,12 +238,21 @@ export const StaffPayroll: React.FC = () => {
                                         <span className="font-mono font-bold text-green-600">R$ {selectedSlip.overtimeTotal.toFixed(2)}</span>
                                     </div>
                                 )}
-                                {selectedSlip.benefits > 0 && (
+                                {/* Detalhamento de Benefícios */}
+                                {selectedSlip.benefitBreakdown.map((ben, idx) => (
+                                    <div key={`ben-${idx}`} className="flex justify-between text-sm">
+                                        <span className="text-slate-600">{ben.name}</span>
+                                        <span className="font-mono font-bold text-blue-600">R$ {ben.value.toFixed(2)}</span>
+                                    </div>
+                                ))}
+                                {/* Fallback se tiver valor mas não breakdown (legado) */}
+                                {selectedSlip.benefits > 0 && selectedSlip.benefitBreakdown.length === 0 && (
                                     <div className="flex justify-between text-sm">
-                                        <span className="text-slate-600">Benefícios</span>
+                                        <span className="text-slate-600">Benefícios Diversos</span>
                                         <span className="font-mono font-bold text-blue-600">R$ {selectedSlip.benefits.toFixed(2)}</span>
                                     </div>
                                 )}
+
                                 <div className="border-t pt-2 mt-2 flex justify-between text-sm font-black text-slate-800">
                                     <span>Total Bruto</span>
                                     <span>R$ {selectedSlip.grossTotal.toFixed(2)}</span>

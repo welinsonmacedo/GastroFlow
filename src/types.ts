@@ -50,6 +50,7 @@ export interface CustomRole {
 // --- HR Types ---
 export type ContractType = 'CLT' | 'PJ' | 'TEMPORARY' | 'INTERN' | 'FREELANCE';
 export type EmployeeStatus = 'ACTIVE' | 'ON_LEAVE' | 'TERMINATED' | 'VACATION';
+export type TaxRegime = 'SIMPLES_NACIONAL' | 'LUCRO_PRESUMIDO' | 'LUCRO_REAL' | 'MEI';
 
 export interface Shift {
     id: string;
@@ -81,6 +82,14 @@ export interface RHTax {
     isActive: boolean;
 }
 
+export interface RHBenefit {
+    id: string;
+    name: string;
+    type: 'PERCENTAGE' | 'FIXED';
+    value: number;
+    isActive: boolean;
+}
+
 export interface PayrollPreview {
     staffId: string;
     staffName: string;
@@ -88,13 +97,13 @@ export interface PayrollPreview {
     overtimeTotal: number;
     absencesTotal: number;
     addictionals: number;
-    benefits: number;
+    benefits: number; // Total calculado
     grossTotal: number;
     discounts: number;
     netTotal: number;
     hoursWorked: number;
-    // Detalhamento dos impostos aplicados
     taxBreakdown: { name: string; value: number }[];
+    benefitBreakdown: { name: string; value: number }[];
 }
 
 export interface DeliveryMethodConfig {
@@ -183,6 +192,7 @@ export interface RestaurantBusinessInfo {
     website?: string;
     orderGracePeriodMinutes?: number;
     adminPin?: string;
+    taxRegime?: TaxRegime; 
     deliverySettings?: DeliveryMethodConfig[]; 
     paymentMethods?: PaymentMethodConfig[]; 
     expenseCategories?: ExpenseCategory[]; 
@@ -218,9 +228,9 @@ export interface User {
   hireDate?: Date;
   contractType?: ContractType;
   baseSalary?: number;
-  benefitsTotal?: number;
+  benefitsTotal?: number; // Manual override ou histórico
   status?: EmployeeStatus;
-  shiftId?: string; // Novo campo
+  shiftId?: string; 
   phone?: string;
   documentCpf?: string;
 
