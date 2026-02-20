@@ -11,15 +11,8 @@ export const InstallPWA: React.FC = () => {
 
   useEffect(() => {
     const handler = (e: any) => {
-      // Previne o mini-infobar padrão do Chrome
       e.preventDefault();
-      // Salva o evento para disparar depois
       setDeferredPrompt(e);
-      
-      // Só mostra se NÃO estiver na Landing Page
-      if (location.pathname !== '/') {
-          setIsVisible(true);
-      }
     };
 
     window.addEventListener('beforeinstallprompt', handler);
@@ -27,7 +20,15 @@ export const InstallPWA: React.FC = () => {
     return () => {
       window.removeEventListener('beforeinstallprompt', handler);
     };
-  }, [location.pathname]);
+  }, []);
+
+  useEffect(() => {
+      if (deferredPrompt && location.pathname !== '/') {
+          setIsVisible(true);
+      } else {
+          setIsVisible(false);
+      }
+  }, [location.pathname, deferredPrompt]);
 
   const handleInstallClick = async () => {
     if (!deferredPrompt) return;
