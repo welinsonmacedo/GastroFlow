@@ -1,9 +1,9 @@
 
 import React, { useState, useEffect } from 'react';
 // @ts-ignore
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useSaaS } from '../context/SaaSContext';
-import { Activity, Lock, ArrowLeft, AlertCircle, Wifi, WifiOff, Loader2 } from 'lucide-react';
+import { Activity, Lock, AlertCircle, Wifi, WifiOff, Loader2 } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
 export const SaaSLogin: React.FC = () => {
@@ -146,10 +146,6 @@ export const SaaSLogin: React.FC = () => {
           <div className="absolute right-0 top-0 bg-blue-600 w-96 h-96 rounded-full blur-3xl transform translate-x-1/2 -translate-y-1/2"></div>
           <div className="absolute left-0 bottom-0 bg-purple-600 w-96 h-96 rounded-full blur-3xl transform -translate-x-1/2 translate-y-1/2"></div>
       </div>
-
-      <Link to="/" className="absolute top-6 left-6 text-white flex items-center gap-2 opacity-70 hover:opacity-100 transition-opacity z-10">
-         <ArrowLeft size={20} /> Voltar para Home
-      </Link>
 
       <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md relative z-10">
         
