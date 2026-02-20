@@ -2,8 +2,8 @@
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
 // @ts-ignore
-import { useNavigate, Link } from 'react-router-dom';
-import { ChefHat, ArrowLeft, Loader2, Mail, Lock, AlertCircle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { ChefHat, Loader2, Mail, Lock, AlertCircle } from 'lucide-react';
 import { Button } from '../components/Button';
 
 export const OwnerLogin: React.FC = () => {
@@ -102,10 +102,6 @@ export const OwnerLogin: React.FC = () => {
                 <div className="absolute left-0 bottom-0 bg-purple-600 w-96 h-96 rounded-full blur-3xl transform -translate-x-1/2 translate-y-1/2"></div>
             </div>
 
-            <Link to="/" className="absolute top-6 left-6 text-white flex items-center gap-2 opacity-70 hover:opacity-100 transition-opacity z-10">
-                <ArrowLeft size={20} /> Voltar para Home
-            </Link>
-
             <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md z-10">
                 <div className="flex flex-col items-center mb-8">
                     <div className="bg-blue-600 p-4 rounded-full text-white mb-4 shadow-lg ring-4 ring-blue-50">
@@ -155,13 +151,6 @@ export const OwnerLogin: React.FC = () => {
                     <Button type="submit" disabled={loading} className="w-full py-3 text-lg bg-slate-900 hover:bg-slate-800">
                         {loading ? <Loader2 className="animate-spin" /> : 'Entrar no Sistema'}
                     </Button>
-
-                    <div className="text-center pt-4 border-t">
-                        <p className="text-sm text-gray-500 mb-2">Ainda não é cliente?</p>
-                        <Link to="/register" className="text-blue-600 font-bold hover:underline">
-                            Criar Restaurante Grátis
-                        </Link>
-                    </div>
                 </form>
             </div>
         </div>
