@@ -35,7 +35,7 @@ export const WaiterApp: React.FC = () => {
   // Confirmação de Chamado
   const [confirmCallId, setConfirmCallId] = useState<string | null>(null);
   const [callingTableNumber, setCallingTableNumber] = useState<number | null>(null);
-  const [callReason, setCallReason] = useState<string | null>(null); // Novo estado
+  const [callReason, setCallReason] = useState<string | null>(null); 
 
   const [cart, setCart] = useState<{ product: Product; quantity: number; notes: string; extras?: Product[] }[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -327,7 +327,7 @@ export const WaiterApp: React.FC = () => {
                         const hasBufferedOrder = tableOrders.some(o => (new Date().getTime() - new Date(o.timestamp).getTime()) / 60000 < graceMinutes);
 
                         return (
-                            <div key={table.id} onClick={() => { if (hasCall) { setConfirmCallId(call!.id); setCallingTableNumber(table.number); setCallReason(call!.reason || null); } else if (table.status === TableStatus.AVAILABLE) { setSelectedTableForOpen(table.id); } else { setSelectedTableForAction(table.id); }}} className={`p-4 rounded-[2rem] shadow-sm border-4 flex flex-col items-center justify-between min-h-[140px] transition-all cursor-pointer relative active:scale-95 ${hasCall ? 'bg-red-500 border-red-200 text-white animate-pulse shadow-red-500/30' : (table.status === TableStatus.OCCUPIED ? 'bg-white border-blue-500 text-slate-800' : 'bg-gray-100 border-transparent text-slate-400 opacity-60')}`}>
+                            <div key={table.id} onClick={() => { if (hasCall) { setConfirmCallId(call!.id); setCallingTableNumber(table.number); setCallReason(call!.reason || null); } else if (table.status === TableStatus.AVAILABLE) { setSelectedTableForOpen(table.id); } else { setSelectedTableForAction(table.id); }}} className={`p-4 rounded-[2rem] shadow-sm border-4 flex flex-col items-center justify-between min-h-[140px] transition-all cursor-pointer relative active:scale-95 ${hasCall ? 'bg-red-50 border-red-200 text-white animate-pulse shadow-red-500/30' : (table.status === TableStatus.OCCUPIED ? 'bg-white border-blue-500 text-slate-800' : 'bg-gray-100 border-transparent text-slate-400 opacity-60')}`}>
                                 <div className="w-full flex justify-between items-start">
                                     <span className="text-[10px] font-black uppercase tracking-widest opacity-60">
                                         {hasCall ? (isBill ? 'PEDINDO CONTA' : 'CHAMANDO!') : (table.status === TableStatus.AVAILABLE ? 'LIVRE' : 'OCUPADA')}
@@ -360,7 +360,7 @@ export const WaiterApp: React.FC = () => {
                         <div className="space-y-4">
                             {Object.keys(ordersByTable).length === 0 && <div className="flex flex-col items-center justify-center py-20 opacity-50"><Utensils size={64} className="text-slate-300 mb-4"/><p className="text-slate-400 font-bold uppercase tracking-widest text-sm">Sem pedidos ativos</p></div>}
                             {Object.entries(ordersByTable).map(([tblId, tableOrdersData]) => {
-                                const tableOrders = tableOrdersData as typeof activeOrders; // Explicit cast to fix type error
+                                const tableOrders = tableOrdersData as typeof activeOrders;
                                 const table = orderState.tables.find(t => t.id === tblId);
                                 const isExpanded = expandedTables.has(tblId);
                                 const totalItems = tableOrders.reduce((acc, o) => acc + o.items.length, 0);

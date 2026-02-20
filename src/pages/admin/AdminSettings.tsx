@@ -3,15 +3,15 @@ import React, { useState, useEffect } from 'react';
 import { useRestaurant } from '../../context/RestaurantContext';
 import { useUI } from '../../context/UIContext';
 import { Button } from '../../components/Button';
-import { Building2, MapPin, Phone, Loader2, Share2, Clock, Lock, Save, SlidersHorizontal, ShieldCheck, Bike, Plus, Trash2, Edit, CreditCard, Tag, DollarSign, FileText } from 'lucide-react';
+import { Building2, MapPin, Phone, Loader2, Share2, Clock, Lock, Save, SlidersHorizontal, ShieldCheck, Bike, Plus, Trash2, Edit, CreditCard, Tag, FileText } from 'lucide-react';
 import { RestaurantBusinessInfo, DeliveryMethodConfig, PaymentMethodConfig, ExpenseCategory, TaxRegime } from '../../types';
 import { Modal } from '../../components/Modal';
 
 interface AdminSettingsProps {
-    view: 'BUSINESS' | 'RULES' | 'SECURITY' | 'DELIVERY' | 'FINANCE_CONFIG';
+    view?: 'BUSINESS' | 'RULES' | 'SECURITY' | 'DELIVERY' | 'FINANCE_CONFIG';
 }
 
-export const AdminSettings: React.FC<AdminSettingsProps> = ({ view }) => {
+export const AdminSettings: React.FC<AdminSettingsProps> = ({ view = 'BUSINESS' }) => {
   const { state, dispatch } = useRestaurant();
   const { showAlert, showConfirm } = useUI();
   
