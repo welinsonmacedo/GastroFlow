@@ -6,7 +6,7 @@ import { useRestaurant } from '../context/RestaurantContext';
 import { useAuth } from '../context/AuthProvider';
 import { 
     DollarSign, ShoppingCart, BarChart3,
-    LogOut, Grid, Store, Lock, History
+    LogOut, Grid, Store, Lock, History, Truck
 } from 'lucide-react';
 import { Role } from '../types';
 
