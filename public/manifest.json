@@ -1,7 +1,7 @@
 {
   "name": "Flux Eat",
   "short_name": "Flux Eat",
-  "start_url": "/",
+  "start_url": "/login-owner",
   "display": "standalone",
   "background_color": "#f9fafb",
   "theme_color": "#22c55e",
