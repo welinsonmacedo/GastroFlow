@@ -57,19 +57,13 @@ export const WaiterApp: React.FC = () => {
 
   const playSound = async () => {
       if (!audioRef.current || !orderState.audioUnlocked) return;
-      
-      const now = Date.now();
-      // Debounce de 3 segundos
-      if (now - lastSoundTime > 3000) {
-          try {
-              audioRef.current.currentTime = 0; 
-              await audioRef.current.play();
-              if (navigator.vibrate) navigator.vibrate([300, 100, 300]);
-              setLastSoundTime(now);
-              console.log("🔊 Som Garçom Tocado");
-          } catch (e) {
-              console.warn("Autoplay bloqueado. Interaja com a página.", e);
-          }
+      try {
+          audioRef.current.currentTime = 0; 
+          await audioRef.current.play();
+          if (navigator.vibrate) navigator.vibrate([300, 100, 300]);
+          console.log("🔊 Som Garçom Tocado");
+      } catch (e) {
+          console.warn("Autoplay bloqueado. Interaja com a página.", e);
       }
   };
 
@@ -78,18 +72,13 @@ export const WaiterApp: React.FC = () => {
       
       const currentCallsCount = pendingCalls.length;
       const currentReadyCount = orderState.orders.reduce((acc, o) => acc + o.items.filter(i => i.status === 'READY').length, 0);
-      const currentNewOrdersCount = orderState.orders.filter(o => !o.isPaid && o.status !== 'CANCELLED' && o.items.some(i => i.status === 'PENDING')).length;
 
-      // Dispara se qualquer contagem AUMENTAR
-      if (currentCallsCount > prevCallsCount.current || 
-          currentReadyCount > prevReadyCount.current || 
-          currentNewOrdersCount > prevNewOrdersCount.current) {
+      if (currentCallsCount > prevCallsCount.current || currentReadyCount > prevReadyCount.current) {
           playSound();
       }
       
       prevCallsCount.current = currentCallsCount;
       prevReadyCount.current = currentReadyCount;
-      prevNewOrdersCount.current = currentNewOrdersCount;
   }, [pendingCalls.length, orderState.orders, orderState.audioUnlocked]);
 
   const handleManualRefresh = () => {

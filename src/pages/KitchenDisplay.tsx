@@ -20,6 +20,7 @@ export const KitchenDisplay: React.FC = () => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const prevPendingCount = useRef(0);
   const wakeLockRef = useRef<any>(null);
+  const lastSoundTime = useRef<number>(0);
 
   const isKitchenItem = (item: OrderItem) => {
       const product = menuState.products.find(p => p.id === item.productId);
@@ -67,13 +68,17 @@ export const KitchenDisplay: React.FC = () => {
 
   const playSound = async () => {
       if (!audioRef.current || !orderState.audioUnlocked) return;
-      try {
-          audioRef.current.currentTime = 0; 
-          await audioRef.current.play();
-          if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
-          console.log("🔊 Som Cozinha Tocado");
-      } catch (e) {
-          console.warn("Autoplay bloqueado. Interaja com a página.", e);
+      const now = Date.now();
+      if (now - (lastSoundTime.current || 0) > 3000) {
+          try {
+              audioRef.current.currentTime = 0; 
+              await audioRef.current.play();
+              if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+              console.log("🔊 Som Cozinha Tocado");
+              lastSoundTime.current = now;
+          } catch (e) {
+              console.warn("Autoplay bloqueado. Interaja com a página.", e);
+          }
       }
   };
 
