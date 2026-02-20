@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useInventory } from '../../context/InventoryContext';
 import { useOrder } from '../../context/OrderContext';
@@ -328,7 +329,7 @@ export const CommercePOS: React.FC = () => {
             </div>
 
             {/* MODAL DE PAGAMENTO */}
-            <Modal isOpen={paymentModalOpen} onClose={() => setPaymentModalOpen(false)} title="Pagamento Rápido" variant="dialog" maxWidth="md">
+            <Modal isOpen={paymentModalOpen} onClose={() => setPaymentModalOpen(false)} title="Pagamento Rápido" variant="dialog" maxWidth="md" onSave={() => finalizeSale('CASH')}>
                 <div className="flex flex-col md:flex-row gap-6">
                     {/* Resumo */}
                     <div className="w-full md:w-1/3 bg-slate-50 p-4 rounded-xl border border-slate-200 text-center flex flex-col justify-center">
@@ -353,21 +354,6 @@ export const CommercePOS: React.FC = () => {
                                 value={cashReceived}
                                 onChange={e => setCashReceived(e.target.value)}
                             />
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-2">
-                            <button onClick={() => finalizeSale('CASH')} disabled={parseFloat(cashReceived) < cartTotal} className="py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold uppercase shadow disabled:opacity-50 flex flex-col items-center">
-                                <Banknote size={20} className="mb-1"/> DINHEIRO
-                            </button>
-                            <button onClick={() => finalizeSale('PIX')} className="py-4 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-bold uppercase shadow flex flex-col items-center">
-                                <Zap size={20} className="mb-1"/> PIX
-                            </button>
-                            <button onClick={() => finalizeSale('DEBIT')} className="py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold uppercase shadow flex flex-col items-center text-xs">
-                                <CreditCard size={18} className="mb-1"/> Débito
-                            </button>
-                            <button onClick={() => finalizeSale('CREDIT')} className="py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold uppercase shadow flex flex-col items-center text-xs">
-                                <CreditCard size={18} className="mb-1"/> Crédito
-                            </button>
                         </div>
                     </div>
                 </div>

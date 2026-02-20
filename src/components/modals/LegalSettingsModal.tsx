@@ -67,7 +67,7 @@ export const LegalSettingsModal: React.FC<LegalSettingsModalProps> = ({ isOpen, 
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title="Editar Tabelas Legais (INSS/IRRF)" variant="page">
+        <Modal isOpen={isOpen} onClose={onClose} title="Editar Tabelas Legais (INSS/IRRF)" variant="page" onSave={handleSave}>
             <div className="space-y-8 max-w-4xl mx-auto pb-20">
                 <div className="bg-blue-50 p-6 rounded-2xl border border-blue-200">
                     <h4 className="font-bold text-blue-900 mb-4 flex items-center gap-2"><Calculator size={18}/> Parâmetros Gerais</h4>
@@ -122,11 +122,6 @@ export const LegalSettingsModal: React.FC<LegalSettingsModalProps> = ({ isOpen, 
                             </div>
                         ))}
                     </div>
-                </div>
-
-                <div className="fixed bottom-0 left-0 right-0 bg-white border-t p-4 flex justify-end gap-4 shadow-lg md:pl-72 z-10">
-                    <Button variant="secondary" onClick={onClose}>Cancelar</Button>
-                    <Button onClick={handleSave}>Salvar Alterações</Button>
                 </div>
             </div>
         </Modal>

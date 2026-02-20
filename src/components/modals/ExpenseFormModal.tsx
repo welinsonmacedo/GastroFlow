@@ -1,7 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Modal } from '../Modal';
-import { Button } from '../Button';
 import { useFinance } from '../../context/FinanceContext';
 import { useRestaurant } from '../../context/RestaurantContext'; // Para categorias dinâmicas
 import { useUI } from '../../context/UIContext';
@@ -62,12 +61,14 @@ export const ExpenseFormModal: React.FC<ExpenseFormModalProps> = ({ isOpen, onCl
       // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, expenseToEdit]); // Removido 'categories' das dependências para evitar reset durante digitação se o contexto atualizar
 
-  const handleSubmit = async (e: React.FormEvent) => {
-      e.preventDefault();
-      
+  const handleSubmit = async () => {
       const amount = parseFloat(form.amount?.toString() || '0');
       if (amount <= 0) {
           return showAlert({ title: "Valor Inválido", message: "Informe um valor maior que zero.", type: 'WARNING' });
+      }
+
+      if (!form.description) {
+           return showAlert({ title: "Descrição Obrigatória", message: "Informe a descrição.", type: 'WARNING' });
       }
 
       if (!dateStr) {
@@ -130,8 +131,9 @@ export const ExpenseFormModal: React.FC<ExpenseFormModalProps> = ({ isOpen, onCl
         title={expenseToEdit ? "Editar Despesa" : "Registrar Despesa"}
         variant="dialog"
         maxWidth="md"
+        onSave={handleSubmit}
     >
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-4">
             <div>
                 <label className="block text-xs font-bold mb-1 text-gray-600">Descrição</label>
                 <input required placeholder="Ex: Conta de Luz" className="w-full border p-2.5 rounded-lg text-sm focus:border-blue-500 outline-none" value={form.description} onChange={e => setForm({...form, description: e.target.value})} autoFocus />
@@ -187,12 +189,7 @@ export const ExpenseFormModal: React.FC<ExpenseFormModalProps> = ({ isOpen, onCl
                     </div>
                 </div>
             </div>
-
-            <div className="flex gap-2 pt-2">
-                <Button type="button" variant="secondary" onClick={onClose} className="flex-1">Cancelar</Button>
-                <Button type="submit" className="flex-1">Salvar</Button>
-            </div>
-        </form>
+        </div>
     </Modal>
   );
 };

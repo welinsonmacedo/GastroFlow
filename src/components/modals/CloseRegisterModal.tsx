@@ -1,7 +1,6 @@
 
 import React, { useState } from 'react';
 import { Modal } from '../Modal';
-import { Button } from '../Button';
 import { useFinance } from '../../context/FinanceContext';
 import { useUI } from '../../context/UIContext';
 
@@ -28,7 +27,7 @@ export const CloseRegisterModal: React.FC<CloseRegisterModalProps> = ({ isOpen, 
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Fechar Caixa" variant="dialog" maxWidth="sm">
+    <Modal isOpen={isOpen} onClose={onClose} title="Fechar Caixa" variant="dialog" maxWidth="sm" onSave={handleClose}>
         <div className="space-y-4">
             <div className="bg-yellow-50 p-3 rounded text-sm text-yellow-800 border border-yellow-200">
                 <p className="font-bold">Atenção:</p>
@@ -38,7 +37,6 @@ export const CloseRegisterModal: React.FC<CloseRegisterModalProps> = ({ isOpen, 
                 <label className="block text-sm font-bold mb-1">Valor Contado em Dinheiro (R$)</label>
                 <input type="number" step="0.01" className="w-full border p-3 rounded text-2xl font-bold text-center" value={amount} onChange={e => setAmount(e.target.value)} autoFocus />
             </div>
-            <Button onClick={handleClose} className="w-full py-3 text-lg">Finalizar Turno</Button>
         </div>
     </Modal>
   );

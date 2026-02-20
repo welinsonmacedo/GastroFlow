@@ -1,7 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { Modal } from '../Modal';
-import { Button } from '../Button';
 import { InventoryItem } from '../../types';
 import { Minus, Plus, Square, CheckSquare } from 'lucide-react';
 import { useInventory } from '../../context/InventoryContext';
@@ -52,7 +51,7 @@ export const AddToCartModal: React.FC<AddToCartModalProps> = ({ isOpen, onClose,
     const total = ((item.salePrice || 0) + selectedExtras.reduce((acc, ex) => acc + (ex.salePrice || 0), 0)) * quantity;
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title={item.name} variant="dialog" maxWidth="sm">
+        <Modal isOpen={isOpen} onClose={onClose} title={item.name} variant="dialog" maxWidth="sm" onSave={handleConfirm}>
             <div className="space-y-6">
                 {/* Quantidade */}
                 <div className="flex items-center justify-between bg-gray-50 p-3 rounded-2xl">
@@ -102,8 +101,6 @@ export const AddToCartModal: React.FC<AddToCartModalProps> = ({ isOpen, onClose,
                         R$ {total.toFixed(2)}
                     </div>
                 </div>
-
-                <Button onClick={handleConfirm} className="w-full py-4 text-lg font-black rounded-2xl shadow-xl">Adicionar ao Carrinho</Button>
             </div>
         </Modal>
     );

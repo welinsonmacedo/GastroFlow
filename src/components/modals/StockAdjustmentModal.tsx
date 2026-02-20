@@ -1,7 +1,6 @@
 
 import React, { useState } from 'react';
 import { Modal } from '../Modal';
-import { Button } from '../Button';
 import { useInventory } from '../../context/InventoryContext';
 import { useUI } from '../../context/UIContext';
 
@@ -18,8 +17,7 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({ isOp
   
   const [form, setForm] = useState({ quantity: '', reason: '' });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async () => {
     if (!itemId || !form.quantity) return;
     
     try {
@@ -33,8 +31,8 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({ isOp
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={initialType === 'IN' ? 'Entrada Manual' : 'Saída Manual / Perda'} variant="dialog" maxWidth="sm">
-      <form onSubmit={handleSubmit} className="space-y-4">
+    <Modal isOpen={isOpen} onClose={onClose} title={initialType === 'IN' ? 'Entrada Manual' : 'Saída Manual / Perda'} variant="dialog" maxWidth="sm" onSave={handleSubmit}>
+      <div className="space-y-4">
         <div className="space-y-1">
           <label className="text-[10px] font-black text-slate-400 uppercase px-1">Quantidade</label>
           <input type="number" step="0.001" className="w-full border-2 p-3 rounded-xl font-bold text-center text-2xl focus:border-blue-500 outline-none" value={form.quantity} onChange={e => setForm({ ...form, quantity: e.target.value })} autoFocus />
@@ -43,8 +41,7 @@ export const StockAdjustmentModal: React.FC<StockAdjustmentModalProps> = ({ isOp
           <label className="text-[10px] font-black text-slate-400 uppercase px-1">Motivo / Justificativa</label>
           <input className="w-full border-2 p-3 rounded-xl text-sm focus:border-blue-500 outline-none" placeholder="Ex: Ajuste de quebra, Bonificação..." value={form.reason} onChange={e => setForm({ ...form, reason: e.target.value })} />
         </div>
-        <Button type="submit" className="w-full py-4 text-lg">Confirmar Ajuste</Button>
-      </form>
+      </div>
     </Modal>
   );
 };

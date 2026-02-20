@@ -1,7 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { Modal } from '../Modal';
-import { Button } from '../Button';
 import { useMenu } from '../../context/MenuContext';
 import { useRestaurant } from '../../context/RestaurantContext';
 import { useInventory } from '../../context/InventoryContext';
@@ -72,9 +71,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({ isOpen, onCl
       }
   };
 
-  const handleSave = async (e: React.FormEvent) => {
-      e.preventDefault();
-      
+  const handleSave = async () => {
       // Validação de Estoque
       const stockItem = invState.inventory.find(i => i.id === selectedStockId);
       if (!selectedStockId || !stockItem) {
@@ -141,8 +138,9 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({ isOpen, onCl
         title={productToEdit ? 'Editar Produto' : 'Adicionar ao Cardápio'}
         variant="dialog"
         maxWidth="md"
+        onSave={handleSave}
     >
-        <form onSubmit={handleSave} className="space-y-6">
+        <div className="space-y-6">
             <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 text-sm text-blue-800 mb-4">
                 <p>O nome, preço e categoria são sincronizados automaticamente com o <strong>Estoque</strong>. A descrição pode ser personalizada aqui.</p>
             </div>
@@ -188,7 +186,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({ isOpen, onCl
                         type="button"
                         onClick={handleGenerateDescription}
                         disabled={loadingAI || !selectedStockId}
-                        className="text-[10px] bg-purple-100 text-purple-700 px-2 py-1 rounded-lg font-bold flex items-center gap-1 hover:bg-purple-200 transition-colors disabled:opacity-50"
+                        className="text-[10px] bg-purple-100 text-purple-700 px-2 py-0.5 rounded font-bold flex items-center gap-1 hover:bg-purple-200 transition-colors disabled:opacity-50"
                     >
                         {loadingAI ? <Loader2 size={10} className="animate-spin"/> : <Sparkles size={10}/>}
                         Gerar com IA
@@ -203,12 +201,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({ isOpen, onCl
                 />
                 <p className="text-[10px] text-gray-400 mt-1 text-right">{description.length}/200 caracteres</p>
             </div>
-
-            <div className="flex gap-4 pt-4 border-t mt-4">
-                <Button type="button" variant="secondary" onClick={onClose} className="flex-1 text-sm font-bold">Cancelar</Button>
-                <Button type="submit" className="flex-1 text-sm font-bold shadow-lg">Salvar Produto</Button>
-            </div>
-        </form>
+        </div>
     </Modal>
   );
 };

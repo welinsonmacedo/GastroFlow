@@ -21,7 +21,7 @@ export const OpenTableModal: React.FC<{ isOpen: boolean, onClose: () => void, ta
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title="Abrir Mesa" variant="dialog" maxWidth="sm">
+        <Modal isOpen={isOpen} onClose={onClose} title="Abrir Mesa" variant="dialog" maxWidth="sm" onSave={handleOpen}>
             <div className="space-y-4">
                 <input 
                     className="w-full border-2 p-3 rounded-xl focus:border-blue-500 outline-none text-center font-bold" 
@@ -30,13 +30,13 @@ export const OpenTableModal: React.FC<{ isOpen: boolean, onClose: () => void, ta
                     onChange={e => setCustomerName(e.target.value)}
                     autoFocus 
                 />
-                <Button onClick={handleOpen} className="w-full py-4 font-bold bg-blue-600 text-white rounded-xl shadow-lg hover:bg-blue-700 transition-all">INICIAR ATENDIMENTO</Button>
             </div>
         </Modal>
     );
 };
 
 // --- Table Actions Modal ---
+// Note: This modal has specific diverse actions, so it keeps internal buttons for clarity.
 interface TableActionsModalProps {
     isOpen: boolean;
     onClose: () => void;
@@ -298,7 +298,7 @@ export const TableActionsModal: React.FC<TableActionsModalProps> = ({ isOpen, on
     );
 };
 
-// --- Waiter Product Modal (Unchanged) ---
+// --- Waiter Product Modal (Unchanged as it uses custom overlay) ---
 interface WaiterProductModalProps {
     isOpen: boolean;
     onClose: () => void;

@@ -1,10 +1,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { Modal } from '../Modal';
-import { Button } from '../Button';
 import { useInventory } from '../../context/InventoryContext';
 import { useUI } from '../../context/UIContext';
-import { Info, Search, Package, ShoppingBag, Layers } from 'lucide-react';
+import { Info, Search, Package, ShoppingBag } from 'lucide-react';
 
 interface InventoryCountModalProps {
   isOpen: boolean;
@@ -57,7 +56,7 @@ export const InventoryCountModal: React.FC<InventoryCountModalProps> = ({ isOpen
   });
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Inventário (Contagem Física)" variant="page">
+    <Modal isOpen={isOpen} onClose={onClose} title="Inventário (Contagem Física)" variant="page" onSave={handleProcess}>
       <div className="space-y-4 h-full flex flex-col">
         {/* Header e Instruções */}
         <div className="bg-amber-50 p-4 rounded-xl border-2 border-dashed border-amber-200 text-amber-800 text-sm flex gap-3 shrink-0">
@@ -160,11 +159,6 @@ export const InventoryCountModal: React.FC<InventoryCountModalProps> = ({ isOpen
                 </tbody>
             </table>
           </div>
-        </div>
-
-        <div className="flex gap-4 pt-4 border-t shrink-0">
-          <Button variant="secondary" onClick={onClose} className="flex-1 py-4">Cancelar</Button>
-          <Button onClick={handleProcess} className="flex-1 py-4 shadow-xl">Finalizar Inventário</Button>
         </div>
       </div>
     </Modal>

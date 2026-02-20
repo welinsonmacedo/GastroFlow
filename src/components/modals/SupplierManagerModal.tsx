@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Modal } from '../Modal';
-import { Button } from '../Button';
+import { Button } from '../Button'; // Ainda usado para layout interno
 import { useInventory } from '../../context/InventoryContext';
 import { useUI } from '../../context/UIContext';
 import { Supplier } from '../../types';
@@ -67,9 +67,8 @@ export const SupplierManagerModal: React.FC<SupplierManagerModalProps> = ({ isOp
     }
   };
 
-  const handleAddSupplier = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newSupplier.name) return;
+  const handleAddSupplier = async () => {
+    if (!newSupplier.name) return showAlert({ title: "Nome Obrigatório", message: "Informe a Razão Social/Nome.", type: 'WARNING' });
     try {
       await addSupplier(newSupplier as Supplier);
       setNewSupplier({ name: '', contactName: '', phone: '', cnpj: '', ie: '', email: '', cep: '', address: '', number: '', complement: '', city: '', state: '' });
@@ -80,9 +79,9 @@ export const SupplierManagerModal: React.FC<SupplierManagerModalProps> = ({ isOp
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Gestão de Fornecedores" variant="page">
+    <Modal isOpen={isOpen} onClose={onClose} title="Gestão de Fornecedores" variant="page" onSave={handleAddSupplier}>
       <div className="space-y-8">
-        <form onSubmit={handleAddSupplier} className="bg-slate-50 p-6 rounded-2xl border-2 border-slate-200">
+        <div className="bg-slate-50 p-6 rounded-2xl border-2 border-slate-200">
           <h4 className="text-sm font-black text-slate-800 uppercase tracking-widest mb-4">Novo Fornecedor</h4>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div className="md:col-span-2">
@@ -155,8 +154,7 @@ export const SupplierManagerModal: React.FC<SupplierManagerModalProps> = ({ isOp
               </div>
             </div>
           </div>
-          <Button size="lg" type="submit" className="w-full mt-4 py-3 font-bold shadow-md">Salvar Fornecedor</Button>
-        </form>
+        </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {state.suppliers.map(s => (

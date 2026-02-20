@@ -1,7 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { Modal } from '../Modal';
-import { Button } from '../Button';
 import { useStaff } from '../../context/StaffContext';
 import { useUI } from '../../context/UIContext';
 import { User, Role, ContractType, WorkModel } from '../../types';
@@ -34,8 +33,13 @@ export const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose,
     }
   }, [isOpen, userToEdit]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-      e.preventDefault();
+  const handleSubmit = async () => {
+      // Validacao manual já que o botão está fora do form
+      if (variant === 'ACCESS' && !userToEdit) return; // Nao deve acontecer
+
+      if (!form.name) return showAlert({ title: "Nome Obrigatório", message: "Informe o nome.", type: "WARNING" });
+      if (variant === 'ACCESS' && !form.email) return showAlert({ title: "Email Obrigatório", message: "Informe o email.", type: "WARNING" });
+
       const userToSave = { 
           ...form, 
           customRoleId: form.customRoleId || undefined,
@@ -68,8 +72,9 @@ export const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose,
         title={userToEdit ? (variant === 'RH' ? 'Editar Colaborador' : `Acesso: ${userToEdit.name}`) : 'Novo Colaborador'}
         variant={variant === 'RH' ? "page" : "dialog"}
         maxWidth="md"
+        onSave={handleSubmit}
     >
-        <form onSubmit={handleSubmit} className="space-y-8 pb-10">
+        <div className="space-y-8 pb-10">
             
             {/* VARIANT ACCESS: Apenas Login e Senha */}
             {variant === 'ACCESS' && (
@@ -195,12 +200,7 @@ export const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose,
                     </div>
                 </div>
             )}
-
-            <div className="flex gap-4 pt-6 border-t bg-gray-50 -mx-6 px-6 -mb-6 pb-6 sticky bottom-0 z-10">
-                <Button type="button" variant="secondary" onClick={onClose} className="flex-1 py-4 text-lg">Cancelar</Button>
-                <Button type="submit" className="flex-1 shadow-lg py-4 text-lg font-bold">{userToEdit ? 'Salvar Alterações' : 'Cadastrar Colaborador'}</Button>
-            </div>
-        </form>
+        </div>
     </Modal>
   );
 };

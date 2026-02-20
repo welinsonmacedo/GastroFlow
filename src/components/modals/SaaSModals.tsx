@@ -6,8 +6,6 @@ import { useSaaS } from '../../context/SaaSContext';
 import { RestaurantTenant, PlanType, SystemModule } from '../../types';
 import { ChevronDown, ChevronRight, Check, Copy } from 'lucide-react';
 
-// --- Definition of Modules and their Granular Features (Tabs) ---
-// Keys must match what is used in Dashboard files to filter tabs
 const MODULE_STRUCTURE = {
     RESTAURANT: {
         label: "Restaurante",
@@ -91,22 +89,20 @@ export const SaaSTenantCreateModal: React.FC<{ isOpen: boolean, onClose: () => v
         setForm(prev => ({ ...prev, name, slug }));
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
+    const handleSubmit = () => {
         dispatch({ type: 'CREATE_TENANT', payload: form });
         setForm({ name: '', slug: '', ownerName: '', email: '', plan: 'FREE' });
         onClose();
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title="Novo Restaurante" variant="dialog" maxWidth="md">
-            <form onSubmit={handleSubmit} className="space-y-4">
+        <Modal isOpen={isOpen} onClose={onClose} title="Novo Restaurante" variant="dialog" maxWidth="md" onSave={handleSubmit}>
+            <div className="space-y-4">
                 <input type="text" required className="w-full border p-2.5 rounded-lg" placeholder="Nome" value={form.name} onChange={(e) => autoGenerateSlug(e.target.value)} autoFocus />
                 <input type="text" required className="w-full border p-2.5 rounded-lg" placeholder="Slug (URL)" value={form.slug} onChange={(e) => setForm({...form, slug: e.target.value})} />
                 <input type="text" required className="w-full border p-2.5 rounded-lg" placeholder="Nome do Dono" value={form.ownerName} onChange={(e) => setForm({...form, ownerName: e.target.value})} />
                 <input type="email" required className="w-full border p-2.5 rounded-lg" placeholder="Email do Dono" value={form.email} onChange={(e) => setForm({...form, email: e.target.value})} />
-                <Button type="submit" className="w-full">Criar Restaurante</Button>
-            </form>
+            </div>
         </Modal>
     );
 };
@@ -124,7 +120,6 @@ export const SaaSEditTenantModal: React.FC<SaaSEditTenantModalProps> = ({ isOpen
     const [editForm, setEditForm] = useState<Partial<RestaurantTenant>>({});
     const [adminForm, setAdminForm] = useState({ name: 'Admin', email: '', pin: '1234', password: '' });
     
-    // Modules & Features state for editing
     const [selectedModules, setSelectedModules] = useState<SystemModule[]>([]);
     const [selectedFeatures, setSelectedFeatures] = useState<string[]>([]);
     const [expandedModules, setExpandedModules] = useState<SystemModule[]>([]);
@@ -135,7 +130,6 @@ export const SaaSEditTenantModal: React.FC<SaaSEditTenantModalProps> = ({ isOpen
             setAdminForm({ name: 'Admin', email: tenant.email, pin: '1234', password: '' });
             setSelectedModules(tenant.allowedModules || ['RESTAURANT']);
             
-            // Se allowedFeatures estiver vazio (legado), auto-seleciona todas as features dos módulos ativos
             if (!tenant.allowedFeatures || tenant.allowedFeatures.length === 0) {
                 const autoFeatures: string[] = [];
                 (tenant.allowedModules || ['RESTAURANT']).forEach(mod => {
@@ -150,8 +144,7 @@ export const SaaSEditTenantModal: React.FC<SaaSEditTenantModalProps> = ({ isOpen
         }
     }, [tenant, isOpen]);
 
-    const handleUpdate = (e: React.FormEvent) => {
-        e.preventDefault();
+    const handleUpdate = () => {
         if(tenant) {
              dispatch({ 
                 type: 'UPDATE_TENANT', 
@@ -163,14 +156,12 @@ export const SaaSEditTenantModal: React.FC<SaaSEditTenantModalProps> = ({ isOpen
     
     const toggleModule = (mod: SystemModule) => {
         if (selectedModules.includes(mod)) {
-            // Desmarcar módulo: Remove módulo e todas as suas features
             setSelectedModules(selectedModules.filter(m => m !== mod));
             // @ts-ignore
             const moduleFeats = MODULE_STRUCTURE[mod].features.map((f: any) => f.key);
             setSelectedFeatures(selectedFeatures.filter(f => !moduleFeats.includes(f)));
             setExpandedModules(expandedModules.filter(m => m !== mod));
         } else {
-            // Marcar módulo: Adiciona módulo e seleciona todas as features por padrão (UX melhor)
             setSelectedModules([...selectedModules, mod]);
             // @ts-ignore
             const moduleFeats = MODULE_STRUCTURE[mod].features.map((f: any) => f.key);
@@ -184,7 +175,6 @@ export const SaaSEditTenantModal: React.FC<SaaSEditTenantModalProps> = ({ isOpen
             setSelectedFeatures(selectedFeatures.filter(f => f !== featureKey));
         } else {
             setSelectedFeatures([...selectedFeatures, featureKey]);
-            // Se selecionar uma feature, garante que o módulo pai está ativo
             if (!selectedModules.includes(moduleKey)) {
                 setSelectedModules([...selectedModules, moduleKey]);
             }
@@ -201,7 +191,6 @@ export const SaaSEditTenantModal: React.FC<SaaSEditTenantModalProps> = ({ isOpen
     
     const handleSaveModules = async () => {
          if(!tenant) return;
-         
          dispatch({
              type: 'UPDATE_TENANT_MODULES',
              tenantId: tenant.id,
@@ -211,18 +200,25 @@ export const SaaSEditTenantModal: React.FC<SaaSEditTenantModalProps> = ({ isOpen
          onClose();
     };
 
-    const handleCreateAdmin = (e: React.FormEvent) => {
-        e.preventDefault();
+    const handleCreateAdmin = () => {
         if(tenant) {
             dispatch({ type: 'CREATE_TENANT_ADMIN', payload: { tenantId: tenant.id, ...adminForm } });
             setAdminForm({ name: 'Admin', email: '', pin: '1234', password: '' });
+            // Admin creation doesn't close modal usually, but with single save button, it implies closure or reset
+            onClose(); 
         }
+    };
+
+    const handleMainSave = () => {
+        if (tab === 'DETAILS') handleUpdate();
+        else if (tab === 'MODULES') handleSaveModules();
+        else if (tab === 'ADMIN') handleCreateAdmin();
     };
 
     if (!tenant) return null;
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title={`Gerenciar ${tenant.name}`} variant="dialog" maxWidth="md">
+        <Modal isOpen={isOpen} onClose={onClose} title={`Gerenciar ${tenant.name}`} variant="dialog" maxWidth="md" onSave={handleMainSave}>
             <div className="flex border-b mb-4 overflow-x-auto">
                 <button onClick={() => setTab('DETAILS')} className={`px-4 py-2 text-sm font-bold border-b-2 transition-colors whitespace-nowrap ${tab === 'DETAILS' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}>Detalhes</button>
                 <button onClick={() => setTab('MODULES')} className={`px-4 py-2 text-sm font-bold border-b-2 transition-colors whitespace-nowrap ${tab === 'MODULES' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}>Módulos & Permissões</button>
@@ -230,13 +226,12 @@ export const SaaSEditTenantModal: React.FC<SaaSEditTenantModalProps> = ({ isOpen
             </div>
 
             {tab === 'DETAILS' && (
-                <form onSubmit={handleUpdate} className="space-y-4">
+                <div className="space-y-4">
                     <div><label className="text-xs font-bold text-gray-500 uppercase">Nome</label><input className="w-full border p-2 rounded" value={editForm.name} onChange={e => setEditForm({...editForm, name: e.target.value})} /></div>
                     <div><label className="text-xs font-bold text-gray-500 uppercase">Slug</label><input className="w-full border p-2 rounded" value={editForm.slug} onChange={e => setEditForm({...editForm, slug: e.target.value})} /></div>
                     <div><label className="text-xs font-bold text-gray-500 uppercase">Dono</label><input className="w-full border p-2 rounded" value={editForm.ownerName} onChange={e => setEditForm({...editForm, ownerName: e.target.value})} /></div>
                     <div><label className="text-xs font-bold text-gray-500 uppercase">Email</label><input className="w-full border p-2 rounded" value={editForm.email} onChange={e => setEditForm({...editForm, email: e.target.value})} /></div>
-                    <Button type="submit" className="w-full mt-2">Salvar Detalhes</Button>
-                </form>
+                </div>
             )}
             
             {tab === 'MODULES' && (
@@ -286,19 +281,17 @@ export const SaaSEditTenantModal: React.FC<SaaSEditTenantModalProps> = ({ isOpen
                             );
                         })}
                     </div>
-                    <Button onClick={handleSaveModules} className="w-full mt-2">Salvar Módulos</Button>
                 </div>
             )}
 
             {tab === 'ADMIN' && (
-                <form onSubmit={handleCreateAdmin} className="space-y-4">
+                <div className="space-y-4">
                     <div className="bg-yellow-50 border border-yellow-200 p-3 rounded text-xs text-yellow-800 mb-2"><p className="font-bold">Atenção:</p><p>Isso criará um novo usuário ADMIN.</p></div>
                     <input type="text" placeholder="Nome" className="w-full border p-2 rounded" value={adminForm.name} onChange={e => setAdminForm({...adminForm, name: e.target.value})} required />
                     <input type="email" placeholder="Email" className="w-full border p-2 rounded" value={adminForm.email} onChange={e => setAdminForm({...adminForm, email: e.target.value})} required />
                     <input type="text" placeholder="PIN" className="w-full border p-2 rounded" value={adminForm.pin} onChange={e => setAdminForm({...adminForm, pin: e.target.value})} required />
                     <input type="password" placeholder="Senha (Opcional)" className="w-full border p-2 rounded" value={adminForm.password} onChange={e => setAdminForm({...adminForm, password: e.target.value})} />
-                    <Button type="submit" className="w-full mt-2">Criar Administrador</Button>
-                </form>
+                </div>
             )}
         </Modal>
     );

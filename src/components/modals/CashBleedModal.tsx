@@ -1,7 +1,6 @@
 
 import React, { useState } from 'react';
 import { Modal } from '../Modal';
-import { Button } from '../Button';
 import { useFinance } from '../../context/FinanceContext';
 import { useUI } from '../../context/UIContext';
 import { Expense } from '../../types';
@@ -18,8 +17,7 @@ export const CashBleedModal: React.FC<CashBleedModalProps> = ({ isOpen, onClose,
   
   const [form, setForm] = useState({ amount: '', reason: '' });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-      e.preventDefault();
+  const handleSubmit = async () => {
       const amount = parseFloat(form.amount);
       if (!amount || amount <= 0) return;
 
@@ -61,8 +59,9 @@ export const CashBleedModal: React.FC<CashBleedModalProps> = ({ isOpen, onClose,
         title="Saída Manual de Dinheiro / Sangria"
         variant="dialog"
         maxWidth="sm"
+        onSave={handleSubmit}
     >
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-4">
             <div className="bg-red-50 border border-red-100 p-3 rounded-lg text-xs text-red-800">
                 Isso registrará uma retirada de dinheiro da gaveta do caixa atual.
             </div>
@@ -74,11 +73,7 @@ export const CashBleedModal: React.FC<CashBleedModalProps> = ({ isOpen, onClose,
                 <label className="block text-xs font-bold mb-1 text-gray-600">Motivo</label>
                 <input required placeholder="Ex: Compra de Gelo, Vale Transporte" className="w-full border p-3 rounded-lg text-sm" value={form.reason} onChange={e => setForm({...form, reason: e.target.value})} />
             </div>
-            <div className="flex gap-2 pt-2">
-                <Button type="button" variant="secondary" onClick={onClose} className="flex-1">Cancelar</Button>
-                <Button type="submit" className="flex-1 bg-red-600 hover:bg-red-700">Confirmar Retirada</Button>
-            </div>
-        </form>
+        </div>
     </Modal>
   );
 };

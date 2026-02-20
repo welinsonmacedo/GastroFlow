@@ -47,7 +47,7 @@ export const PurchaseEntryModal: React.FC<PurchaseEntryModalProps> = ({ isOpen, 
   };
 
   const handleSubmit = async () => {
-    if (!form.supplierId || form.items.length === 0) return;
+    if (!form.supplierId || form.items.length === 0) return showAlert({title: "Dados Incompletos", message: "Selecione fornecedor e adicione itens.", type: "WARNING"});
     const total = form.items.reduce((acc, i) => acc + i.totalPrice, 0) + calculateTotalTaxes();
     
     try {
@@ -73,7 +73,7 @@ export const PurchaseEntryModal: React.FC<PurchaseEntryModalProps> = ({ isOpen, 
   const calculateTotal = () => calculateSubtotal() + calculateTotalTaxes();
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Lançamento de Nota Fiscal" variant="page">
+    <Modal isOpen={isOpen} onClose={onClose} title="Lançamento de Nota Fiscal" variant="page" onSave={handleSubmit}>
       <div className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <div className="md:col-span-2">
@@ -182,11 +182,6 @@ export const PurchaseEntryModal: React.FC<PurchaseEntryModalProps> = ({ isOpen, 
                     <span>TOTAL NOTA:</span>
                     <span>R$ {calculateTotal().toFixed(2)}</span>
                 </div>
-            </div>
-            
-            <div className="flex gap-3">
-                <Button variant="secondary" onClick={onClose} className="flex-1 py-3 text-sm">Cancelar</Button>
-                <Button onClick={handleSubmit} className="flex-1 py-3 text-sm shadow-xl">Confirmar</Button>
             </div>
           </div>
 

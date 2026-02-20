@@ -1,7 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { Modal } from '../Modal';
-import { Button } from '../Button';
 import { CustomRole, SystemModule } from '../../types';
 import { useStaff } from '../../context/StaffContext';
 import { useUI } from '../../context/UIContext';
@@ -100,8 +99,6 @@ export const RoleFormModal: React.FC<RoleFormModalProps> = ({ isOpen, onClose, r
     const toggleModule = (mod: SystemModule) => {
         if (selectedModules.includes(mod)) {
             setSelectedModules(selectedModules.filter(m => m !== mod));
-            // Opcional: Desmarcar features se desmarcar módulo? 
-            // Mantendo features marcadas caso o user marque o módulo de volta por engano.
         } else {
             setSelectedModules([...selectedModules, mod]);
             if (!expandedModules.includes(mod)) {
@@ -115,7 +112,6 @@ export const RoleFormModal: React.FC<RoleFormModalProps> = ({ isOpen, onClose, r
             setSelectedFeatures(selectedFeatures.filter(f => f !== featKey));
         } else {
             setSelectedFeatures([...selectedFeatures, featKey]);
-            // Auto-selecionar módulo se selecionar feature
             if (!selectedModules.includes(moduleKey)) {
                 setSelectedModules([...selectedModules, moduleKey]);
             }
@@ -126,8 +122,7 @@ export const RoleFormModal: React.FC<RoleFormModalProps> = ({ isOpen, onClose, r
         setExpandedModules(prev => prev.includes(mod) ? prev.filter(m => m !== mod) : [...prev, mod]);
     };
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const handleSubmit = async () => {
         if (!name) return;
 
         const roleData: any = {
@@ -153,8 +148,8 @@ export const RoleFormModal: React.FC<RoleFormModalProps> = ({ isOpen, onClose, r
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title={roleToEdit ? "Editar Cargo" : "Novo Cargo"} variant="dialog" maxWidth="md">
-            <form onSubmit={handleSubmit} className="space-y-6">
+        <Modal isOpen={isOpen} onClose={onClose} title={roleToEdit ? "Editar Cargo" : "Novo Cargo"} variant="dialog" maxWidth="md" onSave={handleSubmit}>
+            <div className="space-y-6">
                 <div>
                     <label className="block text-xs font-bold text-gray-600 mb-1">Nome do Cargo</label>
                     <input required className="w-full border p-2.5 rounded-lg text-sm focus:border-blue-500 outline-none" placeholder="Ex: Gerente de Loja" value={name} onChange={e => setName(e.target.value)} />
@@ -221,12 +216,7 @@ export const RoleFormModal: React.FC<RoleFormModalProps> = ({ isOpen, onClose, r
                         })}
                     </div>
                 </div>
-
-                <div className="flex gap-2 pt-2 border-t">
-                    <Button type="button" variant="secondary" onClick={onClose} className="flex-1">Cancelar</Button>
-                    <Button type="submit" className="flex-1">Salvar Cargo</Button>
-                </div>
-            </form>
+            </div>
         </Modal>
     );
 };

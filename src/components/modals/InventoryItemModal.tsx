@@ -1,13 +1,13 @@
 
 import React, { useState, useEffect } from 'react';
 import { Modal } from '../Modal';
-import { Button } from '../Button';
 import { ImageUploader } from '../ImageUploader';
 import { useInventory } from '../../context/InventoryContext';
 import { useUI } from '../../context/UIContext';
 import { InventoryItem, InventoryType } from '../../types';
-import { Layers, CheckSquare, Square, Plus, X, Tag, ScanLine, FileText, Sparkles, Loader2 } from 'lucide-react';
+import { Layers, CheckSquare, Square, Plus, X, Tag, ScanLine, FileText, Sparkles, Loader2, DollarSign } from 'lucide-react';
 import { generateProductDescription } from '../../services/geminiService';
+import { Button } from '../Button'; // Ainda necessário para botões internos como Adicionar Insumo
 
 interface InventoryItemModalProps {
   isOpen: boolean;
@@ -80,9 +80,8 @@ export const InventoryItemModal: React.FC<InventoryItemModalProps> = ({ isOpen, 
       }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!form.name) return;
+  const handleSubmit = async () => {
+    if (!form.name) return showAlert({ title: "Nome Obrigatório", message: "Preencha o nome do item.", type: 'WARNING' });
 
     if (form.type !== 'INGREDIENT' && !form.category) {
         return showAlert({ title: "Categoria Obrigatória", message: "Itens de venda (Revenda/Produzido) precisam de uma categoria.", type: 'WARNING' });
@@ -117,8 +116,7 @@ export const InventoryItemModal: React.FC<InventoryItemModalProps> = ({ isOpen, 
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={itemToEdit ? "Editar Item" : "Novo Item de Estoque"} variant="page">
-      <form onSubmit={handleSubmit} className="space-y-8">
+    <Modal isOpen={isOpen} onClose={onClose} title={itemToEdit ? "Editar Item" : "Novo Item de Estoque"} variant="page" onSave={handleSubmit}>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <div className="space-y-6">
             <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200">
@@ -315,11 +313,6 @@ export const InventoryItemModal: React.FC<InventoryItemModalProps> = ({ isOpen, 
             )}
           </div>
         </div>
-        <div className="flex gap-4 pt-6 border-t">
-          <Button type="button" variant="secondary" onClick={onClose} className="flex-1 py-4">Cancelar</Button>
-          <Button type="submit" className="flex-1 py-4 shadow-xl">Salvar Item de Estoque</Button>
-        </div>
-      </form>
     </Modal>
   );
 };
