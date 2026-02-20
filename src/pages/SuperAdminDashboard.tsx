@@ -34,13 +34,7 @@ export const SuperAdminDashboard: React.FC = () => {
   
   // Plans Edit State
 
-  const [editingLimits, setEditingLimits] = useState<PlanLimits>({
-      maxTables: 10, maxProducts: 30, maxStaff: 2, 
-      allowKds: false, allowCashier: false, allowReports: false,
-      allowInventory: false, allowPurchases: false, allowExpenses: false,
-      allowStaff: true, allowTableMgmt: true, allowCustomization: true,
-      allowHR: false
-  });
+
 
   // Derived Metrics (Fixed MRR Calculation)
   const filteredTenants = state.tenants.filter(t => t.name.toLowerCase().includes(filter.toLowerCase()) || t.ownerName.toLowerCase().includes(filter.toLowerCase()));
