@@ -84,7 +84,7 @@ export const SuperAdminDashboard: React.FC = () => {
                 <Activity className="text-blue-500" /> SaaS Admin
             </div>
             <nav className="space-y-2">
-                <button onClick={() => setActiveView('RESTAURANTS')} className={`flex items-center gap-3 w-full p-3 rounded transition-colors ${activeView === 'RESTAURANTS' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}><Building2 size={20} /> Restaurantes</button>
+                <button onClick={() => setActiveView('RESTAURANTS')} className={`flex items-center gap-3 w-full p-3 rounded transition-colors ${activeView === 'RESTAURANTS' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}><Building2 size={20} /> Clientes</button>
                 <button onClick={() => setActiveView('CONTRACTS')} className={`flex items-center gap-3 w-full p-3 rounded transition-colors ${activeView === 'CONTRACTS' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}><FileText size={20} /> Contratos</button>
                 <button onClick={() => setActiveView('FINANCIAL')} className={`flex items-center gap-3 w-full p-3 rounded transition-colors ${activeView === 'FINANCIAL' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}><DollarSign size={20} /> Financeiro</button>
                 <button onClick={() => setActiveView('PLANS')} className={`flex items-center gap-3 w-full p-3 rounded transition-colors ${activeView === 'PLANS' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}><List size={20} /> Planos & Preços</button>
@@ -102,7 +102,7 @@ export const SuperAdminDashboard: React.FC = () => {
                     <header className="flex justify-between items-center mb-8">
                         <div>
                             <h1 className="text-3xl font-bold text-gray-800">
-                                {activeView === 'RESTAURANTS' && 'Gerenciar Restaurantes'}
+                                {activeView === 'RESTAURANTS' && 'Gerenciar Clientes'}
                                 {activeView === 'CONTRACTS' && 'Gerador de Contratos'}
                                 {activeView === 'FINANCIAL' && 'Painel Financeiro'}
                                 {activeView === 'PLANS' && 'Gestão de Planos'}
@@ -283,12 +283,12 @@ export const SuperAdminDashboard: React.FC = () => {
                                     <Search className="absolute left-3 top-3 text-gray-400" size={18} />
                                     <input type="text" placeholder="Buscar..." className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" value={filter} onChange={(e) => setFilter(e.target.value)} />
                                 </div>
-                                <Button onClick={() => setIsCreateModalOpen(true)}> <Plus size={18} /> Novo Restaurante </Button>
+                                <Button onClick={() => setIsCreateModalOpen(true)}> <Plus size={18} /> Novo Cliente </Button>
                             </div>
                             <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
                                 <table className="w-full text-left">
                                     <thead className="bg-gray-50 text-gray-600 text-sm font-semibold uppercase">
-                                        <tr><th className="p-4">Restaurante</th><th className="p-4">Dono</th><th className="p-4">Plano</th><th className="p-4">Status</th><th className="p-4 text-right">Ações</th></tr>
+                                        <tr><th className="p-4">Cliente</th><th className="p-4">Dono</th><th className="p-4">Plano</th><th className="p-4">Status</th><th className="p-4 text-right">Ações</th></tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-100">
                                         {filteredTenants.map((tenant) => (

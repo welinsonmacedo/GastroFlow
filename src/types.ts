@@ -305,6 +305,7 @@ export interface RestaurantTenant {
   requestCount?: number;
   allowedModules?: SystemModule[]; 
   allowedFeatures?: string[]; 
+  customLimits?: PlanLimits;
   businessInfo?: RestaurantBusinessInfo;
 }
 

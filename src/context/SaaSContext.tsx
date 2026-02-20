@@ -27,6 +27,7 @@ type SaaSAction =
   | { type: 'CREATE_TENANT'; payload: { name: string; slug: string; ownerName: string; email: string; plan: PlanType } }
   | { type: 'UPDATE_TENANT'; payload: { id: string; name: string; slug: string; ownerName: string; email: string } }
   | { type: 'UPDATE_TENANT_MODULES'; tenantId: string; modules: SystemModule[]; features: string[] }
+  | { type: 'UPDATE_TENANT_LIMITS'; tenantId: string; limits: any }
   | { type: 'CREATE_TENANT_ADMIN'; payload: { tenantId: string; name: string; email: string; pin: string; password?: string } }
   | { type: 'ADD_TENANT_TO_LIST'; tenant: RestaurantTenant }
   | { type: 'TOGGLE_STATUS'; tenantId: string }
@@ -117,6 +118,16 @@ const saasReducer = (state: SaaSState, action: SaaSAction): SaaSState => {
           tenants: state.tenants.map(t => 
               t.id === action.tenantId
                   ? { ...t, allowedModules: action.modules, allowedFeatures: action.features }
+                  : t
+          )
+      };
+
+    case 'UPDATE_TENANT_LIMITS':
+      return {
+          ...state,
+          tenants: state.tenants.map(t => 
+              t.id === action.tenantId
+                  ? { ...t, customLimits: action.limits }
                   : t
           )
       };
@@ -216,7 +227,8 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
                         requestCount: 0, 
                         businessInfo: t.business_info || {},
                         allowedModules: t.allowed_modules || ['RESTAURANT'],
-                        allowedFeatures: t.allowed_features || []
+                        allowedFeatures: t.allowed_features || [],
+                        customLimits: t.custom_limits || null
                     }));
                     dispatch({ type: 'SET_TENANTS', payload: mapped });
                     fetchTenantStats(mapped.map(t => t.id));
@@ -338,6 +350,23 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } catch (error) {
             console.error(error);
             showAlert({ title: "Erro", message: "Erro ao atualizar módulos.", type: 'ERROR' });
+        }
+        return;
+    }
+
+    if (action.type === 'UPDATE_TENANT_LIMITS') {
+        try {
+            const { error } = await supabase.from('tenants').update({
+                custom_limits: action.limits
+            }).eq('id', action.tenantId);
+            
+            if (error) throw error;
+            
+            dispatch(action);
+            showAlert({ title: "Sucesso", message: "Limites atualizados!", type: 'SUCCESS' });
+        } catch (error) {
+            console.error(error);
+            showAlert({ title: "Erro", message: "Erro ao atualizar limites.", type: 'ERROR' });
         }
         return;
     }

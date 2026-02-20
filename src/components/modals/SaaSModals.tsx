@@ -3,8 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { Modal } from '../Modal';
 import { Button } from '../Button';
 import { useSaaS } from '../../context/SaaSContext';
-import { RestaurantTenant, PlanType, SystemModule } from '../../types';
-import { ChevronDown, ChevronRight, Check, Copy } from 'lucide-react';
+import { RestaurantTenant, PlanType, SystemModule, PlanLimits } from '../../types';
+import { ChevronDown, ChevronRight, Check, Copy, Settings } from 'lucide-react';
 
 const MODULE_STRUCTURE = {
     RESTAURANT: {
@@ -134,13 +134,21 @@ interface SaaSEditTenantModalProps {
 
 export const SaaSEditTenantModal: React.FC<SaaSEditTenantModalProps> = ({ isOpen, onClose, tenant }) => {
     const { dispatch } = useSaaS();
-    const [tab, setTab] = useState<'DETAILS' | 'MODULES' | 'ADMIN'>('DETAILS');
+    const [tab, setTab] = useState<'DETAILS' | 'MODULES' | 'LIMITS' | 'ADMIN'>('DETAILS');
     const [editForm, setEditForm] = useState<Partial<RestaurantTenant>>({});
     const [adminForm, setAdminForm] = useState({ name: 'Admin', email: '', pin: '1234', password: '' });
     
     const [selectedModules, setSelectedModules] = useState<SystemModule[]>([]);
     const [selectedFeatures, setSelectedFeatures] = useState<string[]>([]);
     const [expandedModules, setExpandedModules] = useState<SystemModule[]>([]);
+    
+    const [limitsForm, setLimitsForm] = useState<PlanLimits>({
+        maxTables: 10, maxProducts: 30, maxStaff: 2, 
+        allowKds: false, allowCashier: false, allowReports: false,
+        allowInventory: false, allowPurchases: false, allowExpenses: false,
+        allowStaff: true, allowTableMgmt: true, allowCustomization: true,
+        allowHR: false
+    });
 
     useEffect(() => {
         if(tenant) {
@@ -148,6 +156,23 @@ export const SaaSEditTenantModal: React.FC<SaaSEditTenantModalProps> = ({ isOpen
             setAdminForm({ name: 'Admin', email: tenant.email, pin: '1234', password: '' });
             setSelectedModules(tenant.allowedModules || ['RESTAURANT']);
             
+            if (tenant.customLimits) {
+                setLimitsForm({
+                    maxTables: tenant.customLimits.maxTables,
+                    maxProducts: tenant.customLimits.maxProducts,
+                    maxStaff: tenant.customLimits.maxStaff
+                });
+            } else {
+                // Se não tiver limites customizados, tenta pegar do plano ou define defaults
+                // Como não temos acesso fácil ao plano aqui, vamos deixar como -1 (ilimitado/padrão) ou tentar inferir
+                // Mas o ideal é mostrar o que está valendo.
+                // Vamos deixar zerado ou com valores do plano se possível.
+                // Como tenant.plan é apenas o tipo, precisaríamos buscar o plano no estado global.
+                // Mas o modal não recebe o estado global de planos.
+                // Vamos assumir -1 como "Padrão do Plano" se não estiver definido.
+                setLimitsForm({ maxTables: -1, maxProducts: -1, maxStaff: -1 });
+            }
+
             if (!tenant.allowedFeatures || tenant.allowedFeatures.length === 0) {
                 const autoFeatures: string[] = [];
                 (tenant.allowedModules || ['RESTAURANT']).forEach(mod => {
@@ -218,6 +243,16 @@ export const SaaSEditTenantModal: React.FC<SaaSEditTenantModalProps> = ({ isOpen
          onClose();
     };
 
+    const handleSaveLimits = async () => {
+        if(!tenant) return;
+        dispatch({
+            type: 'UPDATE_TENANT_LIMITS',
+            tenantId: tenant.id,
+            limits: limitsForm
+        });
+        onClose();
+    };
+
     const handleCreateAdmin = () => {
         if(tenant) {
             dispatch({ type: 'CREATE_TENANT_ADMIN', payload: { tenantId: tenant.id, ...adminForm } });
@@ -230,6 +265,7 @@ export const SaaSEditTenantModal: React.FC<SaaSEditTenantModalProps> = ({ isOpen
     const handleMainSave = () => {
         if (tab === 'DETAILS') handleUpdate();
         else if (tab === 'MODULES') handleSaveModules();
+        else if (tab === 'LIMITS') handleSaveLimits();
         else if (tab === 'ADMIN') handleCreateAdmin();
     };
 
@@ -240,6 +276,7 @@ export const SaaSEditTenantModal: React.FC<SaaSEditTenantModalProps> = ({ isOpen
             <div className="flex border-b mb-4 overflow-x-auto">
                 <button onClick={() => setTab('DETAILS')} className={`px-4 py-2 text-sm font-bold border-b-2 transition-colors whitespace-nowrap ${tab === 'DETAILS' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}>Detalhes</button>
                 <button onClick={() => setTab('MODULES')} className={`px-4 py-2 text-sm font-bold border-b-2 transition-colors whitespace-nowrap ${tab === 'MODULES' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}>Módulos & Permissões</button>
+                <button onClick={() => setTab('LIMITS')} className={`px-4 py-2 text-sm font-bold border-b-2 transition-colors whitespace-nowrap ${tab === 'LIMITS' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}>Limites</button>
                 <button onClick={() => setTab('ADMIN')} className={`px-4 py-2 text-sm font-bold border-b-2 transition-colors whitespace-nowrap ${tab === 'ADMIN' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}>Criar Admin</button>
             </div>
 
@@ -249,6 +286,17 @@ export const SaaSEditTenantModal: React.FC<SaaSEditTenantModalProps> = ({ isOpen
                     <div><label className="text-xs font-bold text-gray-500 uppercase">Slug</label><input className="w-full border p-2 rounded" value={editForm.slug} onChange={e => setEditForm({...editForm, slug: e.target.value})} /></div>
                     <div><label className="text-xs font-bold text-gray-500 uppercase">Dono</label><input className="w-full border p-2 rounded" value={editForm.ownerName} onChange={e => setEditForm({...editForm, ownerName: e.target.value})} /></div>
                     <div><label className="text-xs font-bold text-gray-500 uppercase">Email</label><input className="w-full border p-2 rounded" value={editForm.email} onChange={e => setEditForm({...editForm, email: e.target.value})} /></div>
+                </div>
+            )}
+            
+            {tab === 'LIMITS' && (
+                <div className="space-y-4">
+                    <p className="text-sm text-gray-500">Defina limites personalizados para este cliente. Use -1 para ilimitado.</p>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div><label className="text-xs font-bold text-gray-500 uppercase">Max Mesas</label><input type="number" className="w-full border p-2 rounded" value={limitsForm.maxTables} onChange={e => setLimitsForm({...limitsForm, maxTables: parseInt(e.target.value)})} /></div>
+                        <div><label className="text-xs font-bold text-gray-500 uppercase">Max Produtos</label><input type="number" className="w-full border p-2 rounded" value={limitsForm.maxProducts} onChange={e => setLimitsForm({...limitsForm, maxProducts: parseInt(e.target.value)})} /></div>
+                        <div><label className="text-xs font-bold text-gray-500 uppercase">Max Usuários (Staff)</label><input type="number" className="w-full border p-2 rounded" value={limitsForm.maxStaff} onChange={e => setLimitsForm({...limitsForm, maxStaff: parseInt(e.target.value)})} /></div>
+                    </div>
                 </div>
             )}
             
