@@ -11,8 +11,8 @@ import { WaiterProductModal, OpenTableModal, TableActionsModal } from '../compon
 import { Bell, Search, ShoppingCart, ArrowLeft, Utensils, Trash2, Clock, CheckCircle, ChevronUp, ChevronDown, Zap, RefreshCcw, Lock, List, Grid, History, AlertTriangle, PackageX, CheckCheck, Check, Plus, Minus, CreditCard, Banknote } from 'lucide-react';
 import { Modal } from '../components/Modal';
 
-// Som de "Campainha" para Garçom
-const WAITER_SOUND_URL = "https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3";
+// Som de Notificação "Glass Ping" em Base64 (Carregamento Instantâneo)
+const NOTIFICATION_SOUND = "data:audio/mp3;base64,SUQzBAAAAAABAFRYWFQAAAASAAADbWFqb3JfYnJhbmQAbXA0MgBUWFhQAAAAEQAAA21pbm9yX3ZlcnNpb24AMABUWFhQAAAAHAAAA2NvbXBhdGlibGVfYnJhbmRzAGlzb21tcDQyAFRTU0UAAAAPAAADTGF2ZjU3LjU2LjEwMAAAAAAAAAAAAAAA//NExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//NExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//NExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//NExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//NExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//NExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//NExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//NExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//NExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//NExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//NExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//NExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//NExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//NExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//NExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//NExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//NExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//NExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//NExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//NExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//NExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//NExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//NExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//NExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//NExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//NExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//NExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//NExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//NExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//NExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//NExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq";
 
 export const WaiterApp: React.FC = () => {
   const { state: restState } = useRestaurant();
@@ -51,32 +51,42 @@ export const WaiterApp: React.FC = () => {
 
   // Inicializa Áudio
   useEffect(() => {
-      audioRef.current = new Audio(WAITER_SOUND_URL);
+      audioRef.current = new Audio(NOTIFICATION_SOUND);
       audioRef.current.volume = 1.0;
-      audioRef.current.preload = 'auto'; 
   }, []);
 
-  const playSound = () => {
-      if (audioRef.current && orderState.audioUnlocked) {
-          const now = Date.now();
-          if (now - lastSoundTime > 2000) {
+  const playSound = async () => {
+      if (!audioRef.current || !orderState.audioUnlocked) return;
+      
+      const now = Date.now();
+      // Debounce de 3 segundos
+      if (now - lastSoundTime > 3000) {
+          try {
               audioRef.current.currentTime = 0; 
-              audioRef.current.play().catch(e => console.warn("Som bloqueado ou erro:", e));
+              await audioRef.current.play();
               if (navigator.vibrate) navigator.vibrate([300, 100, 300]);
               setLastSoundTime(now);
+              console.log("🔊 Som Garçom Tocado");
+          } catch (e) {
+              console.warn("Autoplay bloqueado. Interaja com a página.", e);
           }
       }
   };
 
   useEffect(() => {
       if (!orderState.audioUnlocked) return;
+      
       const currentCallsCount = pendingCalls.length;
       const currentReadyCount = orderState.orders.reduce((acc, o) => acc + o.items.filter(i => i.status === 'READY').length, 0);
       const currentNewOrdersCount = orderState.orders.filter(o => !o.isPaid && o.status !== 'CANCELLED' && o.items.some(i => i.status === 'PENDING')).length;
 
-      if (currentCallsCount > prevCallsCount.current || currentReadyCount > prevReadyCount.current || currentNewOrdersCount > prevNewOrdersCount.current) {
+      // Dispara se qualquer contagem AUMENTAR
+      if (currentCallsCount > prevCallsCount.current || 
+          currentReadyCount > prevReadyCount.current || 
+          currentNewOrdersCount > prevNewOrdersCount.current) {
           playSound();
       }
+      
       prevCallsCount.current = currentCallsCount;
       prevReadyCount.current = currentReadyCount;
       prevNewOrdersCount.current = currentNewOrdersCount;
@@ -92,6 +102,8 @@ export const WaiterApp: React.FC = () => {
           audioRef.current.play().then(() => { 
               orderDispatch({ type: 'UNLOCK_AUDIO' }); 
           }).catch((e) => {
+              console.error("Falha ao desbloquear áudio:", e);
+              // Força desbloqueio visual mesmo com erro
               orderDispatch({ type: 'UNLOCK_AUDIO' });
           });
       } else {
