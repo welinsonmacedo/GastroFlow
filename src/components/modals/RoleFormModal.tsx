@@ -97,12 +97,29 @@ export const RoleFormModal: React.FC<RoleFormModalProps> = ({ isOpen, onClose, r
     }, [isOpen, roleToEdit]);
 
     const toggleModule = (mod: SystemModule) => {
+        // @ts-ignore
+        const moduleFeatures = PERMISSIONS_SCHEMA[mod]?.features.map((f: any) => f.key) || [];
+
         if (selectedModules.includes(mod)) {
-            setSelectedModules(selectedModules.filter(m => m !== mod));
+            // Desmarcar módulo e remover suas features
+            setSelectedModules(prev => prev.filter(m => m !== mod));
+            setSelectedFeatures(prev => prev.filter(f => !moduleFeatures.includes(f)));
         } else {
-            setSelectedModules([...selectedModules, mod]);
+            // Marcar módulo e adicionar todas as suas features
+            setSelectedModules(prev => [...prev, mod]);
+            
+            setSelectedFeatures(prev => {
+                const newFeatures = [...prev];
+                moduleFeatures.forEach((featKey: string) => {
+                    if (!newFeatures.includes(featKey)) {
+                        newFeatures.push(featKey);
+                    }
+                });
+                return newFeatures;
+            });
+
             if (!expandedModules.includes(mod)) {
-                setExpandedModules([...expandedModules, mod]);
+                setExpandedModules(prev => [...prev, mod]);
             }
         }
     };
