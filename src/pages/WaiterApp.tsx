@@ -325,17 +325,17 @@ export const WaiterApp: React.FC = () => {
                         const hasBufferedOrder = tableOrders.some(o => (new Date().getTime() - new Date(o.timestamp).getTime()) / 60000 < graceMinutes);
 
                         return (
-                            <div key={table.id} onClick={() => { if (hasCall) { setConfirmCallId(call!.id); setCallingTableNumber(table.number); setCallReason(call!.reason || null); } else if (table.status === TableStatus.AVAILABLE) { setSelectedTableForOpen(table.id); } else { setSelectedTableForAction(table.id); }}} className={`p-4 rounded-[2rem] shadow-sm border-4 flex flex-col items-center justify-between min-h-[140px] transition-all cursor-pointer relative active:scale-95 ${hasCall ? 'bg-red-50 border-red-200 text-white animate-pulse shadow-red-500/30' : (table.status === TableStatus.OCCUPIED ? 'bg-white border-blue-500 text-slate-800' : 'bg-gray-100 border-transparent text-slate-400 opacity-60')}`}>
+                            <div key={table.id} onClick={() => { if (hasCall) { setConfirmCallId(call!.id); setCallingTableNumber(table.number); setCallReason(call!.reason || null); } else if (table.status === TableStatus.AVAILABLE) { setSelectedTableForOpen(table.id); } else { setSelectedTableForAction(table.id); }}} className={`p-4 rounded-[2rem] shadow-sm border-4 flex flex-col items-center justify-between min-h-[140px] transition-all cursor-pointer relative active:scale-95 ${hasCall ? 'bg-red-500 border-red-600 text-black animate-pulse shadow-red-500/50' : (table.status === TableStatus.OCCUPIED ? 'bg-white border-blue-500 text-slate-800' : 'bg-gray-100 border-transparent text-slate-400 opacity-60')}`}>
                                 <div className="w-full flex justify-between items-start">
-                                    <span className="text-[10px] font-black uppercase tracking-widest opacity-60">
+                                    <span className="text-[10px] font-black uppercase tracking-widest opacity-80">
                                         {hasCall ? (isBill ? 'PEDINDO CONTA' : 'CHAMANDO!') : (table.status === TableStatus.AVAILABLE ? 'LIVRE' : 'OCUPADA')}
                                     </span>
                                     {table.status === TableStatus.OCCUPIED && (<div className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-lg text-[10px] font-mono font-bold flex items-center gap-1"><Lock size={8}/> {table.accessCode}</div>)}
                                 </div>
-                                <div className={`text-5xl font-black tracking-tighter ${hasCall ? 'text-white' : 'text-slate-900'}`}>{table.number}</div>
+                                <div className={`text-5xl font-black tracking-tighter ${hasCall ? 'text-black' : 'text-slate-900'}`}>{table.number}</div>
                                 {hasCall && (
                                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-bounce">
-                                        {isBill ? <CreditCard size={32} color="white" /> : <Bell size={28} fill="white" />}
+                                        {isBill ? <CreditCard size={32} color="black" /> : <Bell size={28} fill="black" color="black" />}
                                     </div>
                                 )}
                                 {hasBufferedOrder && !hasCall && <div className="absolute top-4 right-4 text-blue-500 animate-spin"><Clock size={20} /></div>}
