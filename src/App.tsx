@@ -16,7 +16,7 @@ import { AdminDashboard } from './pages/AdminDashboard';
 import { FinanceDashboard } from './pages/FinanceDashboard'; 
 import { SettingsDashboard } from './pages/SettingsDashboard';
 import { RestaurantDashboard } from './pages/RestaurantDashboard';
-import { CommerceDashboard } from './pages/CommerceDashboard'; 
+
 import { InventoryDashboard } from './pages/InventoryDashboard';
 import { StaffDashboard } from './pages/StaffDashboard'; 
 import { SuperAdminDashboard } from './pages/SuperAdminDashboard';
@@ -129,7 +129,7 @@ const TenantApp = () => {
                         <Route path="/time-clock" element={<ProtectedRestaurantRoute requiredRoute="/time-clock" requiredFeature="allowHR"><TimeClock /></ProtectedRestaurantRoute>} />
                         
                         <Route path="/restaurant/*" element={<ProtectedRestaurantRoute requiredRoute="/restaurant"><RestaurantDashboard /></ProtectedRestaurantRoute>} />
-                        <Route path="/commerce/*" element={<ProtectedRestaurantRoute requiredRoute="/commerce"><CommerceDashboard /></ProtectedRestaurantRoute>} />
+                        
                         <Route path="/inventory/*" element={<ProtectedRestaurantRoute requiredRoute="/inventory" requiredFeature="allowInventory"><InventoryDashboard /></ProtectedRestaurantRoute>} />
                         <Route path="/rh/*" element={<ProtectedRestaurantRoute requiredRoute="/rh" requiredFeature="allowHR"><StaffDashboard /></ProtectedRestaurantRoute>} />
 
