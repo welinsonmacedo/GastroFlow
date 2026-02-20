@@ -6,7 +6,7 @@ import { useRestaurant } from '../context/RestaurantContext';
 import { useAuth } from '../context/AuthProvider';
 import { 
     LayoutDashboard, Utensils, QrCode, Activity,
-    LogOut, Grid, ChefHat
+    LogOut, Grid, ChefHat, BookOpen
 } from 'lucide-react';
 
 // Importando Sub-páginas
@@ -78,6 +78,13 @@ export const AdminDashboard: React.FC = () => {
                     </div>
 
                     <div className="flex items-center gap-3">
+                        <Link 
+                            to="/manual"
+                            target="_blank"
+                            className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider bg-blue-500/10 text-blue-400 hover:bg-blue-500 hover:text-white transition-colors border border-blue-500/20 hover:border-blue-500"
+                        >
+                            <BookOpen size={16} /> Ajuda
+                        </Link>
                         <button 
                             onClick={handleExitToModules}
                             className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider bg-slate-800 hover:bg-slate-700 transition-colors border border-slate-700"

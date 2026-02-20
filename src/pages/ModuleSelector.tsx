@@ -69,8 +69,7 @@ export const ModuleSelector: React.FC = () => {
     };
 
     const handleSupport = () => {
-        const message = encodeURIComponent(`Olá! Sou do restaurante ${tenantName} e preciso de ajuda com o sistema.`);
-        window.open(`https://wa.me/5534991448794?text=${message}`, '_blank');
+        navigate('/manual');
     };
 
     return (

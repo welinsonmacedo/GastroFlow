@@ -7,7 +7,9 @@ import {
   ArrowRight, CheckCircle, Bell, QrCode, 
   Monitor, Smartphone, Play, Check, AlertTriangle,
   ArrowLeft, BookOpen, Users, LayoutDashboard,
-  Package, FileText, TrendingUp, Truck, Lock, Calculator, Layers
+  Package, FileText, TrendingUp, Truck, Lock, Calculator, Layers,
+  HelpCircle, MessageCircle, WifiOff, Printer, UserCheck, CreditCard,
+  Utensils, RefreshCw, ShieldCheck, MousePointerClick
 } from 'lucide-react';
 
 const RoleCard = ({ icon, title, color, active, onClick }: any) => (
@@ -47,7 +49,17 @@ const Step = ({ number, title, desc, icon }: any) => (
   </div>
 );
 
-type ManualTab = 'WAITER' | 'KITCHEN' | 'CASHIER' | 'INVENTORY' | 'FINANCE' | 'ADMIN';
+const FaqItem = ({ question, answer }: any) => (
+  <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm mb-4">
+    <h4 className="font-bold text-slate-800 mb-2 flex items-center gap-2">
+      <HelpCircle size={18} className="text-blue-500" />
+      {question}
+    </h4>
+    <p className="text-slate-600 text-sm leading-relaxed pl-7">{answer}</p>
+  </div>
+);
+
+type ManualTab = 'WAITER' | 'KITCHEN' | 'CASHIER' | 'INVENTORY' | 'FINANCE' | 'ADMIN' | 'CLIENT' | 'SUPPORT';
 
 export const ManualPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<ManualTab>('WAITER');
@@ -55,7 +67,7 @@ export const ManualPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row font-sans">
       {/* Sidebar Navigation */}
-      <aside className="w-full md:w-72 bg-white border-r border-slate-200 p-4 flex-shrink-0 h-auto md:h-screen overflow-y-auto sticky top-0 z-20">
+      <aside className="w-full md:w-72 bg-white border-r border-slate-200 p-4 flex-shrink-0 h-auto md:h-screen overflow-y-auto sticky top-0 z-20 custom-scrollbar">
         <div className="flex items-center gap-2 mb-6 text-blue-700 font-extrabold text-xl px-2">
           <Link to="/login" className="p-2 hover:bg-blue-50 rounded-full transition-colors mr-1 -ml-2">
             <ArrowLeft size={20} />
@@ -115,6 +127,24 @@ export const ManualPage: React.FC = () => {
             active={activeTab === 'ADMIN'} 
             onClick={() => setActiveTab('ADMIN')}
           />
+
+          <div className="text-[10px] font-bold text-slate-400 uppercase mb-2 mt-4 ml-2 tracking-wider">Cliente & Ajuda</div>
+
+          <RoleCard 
+            icon={<Smartphone size={18} />} 
+            title="App do Cliente" 
+            color="pink" 
+            active={activeTab === 'CLIENT'} 
+            onClick={() => setActiveTab('CLIENT')}
+          />
+
+          <RoleCard 
+            icon={<HelpCircle size={18} />} 
+            title="Suporte & FAQ" 
+            color="slate" 
+            active={activeTab === 'SUPPORT'} 
+            onClick={() => setActiveTab('SUPPORT')}
+          />
         </div>
       </aside>
 
@@ -161,6 +191,13 @@ export const ManualPage: React.FC = () => {
               desc="Se um cliente solicitar ajuda pelo app dele, a mesa ficará VERMELHA e pulsando no seu painel com um alerta sonoro. Toque na mesa para confirmar o atendimento."
               icon={<AlertTriangle className="text-red-500" />}
             />
+
+            <Step 
+              number="5"
+              title="Transferência e Junção"
+              desc="Para juntar mesas ou trocar clientes de lugar, use a opção 'Ações da Mesa' > 'Transferir'. Selecione a mesa de destino. Todos os pedidos serão movidos."
+              icon={<RefreshCw className="text-purple-500" />}
+            />
           </div>
         )}
 
@@ -196,6 +233,13 @@ export const ManualPage: React.FC = () => {
               title="Monitoramento de Tempo"
               desc="Cada cartão possui um cronômetro. Se um pedido demorar muito (ex: > 20min), o cartão ficará vermelho para alertar a equipe sobre o atraso."
               icon={<Calculator size={20} />}
+            />
+
+            <Step 
+              number="4"
+              title="Histórico de Produção"
+              desc="Clicando no ícone de Histórico no topo da tela, você pode ver os últimos pratos finalizados e, se necessário, retorná-los para a produção em caso de erro."
+              icon={<RefreshCw size={20} />}
             />
           </div>
         )}
@@ -239,6 +283,13 @@ export const ManualPage: React.FC = () => {
               title="Sangria e Fechamento"
               desc="Use a aba 'Gestão' para registrar Sangrias (retirada de dinheiro da gaveta). Ao fim do dia, faça o 'Fechar Caixa', informando o valor contado. O sistema mostrará as sobras ou faltas."
               icon={<LayoutDashboard size={20} />}
+            />
+
+            <Step 
+              number="5"
+              title="Delivery"
+              desc="Na aba 'Delivery', você gerencia pedidos que chegam por telefone ou iFood (se integrado). Cadastre o cliente, lance o pedido e acompanhe o status até a entrega."
+              icon={<Truck size={20} />}
             />
           </div>
         )}
@@ -371,6 +422,104 @@ export const ManualPage: React.FC = () => {
               desc="Insira sua logomarca, altere as cores do sistema para combinar com sua marca e escolha o layout do cardápio (Lista ou Grade com fotos grandes)."
               icon={<Settings size={20} />}
             />
+          </div>
+        )}
+
+        {/* --- CLIENT APP SECTION --- */}
+        {activeTab === 'CLIENT' && (
+          <div className="max-w-3xl mx-auto animate-fade-in pb-10">
+            <header className="mb-10 border-b pb-6">
+              <div className="inline-flex items-center gap-2 bg-pink-100 text-pink-700 px-3 py-1 rounded-full text-xs font-bold uppercase mb-4">
+                <Smartphone size={14} /> Experiência
+              </div>
+              <h1 className="text-4xl font-bold text-slate-900 mb-2">App do Cliente</h1>
+              <p className="text-lg text-slate-500">
+                Como seu cliente interage com o cardápio digital na mesa.
+              </p>
+            </header>
+
+            <Step 
+              number="1"
+              title="Acesso via QR Code"
+              desc="O cliente aponta a câmera do celular para o QR Code da mesa. Não é necessário baixar nenhum aplicativo. O cardápio abre instantaneamente no navegador."
+              icon={<QrCode size={20} />}
+            />
+
+            <Step 
+              number="2"
+              title="Navegação e Pedido"
+              desc="O cliente navega pelas categorias, vê fotos e descrições. Ao adicionar um item, ele pode personalizar (ex: ponto da carne, adicionais). O carrinho permite revisar antes de confirmar."
+              icon={<MousePointerClick size={20} />}
+            />
+
+            <Step 
+              number="3"
+              title="Autenticação de Segurança"
+              desc="Para evitar pedidos falsos, o sistema pode pedir o 'Código da Mesa' (4 dígitos) que o garçom fornece ao abrir a mesa. Isso garante que apenas quem está na mesa faça pedidos."
+              icon={<ShieldCheck size={20} />}
+            />
+
+            <Step 
+              number="4"
+              title="Chamar Garçom e Conta"
+              desc="Botões dedicados permitem chamar o garçom ou pedir a conta diretamente pelo celular, agilizando o atendimento e reduzindo filas no caixa."
+              icon={<Bell size={20} />}
+            />
+          </div>
+        )}
+
+        {/* --- SUPPORT SECTION --- */}
+        {activeTab === 'SUPPORT' && (
+          <div className="max-w-3xl mx-auto animate-fade-in pb-10">
+            <header className="mb-10 border-b pb-6">
+              <div className="inline-flex items-center gap-2 bg-slate-100 text-slate-700 px-3 py-1 rounded-full text-xs font-bold uppercase mb-4">
+                <HelpCircle size={14} /> Ajuda
+              </div>
+              <h1 className="text-4xl font-bold text-slate-900 mb-2">Suporte & FAQ</h1>
+              <p className="text-lg text-slate-500">
+                Respostas para problemas comuns e canais de atendimento.
+              </p>
+            </header>
+
+            <div className="mb-8">
+              <h3 className="text-xl font-bold text-slate-800 mb-4">Perguntas Frequentes</h3>
+              
+              <FaqItem 
+                question="O sistema funciona sem internet?"
+                answer="O Flux Eat é um sistema em nuvem e requer conexão com a internet para sincronizar pedidos entre Garçom, Cozinha e Caixa. Se a internet cair, você não conseguirá lançar novos pedidos até que ela retorne."
+              />
+
+              <FaqItem 
+                question="Como reimprimir um QR Code de mesa?"
+                answer="Vá em Admin > Mesas. Encontre a mesa desejada e clique no ícone de QR Code. Você pode imprimir apenas aquele ou gerar um PDF com todas as mesas."
+              />
+
+              <FaqItem 
+                question="Esqueci minha senha de Admin. O que fazer?"
+                answer="Na tela de login, clique em 'Recuperar Senha'. Um link de redefinição será enviado para o e-mail cadastrado do proprietário."
+              />
+
+              <FaqItem 
+                question="O som de notificação não toca."
+                answer="Verifique se o volume do dispositivo está alto e se o navegador tem permissão para reproduzir som. Em alguns navegadores, é necessário interagir com a página (clicar em algo) pelo menos uma vez para liberar o áudio."
+              />
+            </div>
+
+            <div className="bg-blue-50 p-6 rounded-2xl border border-blue-100">
+              <h3 className="text-lg font-bold text-blue-900 mb-2">Precisa de ajuda técnica?</h3>
+              <p className="text-blue-700 mb-4 text-sm">Nossa equipe de suporte está disponível para resolver problemas críticos.</p>
+              
+              <div className="flex flex-col gap-3">
+                <a href="#" className="flex items-center gap-3 bg-white p-3 rounded-lg border border-blue-100 text-blue-800 hover:shadow-md transition-all">
+                  <div className="bg-blue-100 p-2 rounded-full"><MessageCircle size={18} /></div>
+                  <span className="font-medium">Chat Online (WhatsApp)</span>
+                </a>
+                <a href="mailto:suporte@fluxeat.com" className="flex items-center gap-3 bg-white p-3 rounded-lg border border-blue-100 text-blue-800 hover:shadow-md transition-all">
+                  <div className="bg-blue-100 p-2 rounded-full"><HelpCircle size={18} /></div>
+                  <span className="font-medium">suporte@fluxeat.com</span>
+                </a>
+              </div>
+            </div>
           </div>
         )}
 

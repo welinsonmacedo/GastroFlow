@@ -115,7 +115,17 @@ export const Login: React.FC = () => {
             {error && <div className="text-red-500 text-sm">{error}</div>}
             <Button type="submit" disabled={loading} className="w-full py-3">{loading ? <Loader2 className="animate-spin mx-auto"/> : 'Entrar'}</Button>
             <div className="text-center pt-4 border-t">
-                {!isRegistering && <button type="button" onClick={() => setIsRegistering(true)} className="text-blue-600 text-sm hover:underline">Primeiro Acesso?</button>}
+                {!isRegistering && (
+                    <div className="flex flex-col gap-3">
+                        <button type="button" onClick={() => setIsRegistering(true)} className="text-blue-600 text-sm hover:underline">Primeiro Acesso?</button>
+                        <Link to="/manual" className="text-slate-500 text-xs hover:text-slate-700 flex items-center justify-center gap-1 transition-colors">
+                            <BookOpen size={14} /> Manual do Sistema & Ajuda
+                        </Link>
+                    </div>
+                )}
+                {isRegistering && (
+                    <button type="button" onClick={() => setIsRegistering(false)} className="text-slate-500 text-sm hover:underline">Voltar para Login</button>
+                )}
             </div>
         </form>
       </div>
