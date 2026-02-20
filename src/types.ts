@@ -252,6 +252,7 @@ export interface Plan {
 export interface TimeClockConfig {
     validationType: 'GEOLOCATION' | 'NONE';
     maxDistanceMeters?: number;
+    maxDailyPunches?: number;
     restaurantLocation?: {
         lat: number;
         lng: number;

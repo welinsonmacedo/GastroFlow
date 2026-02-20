@@ -64,21 +64,14 @@ export const TimeClock: React.FC = () => {
         setLoading(true);
         setLocationError('');
 
-        const config = restState.businessInfo?.timeClock || { validationType: 'NONE', maxDistanceMeters: 100 };
+        const config = restState.businessInfo?.timeClock || { validationType: 'NONE', maxDistanceMeters: 100, maxDailyPunches: 4 };
 
         // Validação 1: Limite de 4 pontos (Se NONE)
         if (config.validationType === 'NONE') {
-            // Conta quantos registros HOJE
-            // Como o sistema atual parece criar um 'TimeEntry' por dia e atualiza os campos,
-            // precisamos ver se já preencheu os 4 campos principais.
-            // Se o sistema suportasse múltiplos TimeEntries por dia, contaríamos o array.
-            // Mas baseado na interface TimeEntry: clockIn, breakStart, breakEnd, clockOut.
-            // Isso já limita naturalmente a 4 ações por dia por entrada.
-            // Se o usuário tentar bater ponto e já tiver clockOut, o sistema já deve bloquear ou criar novo dia?
-            // Assumindo que o backend/contexto gerencia isso, vamos verificar se já está finalizado.
-            
+            // O fluxo padrão já limita a 4 batidas (Entrada, Pausa, Volta, Saída)
+            // Se já tiver saída, bloqueia
             if (todaysEntry?.clockOut) {
-                setLocationError("Limite diário de registros atingido (4 pontos).");
+                setLocationError(`Limite diário de registros atingido (${config.maxDailyPunches || 4} pontos).`);
                 setLoading(false);
                 return;
             }

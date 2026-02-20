@@ -1,10 +1,13 @@
 
 import React, { useEffect, useState } from 'react';
 import { Download, X } from 'lucide-react';
+// @ts-ignore
+import { useLocation } from 'react-router-dom';
 
 export const InstallPWA: React.FC = () => {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isVisible, setIsVisible] = useState(false);
+  const location = useLocation();
 
   useEffect(() => {
     const handler = (e: any) => {
@@ -12,8 +15,11 @@ export const InstallPWA: React.FC = () => {
       e.preventDefault();
       // Salva o evento para disparar depois
       setDeferredPrompt(e);
-      // Mostra o botão customizado
-      setIsVisible(true);
+      
+      // Só mostra se NÃO estiver na Landing Page
+      if (location.pathname !== '/') {
+          setIsVisible(true);
+      }
     };
 
     window.addEventListener('beforeinstallprompt', handler);
@@ -21,7 +27,7 @@ export const InstallPWA: React.FC = () => {
     return () => {
       window.removeEventListener('beforeinstallprompt', handler);
     };
-  }, []);
+  }, [location.pathname]);
 
   const handleInstallClick = async () => {
     if (!deferredPrompt) return;

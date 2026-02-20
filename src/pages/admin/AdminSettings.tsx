@@ -23,7 +23,7 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ view = 'BUSINESS' 
       paymentMethods: [],
       expenseCategories: [],
       taxRegime: 'SIMPLES_NACIONAL',
-      timeClock: { validationType: 'NONE', maxDistanceMeters: 100 },
+      timeClock: { validationType: 'NONE', maxDailyPunches: 4, maxDistanceMeters: 100, restaurantLocation: { lat: 0, lng: 0 } },
       ...state.businessInfo
   });
   const [loadingCep, setLoadingCep] = useState(false);
@@ -461,6 +461,107 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ view = 'BUSINESS' 
                                 </div>
                             ))}
                         </div>
+                    </div>
+                </div>
+            )}
+            {/* --- TIME_CLOCK VIEW --- */}
+            {view === 'TIME_CLOCK' && (
+                <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-200">
+                    <div className="flex items-start gap-4 mb-6">
+                        <div className="bg-purple-50 p-3 rounded-2xl text-purple-600"><Clock size={32} /></div>
+                        <div>
+                            <h2 className="text-xl font-bold text-gray-800">Configuração de Ponto</h2>
+                            <p className="text-sm text-gray-500 leading-relaxed">Defina as regras para registro de ponto dos colaboradores.</p>
+                        </div>
+                    </div>
+
+                    <div className="space-y-6">
+                        <div>
+                            <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-2">Tipo de Validação</label>
+                            <select 
+                                className="w-full border-2 border-gray-200 p-3 rounded-xl focus:border-purple-500 outline-none font-bold text-gray-700"
+                                value={businessForm.timeClock?.validationType || 'NONE'}
+                                onChange={e => setBusinessForm({...businessForm, timeClock: {...businessForm.timeClock, validationType: e.target.value as any}})}
+                            >
+                                <option value="NONE">Sem Validação (Apenas Registro)</option>
+                                <option value="GEOLOCATION">Geolocalização (GPS)</option>
+                            </select>
+                        </div>
+
+                        {businessForm.timeClock?.validationType === 'GEOLOCATION' && (
+                            <div className="bg-purple-50 p-6 rounded-xl border border-purple-100 space-y-4 animate-fade-in">
+                                <h3 className="font-bold text-purple-800 flex items-center gap-2"><MapPin size={18}/> Configuração de Local</h3>
+                                
+                                <div>
+                                    <label className="block text-xs font-bold text-purple-700 mb-1">Raio Máximo (Metros)</label>
+                                    <input 
+                                        type="number" 
+                                        className="w-full border p-3 rounded-lg" 
+                                        value={businessForm.timeClock?.maxDistanceMeters || 100} 
+                                        onChange={e => setBusinessForm({...businessForm, timeClock: {...businessForm.timeClock, maxDistanceMeters: parseInt(e.target.value)}})} 
+                                    />
+                                    <p className="text-[10px] text-purple-600 mt-1">Distância máxima permitida entre o colaborador e o restaurante.</p>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-xs font-bold text-purple-700 mb-1">Latitude</label>
+                                        <input 
+                                            type="number" 
+                                            step="any"
+                                            className="w-full border p-3 rounded-lg" 
+                                            value={businessForm.timeClock?.restaurantLocation?.lat || 0} 
+                                            onChange={e => setBusinessForm({...businessForm, timeClock: {...businessForm.timeClock, restaurantLocation: {...businessForm.timeClock?.restaurantLocation, lat: parseFloat(e.target.value)}}})} 
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-purple-700 mb-1">Longitude</label>
+                                        <input 
+                                            type="number" 
+                                            step="any"
+                                            className="w-full border p-3 rounded-lg" 
+                                            value={businessForm.timeClock?.restaurantLocation?.lng || 0} 
+                                            onChange={e => setBusinessForm({...businessForm, timeClock: {...businessForm.timeClock, restaurantLocation: {...businessForm.timeClock?.restaurantLocation, lng: parseFloat(e.target.value)}}})} 
+                                        />
+                                    </div>
+                                </div>
+                                <Button 
+                                    type="button" 
+                                    variant="outline" 
+                                    className="w-full border-purple-200 text-purple-700 hover:bg-purple-100"
+                                    onClick={() => {
+                                        navigator.geolocation.getCurrentPosition(
+                                            (pos) => {
+                                                setBusinessForm({
+                                                    ...businessForm, 
+                                                    timeClock: {
+                                                        ...businessForm.timeClock, 
+                                                        restaurantLocation: { lat: pos.coords.latitude, lng: pos.coords.longitude }
+                                                    }
+                                                });
+                                                showAlert({ title: "Localização Obtida", message: "Coordenadas atualizadas com sua posição atual.", type: 'SUCCESS' });
+                                            },
+                                            (err) => showAlert({ title: "Erro", message: "Não foi possível obter sua localização.", type: 'ERROR' })
+                                        );
+                                    }}
+                                >
+                                    <MapPin size={16} className="mr-2"/> Usar Minha Localização Atual
+                                </Button>
+                            </div>
+                        )}
+
+                        {businessForm.timeClock?.validationType === 'NONE' && (
+                            <div className="bg-gray-50 p-6 rounded-xl border border-gray-200 animate-fade-in">
+                                <label className="block text-xs font-bold text-gray-600 mb-1">Limite Diário de Registros</label>
+                                <input 
+                                    type="number" 
+                                    className="w-full border p-3 rounded-lg" 
+                                    value={businessForm.timeClock?.maxDailyPunches || 4} 
+                                    onChange={e => setBusinessForm({...businessForm, timeClock: {...businessForm.timeClock, maxDailyPunches: parseInt(e.target.value)}})} 
+                                />
+                                <p className="text-[10px] text-gray-500 mt-1">Número máximo de batidas permitidas por dia (Padrão: 4 = Entrada, Saída Almoço, Volta Almoço, Saída).</p>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
