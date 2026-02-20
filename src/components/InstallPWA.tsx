@@ -23,7 +23,7 @@ export const InstallPWA: React.FC = () => {
   }, []);
 
   useEffect(() => {
-      if (deferredPrompt && location.pathname !== '/') {
+      if (deferredPrompt) {
           setIsVisible(true);
       } else {
           setIsVisible(false);

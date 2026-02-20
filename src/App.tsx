@@ -174,7 +174,7 @@ const App: React.FC = () => {
                     ) : (
                         <SaaSProvider>
                             <Routes>
-                                <Route path="/" element={<LandingPage />} />
+                                <Route path="/" element={<Navigate to="/login-owner" replace />} />
                                 <Route path="/register" element={<RegisterRestaurant />} />
                                 <Route path="/login-owner" element={<OwnerLogin />} />
                                 <Route path="/privacy" element={<PrivacyPolicy />} />

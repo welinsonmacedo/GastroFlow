@@ -29,9 +29,11 @@ export const PwaGuard: React.FC<{ children: React.ReactNode }> = ({ children }) 
     }
   }, []);
 
-  // Rotas permitidas no navegador (Landing Page, Cardápio, Documentos Legais)
+  // Rotas permitidas no navegador (Login, Cardápio, Documentos Legais)
   const isPublicRoute = 
     location.pathname === '/' || 
+    location.pathname === '/login-owner' ||
+    location.pathname === '/register' ||
     location.pathname.startsWith('/client/') || 
     location.pathname === '/privacy' || 
     location.pathname === '/terms';
