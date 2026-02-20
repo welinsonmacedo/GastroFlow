@@ -51,6 +51,13 @@ export const ModuleSelector: React.FC = () => {
     const tenantName = state.theme.restaurantName;
     const { planLimits } = state;
 
+    const isModuleAllowed = (module: SystemModule) => {
+        // Se for ADMIN (Role.ADMIN), vê tudo que o restaurante tem permitido
+        if (authState.currentUser?.role === 'ADMIN') return true;
+        // Se não, verifica se o módulo está nas rotas permitidas do usuário
+        return authState.currentUser?.allowedRoutes?.includes(module);
+    };
+
     const handleSelect = (module: SystemModule) => {
         setActiveModule(module);
         
@@ -116,31 +123,31 @@ export const ModuleSelector: React.FC = () => {
                          <ModuleCard type="TIME_CLOCK" title="Bater Ponto" desc="Registro de entrada, saída e intervalos." icon={Clock} colorClass="text-cyan-400" onClick={handleTimeClock} />
                     )}
                     
-                    {allowed.includes('RESTAURANT') && (
+                    {allowed.includes('RESTAURANT') && isModuleAllowed('RESTAURANT') && (
                         <ModuleCard type="RESTAURANT" title="Restaurante" desc="Salão, Mesas, KDS e Caixa Gastronômico." icon={ChefHat} colorClass="text-blue-600" onClick={() => handleSelect('RESTAURANT')} />
                     )}
-                    {allowed.includes('SNACKBAR') && (
+                    {allowed.includes('SNACKBAR') && isModuleAllowed('SNACKBAR') && (
                         <ModuleCard type="SNACKBAR" title="Lanchonete" desc="Fluxo Rápido: Caixa, Senha e Entrega." icon={Coffee} colorClass="text-orange-500" onClick={() => handleSelect('SNACKBAR')} />
                     )}
-                    {(allowed.includes('COMMERCE') || authState.currentUser?.role === 'ADMIN') && (
+                    {(allowed.includes('COMMERCE') || authState.currentUser?.role === 'ADMIN') && isModuleAllowed('COMMERCE') && (
                         <ModuleCard type="COMMERCE" title="Varejo" desc="PDV Rápido, Leitor de Código e Venda Balcão." icon={Store} colorClass="text-indigo-500" onClick={() => handleSelect('COMMERCE')} />
                     )}
-                    {allowed.includes('DISTRIBUTOR') && (
+                    {allowed.includes('DISTRIBUTOR') && isModuleAllowed('DISTRIBUTOR') && (
                         <ModuleCard type="DISTRIBUTOR" title="Distribuidora" desc="Venda Atacado, Rotas e Estoque de Grade." icon={Truck} colorClass="text-cyan-600" onClick={() => handleSelect('DISTRIBUTOR')} />
                     )}
-                    {(allowed.includes('MANAGER') || authState.currentUser?.role === 'ADMIN') && (
+                    {(allowed.includes('MANAGER') || authState.currentUser?.role === 'ADMIN') && isModuleAllowed('MANAGER') && (
                         <ModuleCard type="MANAGER" title="Gestor" desc="Backoffice Operacional. Cardápio e Mesas." icon={Briefcase} colorClass="text-purple-500" onClick={() => handleSelect('MANAGER')} />
                     )}
-                    {(allowed.includes('INVENTORY') || authState.currentUser?.role === 'ADMIN') && (
+                    {(allowed.includes('INVENTORY') || authState.currentUser?.role === 'ADMIN') && isModuleAllowed('INVENTORY') && (
                         <ModuleCard type="INVENTORY" title="Estoque" desc="Insumos, Compras e Fichas Técnicas." icon={Package} colorClass="text-orange-500" onClick={() => handleSelect('INVENTORY')} />
                     )}
-                    {(allowed.includes('HR') || authState.currentUser?.role === 'ADMIN') && (
+                    {(allowed.includes('HR') || authState.currentUser?.role === 'ADMIN') && isModuleAllowed('HR') && (
                         <ModuleCard type="HR" title="RH & Equipe" desc="Gestão de Ponto, Escalas e Pré-Folha." icon={Users} colorClass="text-pink-500" onClick={() => handleSelect('HR')} />
                     )}
-                    {(allowed.includes('FINANCE') || authState.currentUser?.role === 'ADMIN') && (
+                    {(allowed.includes('FINANCE') || authState.currentUser?.role === 'ADMIN') && isModuleAllowed('FINANCE') && (
                         <ModuleCard type="FINANCE" title="Financeiro" desc="Fluxo de Caixa, DRE e BI." icon={DollarSign} colorClass="text-emerald-500" onClick={() => handleSelect('FINANCE')} />
                     )}
-                    {(allowed.includes('CONFIG') || authState.currentUser?.role === 'ADMIN') && (
+                    {(allowed.includes('CONFIG') || authState.currentUser?.role === 'ADMIN') && isModuleAllowed('CONFIG') && (
                         <ModuleCard type="CONFIG" title="Configurações" desc="Dados da empresa e segurança." icon={Settings} colorClass="text-gray-500" onClick={() => handleSelect('CONFIG')} />
                     )}
 

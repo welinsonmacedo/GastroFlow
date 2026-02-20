@@ -70,20 +70,52 @@ export const Login: React.FC = () => {
           // Busca staff e tenant
           const { data: tenantRef } = await supabase.from('tenants').select('id').eq('slug', currentSlug).single();
           if(tenantRef) {
-              let { data: staffData } = await supabase.from('staff').select('*').eq('auth_user_id', userId).eq('tenant_id', tenantRef.id).maybeSingle();
+              let { data: staffData } = await supabase
+                .from('staff')
+                .select('*, custom_roles(permissions)')
+                .eq('auth_user_id', userId)
+                .eq('tenant_id', tenantRef.id)
+                .maybeSingle();
               
               if (!staffData && userEmail) {
-                   const { data: staffByEmail } = await supabase.from('staff').select('*').eq('tenant_id', tenantRef.id).eq('email', userEmail).is('auth_user_id', null).maybeSingle();
+                   const { data: staffByEmail } = await supabase
+                    .from('staff')
+                    .select('*, custom_roles(permissions)')
+                    .eq('tenant_id', tenantRef.id)
+                    .eq('email', userEmail)
+                    .is('auth_user_id', null)
+                    .maybeSingle();
+
                    if (staffByEmail) {
-                       const { data: updatedStaff } = await supabase.from('staff').update({ auth_user_id: userId }).eq('id', staffByEmail.id).select().single();
+                       const { data: updatedStaff } = await supabase
+                        .from('staff')
+                        .update({ auth_user_id: userId })
+                        .eq('id', staffByEmail.id)
+                        .select('*, custom_roles(permissions)')
+                        .single();
                        if (updatedStaff) staffData = updatedStaff;
                    }
               }
 
               if (staffData) {
+                  let allowedRoutes = staffData.allowed_routes || [];
+                  
+                  if (staffData.custom_roles?.permissions?.allowed_modules) {
+                      allowedRoutes = staffData.custom_roles.permissions.allowed_modules;
+                  } else if (staffData.role === 'ADMIN') {
+                      allowedRoutes = ['RESTAURANT', 'SNACKBAR', 'DISTRIBUTOR', 'COMMERCE', 'MANAGER', 'CONFIG', 'FINANCE', 'INVENTORY', 'HR'];
+                  } else if (!staffData.custom_role_id && allowedRoutes.length === 0) {
+                      if (['WAITER', 'KITCHEN', 'CASHIER'].includes(staffData.role)) {
+                          allowedRoutes = ['RESTAURANT'];
+                          if (staffData.role === 'CASHIER') allowedRoutes.push('COMMERCE');
+                      }
+                  }
+
                   login({
                       id: staffData.id, name: staffData.name, role: staffData.role,
-                      email: staffData.email, auth_user_id: staffData.auth_user_id, allowedRoutes: staffData.allowed_routes || []
+                      email: staffData.email, auth_user_id: staffData.auth_user_id, 
+                      customRoleId: staffData.custom_role_id,
+                      allowedRoutes: allowedRoutes
                   });
                   return;
               }

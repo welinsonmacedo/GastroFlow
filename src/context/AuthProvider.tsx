@@ -87,19 +87,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             if (tenant) {
                 const { data: staffData } = await supabase
                     .from('staff')
-                    .select('*')
+                    .select('*, custom_roles(permissions)')
                     .eq('auth_user_id', session.user.id)
                     .eq('tenant_id', tenant.id)
                     .maybeSingle();
 
                 if (staffData) {
+                    let allowedRoutes = staffData.allowed_routes || [];
+                    
+                    // Se tiver cargo personalizado, sobrepõe com as permissões do cargo
+                    if (staffData.custom_roles?.permissions?.allowed_modules) {
+                        allowedRoutes = staffData.custom_roles.permissions.allowed_modules;
+                    } else if (staffData.role === 'ADMIN') {
+                        // Admin vê tudo por padrão se não tiver restrição explícita
+                        allowedRoutes = ['RESTAURANT', 'SNACKBAR', 'DISTRIBUTOR', 'COMMERCE', 'MANAGER', 'CONFIG', 'FINANCE', 'INVENTORY', 'HR'];
+                    } else if (!staffData.custom_role_id && allowedRoutes.length === 0) {
+                        // Defaults para cargos padrão se não houver rotas definidas
+                        if (['WAITER', 'KITCHEN', 'CASHIER'].includes(staffData.role)) {
+                            allowedRoutes = ['RESTAURANT'];
+                            if (staffData.role === 'CASHIER') allowedRoutes.push('COMMERCE');
+                        }
+                    }
+
                     const user: User = {
                         id: staffData.id,
                         name: staffData.name,
                         role: staffData.role,
                         auth_user_id: staffData.auth_user_id,
                         email: staffData.email,
-                        allowedRoutes: staffData.allowed_routes || []
+                        customRoleId: staffData.custom_role_id,
+                        allowedRoutes: allowedRoutes
                     };
                     setState({ currentUser: user, isAuthenticated: true, isLoading: false });
                     startHeartbeat(tenant.id, staffData.id);
