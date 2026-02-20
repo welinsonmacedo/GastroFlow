@@ -45,9 +45,7 @@ export const FinanceDashboard: React.FC = () => {
       // 3. Permissões do Usuário (Cargos Personalizados)
       if (authState.currentUser?.role !== 'ADMIN' && authState.currentUser?.customRoleId) {
           const userFeatures = authState.currentUser.allowedFeatures || [];
-          if (userFeatures.length > 0) {
-              if (!userFeatures.includes(tab.featureKey)) return false;
-          }
+          if (!userFeatures.includes(tab.featureKey)) return false;
       }
 
       return true;

@@ -85,10 +85,12 @@ export const CommerceDashboard: React.FC = () => {
       // 3. Permissões do Usuário (Cargos Personalizados)
       if (authState.currentUser?.role !== 'ADMIN' && authState.currentUser?.customRoleId) {
           const userFeatures = authState.currentUser.allowedFeatures || [];
-          if (userFeatures.length > 0) {
-              const hasUserFeature = tab.featureKeys.some(key => userFeatures.includes(key));
-              if (!hasUserFeature) return false;
-          }
+          const hasUserFeature = tab.featureKeys.some(key => userFeatures.includes(key));
+          if (!hasUserFeature) return false;
+          
+          // Se o usuário tem um cargo personalizado e a feature está permitida, 
+          // ignoramos o check de Role fixo abaixo.
+          return true;
       }
       
       // 4. Permissão Usuário (Role)
