@@ -22,13 +22,13 @@ export const InventoryDashboard: React.FC = () => {
 
   // Definição das Abas do Módulo Estoque
   const tabs = [
-    { path: '/inventory', label: 'Itens', icon: Package, exact: true, featureKey: 'inventory_manage' },
-    { path: '/inventory/new', label: 'Novo Item', icon: PlusCircle, featureKey: 'inventory_manage' },
-    { path: '/inventory/entry', label: 'Entrada Nota', icon: FileInput, featureKey: 'inventory_purchases' },
-    { path: '/inventory/count', label: 'Balanço', icon: Scale, featureKey: 'inventory_manage' },
-    { path: '/inventory/purchases', label: 'Sugestões', icon: ShoppingCart, featureKey: 'inventory_purchases' },
-    { path: '/inventory/suppliers', label: 'Fornecedores', icon: Truck, featureKey: 'inventory_suppliers' },
-    { path: '/inventory/logs', label: 'Logs', icon: ClipboardList, featureKey: 'inventory_manage' },
+    { path: '/inventory', label: 'Itens', icon: Package, exact: true, featureKeys: ['inventory_manage', 'distributor_inventory'] },
+    { path: '/inventory/new', label: 'Novo Item', icon: PlusCircle, featureKeys: ['inventory_manage', 'distributor_inventory'] },
+    { path: '/inventory/entry', label: 'Entrada Nota', icon: FileInput, featureKeys: ['inventory_purchases'] },
+    { path: '/inventory/count', label: 'Balanço', icon: Scale, featureKeys: ['inventory_manage', 'distributor_inventory'] },
+    { path: '/inventory/purchases', label: 'Sugestões', icon: ShoppingCart, featureKeys: ['inventory_purchases'] },
+    { path: '/inventory/suppliers', label: 'Fornecedores', icon: Truck, featureKeys: ['inventory_suppliers'] },
+    { path: '/inventory/logs', label: 'Logs', icon: ClipboardList, featureKeys: ['inventory_manage', 'distributor_inventory'] },
   ];
 
   // Filtra abas
@@ -38,7 +38,8 @@ export const InventoryDashboard: React.FC = () => {
       
       // Checa Features Granulares
       if (allowedFeatures && allowedFeatures.length > 0) {
-          if (!allowedFeatures.includes(tab.featureKey)) return false;
+          const hasFeature = tab.featureKeys.some(key => allowedFeatures.includes(key));
+          if (!hasFeature) return false;
       }
       return true;
   });

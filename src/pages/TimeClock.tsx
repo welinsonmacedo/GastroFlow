@@ -46,17 +46,79 @@ export const TimeClock: React.FC = () => {
         }
     }
 
+    // Helper para calcular distância (Haversine)
+    const getDistanceFromLatLonInMeters = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+        const R = 6371e3; // Raio da terra em metros
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a = 
+            Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+            Math.sin(dLon/2) * Math.sin(dLon/2); 
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
+        return R * c;
+    };
+
     const handleClockAction = async (type: 'IN' | 'BREAK_START' | 'BREAK_END' | 'OUT') => {
         if (!user) return;
         setLoading(true);
         setLocationError('');
 
-        // Opcional: Validar Geolocalização (Exemplo simples)
-        if (navigator.geolocation) {
+        const config = restState.businessInfo?.timeClock || { validationType: 'NONE', maxDistanceMeters: 100 };
+
+        // Validação 1: Limite de 4 pontos (Se NONE)
+        if (config.validationType === 'NONE') {
+            // Conta quantos registros HOJE
+            // Como o sistema atual parece criar um 'TimeEntry' por dia e atualiza os campos,
+            // precisamos ver se já preencheu os 4 campos principais.
+            // Se o sistema suportasse múltiplos TimeEntries por dia, contaríamos o array.
+            // Mas baseado na interface TimeEntry: clockIn, breakStart, breakEnd, clockOut.
+            // Isso já limita naturalmente a 4 ações por dia por entrada.
+            // Se o usuário tentar bater ponto e já tiver clockOut, o sistema já deve bloquear ou criar novo dia?
+            // Assumindo que o backend/contexto gerencia isso, vamos verificar se já está finalizado.
+            
+            if (todaysEntry?.clockOut) {
+                setLocationError("Limite diário de registros atingido (4 pontos).");
+                setLoading(false);
+                return;
+            }
+            
+            // Se for apenas validação de quantidade, o fluxo natural de IN -> BREAK -> END -> OUT já são 4.
+            // Então apenas prosseguimos.
+        }
+
+        // Validação 2: Geolocalização
+        if (config.validationType === 'GEOLOCATION') {
+            if (!config.restaurantLocation?.lat || !config.restaurantLocation?.lng) {
+                setLocationError("Localização da empresa não configurada. Contate o administrador.");
+                setLoading(false);
+                return;
+            }
+
+            if (!navigator.geolocation) {
+                setLocationError("Geolocalização não suportada neste dispositivo.");
+                setLoading(false);
+                return;
+            }
+
             navigator.geolocation.getCurrentPosition(
                 async (position) => {
-                    // Aqui você poderia validar se está dentro do raio da empresa
-                    // Por enquanto, apenas prossegue
+                    const dist = getDistanceFromLatLonInMeters(
+                        position.coords.latitude,
+                        position.coords.longitude,
+                        config.restaurantLocation!.lat,
+                        config.restaurantLocation!.lng
+                    );
+
+                    const maxDist = config.maxDistanceMeters || 100;
+
+                    if (dist > maxDist) {
+                        setLocationError(`Você está a ${Math.round(dist)}m da empresa. Máximo permitido: ${maxDist}m.`);
+                        setLoading(false);
+                        return;
+                    }
+
+                    // Sucesso na validação
                     try {
                         await registerTime(user.id, type);
                     } catch (e) {
@@ -66,14 +128,22 @@ export const TimeClock: React.FC = () => {
                     }
                 },
                 (error) => {
-                    console.warn("Geolocalização falhou ou negada", error);
-                    // Decide se bloqueia ou permite (aqui permitindo com aviso no console)
-                     registerTime(user.id, type).finally(() => setLoading(false));
-                }
+                    console.warn("Geolocalização falhou", error);
+                    setLocationError("Não foi possível obter sua localização. Verifique as permissões do GPS.");
+                    setLoading(false);
+                },
+                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
             );
-        } else {
-             await registerTime(user.id, type);
-             setLoading(false);
+            return; // Sai para esperar o callback
+        }
+
+        // Se chegou aqui (NONE validation ou fallback), registra direto
+        try {
+            await registerTime(user.id, type);
+        } catch (e) {
+            alert("Erro ao registrar ponto.");
+        } finally {
+            setLoading(false);
         }
     };
 

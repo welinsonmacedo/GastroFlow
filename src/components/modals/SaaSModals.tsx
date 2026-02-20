@@ -16,6 +16,24 @@ const MODULE_STRUCTURE = {
             { key: "restaurant_cashier", label: "Caixa Gastronômico" }
         ]
     },
+    SNACKBAR: {
+        label: "Lanchonete / Fast-food",
+        description: "Fluxo rápido: Pedido no Caixa -> Cozinha -> Entrega.",
+        features: [
+            { key: "snackbar_pos", label: "Caixa Rápido" },
+            { key: "snackbar_kds", label: "KDS Simplificado" },
+            { key: "snackbar_call_panel", label: "Painel de Chamada (TV)" }
+        ]
+    },
+    DISTRIBUTOR: {
+        label: "Distribuidora",
+        description: "Venda atacado e rotas de entrega.",
+        features: [
+            { key: "distributor_sales", label: "Venda Balcão/Telefone" },
+            { key: "distributor_routes", label: "Gestão de Rotas" },
+            { key: "distributor_inventory", label: "Estoque de Grade" }
+        ]
+    },
     COMMERCE: {
         label: "Comércio (Varejo)",
         description: "PDV rápido tipo supermercado.",

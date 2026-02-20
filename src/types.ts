@@ -249,6 +249,23 @@ export interface Plan {
     button_text: string;
 }
 
+export interface TimeClockConfig {
+    validationType: 'GEOLOCATION' | 'NONE';
+    maxDistanceMeters?: number;
+    restaurantLocation?: {
+        lat: number;
+        lng: number;
+    };
+}
+
+export interface TimeClockSettings {
+    validationType: 'GEOLOCATION' | 'NONE';
+    maxDistanceMeters?: number;
+    maxDailyPunches?: number; // Default 4
+    latitude?: number;
+    longitude?: number;
+}
+
 export interface RestaurantBusinessInfo {
     restaurantName?: string;
     ownerName?: string;
@@ -272,6 +289,7 @@ export interface RestaurantBusinessInfo {
     deliverySettings?: DeliveryMethodConfig[]; 
     paymentMethods?: PaymentMethodConfig[]; 
     expenseCategories?: ExpenseCategory[]; 
+    timeClock?: TimeClockConfig;
 }
 
 export interface RestaurantTenant {

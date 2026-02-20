@@ -8,7 +8,7 @@ import { RestaurantBusinessInfo, DeliveryMethodConfig, PaymentMethodConfig, Expe
 import { Modal } from '../../components/Modal';
 
 interface AdminSettingsProps {
-    view?: 'BUSINESS' | 'RULES' | 'SECURITY' | 'DELIVERY' | 'FINANCE_CONFIG';
+    view?: 'BUSINESS' | 'RULES' | 'SECURITY' | 'DELIVERY' | 'FINANCE_CONFIG' | 'TIME_CLOCK';
 }
 
 export const AdminSettings: React.FC<AdminSettingsProps> = ({ view = 'BUSINESS' }) => {
@@ -23,6 +23,7 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ view = 'BUSINESS' 
       paymentMethods: [],
       expenseCategories: [],
       taxRegime: 'SIMPLES_NACIONAL',
+      timeClock: { validationType: 'NONE', maxDistanceMeters: 100 },
       ...state.businessInfo
   });
   const [loadingCep, setLoadingCep] = useState(false);
@@ -48,6 +49,7 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ view = 'BUSINESS' 
               orderGracePeriodMinutes: state.businessInfo.orderGracePeriodMinutes ?? prev.orderGracePeriodMinutes,
               adminPin: state.businessInfo.adminPin ?? prev.adminPin,
               taxRegime: state.businessInfo.taxRegime || 'SIMPLES_NACIONAL',
+              timeClock: state.businessInfo.timeClock || { validationType: 'NONE', maxDistanceMeters: 100 },
               deliverySettings: state.businessInfo.deliverySettings || [],
               paymentMethods: state.businessInfo.paymentMethods || [],
               expenseCategories: state.businessInfo.expenseCategories || []
@@ -181,7 +183,33 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ view = 'BUSINESS' 
           case 'SECURITY': return 'Segurança';
           case 'DELIVERY': return 'Configuração de Delivery';
           case 'FINANCE_CONFIG': return 'Configurações Financeiras';
+          case 'TIME_CLOCK': return 'Ponto Eletrônico';
           default: return 'Configurações';
+      }
+  };
+
+  const handleSetCurrentLocation = () => {
+      if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+              (position) => {
+                  setBusinessForm(prev => ({
+                      ...prev,
+                      timeClock: {
+                          ...prev.timeClock!,
+                          restaurantLocation: {
+                              lat: position.coords.latitude,
+                              lng: position.coords.longitude
+                          }
+                      }
+                  }));
+                  showAlert({ title: "Localização Definida", message: "Coordenadas atualizadas com sucesso.", type: 'SUCCESS' });
+              },
+              (error) => {
+                  showAlert({ title: "Erro", message: "Não foi possível obter sua localização.", type: 'ERROR' });
+              }
+          );
+      } else {
+          showAlert({ title: "Erro", message: "Geolocalização não suportada.", type: 'ERROR' });
       }
   };
 
@@ -189,12 +217,76 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ view = 'BUSINESS' 
     <div className="max-w-4xl mx-auto animate-fade-in pb-10">
         <header className="mb-8 flex justify-between items-center">
             <h2 className="text-2xl font-bold text-gray-800">{getPageTitle()}</h2>
-            {['BUSINESS', 'RULES', 'SECURITY'].includes(view) && (
+            {['BUSINESS', 'RULES', 'SECURITY', 'TIME_CLOCK'].includes(view) && (
                 <Button onClick={handleSaveBusiness} className="shadow-lg"><Save size={18}/> Salvar Alterações</Button>
             )}
         </header>
 
         <div className="space-y-8">
+            {/* --- TIME CLOCK VIEW --- */}
+            {view === 'TIME_CLOCK' && (
+                <div className="space-y-6">
+                    <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-200">
+                        <h2 className="text-xl font-bold mb-6 text-gray-800 flex items-center gap-2"><Clock className="text-blue-600"/> Configuração de Ponto</h2>
+                        
+                        <div className="space-y-6">
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-2">Tipo de Validação</label>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div 
+                                        onClick={() => setBusinessForm({...businessForm, timeClock: {...businessForm.timeClock!, validationType: 'GEOLOCATION'}})}
+                                        className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${businessForm.timeClock?.validationType === 'GEOLOCATION' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-blue-200'}`}
+                                    >
+                                        <div className="flex items-center gap-2 mb-2 font-bold text-gray-800"><MapPin size={18} className="text-blue-600"/> Geolocalização (GPS)</div>
+                                        <p className="text-xs text-gray-500">O colaborador deve estar dentro de um raio específico do restaurante para bater o ponto.</p>
+                                    </div>
+                                    
+                                    <div 
+                                        onClick={() => setBusinessForm({...businessForm, timeClock: {...businessForm.timeClock!, validationType: 'NONE'}})}
+                                        className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${businessForm.timeClock?.validationType === 'NONE' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-blue-200'}`}
+                                    >
+                                        <div className="flex items-center gap-2 mb-2 font-bold text-gray-800"><ShieldCheck size={18} className="text-green-600"/> Sem Validação (Limite Diário)</div>
+                                        <p className="text-xs text-gray-500">Permite bater ponto de qualquer lugar, mas limita a 4 registros por dia por colaborador.</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {businessForm.timeClock?.validationType === 'GEOLOCATION' && (
+                                <div className="bg-gray-50 p-6 rounded-xl border border-gray-200 space-y-6 animate-fade-in">
+                                    <div className="flex justify-between items-start">
+                                        <div>
+                                            <h3 className="font-bold text-gray-800 mb-1">Localização do Restaurante</h3>
+                                            <p className="text-xs text-gray-500">Defina onde o restaurante está localizado para validar o ponto.</p>
+                                        </div>
+                                        <Button onClick={handleSetCurrentLocation} size="sm" variant="outline"><MapPin size={14}/> Usar Minha Localização Atual</Button>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-xs font-bold mb-1">Latitude</label>
+                                            <input type="number" step="any" className="w-full border p-2 rounded bg-white" value={businessForm.timeClock?.restaurantLocation?.lat || ''} onChange={e => setBusinessForm({...businessForm, timeClock: {...businessForm.timeClock!, restaurantLocation: {...businessForm.timeClock?.restaurantLocation!, lat: parseFloat(e.target.value)}}})} />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold mb-1">Longitude</label>
+                                            <input type="number" step="any" className="w-full border p-2 rounded bg-white" value={businessForm.timeClock?.restaurantLocation?.lng || ''} onChange={e => setBusinessForm({...businessForm, timeClock: {...businessForm.timeClock!, restaurantLocation: {...businessForm.timeClock?.restaurantLocation!, lng: parseFloat(e.target.value)}}})} />
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-xs font-bold mb-1">Raio Permitido (Metros)</label>
+                                        <div className="flex items-center gap-4">
+                                            <input type="range" min="10" max="500" step="10" className="flex-1 h-2 bg-gray-300 rounded-lg appearance-none cursor-pointer accent-blue-600" value={businessForm.timeClock?.maxDistanceMeters || 100} onChange={e => setBusinessForm({...businessForm, timeClock: {...businessForm.timeClock!, maxDistanceMeters: parseInt(e.target.value)}})} />
+                                            <span className="font-mono font-bold text-blue-600 w-20 text-right">{businessForm.timeClock?.maxDistanceMeters || 100} m</span>
+                                        </div>
+                                        <p className="text-[10px] text-gray-400 mt-1">Recomendado: 50m a 100m para compensar imprecisões do GPS.</p>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* --- BUSINESS VIEW --- */}
             {view === 'BUSINESS' && (
                 <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-200 animate-fade-in">

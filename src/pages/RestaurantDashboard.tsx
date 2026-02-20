@@ -37,7 +37,7 @@ export const RestaurantDashboard: React.FC = () => {
         icon: Coffee, 
         roles: [Role.ADMIN, Role.WAITER, Role.CASHIER], 
         required: null,
-        featureKey: 'restaurant_waiter'
+        featureKeys: ['restaurant_waiter']
     },
     { 
         path: '/restaurant/kitchen', 
@@ -45,7 +45,7 @@ export const RestaurantDashboard: React.FC = () => {
         icon: Monitor, 
         roles: [Role.ADMIN, Role.KITCHEN],
         required: 'allowKds',
-        featureKey: 'restaurant_kds'
+        featureKeys: ['restaurant_kds', 'snackbar_kds']
     },
     { 
         path: '/restaurant/cashier', 
@@ -53,7 +53,15 @@ export const RestaurantDashboard: React.FC = () => {
         icon: DollarSign, 
         roles: [Role.ADMIN, Role.CASHIER],
         required: 'allowCashier',
-        featureKey: 'restaurant_cashier'
+        featureKeys: ['restaurant_cashier', 'snackbar_pos']
+    },
+    { 
+        path: '/restaurant/panel', 
+        label: 'Painel TV', 
+        icon: Monitor, 
+        roles: [Role.ADMIN, Role.WAITER, Role.CASHIER],
+        required: null,
+        featureKeys: ['snackbar_call_panel']
     },
     // Novas Abas Adicionadas
     { 
@@ -62,7 +70,7 @@ export const RestaurantDashboard: React.FC = () => {
         icon: QrCode, 
         roles: [Role.ADMIN],
         required: 'allowTableMgmt',
-        featureKey: 'admin_tables'
+        featureKeys: ['admin_tables']
     },
     { 
         path: '/restaurant/menu', 
@@ -70,7 +78,7 @@ export const RestaurantDashboard: React.FC = () => {
         icon: Utensils, 
         roles: [Role.ADMIN],
         required: null,
-        featureKey: 'admin_products'
+        featureKeys: ['admin_products']
     },
     { 
         path: '/restaurant/appearance', 
@@ -78,7 +86,7 @@ export const RestaurantDashboard: React.FC = () => {
         icon: Palette, 
         roles: [Role.ADMIN],
         required: 'allowCustomization',
-        featureKey: 'config_appearance'
+        featureKeys: ['config_appearance']
     },
   ];
 
@@ -93,7 +101,8 @@ export const RestaurantDashboard: React.FC = () => {
       // 2. Checa Features Granulares (NOVO)
       // Se allowedFeatures estiver vazio (legado), assume que todas estão ativas se o plano permitir
       if (allowedFeatures && allowedFeatures.length > 0) {
-          if (!allowedFeatures.includes(tab.featureKey)) return false;
+          const hasFeature = tab.featureKeys.some(key => allowedFeatures.includes(key));
+          if (!hasFeature) return false;
       }
       
       // 3. Checa Permissão do Usuário
@@ -206,6 +215,8 @@ export const RestaurantDashboard: React.FC = () => {
                     {planLimits.allowCashier && (
                         <Route path="cashier" element={<CashierDashboard />} />
                     )}
+
+                    <Route path="panel" element={<div className="h-full flex items-center justify-center text-2xl font-bold text-gray-400">Painel de Chamada (Em Breve)</div>} />
 
                     {/* Novas Rotas para Admin dentro do Módulo Restaurante */}
                     {planLimits.allowTableMgmt && (

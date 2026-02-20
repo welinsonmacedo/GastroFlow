@@ -33,7 +33,7 @@ export const CommerceDashboard: React.FC = () => {
         icon: ShoppingCart, 
         roles: [Role.ADMIN, Role.CASHIER],
         required: 'allowCashier',
-        featureKey: 'commerce_pos'
+        featureKeys: ['commerce_pos', 'distributor_sales', 'snackbar_pos']
     },
     { 
         path: '/commerce/history', 
@@ -41,7 +41,15 @@ export const CommerceDashboard: React.FC = () => {
         icon: History, 
         roles: [Role.ADMIN, Role.CASHIER],
         required: 'allowCashier',
-        featureKey: 'commerce_pos'
+        featureKeys: ['commerce_pos', 'distributor_sales', 'snackbar_pos']
+    },
+    { 
+        path: '/commerce/routes', 
+        label: 'Rotas', 
+        icon: Truck, 
+        roles: [Role.ADMIN],
+        required: null,
+        featureKeys: ['distributor_routes']
     },
     { 
         path: '/commerce/finance', 
@@ -49,7 +57,7 @@ export const CommerceDashboard: React.FC = () => {
         icon: DollarSign, 
         roles: [Role.ADMIN],
         required: 'allowExpenses',
-        featureKey: 'commerce_finance'
+        featureKeys: ['commerce_finance']
     },
     { 
         path: '/commerce/reports', 
@@ -57,7 +65,7 @@ export const CommerceDashboard: React.FC = () => {
         icon: BarChart3, 
         roles: [Role.ADMIN],
         required: 'allowReports',
-        featureKey: 'commerce_reports'
+        featureKeys: ['commerce_reports']
     },
   ];
 
@@ -70,7 +78,8 @@ export const CommerceDashboard: React.FC = () => {
       
       // 2. Features Granulares
       if (allowedFeatures && allowedFeatures.length > 0) {
-          if (!allowedFeatures.includes(tab.featureKey)) return false;
+          const hasFeature = tab.featureKeys.some(key => allowedFeatures.includes(key));
+          if (!hasFeature) return false;
       }
       
       // 3. Permissão Usuário
@@ -179,6 +188,7 @@ export const CommerceDashboard: React.FC = () => {
                 <Routes>
                     <Route path="pos" element={<div className="h-full p-4 md:p-6"><CommercePOS /></div>} />
                     <Route path="history" element={<div className="h-full p-4 md:p-6 overflow-y-auto"><CommerceHistoryView /></div>} />
+                    <Route path="routes" element={<div className="h-full flex items-center justify-center text-2xl font-bold text-gray-400">Gestão de Rotas (Em Breve)</div>} />
                     
                     {planLimits.allowExpenses && (
                         <Route path="finance" element={<div className="h-full overflow-y-auto p-4 md:p-8"><AdminFinance /></div>} />
