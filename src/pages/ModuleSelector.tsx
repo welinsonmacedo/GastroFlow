@@ -65,6 +65,7 @@ export const ModuleSelector: React.FC = () => {
         else if (module === 'MANAGER') navigate('/admin'); 
         else if (module === 'FINANCE') navigate('/finance'); 
         else if (module === 'CONFIG') navigate('/settings'); 
+        else if (module === 'COMMERCE') navigate('/commerce'); 
         else if (module === 'INVENTORY') navigate('/inventory');
         else if (module === 'HR') navigate('/rh');
         else alert("Módulo em desenvolvimento.");
@@ -122,6 +123,9 @@ export const ModuleSelector: React.FC = () => {
                     
                     {allowed.includes('RESTAURANT') && isModuleAllowed('RESTAURANT') && (
                         <ModuleCard type="RESTAURANT" title="Restaurante" desc="Salão, Mesas, KDS e Caixa Gastronômico." icon={ChefHat} colorClass="text-blue-600" onClick={() => handleSelect('RESTAURANT')} />
+                    )}
+                    {(allowed.includes('COMMERCE') || authState.currentUser?.role === 'ADMIN') && isModuleAllowed('COMMERCE') && (
+                        <ModuleCard type="COMMERCE" title="Varejo" desc="PDV Rápido, Leitor de Código e Venda Balcão." icon={Store} colorClass="text-indigo-500" onClick={() => handleSelect('COMMERCE')} />
                     )}
                     {(allowed.includes('MANAGER') || authState.currentUser?.role === 'ADMIN') && isModuleAllowed('MANAGER') && (
                         <ModuleCard type="MANAGER" title="Gestor" desc="Backoffice Operacional. Cardápio e Mesas." icon={Briefcase} colorClass="text-purple-500" onClick={() => handleSelect('MANAGER')} />
