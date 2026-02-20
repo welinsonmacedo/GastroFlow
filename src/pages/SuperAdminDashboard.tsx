@@ -33,8 +33,7 @@ export const SuperAdminDashboard: React.FC = () => {
   const [settingsForm, setSettingsForm] = useState({ name: state.adminName || '', email: state.adminEmail || '', password: '' });
   
   // Plans Edit State
-  const [editingPlan, setEditingPlan] = useState<Plan | null>(null);
-  const [editingFeatures, setEditingFeatures] = useState<string>('');
+
   const [editingLimits, setEditingLimits] = useState<PlanLimits>({
       maxTables: 10, maxProducts: 30, maxStaff: 2, 
       allowKds: false, allowCashier: false, allowReports: false,
@@ -77,32 +76,7 @@ export const SuperAdminDashboard: React.FC = () => {
       showAlert({ title: "Sucesso", message: "Perfil atualizado com sucesso!", type: 'SUCCESS' });
   };
   
-  const handleEditPlan = (plan: Plan) => {
-      setEditingPlan(plan);
-      setEditingFeatures((plan.features || []).join('\n'));
-      // Garante que limits tenha valores padrão se vier null do banco
-      setEditingLimits(plan.limits || { 
-          maxTables: -1, maxProducts: -1, maxStaff: -1, 
-          allowKds: true, allowCashier: true, allowReports: true, 
-          allowInventory: true, allowPurchases: true, allowExpenses: true, 
-          allowStaff: true, allowTableMgmt: true, allowCustomization: true,
-          allowHR: true
-      });
-  };
   
-  const handleSavePlan = (e: React.FormEvent) => {
-      e.preventDefault();
-      if(editingPlan) {
-          const updatedPlan: Plan = { 
-              ...editingPlan, 
-              features: editingFeatures.split('\n').filter(l => l.trim() !== ''), 
-              limits: editingLimits 
-          };
-          dispatch({ type: 'UPDATE_PLAN_DETAILS', plan: updatedPlan });
-          setEditingPlan(null);
-          showAlert({ title: "Sucesso", message: "Plano atualizado!", type: 'SUCCESS' });
-      }
-  };
 
   const selectedContractTenant = state.tenants.find(t => t.id === selectedContractTenantId);
   const selectedContractPlan = selectedContractTenant ? state.plans.find(p => p.key === selectedContractTenant.plan) : null;
