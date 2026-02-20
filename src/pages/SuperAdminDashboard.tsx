@@ -311,42 +311,26 @@ export const SuperAdminDashboard: React.FC = () => {
                         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
                             {state.plans.map(plan => (
                                 <div key={plan.id} className="bg-white rounded-xl shadow-sm border p-6">
-                                    {editingPlan?.id === plan.id ? (
-                                        <form onSubmit={handleSavePlan} className="space-y-4">
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <div><label className="text-xs font-bold text-gray-500 uppercase">Nome</label><input className="w-full border p-2 rounded text-sm" value={editingPlan.name} onChange={e => setEditingPlan({...editingPlan, name: e.target.value})} /></div>
-                                                <div><label className="text-xs font-bold text-gray-500 uppercase">Preço</label><input className="w-full border p-2 rounded text-sm" value={editingPlan.price} onChange={e => setEditingPlan({...editingPlan, price: e.target.value})} /></div>
-                                            </div>
-                                            <div className="bg-gray-50 p-3 rounded-lg border border-gray-200 space-y-3">
-                                                <h4 className="text-xs font-bold text-gray-700 flex items-center gap-1"><Settings size={12}/> Limites</h4>
-                                                <div className="grid grid-cols-3 gap-2">
-                                                    <div><label className="text-[10px] font-bold text-gray-500">Max Mesas</label><input type="number" className="w-full border p-1 rounded text-sm" value={editingLimits.maxTables} onChange={(e) => setEditingLimits({...editingLimits, maxTables: parseInt(e.target.value)})} /></div>
-                                                    <div><label className="text-[10px] font-bold text-gray-500">Max Prod</label><input type="number" className="w-full border p-1 rounded text-sm" value={editingLimits.maxProducts} onChange={(e) => setEditingLimits({...editingLimits, maxProducts: parseInt(e.target.value)})} /></div>
-                                                    <div><label className="text-[10px] font-bold text-gray-500">Max Staff</label><input type="number" className="w-full border p-1 rounded text-sm" value={editingLimits.maxStaff} onChange={(e) => setEditingLimits({...editingLimits, maxStaff: parseInt(e.target.value)})} /></div>
-                                                </div>
-                                                <div className="grid grid-cols-2 gap-2 text-xs">
-                                                    <label className="flex items-center gap-2"><input type="checkbox" checked={editingLimits.allowKds} onChange={(e) => setEditingLimits({...editingLimits, allowKds: e.target.checked})} /> KDS</label>
-                                                    <label className="flex items-center gap-2"><input type="checkbox" checked={editingLimits.allowCashier} onChange={(e) => setEditingLimits({...editingLimits, allowCashier: e.target.checked})} /> Frente de Caixa</label>
-                                                    <label className="flex items-center gap-2"><input type="checkbox" checked={editingLimits.allowInventory} onChange={(e) => setEditingLimits({...editingLimits, allowInventory: e.target.checked})} /> Estoque</label>
-                                                    <label className="flex items-center gap-2"><input type="checkbox" checked={editingLimits.allowExpenses} onChange={(e) => setEditingLimits({...editingLimits, allowExpenses: e.target.checked})} /> Financeiro</label>
-                                                    <label className="flex items-center gap-2"><input type="checkbox" checked={editingLimits.allowHR} onChange={(e) => setEditingLimits({...editingLimits, allowHR: e.target.checked})} /> RH & Ponto</label>
-                                                </div>
-                                            </div>
-                                            <div className="flex gap-2 mt-auto">
-                                                <Button type="button" variant="secondary" onClick={() => setEditingPlan(null)} className="flex-1">Cancelar</Button>
-                                                <Button type="submit" className="flex-1">Salvar</Button>
-                                            </div>
-                                        </form>
-                                    ) : (
-                                        <>
-                                            <h3 className="font-bold text-lg">{plan.name}</h3>
-                                            <p className="text-2xl font-black text-blue-600">{plan.price}</p>
-                                            <ul className="space-y-1 my-4 text-xs text-gray-600">
-                                                {(plan.features || []).map((f, i) => <li key={i}>• {f}</li>)}
-                                            </ul>
-                                            <Button variant="outline" onClick={() => handleEditPlan(plan)} className="w-full mt-4">Editar Plano</Button>
-                                        </>
-                                    )}
+                                    <h3 className="font-bold text-lg">{plan.name}</h3>
+                                    <p className="text-2xl font-black text-blue-600">{plan.price}</p>
+                                    <ul className="space-y-1 my-4 text-xs text-gray-600">
+                                        {(plan.features || []).map((f, i) => <li key={i}>• {f}</li>)}
+                                    </ul>
+                                    <div className="bg-gray-50 p-3 rounded-lg border border-gray-200 space-y-3">
+                                        <h4 className="text-xs font-bold text-gray-700 flex items-center gap-1"><Settings size={12}/> Limites</h4>
+                                        <div className="grid grid-cols-3 gap-2 text-sm text-gray-700">
+                                            <div><label className="text-[10px] font-bold text-gray-500">Max Mesas:</label> {plan.limits.maxTables === -1 ? 'Ilimitado' : plan.limits.maxTables}</div>
+                                            <div><label className="text-[10px] font-bold text-gray-500">Max Prod:</label> {plan.limits.maxProducts === -1 ? 'Ilimitado' : plan.limits.maxProducts}</div>
+                                            <div><label className="text-[10px] font-bold text-gray-500">Max Staff:</label> {plan.limits.maxStaff === -1 ? 'Ilimitado' : plan.limits.maxStaff}</div>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-2 text-xs text-gray-700">
+                                            <p className="flex items-center gap-2"><span className={`w-3 h-3 rounded-full ${plan.limits.allowKds ? 'bg-green-500' : 'bg-red-300'}`}></span> KDS</p>
+                                            <p className="flex items-center gap-2"><span className={`w-3 h-3 rounded-full ${plan.limits.allowCashier ? 'bg-green-500' : 'bg-red-300'}`}></span> Frente de Caixa</p>
+                                            <p className="flex items-center gap-2"><span className={`w-3 h-3 rounded-full ${plan.limits.allowInventory ? 'bg-green-500' : 'bg-red-300'}`}></span> Estoque</p>
+                                            <p className="flex items-center gap-2"><span className={`w-3 h-3 rounded-full ${plan.limits.allowExpenses ? 'bg-green-500' : 'bg-red-300'}`}></span> Financeiro</p>
+                                            <p className="flex items-center gap-2"><span className={`w-3 h-3 rounded-full ${plan.limits.allowHR ? 'bg-green-500' : 'bg-red-300'}`}></span> RH & Ponto</p>
+                                        </div>
+                                    </div>
                                 </div>
                             ))}
                         </div>
