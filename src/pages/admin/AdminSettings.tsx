@@ -133,8 +133,4 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ view }) => {
                             <div><label className="block text-xs font-bold mb-1">Telefone</label><input className="w-full border p-3 rounded-lg" value={businessForm.phone} onChange={e => setBusinessForm({...businessForm, phone: formatPhone(e.target.value)})} /></div>
                         </div>
                         <div className="border-t pt-6">
-                            <h3 className="text-sm font-bold text-gray-700 mb-4 flex items-center gap-2"><MapPin size={16}/> Endereço</h3>
-                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                <div className="md:col-span-1"><label className="block text-xs font-bold mb-1">CEP</label><div className="relative"><input className={`w-full border p-3 rounded-lg ${loadingCep ? 'bg-gray-50' : ''}`} value={businessForm.address?.cep} onChange={e => setBusinessForm({...businessForm, address: {...businessForm.address!, cep: formatCEP(e.target.value)}})} onBlur={handleCepBlur} maxLength={9} />{loadingCep && <Loader2 size={16} className="absolute right-3 top-3.5 animate-spin text-blue-500"/>}</div></div>
-                                <div className="md:col-span-2"><label className="block text-xs font-bold mb-1">Rua</label><input className="w-full border p-3 rounded-lg bg-gray-50" value={businessForm.address?.street} onChange={e => setBusinessForm({...businessForm, address: {...businessForm.address!, street: e.target.value}})} /></div>
-                                <div className="md:col-span-1"><label className="block text-xs font-bold mb-1">Número</label><
+                            <h3 className="text-sm font-bold
