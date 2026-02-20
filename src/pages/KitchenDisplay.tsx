@@ -60,11 +60,7 @@ export const KitchenDisplay: React.FC = () => {
     } catch (err) { console.error('Erro Wake Lock:', err); }
   };
 
-  // Inicializa o áudio
-  useEffect(() => {
-    audioRef.current = new Audio(KITCHEN_SOUND);
-    audioRef.current.volume = 1.0;
-  }, []);
+
 
   const playSound = async () => {
       if (!audioRef.current || !orderState.audioUnlocked) return;
@@ -160,6 +156,7 @@ export const KitchenDisplay: React.FC = () => {
 
   return (
     <div className="h-full flex flex-col bg-slate-950 text-slate-100 p-4 overflow-hidden font-sans">
+      <audio ref={audioRef} src={KITCHEN_SOUND} preload="auto" />
       <div className="mb-4 flex justify-between items-center shrink-0">
          <div>
              <h2 className="text-xl font-black uppercase text-white tracking-tight">KDS Produção</h2>

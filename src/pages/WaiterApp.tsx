@@ -49,11 +49,7 @@ export const WaiterApp: React.FC = () => {
   const prevReadyCount = useRef(0);
   const prevNewOrdersCount = useRef(0);
 
-  // Inicializa Áudio
-  useEffect(() => {
-      audioRef.current = new Audio(NOTIFICATION_SOUND);
-      audioRef.current.volume = 1.0;
-  }, []);
+
 
   const playSound = async () => {
       if (!audioRef.current || !orderState.audioUnlocked) return;
@@ -299,6 +295,7 @@ export const WaiterApp: React.FC = () => {
   // TELA PRINCIPAL (EMBEDDED NO RESTAURANTDASHBOARD)
   return (
     <div className="h-full flex flex-col bg-gray-50 font-sans pb-20">
+        <audio ref={audioRef} src={NOTIFICATION_SOUND} preload="auto" />
         {/* Sub-Header Local */}
         <div className="bg-white border-b px-4 py-3 flex justify-between items-center shrink-0">
              <div>
