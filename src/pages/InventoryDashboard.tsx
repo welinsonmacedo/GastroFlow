@@ -33,14 +33,24 @@ export const InventoryDashboard: React.FC = () => {
 
   // Filtra abas
   const visibleTabs = tabs.filter(tab => {
-      // Checa Limites do Plano
+      // 1. Checa Limites do Plano
       if (!planLimits.allowInventory) return false;
       
-      // Checa Features Granulares
+      // 2. Checa Features Granulares (Tenant)
       if (allowedFeatures && allowedFeatures.length > 0) {
-          const hasFeature = tab.featureKeys.some(key => allowedFeatures.includes(key));
-          if (!hasFeature) return false;
+          const hasTenantFeature = tab.featureKeys.some(key => allowedFeatures.includes(key));
+          if (!hasTenantFeature) return false;
       }
+
+      // 3. Permissões do Usuário (Cargos Personalizados)
+      if (authState.currentUser?.role !== 'ADMIN' && authState.currentUser?.customRoleId) {
+          const userFeatures = authState.currentUser.allowedFeatures || [];
+          if (userFeatures.length > 0) {
+              const hasUserFeature = tab.featureKeys.some(key => userFeatures.includes(key));
+              if (!hasUserFeature) return false;
+          }
+      }
+
       return true;
   });
 

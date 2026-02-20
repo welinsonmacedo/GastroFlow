@@ -34,11 +34,20 @@ export const FinanceDashboard: React.FC = () => {
 
   // Filtra abas
   const visibleTabs = tabs.filter(tab => {
+      // 1. Checa Limites do Plano
       if (tab.required === 'allowReports' && !planLimits.allowReports) return false;
       
-      // Checagem de features
+      // 2. Checagem de features (Tenant)
       if (allowedFeatures && allowedFeatures.length > 0) {
           if (!allowedFeatures.includes(tab.featureKey)) return false;
+      }
+
+      // 3. Permissões do Usuário (Cargos Personalizados)
+      if (authState.currentUser?.role !== 'ADMIN' && authState.currentUser?.customRoleId) {
+          const userFeatures = authState.currentUser.allowedFeatures || [];
+          if (userFeatures.length > 0) {
+              if (!userFeatures.includes(tab.featureKey)) return false;
+          }
       }
 
       return true;

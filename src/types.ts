@@ -317,6 +317,7 @@ export interface User {
   customRoleId?: string; 
   customRoleName?: string;
   allowedRoutes?: string[];
+  allowedFeatures?: string[];
   
   // RH Fields
   department?: string;

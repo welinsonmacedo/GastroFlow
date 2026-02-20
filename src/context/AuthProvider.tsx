@@ -94,13 +94,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
                 if (staffData) {
                     let allowedRoutes = staffData.allowed_routes || [];
+                    let allowedFeatures = [];
                     
                     // Se tiver cargo personalizado, sobrepõe com as permissões do cargo
-                    if (staffData.custom_roles?.permissions?.allowed_modules) {
-                        allowedRoutes = staffData.custom_roles.permissions.allowed_modules;
+                    if (staffData.custom_roles?.permissions) {
+                        if (staffData.custom_roles.permissions.allowed_modules) {
+                            allowedRoutes = staffData.custom_roles.permissions.allowed_modules;
+                        }
+                        if (staffData.custom_roles.permissions.allowed_features) {
+                            allowedFeatures = staffData.custom_roles.permissions.allowed_features;
+                        }
                     } else if (staffData.role === 'ADMIN') {
                         // Admin vê tudo por padrão se não tiver restrição explícita
                         allowedRoutes = ['RESTAURANT', 'SNACKBAR', 'DISTRIBUTOR', 'COMMERCE', 'MANAGER', 'CONFIG', 'FINANCE', 'INVENTORY', 'HR'];
+                        // Para admin, as features são controladas pelo plano (restState), 
+                        // mas vamos inicializar vazio para não restringir aqui
+                        allowedFeatures = []; 
                     } else if (!staffData.custom_role_id && allowedRoutes.length === 0) {
                         // Defaults para cargos padrão se não houver rotas definidas
                         if (['WAITER', 'KITCHEN', 'CASHIER'].includes(staffData.role)) {
@@ -116,7 +125,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                         auth_user_id: staffData.auth_user_id,
                         email: staffData.email,
                         customRoleId: staffData.custom_role_id,
-                        allowedRoutes: allowedRoutes
+                        allowedRoutes: allowedRoutes,
+                        allowedFeatures: allowedFeatures
                     };
                     setState({ currentUser: user, isAuthenticated: true, isLoading: false });
                     startHeartbeat(tenant.id, staffData.id);

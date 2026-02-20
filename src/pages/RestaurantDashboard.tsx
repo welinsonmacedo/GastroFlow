@@ -98,14 +98,22 @@ export const RestaurantDashboard: React.FC = () => {
       if (tab.required === 'allowTableMgmt' && !planLimits.allowTableMgmt) return false;
       if (tab.required === 'allowCustomization' && !planLimits.allowCustomization) return false;
       
-      // 2. Checa Features Granulares (NOVO)
-      // Se allowedFeatures estiver vazio (legado), assume que todas estão ativas se o plano permitir
+      // 2. Checa Features Granulares (Tenant + User)
       if (allowedFeatures && allowedFeatures.length > 0) {
-          const hasFeature = tab.featureKeys.some(key => allowedFeatures.includes(key));
-          if (!hasFeature) return false;
+          const hasTenantFeature = tab.featureKeys.some(key => allowedFeatures.includes(key));
+          if (!hasTenantFeature) return false;
+      }
+
+      // 3. Permissões do Usuário (Cargos Personalizados)
+      if (authState.currentUser?.role !== 'ADMIN' && authState.currentUser?.customRoleId) {
+          const userFeatures = authState.currentUser.allowedFeatures || [];
+          if (userFeatures.length > 0) {
+              const hasUserFeature = tab.featureKeys.some(key => userFeatures.includes(key));
+              if (!hasUserFeature) return false;
+          }
       }
       
-      // 3. Checa Permissão do Usuário
+      // 4. Checa Permissão do Usuário (Role)
       if (userRole === Role.ADMIN) return true; 
       if (tab.roles && userRole && !tab.roles.includes(userRole)) return false;
       

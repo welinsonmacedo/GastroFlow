@@ -76,13 +76,22 @@ export const CommerceDashboard: React.FC = () => {
       if (tab.required === 'allowExpenses' && !planLimits.allowExpenses) return false;
       if (tab.required === 'allowReports' && !planLimits.allowReports) return false;
       
-      // 2. Features Granulares
+      // 2. Features Granulares (Tenant + User)
       if (allowedFeatures && allowedFeatures.length > 0) {
-          const hasFeature = tab.featureKeys.some(key => allowedFeatures.includes(key));
-          if (!hasFeature) return false;
+          const hasTenantFeature = tab.featureKeys.some(key => allowedFeatures.includes(key));
+          if (!hasTenantFeature) return false;
+      }
+
+      // 3. Permissões do Usuário (Cargos Personalizados)
+      if (authState.currentUser?.role !== 'ADMIN' && authState.currentUser?.customRoleId) {
+          const userFeatures = authState.currentUser.allowedFeatures || [];
+          if (userFeatures.length > 0) {
+              const hasUserFeature = tab.featureKeys.some(key => userFeatures.includes(key));
+              if (!hasUserFeature) return false;
+          }
       }
       
-      // 3. Permissão Usuário
+      // 4. Permissão Usuário (Role)
       if (userRole === Role.ADMIN) return true;
       if (tab.roles && userRole && !tab.roles.includes(userRole)) return false;
       

@@ -32,12 +32,20 @@ export const AdminDashboard: React.FC = () => {
 
   // Filtra abas
   const visibleTabs = tabs.filter(tab => {
+      // 1. Checa Limites do Plano
       if (tab.required === 'allowTableMgmt' && !planLimits.allowTableMgmt) return false;
       
-      // Checagem de features granulares
+      // 2. Checagem de features granulares (Tenant)
       if (allowedFeatures && allowedFeatures.length > 0) {
-          // Se tiver admin_overview, permite monitoramento também por enquanto
           if (!allowedFeatures.includes(tab.featureKey)) return false;
+      }
+
+      // 3. Permissões do Usuário (Cargos Personalizados)
+      if (authState.currentUser?.role !== 'ADMIN' && authState.currentUser?.customRoleId) {
+          const userFeatures = authState.currentUser.allowedFeatures || [];
+          if (userFeatures.length > 0) {
+              if (!userFeatures.includes(tab.featureKey)) return false;
+          }
       }
 
       return true;

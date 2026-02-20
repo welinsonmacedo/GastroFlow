@@ -99,11 +99,18 @@ export const Login: React.FC = () => {
 
               if (staffData) {
                   let allowedRoutes = staffData.allowed_routes || [];
+                  let allowedFeatures = [];
                   
-                  if (staffData.custom_roles?.permissions?.allowed_modules) {
-                      allowedRoutes = staffData.custom_roles.permissions.allowed_modules;
+                  if (staffData.custom_roles?.permissions) {
+                      if (staffData.custom_roles.permissions.allowed_modules) {
+                          allowedRoutes = staffData.custom_roles.permissions.allowed_modules;
+                      }
+                      if (staffData.custom_roles.permissions.allowed_features) {
+                          allowedFeatures = staffData.custom_roles.permissions.allowed_features;
+                      }
                   } else if (staffData.role === 'ADMIN') {
                       allowedRoutes = ['RESTAURANT', 'SNACKBAR', 'DISTRIBUTOR', 'COMMERCE', 'MANAGER', 'CONFIG', 'FINANCE', 'INVENTORY', 'HR'];
+                      allowedFeatures = [];
                   } else if (!staffData.custom_role_id && allowedRoutes.length === 0) {
                       if (['WAITER', 'KITCHEN', 'CASHIER'].includes(staffData.role)) {
                           allowedRoutes = ['RESTAURANT'];
@@ -115,7 +122,8 @@ export const Login: React.FC = () => {
                       id: staffData.id, name: staffData.name, role: staffData.role,
                       email: staffData.email, auth_user_id: staffData.auth_user_id, 
                       customRoleId: staffData.custom_role_id,
-                      allowedRoutes: allowedRoutes
+                      allowedRoutes: allowedRoutes,
+                      allowedFeatures: allowedFeatures
                   });
                   return;
               }

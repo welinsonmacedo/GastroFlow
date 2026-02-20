@@ -35,14 +35,13 @@ export const SettingsDashboard: React.FC = () => {
 
   // Filtra abas
   const visibleTabs = tabs.filter(tab => {
-      // Checa Limites do Plano
+      // 1. Checa Limites do Plano
       if (tab.required === 'allowCustomization' && !planLimits.allowCustomization) return false;
       if (tab.required === 'allowStaff' && !planLimits.allowStaff) return false;
       if (tab.required === 'allowCashier' && !planLimits.allowCashier) return false;
       if (tab.required === 'allowExpenses' && !planLimits.allowExpenses && !planLimits.allowCashier) return false; // Finance config needed for cashier too
       
-      // Checa Features Granulares (NOVO)
-      // Fallback para 'config_general' se for legado
+      // 2. Checa Features Granulares (Tenant)
       if (allowedFeatures && allowedFeatures.length > 0) {
           // Se for uma das novas features separadas
           if (['config_business', 'config_operations', 'config_delivery', 'config_finance_settings', 'config_security'].includes(tab.featureKey)) {
@@ -50,6 +49,18 @@ export const SettingsDashboard: React.FC = () => {
               if (!allowedFeatures.includes(tab.featureKey) && !allowedFeatures.includes('config_general')) return false;
           } else {
               if (!allowedFeatures.includes(tab.featureKey)) return false;
+          }
+      }
+
+      // 3. Permissões do Usuário (Cargos Personalizados)
+      if (authState.currentUser?.role !== 'ADMIN' && authState.currentUser?.customRoleId) {
+          const userFeatures = authState.currentUser.allowedFeatures || [];
+          if (userFeatures.length > 0) {
+              if (['config_business', 'config_operations', 'config_delivery', 'config_finance_settings', 'config_security'].includes(tab.featureKey)) {
+                  if (!userFeatures.includes(tab.featureKey) && !userFeatures.includes('config_general')) return false;
+              } else {
+                  if (!userFeatures.includes(tab.featureKey)) return false;
+              }
           }
       }
 
