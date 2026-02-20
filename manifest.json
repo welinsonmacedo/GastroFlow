@@ -2,7 +2,7 @@
 {
   "name": "Flux Eat System",
   "short_name": "Flux Eat",
-  "start_url": "/",
+  "start_url": "/login",
   "scope": "/",
   "display": "standalone",
   "display_override": ["window-controls-overlay", "minimal-ui"],
