@@ -23,3 +23,18 @@ export const supabase: any = createClient(
   supabaseUrl || 'https://placeholder.supabase.co',
   supabaseAnonKey || 'placeholder-key'
 );
+
+export const logAudit = async (tenantId: string, userId: string, userName: string, module: string, action: string, details: any = {}) => {
+    try {
+        await supabase.from('audit_logs').insert({
+            tenant_id: tenantId,
+            user_id: userId,
+            user_name: userName,
+            module,
+            action,
+            details
+        });
+    } catch (error) {
+        console.error("Erro ao registrar log de auditoria:", error);
+    }
+};

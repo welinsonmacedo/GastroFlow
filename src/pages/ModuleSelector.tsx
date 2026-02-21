@@ -6,7 +6,7 @@ import { useRestaurant } from '../context/RestaurantContext';
 import { useAuth } from '../context/AuthProvider';
 import { SystemModule } from '../types';
 import { PERMISSIONS_SCHEMA } from '../constants';
-import { ChefHat, Coffee, Truck, ShoppingBag, ArrowRight, LogOut, Grid, Briefcase, Settings, DollarSign, Store, Package, Users, Clock, LifeBuoy } from 'lucide-react';
+import { ChefHat, Coffee, Truck, ShoppingBag, ArrowRight, LogOut, Grid, Briefcase, Settings, DollarSign, Store, Package, Users, Clock, LifeBuoy, ShieldCheck } from 'lucide-react';
 import { Button } from '../components/Button';
 
 const ModuleCard = ({ 
@@ -48,7 +48,7 @@ export const ModuleSelector: React.FC = () => {
     const { logout, state: authState } = useAuth();
     const navigate = useNavigate();
 
-    const allowed = state.allowedModules || ['RESTAURANT', 'MANAGER', 'CONFIG', 'FINANCE', 'COMMERCE', 'INVENTORY', 'HR'];
+    const allowed = state.allowedModules || ['RESTAURANT', 'MANAGER', 'CONFIG', 'FINANCE', 'COMMERCE', 'INVENTORY', 'HR', 'AUDIT'];
     const tenantName = state.theme.restaurantName;
     const { planLimits } = state;
 
@@ -79,6 +79,7 @@ export const ModuleSelector: React.FC = () => {
         else if (module === 'DISTRIBUTOR') navigate('/commerce');
         else if (module === 'INVENTORY') navigate('/inventory');
         else if (module === 'HR') navigate('/rh');
+        else if (module === 'AUDIT') navigate('/audit');
         else alert("Módulo em desenvolvimento.");
     };
 
@@ -158,6 +159,9 @@ export const ModuleSelector: React.FC = () => {
                     )}
                     {(allowed.includes('CONFIG') || authState.currentUser?.role === 'ADMIN') && isModuleAllowed('CONFIG') && (
                         <ModuleCard type="CONFIG" title="Configurações" desc="Dados da empresa e segurança." icon={Settings} colorClass="text-gray-500" onClick={() => handleSelect('CONFIG')} />
+                    )}
+                    {(allowed.includes('AUDIT') || authState.currentUser?.role === 'ADMIN') && isModuleAllowed('AUDIT') && (
+                        <ModuleCard type="AUDIT" title="Auditoria" desc="Logs de atividades e segurança." icon={ShieldCheck} colorClass="text-slate-600" onClick={() => handleSelect('AUDIT')} />
                     )}
 
                     {/* Suporte */}

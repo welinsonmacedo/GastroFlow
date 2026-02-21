@@ -53,5 +53,12 @@ export const PERMISSIONS_SCHEMA = {
             { key: "config_appearance", label: "Aparência" },
             { key: "config_staff", label: "Acessos (Cargos)" }
         ]
+    },
+    AUDIT: {
+        label: "Auditoria",
+        features: [
+            { key: "audit_view", label: "Visualizar Logs" },
+            { key: "audit_export", label: "Exportar/Imprimir" }
+        ]
     }
 };

@@ -30,7 +30,7 @@ export enum OrderStatus {
 
 export type OrderType = 'DINE_IN' | 'DELIVERY' | 'PDV';
 
-export type SystemModule = 'RESTAURANT' | 'SNACKBAR' | 'DISTRIBUTOR' | 'COMMERCE' | 'MANAGER' | 'CONFIG' | 'FINANCE' | 'INVENTORY' | 'HR';
+export type SystemModule = 'RESTAURANT' | 'SNACKBAR' | 'DISTRIBUTOR' | 'COMMERCE' | 'MANAGER' | 'CONFIG' | 'FINANCE' | 'INVENTORY' | 'HR' | 'AUDIT';
 
 export type DeliveryPlatform = 'PHONE' | 'WHATSAPP' | 'IFOOD' | 'UBER_EATS' | 'RAPPI' | 'OTHER' | 'OWN_FLEET';
 

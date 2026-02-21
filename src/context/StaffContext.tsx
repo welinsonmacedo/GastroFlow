@@ -6,7 +6,7 @@ import {
     RhPayrollSetting, RhInssBracket, RhIrrfBracket, ClosedPayroll,
     PayrollEvent, PayrollEventType
 } from '../types';
-import { supabase } from '../lib/supabase';
+import { supabase, logAudit } from '../lib/supabase';
 import { useRestaurant } from './RestaurantContext';
 import { useUI } from './UIContext';
 import { useAuth } from './AuthProvider'; 
@@ -65,6 +65,8 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const { state: authState } = useAuth();
   const { tenantId, planLimits } = restState;
   const { showAlert } = useUI();
+  
+  const currentUser = authState.currentUser;
   
   const [state, setState] = useState<StaffState>({ 
     users: [], shifts: [], timeEntries: [], roles: [], taxes: [], benefits: [],
@@ -188,6 +190,9 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       });
 
       if (error) { throw new Error(error.message); }
+      if (currentUser && tenantId) {
+          await logAudit(tenantId, currentUser.id, currentUser.name, 'HR', 'Criação de Colaborador', { userName: user.name, role: user.role });
+      }
       await fetchData();
   };
 
@@ -203,10 +208,18 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }).eq('id', user.id);
 
       if (error) { throw new Error(error.message); }
+      if (currentUser && tenantId) {
+          await logAudit(tenantId, currentUser.id, currentUser.name, 'HR', 'Atualização de Colaborador', { userName: user.name });
+      }
       await fetchData();
   };
 
-  const deleteUser = async (userId: string) => { await supabase.from('staff').delete().eq('id', userId); };
+  const deleteUser = async (userId: string) => { 
+      await supabase.from('staff').delete().eq('id', userId); 
+      if (currentUser && tenantId) {
+          await logAudit(tenantId, currentUser.id, currentUser.name, 'HR', 'Exclusão de Colaborador', { userId });
+      }
+  };
   const addRole = async (role: Partial<CustomRole>) => { if(!tenantId) return; const { error } = await supabase.from('custom_roles').insert({ tenant_id: tenantId, name: role.name, description: role.description, permissions: role.permissions }); if (error) throw error; };
   const updateRole = async (role: CustomRole) => { if(!tenantId) return; const { error } = await supabase.from('custom_roles').update({ name: role.name, description: role.description, permissions: role.permissions }).eq('id', role.id); if (error) throw error; };
   const deleteRole = async (roleId: string) => { const { error } = await supabase.from('custom_roles').delete().eq('id', roleId); if (error) throw error; };

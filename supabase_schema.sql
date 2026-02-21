@@ -142,3 +142,4 @@ ALTER PUBLICATION supabase_realtime ADD TABLE inventory_items;
 ALTER PUBLICATION supabase_realtime ADD TABLE inventory_logs;
 ALTER PUBLICATION supabase_realtime ADD TABLE inventory_recipes;
 ALTER PUBLICATION supabase_realtime ADD TABLE suppliers;
+ALTER PUBLICATION supabase_realtime ADD TABLE audit_logs;

@@ -19,6 +19,7 @@ import { RestaurantDashboard } from './pages/RestaurantDashboard';
 import { CommerceDashboard } from './pages/CommerceDashboard'; 
 import { InventoryDashboard } from './pages/InventoryDashboard';
 import { StaffDashboard } from './pages/StaffDashboard'; 
+import { AuditDashboard } from './pages/AuditDashboard';
 import { SuperAdminDashboard } from './pages/SuperAdminDashboard';
 import { LandingPage } from './pages/LandingPage';
 import { Login } from './pages/Login';
@@ -132,6 +133,7 @@ const TenantApp = () => {
                         <Route path="/commerce/*" element={<ProtectedRestaurantRoute requiredRoute="/commerce"><CommerceDashboard /></ProtectedRestaurantRoute>} />
                         <Route path="/inventory/*" element={<ProtectedRestaurantRoute requiredRoute="/inventory" requiredFeature="allowInventory"><InventoryDashboard /></ProtectedRestaurantRoute>} />
                         <Route path="/rh/*" element={<ProtectedRestaurantRoute requiredRoute="/rh" requiredFeature="allowHR"><StaffDashboard /></ProtectedRestaurantRoute>} />
+                        <Route path="/audit/*" element={<ProtectedRestaurantRoute allowedRoles={[Role.ADMIN]} requiredRoute="/audit"><AuditDashboard /></ProtectedRestaurantRoute>} />
 
                         <Route path="/admin/*" element={<ProtectedRestaurantRoute allowedRoles={[Role.ADMIN]} requiredRoute="/admin"><AdminDashboard /></ProtectedRestaurantRoute>} />
                         <Route path="/settings/*" element={<ProtectedRestaurantRoute allowedRoles={[Role.ADMIN]} requiredRoute="/settings"><SettingsDashboard /></ProtectedRestaurantRoute>} />

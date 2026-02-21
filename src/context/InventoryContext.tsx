@@ -1,8 +1,9 @@
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { InventoryItem, InventoryRecipeItem, InventoryLog, Supplier, PurchaseEntry, InventoryType, ProductType } from '../types';
-import { supabase } from '../lib/supabase';
+import { supabase, logAudit } from '../lib/supabase';
 import { useRestaurant } from './RestaurantContext'; 
+import { useAuth } from './AuthProvider';
 import { useUI } from './UIContext';
 
 interface InventoryState {
@@ -28,8 +29,11 @@ const InventoryContext = createContext<InventoryContextType | undefined>(undefin
 
 export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { state: restaurantState } = useRestaurant();
+  const { state: authState } = useAuth();
   const { tenantId } = restaurantState;
   const { showAlert } = useUI();
+
+  const currentUser = authState.currentUser;
 
   const [state, setState] = useState<InventoryState>({
     inventory: [],
@@ -190,6 +194,9 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
       if (newItem) {
           await syncExtraToProducts(item, newItem.id);
+          if (currentUser) {
+              await logAudit(tenantId, currentUser.id, currentUser.name, 'INVENTORY', 'Criação de Item', { itemName: item.name, type: item.type });
+          }
       }
       
       return newItem ? newItem.id : null;
@@ -236,6 +243,9 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       }
 
       await syncExtraToProducts(item, item.id);
+      if (currentUser) {
+          await logAudit(tenantId, currentUser.id, currentUser.name, 'INVENTORY', 'Atualização de Item', { itemName: item.name });
+      }
   };
 
   const deleteInventoryItem = async (itemId: string) => {
@@ -247,6 +257,9 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           throw error;
       }
       await supabase.from('products').delete().eq('linked_inventory_item_id', itemId).eq('is_extra', true);
+      if (currentUser) {
+          await logAudit(tenantId, currentUser.id, currentUser.name, 'INVENTORY', 'Exclusão de Item', { itemId });
+      }
   };
 
   const updateStock = async (itemId: string, quantity: number, operation: 'IN' | 'OUT', reason: string, userName: string = 'Sistema') => {
