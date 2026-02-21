@@ -21,19 +21,33 @@ export const PurchaseOrderView: React.FC<PurchaseOrderViewProps> = ({ order, onB
     const [search, setSearch] = useState('');
 
     const handleSaveOrder = async () => {
-        const totalCost = items.reduce((acc, item) => acc + (item.suggestedQty * item.costPrice), 0);
+        const validatedItems = items.map(item => ({
+            ...item,
+            suggestedQty: parseFloat(String(item.suggestedQty)) || 0,
+            costPrice: parseFloat(String(item.costPrice)) || 0,
+        }));
+
+        if (validatedItems.some(item => item.suggestedQty <= 0)) {
+            alert('A quantidade de todos os itens deve ser maior que zero.');
+            return;
+        }
+
+        const totalCost = validatedItems.reduce((acc, item) => acc + (item.suggestedQty * item.costPrice), 0);
+        
         const orderToSave = {
             ...order,
-            items,
+            items: validatedItems,
             totalCost
         };
+
         try {
             await savePurchaseOrder(orderToSave);
             alert('Ordem de pedido salva com sucesso!');
             onBack();
-        } catch (error) {
+        } catch (error: any) {
             console.error('Erro ao salvar ordem de pedido:', error);
-            alert('Erro ao salvar ordem de pedido. Tente novamente.');
+            const errorMessage = error.message || 'Ocorreu um erro desconhecido.';
+            alert(`Erro ao salvar ordem de pedido: ${errorMessage}`);
         }
     };
 
@@ -73,6 +87,7 @@ export const PurchaseOrderView: React.FC<PurchaseOrderViewProps> = ({ order, onB
     const totalCost = items.reduce((acc, item) => acc + (item.suggestedQty * item.costPrice), 0);
 
     const filteredInventory = inventoryItems.filter(invItem => 
+        invItem.type && invItem.type !== 'COMPOSITE' &&
         !items.some(orderItem => orderItem.id === invItem.id) &&
         (invItem.name.toLowerCase().includes(search.toLowerCase()) ||
         (invItem.barcode && invItem.barcode.toString().includes(search)))
