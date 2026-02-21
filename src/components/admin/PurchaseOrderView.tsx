@@ -41,6 +41,10 @@ export const PurchaseOrderView: React.FC<PurchaseOrderViewProps> = ({ order, onB
         setItems(prev => prev.map(item => item.id === itemId ? { ...item, suggestedQty: newQty } : item));
     };
 
+    const handleCostPriceChange = (itemId: string, newCost: number) => {
+        setItems(prev => prev.map(item => item.id === itemId ? { ...item, costPrice: newCost } : item));
+    };
+
     const handleRemoveItem = (itemId: string) => {
         setItems(prev => prev.filter(item => item.id !== itemId));
     };
@@ -103,7 +107,14 @@ export const PurchaseOrderView: React.FC<PurchaseOrderViewProps> = ({ order, onB
                                         className="w-full p-2 border rounded-md text-center"
                                     />
                                 </td>
-                                <td className="p-3 text-right font-mono">R$ {item.costPrice.toFixed(2)}</td>
+                                <td className="p-3">
+                                    <input 
+                                        type="number"
+                                        value={item.costPrice}
+                                        onChange={(e) => handleCostPriceChange(item.id, parseFloat(e.target.value))}
+                                        className="w-full p-2 border rounded-md text-right"
+                                    />
+                                </td>
                                 <td className="p-3 text-right font-mono font-bold">R$ {(item.suggestedQty * item.costPrice).toFixed(2)}</td>
                                 <td className="p-3 text-center">
                                     <Button onClick={() => handleRemoveItem(item.id)} variant="ghost" size="sm" className="text-red-500 hover:bg-red-100">
