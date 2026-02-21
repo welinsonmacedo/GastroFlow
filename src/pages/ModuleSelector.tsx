@@ -52,20 +52,30 @@ export const ModuleSelector: React.FC = () => {
     const { planLimits } = state;
 
     const isModuleAllowed = (module: SystemModule) => {
-        // Se for ADMIN (Role.ADMIN), vê tudo que o restaurante tem permitido
         if (authState.currentUser?.role === 'ADMIN') return true;
-        // Se não, verifica se o módulo está nas rotas permitidas do usuário
-        return authState.currentUser?.allowedRoutes?.includes(module);
+        if (!authState.currentUser?.allowedRoutes?.includes(module)) return false;
+
+        // Se o usuário tem cargo customizado, verifica se ele tem PELO MENOS UMA feature daquele módulo
+        if (authState.currentUser?.customRoleId) {
+            // @ts-ignore
+            const moduleFeatures = PERMISSIONS_SCHEMA[module]?.features.map(f => f.key) || [];
+            const userFeatures = authState.currentUser.allowedFeatures || [];
+            return moduleFeatures.some(mf => userFeatures.includes(mf));
+        }
+
+        return true;
     };
 
     const handleSelect = (module: SystemModule) => {
         setActiveModule(module);
         
         if (module === 'RESTAURANT') navigate('/restaurant'); 
+        else if (module === 'SNACKBAR') navigate('/restaurant');
         else if (module === 'MANAGER') navigate('/admin'); 
         else if (module === 'FINANCE') navigate('/finance'); 
         else if (module === 'CONFIG') navigate('/settings'); 
         else if (module === 'COMMERCE') navigate('/commerce'); 
+        else if (module === 'DISTRIBUTOR') navigate('/commerce');
         else if (module === 'INVENTORY') navigate('/inventory');
         else if (module === 'HR') navigate('/rh');
         else alert("Módulo em desenvolvimento.");
@@ -124,8 +134,14 @@ export const ModuleSelector: React.FC = () => {
                     {allowed.includes('RESTAURANT') && isModuleAllowed('RESTAURANT') && (
                         <ModuleCard type="RESTAURANT" title="Restaurante" desc="Salão, Mesas, KDS e Caixa Gastronômico." icon={ChefHat} colorClass="text-blue-600" onClick={() => handleSelect('RESTAURANT')} />
                     )}
+                    {allowed.includes('SNACKBAR') && isModuleAllowed('SNACKBAR') && (
+                        <ModuleCard type="SNACKBAR" title="Lanchonete" desc="Fluxo Rápido: Caixa, Senha e Entrega." icon={Coffee} colorClass="text-orange-500" onClick={() => handleSelect('SNACKBAR')} />
+                    )}
                     {(allowed.includes('COMMERCE') || authState.currentUser?.role === 'ADMIN') && isModuleAllowed('COMMERCE') && (
                         <ModuleCard type="COMMERCE" title="Varejo" desc="PDV Rápido, Leitor de Código e Venda Balcão." icon={Store} colorClass="text-indigo-500" onClick={() => handleSelect('COMMERCE')} />
+                    )}
+                    {allowed.includes('DISTRIBUTOR') && isModuleAllowed('DISTRIBUTOR') && (
+                        <ModuleCard type="DISTRIBUTOR" title="Distribuidora" desc="Venda Atacado, Rotas e Estoque de Grade." icon={Truck} colorClass="text-cyan-600" onClick={() => handleSelect('DISTRIBUTOR')} />
                     )}
                     {(allowed.includes('MANAGER') || authState.currentUser?.role === 'ADMIN') && isModuleAllowed('MANAGER') && (
                         <ModuleCard type="MANAGER" title="Gestor" desc="Backoffice Operacional. Cardápio e Mesas." icon={Briefcase} colorClass="text-purple-500" onClick={() => handleSelect('MANAGER')} />

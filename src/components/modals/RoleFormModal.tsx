@@ -125,13 +125,22 @@ export const RoleFormModal: React.FC<RoleFormModalProps> = ({ isOpen, onClose, r
     };
 
     const toggleFeature = (featKey: string, moduleKey: SystemModule) => {
-        if (selectedFeatures.includes(featKey)) {
-            setSelectedFeatures(selectedFeatures.filter(f => f !== featKey));
-        } else {
-            setSelectedFeatures([...selectedFeatures, featKey]);
+        const newSelectedFeatures = selectedFeatures.includes(featKey)
+            ? selectedFeatures.filter(f => f !== featKey)
+            : [...selectedFeatures, featKey];
+
+        setSelectedFeatures(newSelectedFeatures);
+
+        // @ts-ignore
+        const moduleFeatures = PERMISSIONS_SCHEMA[moduleKey]?.features.map(f => f.key) || [];
+        const hasAnyFeatureInModule = moduleFeatures.some(f => newSelectedFeatures.includes(f));
+
+        if (hasAnyFeatureInModule) {
             if (!selectedModules.includes(moduleKey)) {
                 setSelectedModules([...selectedModules, moduleKey]);
             }
+        } else {
+            setSelectedModules(selectedModules.filter(m => m !== moduleKey));
         }
     };
 
