@@ -600,3 +600,26 @@ export interface AuditLog {
   details: any;
   created_at: Date;
 }
+
+export interface SuggestionItem {
+    id: string;
+    name: string;
+    unit: string;
+    currentStock: number;
+    minStock: number;
+    costPrice: number;
+    suggestedQty: number;
+    estimatedCost: number;
+    salesCount: number;
+    supplierId?: string;
+    supplierName?: string;
+}
+
+export interface PurchaseOrder {
+    id: string;
+    created_at: string;
+    supplier_id: string;
+    total_cost: number;
+    status: string;
+    supplierName?: string;
+}
