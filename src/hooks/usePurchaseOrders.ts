@@ -20,7 +20,7 @@ export const usePurchaseOrders = () => {
             .from('purchase_orders')
             .insert({
                 tenant_id: tenantId,
-                supplier_id: order.supplierId,
+                supplier_id: order.supplierId || null,
                 total_cost: order.totalCost,
                 status: 'PENDING'
             })
