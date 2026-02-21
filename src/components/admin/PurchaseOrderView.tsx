@@ -38,10 +38,12 @@ export const PurchaseOrderView: React.FC<PurchaseOrderViewProps> = ({ order, onB
     };
 
     const handleQtyChange = (itemId: string, newQty: number) => {
+        if (isNaN(newQty)) return;
         setItems(prev => prev.map(item => item.id === itemId ? { ...item, suggestedQty: newQty } : item));
     };
 
     const handleCostPriceChange = (itemId: string, newCost: number) => {
+        if (isNaN(newCost)) return;
         setItems(prev => prev.map(item => item.id === itemId ? { ...item, costPrice: newCost } : item));
     };
 
