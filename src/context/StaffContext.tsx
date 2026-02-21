@@ -327,16 +327,20 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const calculateINSS = (grossSalary: number): number => {
-      let totalINSS = 0;
       const brackets = state.inssBrackets;
       const ceiling = state.legalSettings?.inssCeiling || 7786.02;
       const salaryForCalc = Math.min(grossSalary, ceiling);
+      let totalINSS = 0;
+      let remainingSalary = salaryForCalc;
+      let previousBracketMax = 0;
+
       for (const bracket of brackets) {
-          if (salaryForCalc > bracket.minValue) {
-              const maxInBracket = bracket.maxValue ? bracket.maxValue : Infinity;
-              const effectiveMax = Math.min(salaryForCalc, maxInBracket);
-              const taxableAmount = effectiveMax - bracket.minValue;
-              totalINSS += taxableAmount * (bracket.rate / 100);
+          if (salaryForCalc > previousBracketMax) {
+              const taxableAmountInBracket = Math.min(remainingSalary, (bracket.maxValue || ceiling) - previousBracketMax);
+              totalINSS += taxableAmountInBracket * (bracket.rate / 100);
+              remainingSalary -= taxableAmountInBracket;
+              if (remainingSalary <= 0) break;
+              previousBracketMax = bracket.maxValue || ceiling;
           }
       }
       return totalINSS;
