@@ -67,7 +67,6 @@ export const PurchaseOrderView: React.FC<PurchaseOrderViewProps> = ({ order, onB
     const totalCost = items.reduce((acc, item) => acc + (item.suggestedQty * item.costPrice), 0);
 
     const filteredInventory = inventoryItems.filter(invItem => 
-        (order.supplierId ? invItem.supplierId === order.supplierId : true) &&
         !items.some(orderItem => orderItem.id === invItem.id) &&
         (invItem.name.toLowerCase().includes(search.toLowerCase()) ||
         (invItem.barcode && invItem.barcode.toString().includes(search)))
