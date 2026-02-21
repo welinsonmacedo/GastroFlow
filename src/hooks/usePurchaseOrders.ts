@@ -20,8 +20,7 @@ export const usePurchaseOrders = () => {
                 tenant_id: tenantId,
                 supplier_id: order.supplierId,
                 total_cost: order.totalCost,
-                status: 'PENDING',
-                created_by: currentUser.id
+                status: 'PENDING'
             })
             .select('id')
             .single();
