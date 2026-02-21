@@ -311,6 +311,7 @@ export interface RestaurantTenant {
 
 export interface User {
   id: string;
+  tenant_id: string;
   auth_user_id?: string;
   name: string;
   email?: string;

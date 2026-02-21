@@ -122,6 +122,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                         id: staffData.id,
                         name: staffData.name,
                         role: staffData.role,
+                        tenant_id: tenant.id, // Adicionado aqui
                         auth_user_id: staffData.auth_user_id,
                         email: staffData.email,
                         customRoleId: staffData.custom_role_id,
