@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { useRestaurant } from '../context/RestaurantContext';
 import { useAuth } from '../context/AuthProvider';
 import { SystemModule } from '../types';
+import { PERMISSIONS_SCHEMA } from '../constants';
 import { ChefHat, Coffee, Truck, ShoppingBag, ArrowRight, LogOut, Grid, Briefcase, Settings, DollarSign, Store, Package, Users, Clock, LifeBuoy } from 'lucide-react';
 import { Button } from '../components/Button';
 
