@@ -32,7 +32,7 @@ export const SupplierModal: React.FC<SupplierModalProps> = ({ isOpen, onClose, o
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title={supplier ? 'Editar Fornecedor' : 'Novo Fornecedor'}>
+        <Modal isOpen={isOpen} onClose={onClose} title={supplier ? 'Editar Fornecedor' : 'Novo Fornecedor'} variant="page">
             <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
                     <label className="text-xs font-bold block mb-1 text-slate-600">Nome / Razão Social</label>
