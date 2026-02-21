@@ -51,22 +51,8 @@ export const CommerceDashboard: React.FC = () => {
         required: null,
         featureKeys: ['distributor_routes']
     },
-    { 
-        path: '/commerce/finance', 
-        label: 'Financeiro', 
-        icon: DollarSign, 
-        roles: [Role.ADMIN],
-        required: 'allowExpenses',
-        featureKeys: ['commerce_finance']
-    },
-    { 
-        path: '/commerce/reports', 
-        label: 'Relatórios', 
-        icon: BarChart3, 
-        roles: [Role.ADMIN],
-        required: 'allowReports',
-        featureKeys: ['commerce_reports']
-    },
+
+
   ];
 
   // Filtra abas
@@ -201,14 +187,6 @@ export const CommerceDashboard: React.FC = () => {
                     <Route path="history" element={<div className="h-full p-4 md:p-6 overflow-y-auto"><CommerceHistoryView /></div>} />
                     <Route path="routes" element={<div className="h-full flex items-center justify-center text-2xl font-bold text-gray-400">Gestão de Rotas (Em Breve)</div>} />
                     
-                    {planLimits.allowExpenses && (
-                        <Route path="finance" element={<div className="h-full overflow-y-auto p-4 md:p-8"><AdminFinance /></div>} />
-                    )}
-
-                    {planLimits.allowReports && (
-                        <Route path="reports" element={<div className="h-full overflow-y-auto p-4 md:p-8"><AdminReports /></div>} />
-                    )}
-
                     {/* Fallback */}
                     <Route path="*" element={<Navigate to="pos" replace />} />
                 </Routes>
