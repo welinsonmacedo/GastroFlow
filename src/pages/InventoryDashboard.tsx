@@ -12,6 +12,7 @@ import {
 // Importando Sub-páginas de Estoque
 import { AdminInventory } from './admin/AdminInventory';
 import { AdminPurchaseSuggestions } from './admin/AdminPurchaseSuggestions';
+import { AdminPurchaseOrders } from './admin/AdminPurchaseOrders';
 
 export const InventoryDashboard: React.FC = () => {
   const { state: restState } = useRestaurant();
@@ -28,7 +29,8 @@ export const InventoryDashboard: React.FC = () => {
     { path: '/inventory/count', label: 'Balanço', icon: Scale, featureKeys: ['inventory_manage', 'distributor_inventory'] },
     { path: '/inventory/purchases', label: 'Sugestões', icon: ShoppingCart, featureKeys: ['inventory_purchases'] },
     { path: '/inventory/suppliers', label: 'Fornecedores', icon: Truck, featureKeys: ['inventory_suppliers'] },
-    { path: '/inventory/logs', label: 'Logs', icon: ClipboardList, featureKeys: ['inventory_manage', 'distributor_inventory'] },
+    { path: '/inventory/orders', label: 'Ordens de Pedido', icon: ClipboardList, featureKeys: ['inventory_purchases'] },
+
   ];
 
   // Filtra abas
@@ -138,9 +140,10 @@ export const InventoryDashboard: React.FC = () => {
                     <Route path="entry" element={<AdminInventory view="ENTRY" />} />
                     <Route path="count" element={<AdminInventory view="COUNT" />} />
                     <Route path="suppliers" element={<AdminInventory view="SUPPLIERS" />} />
-                    <Route path="logs" element={<AdminInventory view="LOGS" />} />
+
                     
                     <Route path="purchases" element={<AdminPurchaseSuggestions />} />
+                    <Route path="orders" element={<AdminPurchaseOrders />} />
 
                     {/* Fallback */}
                     <Route path="*" element={<Navigate to="" replace />} />

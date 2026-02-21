@@ -1,104 +1,93 @@
+# Flux Eat - System Documentation
 
-# Flux Eat - Documentação do Sistema
+## Project Overview
+Flux Eat is a comprehensive, multi-tenant restaurant and retail management system (SaaS) built with modern web technologies. It provides tailored interfaces for different roles (Owners, Managers, Cashiers, Waiters, Kitchen Staff) and business types (Restaurants, Retail/Commerce).
 
-## 1. Visão Geral
-O **Flux Eat** é uma plataforma SaaS (Software as a Service) "White-label" para gestão completa de restaurantes. O sistema foi re-arquitetado para operar em **Módulos Independentes**, permitindo que diferentes perfis de funcionários acessem apenas as ferramentas relevantes para suas funções, mantendo a operação organizada e segura.
+## Tech Stack
+- **Frontend**: React 18+, TypeScript
+- **Build Tool**: Vite
+- **Styling**: Tailwind CSS, Lucide React (Icons), Framer Motion (Animations)
+- **State Management**: React Context API (AuthProvider, RestaurantProvider, StaffProvider, UIContext)
+- **Backend/Database**: Supabase (PostgreSQL) - *Integrated via client-side SDK*
+- **Routing**: React Router DOM
 
-### Tecnologias Principais
-- **Frontend:** React 18, Tailwind CSS, Lucide Icons.
-- **Backend/Database:** Supabase (PostgreSQL).
-- **Realtime:** Supabase Realtime (Websockets) para sincronização instantânea entre Garçom, Cozinha e Caixa.
-- **Autenticação:** Supabase Auth + Sistema de PIN para funcionários.
-- **IA:** Integração com Google Gemini (para geração automática de descrições de produtos).
+## Core Architecture
+- **Multi-Tenancy**: The system is designed to support multiple restaurants/tenants, identified by `tenantId`.
+- **Role-Based Access Control (RBAC)**: Access to modules and features is controlled by user roles (ADMIN, CASHIER, WAITER, KITCHEN, etc.) and custom permissions.
+- **Context-Driven State**: Global state is managed through specialized contexts for Authentication, Restaurant Data, Staff Data, and UI controls.
 
----
+## Modules & Dashboards
 
-## 2. Estrutura de Navegação Modular
-Ao fazer login, o usuário é direcionado para o **Seletor de Módulos** (`/modules`). A partir dali, o sistema se divide em 4 ambientes distintos, cada um com seu próprio layout e propósito.
+### 1. Módulo Gestor (Admin Dashboard)
+Focused on high-level management and real-time monitoring.
+- **Visão Geral (Overview)**: General business metrics and shortcuts.
+- **Monitoramento (Monitoring)**: Real-time view of restaurant activity.
+- *Note: Menu and QR Table management have been removed from this dashboard.*
 
-### A. Módulo Restaurante (Operacional)
-**Rota:** `/restaurant/*`
-**Cor do Tema:** Azul Royal
-**Público:** Garçons, Cozinheiros, Operadores de Caixa.
-**Foco:** Velocidade e Tempo Real.
-- **Salão & Mesas (Waiter):** Mapa de mesas, lançamento de pedidos, status dos pratos.
-- **KDS (Kitchen):** Tela de produção para a cozinha, substituindo impressoras.
-- **Frente de Caixa (POS):** Abertura/Fechamento de turno, vendas balcão, gestão de delivery e recebimento de pagamentos.
+### 2. Módulo Varejo (Commerce Dashboard)
+Tailored for retail and over-the-counter sales operations.
+- **PDV (POS)**: Point of sale interface for quick transactions.
+- **Histórico (History)**: Sales history and transaction logs.
+- **Rotas (Routes)**: Route management for distribution (Placeholder).
+- *Note: Finance and Reports tabs have been removed from this dashboard.*
 
-### B. Módulo Gestor (Backoffice)
-**Rota:** `/admin/*`
-**Cor do Tema:** Roxo
-**Público:** Gerentes, Estoquistas.
-**Foco:** Cadastros e Controle de Insumos.
-- **Visão Geral:** Dashboard operacional (Vendas hoje, Pedidos abertos).
-- **Cardápio:** Cadastro de produtos de venda e preços.
-- **Estoque:** Gestão de matérias-primas, compras (NF), fornecedores e fichas técnicas.
-- **Mesas:** Configuração do layout do salão e geração de QR Codes.
+### 3. Módulo Caixa (Cashier Dashboard)
+Dedicated interface for handling payments and orders.
+- **PDV**: Order entry and payment processing.
+- **Pedidos**: Management of active orders.
 
-### C. Módulo Financeiro (Controladoria)
-**Rota:** `/finance/*`
-**Cor do Tema:** Verde Esmeralda
-**Público:** Sócios, Financeiro, Contabilidade.
-**Foco:** Dinheiro, Lucro e Auditoria.
-- **Fluxo de Caixa:** Histórico de sessões de caixa (fechamentos), conferência de valores.
-- **Contas a Pagar:** Gestão de despesas, boletos e custos fixos.
-- **DRE Gerencial:** Relatório contábil completo (Regime de Caixa ou Competência).
-- **Business Intelligence (BI):** Gráficos de evolução, Curva ABC, Ticket Médio e metas.
+### 4. Módulo Garçom (Waiter App)
+Mobile-first interface for table service.
+- **Mesas**: Table selection and status view.
+- **Novo Pedido**: Order taking interface.
 
-### D. Módulo Configurações (Sistema)
-**Rota:** `/settings/*`
-**Cor do Tema:** Cinza/Slate
-**Público:** Administradores do Sistema (Donos).
-**Foco:** Dados da Empresa e Segurança.
-- **Geral:** Dados fiscais (CNPJ), endereço, regras de negócio (taxa de serviço, tempo de carência).
-- **Aparência:** Personalização White-label (Logo, Cores, Banner do App do Cliente).
-- **Equipe:** Gestão de usuários, cargos e senhas de acesso.
+### 5. Módulo Cozinha (Kitchen Display System - KDS)
+Real-time display for kitchen staff.
+- **Pedidos**: View incoming orders, mark as preparing or ready.
 
----
+### 6. Módulo Estoque (Inventory Dashboard)
+Comprehensive inventory management.
+- **Items**: Manage ingredients and products.
+- **Movimentações**: Track stock in/out.
+- **Fornecedores**: Supplier management.
 
-## 3. App do Cliente (Cardápio Digital)
-Interface pública acessada pelo cliente final via QR Code. Não exige login, apenas autenticação via código da mesa.
-- **Rota:** `/client/table/:tableId`
-- **Funcionalidades:**
-    - Visualização de produtos.
-    - Carrinho de compras.
-    - Status do pedido em tempo real.
-    - Botões de serviço: "Chamar Garçom" e "Pedir a Conta".
+### 7. Módulo Financeiro (Finance Dashboard)
+Financial health and reporting.
+- **Visão Geral**: Revenue, expenses, and profit.
+- **Despesas**: Expense tracking.
 
----
+### 8. Módulo RH (Staff Dashboard)
+Human resources and payroll management.
+- **Colaboradores**: Employee profiles and roles.
+- **Escalas**: Shift management.
+- **Folha de Pagamento**: Payroll calculation and payslip generation.
+- **Ponto**: Time clock records.
 
-## 4. Banco de Dados e Segurança
+### 9. Módulo Auditoria (Audit Dashboard) **[NEW]**
+System-wide audit logging and tracking.
+- **Logs**: View detailed logs of user actions (Create, Update, Delete).
+- **Filtros**: Filter by Module, User, Action, and Date.
+- **Export**: Print or export audit logs.
+- **Integration**: Automatically logs actions from Inventory and HR modules.
 
-### Multi-tenant (SaaS)
-O sistema utiliza **Row Level Security (RLS)** no PostgreSQL. Cada registro no banco possui uma coluna `tenant_id`. As políticas de segurança garantem que um restaurante jamais acesse dados de outro.
+### 10. Módulo Cliente (Client App)
+Self-service interface for end-customers.
+- **Cardápio**: Browse menu and place orders.
 
-### Tabelas Principais
-- `tenants`: Clientes SaaS (Restaurantes) e suas configurações globais.
-- `staff`: Usuários do sistema e suas permissões (`allowed_routes`).
-- `products`: Itens do cardápio (Venda).
-- `inventory_items`: Itens do estoque (Insumos/Revenda/Pratos).
-- `orders` / `order_items`: Pedidos transacionais.
-- `transactions`: Entradas financeiras (Vendas confirmadas).
-- `expenses`: Saídas financeiras (Despesas).
-- `cash_sessions`: Controle de turnos de caixa.
+### 11. Super Admin (SaaS Dashboard)
+Platform administration.
+- **Tenants**: Manage subscribed restaurants.
+- **Plans**: Manage subscription plans and limits.
 
----
+## Key Features
+- **Audit Logging**: Centralized logging of critical system actions for security and accountability.
+- **Payroll Management**: Automated calculations for salaries, overtime, and benefits.
+- **Inventory Tracking**: Real-time stock updates based on sales.
+- **Responsive Design**: Interfaces adapted for Desktop (Admin), Tablet (POS), and Mobile (Waiter).
 
-## 5. Regras de Negócio Críticas
-
-1.  **Baixa de Estoque Automática:**
-    - Trigger `deduct_inventory_on_order`.
-    - Venda de produto com ficha técnica baixa os ingredientes proporcionalmente.
-    - Venda de produto de revenda baixa o item diretamente.
-
-2.  **Controle de Caixa:**
-    - Vendas no POS exigem uma `cash_session` com status `OPEN`.
-    - O fechamento do caixa consolida os valores em dinheiro, mas não afeta o histórico de transações digitais (que vão direto para o DRE).
-
-3.  **Integração Financeira:**
-    - Toda venda finalizada (`COMPLETED`) gera uma linha na tabela `transactions`.
-    - O DRE cruza `transactions` (Receita) com `expenses` (Despesa) e `order_items` (Custo/CMV) para gerar o lucro líquido.
-
-4.  **Permissões:**
-    - O acesso aos módulos é controlado tanto pelo **Plano SaaS** (`PlanLimits`) quanto pelo **Cargo do Usuário** (`Role`).
-    - Ex: Um usuário com cargo `WAITER` não consegue acessar o módulo `FINANCE`, mesmo que o plano do restaurante permita.
+## Recent Updates
+- **Audit Module**: Implemented a dedicated Audit module to track system changes.
+- **Dashboard Cleanup**:
+    - Removed "Cardápio" and "Mesas QR" from the Admin Dashboard.
+    - Removed "Financeiro" and "Relatórios" from the Commerce Dashboard.
+- **HR Enhancements**: Added logic to limit salary advances to 40% of base salary.
