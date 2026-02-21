@@ -26,8 +26,6 @@ export const AdminDashboard: React.FC = () => {
   const tabs = [
     { path: '/admin', label: 'Visão Geral', icon: LayoutDashboard, exact: true, featureKey: 'admin_overview' },
     { path: '/admin/monitoring', label: 'Monitoramento', icon: Activity, featureKey: 'admin_overview' }, // Incluído na visão geral ou criar featureKey nova
-    { path: '/admin/products', label: 'Cardápio', icon: Utensils, featureKey: 'admin_products' },
-    { path: '/admin/tables', label: 'Mesas & QR', icon: QrCode, required: 'allowTableMgmt', featureKey: 'admin_tables' },
   ];
 
   // Filtra abas
@@ -141,8 +139,6 @@ export const AdminDashboard: React.FC = () => {
                 <Routes>
                     <Route path="/" element={<AdminOverview />} />
                     <Route path="monitoring" element={<AdminMonitoring />} />
-                    <Route path="products" element={<AdminProducts />} />
-                    {planLimits.allowTableMgmt && <Route path="tables" element={<AdminTables />} />}
                     
                     {/* Fallback */}
                     <Route path="*" element={<Navigate to="" replace />} />
