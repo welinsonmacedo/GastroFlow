@@ -13,7 +13,7 @@ import {
 import { AdminInventory } from './admin/AdminInventory';
 import { AdminPurchaseSuggestions } from './admin/AdminPurchaseSuggestions';
 import { AdminPurchaseOrders } from './admin/AdminPurchaseOrders';
-import { AdminSuppliers } from './admin/AdminSuppliers';
+
 
 export const InventoryDashboard: React.FC = () => {
   const { state: restState } = useRestaurant();
@@ -140,7 +140,7 @@ export const InventoryDashboard: React.FC = () => {
                     <Route path="new" element={<AdminInventory view="NEW_ITEM" />} />
                     <Route path="entry" element={<AdminInventory view="ENTRY" />} />
                     <Route path="count" element={<AdminInventory view="COUNT" />} />
-                    <Route path="suppliers" element={<AdminSuppliers />} />
+                    <Route path="suppliers" element={<AdminInventory view="SUPPLIERS" />} />
 
                     
                     <Route path="purchases" element={<AdminPurchaseSuggestions />} />

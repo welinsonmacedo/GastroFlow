@@ -88,7 +88,7 @@ const PurchaseOrderView: React.FC<PurchaseOrderViewProps> = ({ order, onBack, in
         invItem.supplierId === order.supplierId &&
         !items.some(orderItem => orderItem.id === invItem.id) &&
         (invItem.name.toLowerCase().includes(search.toLowerCase()) || 
-        (invItem.barcode && invItem.barcode.includes(search)))
+        (invItem.barcode && invItem.barcode.toString().includes(search)))
     );
 
     return (
@@ -145,7 +145,10 @@ const PurchaseOrderView: React.FC<PurchaseOrderViewProps> = ({ order, onBack, in
                         <div className="max-h-40 overflow-y-auto">
                             {filteredInventory.map(invItem => (
                                 <div key={invItem.id} onClick={() => handleAddItem(invItem)} className="p-2 hover:bg-slate-100 cursor-pointer flex justify-between">
-                                    <span>{invItem.name}</span>
+                                    <div>
+                                        <span className="font-medium">{invItem.name}</span>
+                                        {invItem.barcode && <span className="text-xs text-gray-400 ml-2">({invItem.barcode})</span>}
+                                    </div>
                                     <span className="text-sm text-slate-500">R$ {invItem.costPrice.toFixed(2)}</span>
                                 </div>
                             ))}
