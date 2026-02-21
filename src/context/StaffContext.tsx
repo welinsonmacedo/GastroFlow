@@ -65,7 +65,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const { state: authState } = useAuth();
   const { tenantId, planLimits } = restState;
   const { showAlert } = useUI();
-  
+
   const currentUser = authState.currentUser;
   
   const [state, setState] = useState<StaffState>({ 
@@ -301,12 +301,25 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // --- EVENTOS VARIÁVEIS ---
   const addPayrollEvent = async (event: Partial<PayrollEvent>) => {
-      if(!tenantId) return;
+      if(!tenantId || !currentUser) return;
+
+      if (event.type === 'ADVANCE') {
+          const user = state.users.find(u => u.id === event.staffId);
+          if (user && user.baseSalary) {
+              const maxAdvance = user.baseSalary * 0.40; // 40% limit
+              if (event.value && event.value > maxAdvance) {
+                  throw new Error(`Adiantamento (R$ ${event.value.toFixed(2)}) excede o limite de 40% (R$ ${maxAdvance.toFixed(2)}) do salário base.`);
+              }
+          }
+      }
+
       const { error } = await supabase.from('rh_payroll_events').insert({
           tenant_id: tenantId, staff_id: event.staffId, month: event.month, year: event.year,
           type: event.type, description: event.description, value: event.value, created_by: authState.currentUser?.id
       });
       if(error) throw error;
+
+      await logAudit(tenantId, currentUser.id, currentUser.name, 'HR', 'Lançamento de Evento', { eventType: event.type, staffId: event.staffId, value: event.value });
   };
   
   const deletePayrollEvent = async (id: string) => {
