@@ -3,70 +3,100 @@ import React, { useState } from 'react';
 import { useInventory } from '../../../context/InventoryContext';
 import { useUI } from '../../../context/UIContext';
 import { Button } from '../../../components/Button';
-import { Truck, Plus, Trash2, User as UserIcon, Phone, FileText } from 'lucide-react';
+import { Truck, Plus, Trash2, Edit, Eye } from 'lucide-react';
+import { SupplierModal } from './SupplierModal';
+import { Supplier } from '../../../types';
 
 export const InventorySuppliersView: React.FC = () => {
-    const { state: invState, addSupplier, deleteSupplier } = useInventory();
+    const { state: invState, addSupplier, updateSupplier, deleteSupplier } = useInventory();
     const { showConfirm, showAlert } = useUI();
     
-    const [newSupplierForm, setNewSupplierForm] = useState({ name: '', phone: '', email: '', cnpj: '', contactName: '' });
-    const [showSupplierForm, setShowSupplierForm] = useState(false);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
 
-    const handleSaveSupplier = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if(!newSupplierForm.name) return;
-        await addSupplier(newSupplierForm as any);
-        setNewSupplierForm({ name: '', phone: '', email: '', cnpj: '', contactName: '' });
-        setShowSupplierForm(false);
-        showAlert({ title: "Sucesso", message: "Fornecedor adicionado.", type: "SUCCESS" });
+    const handleOpenModal = (supplier: Supplier | null = null) => {
+        setSelectedSupplier(supplier);
+        setIsModalOpen(true);
+    };
+
+    const handleCloseModal = () => {
+        setSelectedSupplier(null);
+        setIsModalOpen(false);
+    };
+
+    const handleSaveSupplier = async (supplier: Supplier) => {
+        if (supplier.id) {
+            await updateSupplier(supplier);
+            showAlert({ title: "Sucesso", message: "Fornecedor atualizado.", type: "SUCCESS" });
+        } else {
+            await addSupplier(supplier as any);
+            showAlert({ title: "Sucesso", message: "Fornecedor adicionado.", type: "SUCCESS" });
+        }
+        handleCloseModal();
     };
 
     const handleDeleteSupplier = (id: string) => {
-        showConfirm({ title: "Excluir Fornecedor", message: "Tem certeza?", onConfirm: async () => { await deleteSupplier(id); showAlert({ title: "Sucesso", message: "Fornecedor removido.", type: 'SUCCESS' }); } });
+        showConfirm({ 
+            title: "Excluir Fornecedor", 
+            message: "Tem certeza? Esta ação não pode ser desfeita.", 
+            onConfirm: async () => { 
+                await deleteSupplier(id); 
+                showAlert({ title: "Sucesso", message: "Fornecedor removido.", type: 'SUCCESS' }); 
+            } 
+        });
     };
 
     return (
       <div className="w-full h-full flex flex-col space-y-6 overflow-hidden">
           <div className="flex justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-200 shrink-0">
               <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2"><Truck className="text-blue-600"/> Fornecedores</h2>
-              <Button onClick={() => setShowSupplierForm(true)}><Plus size={18}/> Novo Fornecedor</Button>
+              <Button onClick={() => handleOpenModal()}><Plus size={18}/> Novo Fornecedor</Button>
           </div>
 
           <div className="flex-1 overflow-y-auto custom-scrollbar pb-20">
-              {showSupplierForm && (
-                  <div className="bg-white p-6 rounded-2xl border-2 border-blue-100 shadow-md mb-6 animate-fade-in">
-                      <h4 className="text-sm font-black text-blue-800 uppercase tracking-widest mb-4">Cadastro de Fornecedor</h4>
-                      <form onSubmit={handleSaveSupplier} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div className="md:col-span-2"><label className="text-xs font-bold block mb-1 text-slate-600">Nome / Razão Social</label><input required className="w-full border p-3 rounded-lg focus:border-blue-500 outline-none" value={newSupplierForm.name} onChange={e => setNewSupplierForm({...newSupplierForm, name: e.target.value})} /></div>
-                          <div><label className="text-xs font-bold block mb-1 text-slate-600">CNPJ</label><input className="w-full border p-3 rounded-lg focus:border-blue-500 outline-none" value={newSupplierForm.cnpj} onChange={e => setNewSupplierForm({...newSupplierForm, cnpj: e.target.value})} /></div>
-                          <div><label className="text-xs font-bold block mb-1 text-slate-600">Nome Contato</label><input className="w-full border p-3 rounded-lg focus:border-blue-500 outline-none" value={newSupplierForm.contactName} onChange={e => setNewSupplierForm({...newSupplierForm, contactName: e.target.value})} /></div>
-                          <div><label className="text-xs font-bold block mb-1 text-slate-600">Telefone</label><input className="w-full border p-3 rounded-lg focus:border-blue-500 outline-none" value={newSupplierForm.phone} onChange={e => setNewSupplierForm({...newSupplierForm, phone: e.target.value})} /></div>
-                          <div><label className="text-xs font-bold block mb-1 text-slate-600">Email</label><input className="w-full border p-3 rounded-lg focus:border-blue-500 outline-none" value={newSupplierForm.email} onChange={e => setNewSupplierForm({...newSupplierForm, email: e.target.value})} /></div>
-                          <div className="md:col-span-2 flex gap-3 mt-2">
-                              <Button type="button" variant="secondary" onClick={() => setShowSupplierForm(false)} className="flex-1 py-3">Cancelar</Button>
-                              <Button type="submit" className="flex-1 py-3 shadow-md">Salvar Fornecedor</Button>
-                          </div>
-                      </form>
-                  </div>
-              )}
-
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                  {invState.suppliers.map(s => (
-                      <div key={s.id} className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between group hover:border-blue-400 hover:shadow-lg transition-all relative">
-                          <button onClick={() => handleDeleteSupplier(s.id)} className="absolute top-4 right-4 text-red-300 hover:text-red-500 hover:bg-red-50 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all"><Trash2 size={16}/></button>
-                          <div>
-                              <h4 className="font-bold text-slate-800 text-lg mb-1 truncate pr-6" title={s.name}>{s.name}</h4>
-                              <p className="text-xs text-slate-500 flex items-center gap-1 mb-3"><UserIcon size={12}/> {s.contactName || 'Sem contato'}</p>
-                              <div className="space-y-2">
-                                  <p className="text-xs bg-slate-50 p-2 rounded-lg flex items-center gap-2 border border-slate-100 font-medium text-slate-600"><Phone size={12} className="text-blue-500"/> {s.phone || '-'}</p>
-                                  <p className="text-xs bg-slate-50 p-2 rounded-lg flex items-center gap-2 border border-slate-100 font-medium text-slate-600"><FileText size={12} className="text-blue-500"/> {s.cnpj || '-'}</p>
-                              </div>
-                          </div>
+              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                  <table className="w-full text-left">
+                      <thead className="bg-slate-50 text-xs uppercase font-semibold text-slate-500 border-b">
+                          <tr>
+                              <th className="p-4">Nome</th>
+                              <th className="p-4">Contato</th>
+                              <th className="p-4">Telefone</th>
+                              <th className="p-4">CNPJ</th>
+                              <th className="p-4 w-32"></th>
+                          </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                          {invState.suppliers.map(s => (
+                              <tr key={s.id} className="hover:bg-slate-50">
+                                  <td className="p-4 font-bold text-slate-800">{s.name}</td>
+                                  <td className="p-4 text-slate-600">{s.contactName}</td>
+                                  <td className="p-4 text-slate-600">{s.phone}</td>
+                                  <td className="p-4 text-slate-600">{s.cnpj}</td>
+                                  <td className="p-4 text-right">
+                                      <div className="flex items-center justify-end gap-2">
+                                          <Button variant="outline" size="sm" onClick={() => handleOpenModal(s)}><Edit size={14}/> Editar</Button>
+                                          <Button variant="ghost" size="sm" className="text-red-500 hover:bg-red-100" onClick={() => handleDeleteSupplier(s.id)}><Trash2 size={14}/></Button>
+                                      </div>
+                                  </td>
+                              </tr>
+                          ))}
+                      </tbody>
+                  </table>
+                  {invState.suppliers.length === 0 && (
+                      <div className="col-span-full text-center py-20 text-gray-400 flex flex-col items-center justify-center">
+                          <Truck size={48} className="mb-4 opacity-20"/>
+                          <p>Nenhum fornecedor cadastrado.</p>
                       </div>
-                  ))}
-                  {invState.suppliers.length === 0 && !showSupplierForm && <div className="col-span-full text-center py-20 text-gray-400 flex flex-col items-center justify-center border-2 border-dashed border-gray-200 rounded-2xl"><Truck size={48} className="mb-4 opacity-20"/><p>Nenhum fornecedor cadastrado.</p></div>}
+                  )}
               </div>
           </div>
+
+          <SupplierModal 
+              isOpen={isModalOpen} 
+              onClose={handleCloseModal} 
+              onSave={handleSaveSupplier} 
+              supplier={selectedSupplier} 
+          />
       </div>
     );
 };

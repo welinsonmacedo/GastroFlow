@@ -20,8 +20,8 @@ interface InventoryContextType {
   updateStock: (itemId: string, quantity: number, operation: 'IN' | 'OUT', reason: string, userName?: string) => Promise<void>;
   processInventoryAdjustment: (adjustments: { itemId: string; realQty: number }[]) => Promise<void>;
   addSupplier: (supplier: Supplier) => Promise<void>;
-  updateSupplier: (supplier: Supplier) => Promise<void>;
   deleteSupplier: (id: string) => Promise<void>;
+  updateSupplier: (supplier: Supplier) => Promise<void>;
   processPurchase: (purchase: PurchaseEntry) => Promise<void>;
   fetchData: () => Promise<void>;
 }
@@ -314,6 +314,10 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       if (error) throw error;
   };
 
+  const deleteSupplier = async (id: string) => {
+      await supabase.from('suppliers').delete().eq('id', id);
+  };
+
   const updateSupplier = async (supplier: Supplier) => {
       if(!tenantId) return;
       const payload = {
@@ -332,10 +336,6 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       };
       const { error } = await supabase.from('suppliers').update(payload).eq('id', supplier.id);
       if (error) throw error;
-  };
-
-  const deleteSupplier = async (id: string) => {
-      await supabase.from('suppliers').delete().eq('id', id);
   };
 
   const processPurchase = async (purchase: PurchaseEntry) => {
@@ -392,7 +392,7 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   };
 
   return (
-    <InventoryContext.Provider value={{ state, addInventoryItem, updateInventoryItem, deleteInventoryItem, updateStock, processInventoryAdjustment, addSupplier, updateSupplier, deleteSupplier, processPurchase, fetchData }}>
+    <InventoryContext.Provider value={{ state, addInventoryItem, updateInventoryItem, deleteInventoryItem, updateStock, processInventoryAdjustment, addSupplier, deleteSupplier, updateSupplier, processPurchase, fetchData }}>
       {children}
     </InventoryContext.Provider>
   );
