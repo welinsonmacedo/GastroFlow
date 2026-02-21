@@ -5,13 +5,15 @@ import { supabase, logAudit } from '../lib/supabase';
 
 export const usePurchaseOrders = () => {
     const { state: invState, fetchData } = useInventory();
-    const { state: restState } = useRestaurant();
+    const { state: restState, isLoading: isRestLoading } = useRestaurant();
     const { state: authState } = useAuth();
     const { tenantId } = restState;
     const currentUser = authState.currentUser;
 
     const savePurchaseOrder = async (order: any) => {
-        if (!tenantId || !currentUser) return;
+        if (!tenantId || !currentUser || isRestLoading) {
+            throw new Error("Aguarde, os dados do restaurante ainda estão sendo carregados.");
+        }
 
         // 1. Salvar a Ordem de Pedido
         const { data: orderData, error: orderError } = await supabase
