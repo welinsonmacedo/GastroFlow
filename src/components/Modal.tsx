@@ -91,7 +91,7 @@ export const Modal: React.FC<ModalProps> = ({
 
         {/* --- ÁREA DE CONTEÚDO (SCROLLABLE) --- */}
         <div className="flex-1 overflow-y-auto overflow-x-hidden bg-gray-50 custom-scrollbar relative">
-           <div className={`min-h-full ${variant === 'page' ? 'p-0' : 'p-4 md:p-6'} max-w-[1920px] mx-auto`}>
+           <div className={`min-h-full ${variant === 'page' ? 'p-4 md:p-6' : 'p-4 md:p-6'} max-w-[1920px] mx-auto`}>
               {children}
            </div>
         </div>
