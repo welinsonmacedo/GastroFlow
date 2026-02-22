@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { SecurityIncident } from '../../types';
-import { ShieldAlert, ShieldCheck, Activity, Search, RefreshCcw } from 'lucide-react';
+import { ShieldAlert, ShieldCheck, Activity, Search, RefreshCcw, Lock } from 'lucide-react';
 import { Button } from '../../components/Button';
 
 export const AdminSecurity: React.FC = () => {
