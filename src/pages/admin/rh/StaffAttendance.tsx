@@ -30,13 +30,24 @@ export const StaffAttendance: React.FC = () => {
         return matchesDate && matchesSearch;
     });
 
+    const [selectedEmployee, setSelectedEmployee] = useState<any>(null);
+
     useEffect(() => {
+        const matchingUsers = staffState.users.filter(u => u.name.toLowerCase().includes(searchTerm.toLowerCase()));
+        if (searchTerm && matchingUsers.length === 1) {
+            setSelectedEmployee(matchingUsers[0]);
+        } else {
+            setSelectedEmployee(null);
+        }
+
         const calculateSummary = () => {
             let overtime = 0;
             let missingHours = 0;
             let bankHours = 0;
 
-            filteredEntries.forEach(entry => {
+            const entriesToSummarize = selectedEmployee ? filteredEntries.filter(e => e.staffId === selectedEmployee.id) : filteredEntries;
+
+            entriesToSummarize.forEach(entry => {
                 const user = staffState.users.find(u => u.id === entry.staffId);
                 if (!user) return;
 
@@ -52,7 +63,7 @@ export const StaffAttendance: React.FC = () => {
                     } else {
                         missingHours += Math.abs(balance);
                     }
-                    bankHours += user.bankHoursBalance || 0;
+                    bankHours = user.bankHoursBalance || 0;
                 }
             });
 
@@ -60,7 +71,7 @@ export const StaffAttendance: React.FC = () => {
         };
 
         calculateSummary();
-    }, [filteredEntries, staffState.users, staffState.shifts]);
+    }, [searchTerm, staffState.users, filteredEntries]);
 
     const handleSendToPayroll = () => {
         showAlert({ title: 'Enviado', message: 'Dados enviados para a pré-folha com sucesso!', type: 'SUCCESS' });
@@ -102,31 +113,33 @@ export const StaffAttendance: React.FC = () => {
                 </div>
             </div>
 
-            <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
-                <div className="p-4 bg-slate-50 border-b">
-                    <h3 className="font-bold text-slate-700">Resumo do Dia</h3>
-                </div>
-                <div className="p-6 space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div className="bg-green-50 p-4 rounded-xl border border-green-200">
-                            <h4 className="font-bold text-green-800">Horas Extras</h4>
-                            <p className="text-2xl font-black text-green-600">{summary.overtime.toFixed(1)}h</p>
+            {selectedEmployee && (
+                <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden"> 
+                    <div className="p-4 bg-slate-50 border-b">
+                        <h3 className="font-bold text-slate-700">Resumo de {selectedEmployee.name}</h3>
+                    </div>
+                    <div className="p-6 space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="bg-green-50 p-4 rounded-xl border border-green-200">
+                                <h4 className="font-bold text-green-800">Horas Extras</h4>
+                                <p className="text-2xl font-black text-green-600">{summary.overtime.toFixed(1)}h</p>
+                            </div>
+                            <div className="bg-red-50 p-4 rounded-xl border border-red-200">
+                                <h4 className="font-bold text-red-800">Horas Faltantes</h4>
+                                <p className="text-2xl font-black text-red-600">{summary.missingHours.toFixed(1)}h</p>
+                            </div>
+                            <div className="bg-blue-50 p-4 rounded-xl border border-blue-200 flex flex-col justify-between">
+                                <h4 className="font-bold text-blue-800">Banco de Horas</h4>
+                                <p className="text-2xl font-black text-blue-600">{summary.bankHours.toFixed(1)}h</p>
+                            </div>
                         </div>
-                        <div className="bg-red-50 p-4 rounded-xl border border-red-200">
-                            <h4 className="font-bold text-red-800">Horas Faltantes</h4>
-                            <p className="text-2xl font-black text-red-600">{summary.missingHours.toFixed(1)}h</p>
-                        </div>
-                        <div className="bg-blue-50 p-4 rounded-xl border border-blue-200 flex flex-col justify-between">
-                            <h4 className="font-bold text-blue-800">Banco de Horas</h4>
-                            <p className="text-2xl font-black text-blue-600">{summary.bankHours.toFixed(1)}h</p>
+                        <div className="flex justify-end gap-2">
+                            <Button onClick={() => setIsSummaryModalOpen(true)} variant="secondary"><Edit size={16} className="mr-2"/> Editar Resumo</Button>
+                            <Button onClick={handleSendToPayroll} className="bg-green-600 hover:bg-green-700"><ArrowRight size={16} className="mr-2"/> Enviar para Pré-Folha</Button>
                         </div>
                     </div>
-                    <div className="flex justify-end gap-2">
-                        <Button onClick={() => setIsSummaryModalOpen(true)} variant="secondary"><Edit size={16} className="mr-2"/> Editar Resumo</Button>
-                        <Button onClick={handleSendToPayroll} className="bg-green-600 hover:bg-green-700"><ArrowRight size={16} className="mr-2"/> Enviar para Pré-Folha</Button>
-                    </div>
                 </div>
-            </div>
+            )}
 
             <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
                 <div className="overflow-x-auto">
