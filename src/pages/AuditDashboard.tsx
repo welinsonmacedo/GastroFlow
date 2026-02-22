@@ -7,11 +7,12 @@ import {
     Shield, Search, Filter, Printer, Download, Calendar, 
     User, Activity, ChevronRight, Grid, LogOut, FileText,
     Package, DollarSign, Users, Settings, ChefHat, Store,
-    ArrowLeft
+    ArrowLeft, Eye
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/Button';
+import { Modal } from '../components/Modal';
 
 interface AuditLogEntry {
     id: string;
@@ -32,6 +33,7 @@ export const AuditDashboard: React.FC = () => {
     const [activeTab, setActiveTab] = useState<string>('ALL');
     const [searchTerm, setSearchTerm] = useState('');
     const [dateFilter, setDateFilter] = useState('');
+    const [selectedLog, setSelectedLog] = useState<AuditLogEntry | null>(null);
 
     const modules = [
         { id: 'ALL', label: 'Todos', icon: Activity },
@@ -238,8 +240,17 @@ export const AuditDashboard: React.FC = () => {
                                                         <span className="text-sm font-medium text-slate-700">{log.action}</span>
                                                     </td>
                                                     <td className="px-6 py-4">
-                                                        <div className="max-w-xs truncate text-xs text-slate-400 italic" title={JSON.stringify(log.details)}>
-                                                            {typeof log.details === 'string' ? log.details : JSON.stringify(log.details)}
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="max-w-xs truncate text-xs text-slate-400 italic flex-1" title={JSON.stringify(log.details)}>
+                                                                {typeof log.details === 'string' ? log.details : JSON.stringify(log.details)}
+                                                            </div>
+                                                            <button
+                                                                onClick={() => setSelectedLog(log)}
+                                                                className="p-1.5 bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-700 rounded-lg transition-colors"
+                                                                title="Ver Detalhes"
+                                                            >
+                                                                <Eye size={16} />
+                                                            </button>
                                                         </div>
                                                     </td>
                                                 </motion.tr>
@@ -267,6 +278,55 @@ export const AuditDashboard: React.FC = () => {
                     .shadow-xl { box-shadow: none !important; }
                 }
             `}} />
+
+            {/* Modal de Detalhes do Log */}
+            <Modal
+                isOpen={!!selectedLog}
+                onClose={() => setSelectedLog(null)}
+                title="Detalhes do Log de Auditoria"
+                variant="dialog"
+                maxWidth="2xl"
+            >
+                {selectedLog && (
+                    <div className="space-y-6">
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Data & Hora</p>
+                                <p className="text-sm font-medium text-slate-800">
+                                    {new Date(selectedLog.created_at).toLocaleString('pt-BR')}
+                                </p>
+                            </div>
+                            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Usuário</p>
+                                <p className="text-sm font-medium text-slate-800">
+                                    {selectedLog.user_name || 'Sistema'}
+                                </p>
+                            </div>
+                            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Módulo</p>
+                                <p className="text-sm font-medium text-slate-800">
+                                    {selectedLog.module}
+                                </p>
+                            </div>
+                            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Ação</p>
+                                <p className="text-sm font-medium text-slate-800">
+                                    {selectedLog.action}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div>
+                            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Dados do Evento (JSON)</p>
+                            <div className="bg-slate-900 rounded-xl p-4 overflow-x-auto">
+                                <pre className="text-emerald-400 font-mono text-xs leading-relaxed">
+                                    {JSON.stringify(selectedLog.details, null, 2)}
+                                </pre>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </Modal>
         </div>
     );
 };
