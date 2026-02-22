@@ -358,9 +358,14 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     plan = action.payload.plan;
                     const selectedPlan = state.plans.find(p => p.key === action.payload.plan);
 
-                    if (selectedPlan && selectedPlan.limits) {
-                        if (selectedPlan.limits.allowedModules) allowed_modules = selectedPlan.limits.allowedModules;
-                        if (selectedPlan.limits.allowedFeatures) allowed_features = selectedPlan.limits.allowedFeatures;
+                    if (selectedPlan) {
+                        // Force update of modules and features based on the new plan.
+                        // If the plan has specific limits, use them.
+                        // If not, use defaults (['RESTAURANT'] for modules, [] for features).
+                        // This ensures we overwrite any previous tenant-specific overrides that might be restrictive.
+                        const limits = selectedPlan.limits || {};
+                        allowed_modules = limits.allowedModules || ['RESTAURANT'];
+                        allowed_features = limits.allowedFeatures || [];
                     }
                 }
             }
