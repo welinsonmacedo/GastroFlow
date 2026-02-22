@@ -35,7 +35,7 @@ export const LegalSettingsModal: React.FC<LegalSettingsModalProps> = ({ isOpen, 
             setInssList([...state.inssBrackets]);
             setIrrfList([...state.irrfBrackets]);
         }
-    }, [isOpen, state.legalSettings]);
+    }, [isOpen, state.legalSettings, state.inssBrackets, state.irrfBrackets]);
 
     const handleSave = async () => {
         try {

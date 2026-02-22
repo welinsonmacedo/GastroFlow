@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useStaff } from '../../../context/StaffContext';
 import { useUI } from '../../../context/UIContext';
 import { Button } from '../../../components/Button';
@@ -18,6 +18,7 @@ export const StaffAttendance: React.FC = () => {
     // Modal States
     const [isEntryModalOpen, setIsEntryModalOpen] = useState(false);
     const [entryToEdit, setEntryToEdit] = useState<TimeEntry | null>(null);
+    const [selectedStaffId, setSelectedStaffId] = useState<string>('');
     const [summary, setSummary] = useState({ overtime: 0, missingHours: 0, bankHours: 0 });
     const [isSummaryModalOpen, setIsSummaryModalOpen] = useState(false);
 
