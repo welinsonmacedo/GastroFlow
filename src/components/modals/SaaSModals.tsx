@@ -148,49 +148,11 @@ interface SaaSEditTenantModalProps {
 
 export const SaaSEditTenantModal: React.FC<SaaSEditTenantModalProps & { onOpenLinks?: () => void }> = ({ isOpen, onClose, tenant, onOpenLinks }) => {
     const { state, dispatch } = useSaaS();
-    const [tab, setTab] = useState<'DETAILS' | 'MODULES' | 'LIMITS' | 'ADMIN'>('DETAILS');
     const [editForm, setEditForm] = useState<Partial<RestaurantTenant>>({});
-    const [adminForm, setAdminForm] = useState({ name: 'Admin', email: '', pin: '1234', password: '' });
-    
-    const [selectedModules, setSelectedModules] = useState<SystemModule[]>([]);
-    const [selectedFeatures, setSelectedFeatures] = useState<string[]>([]);
-    const [expandedModules, setExpandedModules] = useState<SystemModule[]>([]);
-    
-    const [limitsForm, setLimitsForm] = useState<PlanLimits>({
-        maxTables: 10, maxProducts: 30, maxStaff: 2, 
-        allowKds: false, allowCashier: false, allowReports: false,
-        allowInventory: false, allowPurchases: false, allowExpenses: false,
-        allowStaff: true, allowTableMgmt: true, allowCustomization: true,
-        allowHR: false
-    });
 
     useEffect(() => {
         if(tenant) {
             setEditForm(tenant);
-            setAdminForm({ name: 'Admin', email: tenant.email, pin: '1234', password: '' });
-            setSelectedModules(tenant.allowedModules || ['RESTAURANT']);
-            
-            if (tenant.customLimits) {
-                setLimitsForm({
-                    maxTables: tenant.customLimits.maxTables,
-                    maxProducts: tenant.customLimits.maxProducts,
-                    maxStaff: tenant.customLimits.maxStaff
-                });
-            } else {
-                setLimitsForm({ maxTables: -1, maxProducts: -1, maxStaff: -1 });
-            }
-
-            if (!tenant.allowedFeatures || tenant.allowedFeatures.length === 0) {
-                const autoFeatures: string[] = [];
-                (tenant.allowedModules || ['RESTAURANT']).forEach(mod => {
-                    // @ts-ignore
-                    const features = MODULE_STRUCTURE[mod]?.features || [];
-                    features.forEach((f: any) => autoFeatures.push(f.key));
-                });
-                setSelectedFeatures(autoFeatures);
-            } else {
-                setSelectedFeatures(tenant.allowedFeatures);
-            }
         }
     }, [tenant, isOpen]);
 
@@ -212,218 +174,66 @@ export const SaaSEditTenantModal: React.FC<SaaSEditTenantModalProps & { onOpenLi
             onClose();
         }
     };
-    
-    const toggleModule = (mod: SystemModule) => {
-        if (selectedModules.includes(mod)) {
-            setSelectedModules(selectedModules.filter(m => m !== mod));
-            // @ts-ignore
-            const moduleFeats = MODULE_STRUCTURE[mod].features.map((f: any) => f.key);
-            setSelectedFeatures(selectedFeatures.filter(f => !moduleFeats.includes(f)));
-            setExpandedModules(expandedModules.filter(m => m !== mod));
-        } else {
-            setSelectedModules([...selectedModules, mod]);
-            // @ts-ignore
-            const moduleFeats = MODULE_STRUCTURE[mod].features.map((f: any) => f.key);
-            setSelectedFeatures([...selectedFeatures, ...moduleFeats]);
-            setExpandedModules([...expandedModules, mod]);
-        }
-    };
-
-    const toggleFeature = (featureKey: string, moduleKey: SystemModule) => {
-        if (selectedFeatures.includes(featureKey)) {
-            setSelectedFeatures(selectedFeatures.filter(f => f !== featureKey));
-        } else {
-            setSelectedFeatures([...selectedFeatures, featureKey]);
-            if (!selectedModules.includes(moduleKey)) {
-                setSelectedModules([...selectedModules, moduleKey]);
-            }
-        }
-    };
-
-    const toggleExpand = (mod: SystemModule) => {
-        if (expandedModules.includes(mod)) {
-            setExpandedModules(expandedModules.filter(m => m !== mod));
-        } else {
-            setExpandedModules([...expandedModules, mod]);
-        }
-    };
-    
-    const handleSaveModules = async () => {
-         if(!tenant) return;
-         dispatch({
-             type: 'UPDATE_TENANT_MODULES',
-             tenantId: tenant.id,
-             modules: selectedModules,
-             features: selectedFeatures
-         });
-         onClose();
-    };
-
-    const handleSaveLimits = async () => {
-        if(!tenant) return;
-        dispatch({
-            type: 'UPDATE_TENANT_LIMITS',
-            tenantId: tenant.id,
-            limits: limitsForm
-        });
-        onClose();
-    };
-
-    const handleCreateAdmin = () => {
-        if(tenant) {
-            dispatch({ type: 'CREATE_TENANT_ADMIN', payload: { tenantId: tenant.id, ...adminForm } });
-            setAdminForm({ name: 'Admin', email: '', pin: '1234', password: '' });
-            // Admin creation doesn't close modal usually, but with single save button, it implies closure or reset
-            onClose(); 
-        }
-    };
-
-    const handleMainSave = () => {
-        if (tab === 'DETAILS') handleUpdate();
-        else if (tab === 'MODULES') handleSaveModules();
-        else if (tab === 'LIMITS') handleSaveLimits();
-        else if (tab === 'ADMIN') handleCreateAdmin();
-    };
 
     if (!tenant) return null;
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title={`Gerenciar ${tenant.name}`} variant="dialog" maxWidth="md" onSave={handleMainSave}>
-            <div className="flex border-b mb-4 overflow-x-auto">
-                <button onClick={() => setTab('DETAILS')} className={`px-4 py-2 text-sm font-bold border-b-2 transition-colors whitespace-nowrap ${tab === 'DETAILS' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}>Detalhes</button>
-                <button onClick={() => setTab('MODULES')} className={`px-4 py-2 text-sm font-bold border-b-2 transition-colors whitespace-nowrap ${tab === 'MODULES' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}>Módulos & Permissões</button>
-                <button onClick={() => setTab('LIMITS')} className={`px-4 py-2 text-sm font-bold border-b-2 transition-colors whitespace-nowrap ${tab === 'LIMITS' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}>Limites</button>
-                <button onClick={() => setTab('ADMIN')} className={`px-4 py-2 text-sm font-bold border-b-2 transition-colors whitespace-nowrap ${tab === 'ADMIN' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}>Criar Admin</button>
-            </div>
-
-            {tab === 'DETAILS' && (
-                <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                        <div><label className="text-xs font-bold text-gray-500 uppercase">Nome</label><input className="w-full border p-2 rounded" value={editForm.name} onChange={e => setEditForm({...editForm, name: e.target.value})} /></div>
-                        <div><label className="text-xs font-bold text-gray-500 uppercase">Slug</label><input className="w-full border p-2 rounded" value={editForm.slug} onChange={e => setEditForm({...editForm, slug: e.target.value})} /></div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div><label className="text-xs font-bold text-gray-500 uppercase">Dono</label><input className="w-full border p-2 rounded" value={editForm.ownerName} onChange={e => setEditForm({...editForm, ownerName: e.target.value})} /></div>
-                        <div><label className="text-xs font-bold text-gray-500 uppercase">Email</label><input className="w-full border p-2 rounded" value={editForm.email} onChange={e => setEditForm({...editForm, email: e.target.value})} /></div>
-                    </div>
+        <Modal isOpen={isOpen} onClose={onClose} title={`Gerenciar ${tenant.name}`} variant="dialog" maxWidth="md" onSave={handleUpdate}>
+            <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                    <div><label className="text-xs font-bold text-gray-500 uppercase">Nome</label><input className="w-full border p-2 rounded" value={editForm.name} onChange={e => setEditForm({...editForm, name: e.target.value})} /></div>
+                    <div><label className="text-xs font-bold text-gray-500 uppercase">Slug</label><input className="w-full border p-2 rounded" value={editForm.slug} onChange={e => setEditForm({...editForm, slug: e.target.value})} /></div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                    <div><label className="text-xs font-bold text-gray-500 uppercase">Dono</label><input className="w-full border p-2 rounded" value={editForm.ownerName} onChange={e => setEditForm({...editForm, ownerName: e.target.value})} /></div>
+                    <div><label className="text-xs font-bold text-gray-500 uppercase">Email</label><input className="w-full border p-2 rounded" value={editForm.email} onChange={e => setEditForm({...editForm, email: e.target.value})} /></div>
+                </div>
+                
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-4">
+                    <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">Configurações Principais</h4>
                     
-                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-4">
-                        <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">Configurações Principais</h4>
-                        
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="text-xs font-bold text-gray-500 uppercase">Plano</label>
-                                <select 
-                                    className="w-full border p-2 rounded bg-white font-bold text-blue-600" 
-                                    value={editForm.plan || ''} 
-                                    onChange={e => setEditForm({...editForm, plan: e.target.value})}
-                                >
-                                    {state.plans.map(p => (
-                                        <option key={p.id} value={p.key}>{p.name}</option>
-                                    ))}
-                                </select>
-                            </div>
-                            <div>
-                                <label className="text-xs font-bold text-gray-500 uppercase">Status do Cliente</label>
-                                <select 
-                                    className={`w-full border p-2 rounded font-bold ${editForm.status === 'ACTIVE' ? 'text-green-600 bg-green-50' : 'text-red-600 bg-red-50'}`}
-                                    value={editForm.status || 'ACTIVE'} 
-                                    onChange={e => setEditForm({...editForm, status: e.target.value as any})}
-                                >
-                                    <option value="ACTIVE">ATIVO</option>
-                                    <option value="INACTIVE">INATIVO</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div className="pt-2">
-                            <Button 
-                                variant="outline" 
-                                className="w-full flex items-center justify-center gap-2"
-                                onClick={() => {
-                                    if (onOpenLinks) {
-                                        onClose();
-                                        onOpenLinks();
-                                    }
-                                }}
-                            >
-                                <Copy size={16} /> Central de Links de Acesso
-                            </Button>
-                        </div>
-                    </div>
-                </div>
-            )}
-            
-            {tab === 'LIMITS' && (
-                <div className="space-y-4">
-                    <p className="text-sm text-gray-500">Defina limites personalizados para este cliente. Use -1 para ilimitado.</p>
                     <div className="grid grid-cols-2 gap-4">
-                        <div><label className="text-xs font-bold text-gray-500 uppercase">Max Mesas</label><input type="number" className="w-full border p-2 rounded" value={limitsForm.maxTables} onChange={e => setLimitsForm({...limitsForm, maxTables: parseInt(e.target.value)})} /></div>
-                        <div><label className="text-xs font-bold text-gray-500 uppercase">Max Produtos</label><input type="number" className="w-full border p-2 rounded" value={limitsForm.maxProducts} onChange={e => setLimitsForm({...limitsForm, maxProducts: parseInt(e.target.value)})} /></div>
-                        <div><label className="text-xs font-bold text-gray-500 uppercase">Max Usuários (Staff)</label><input type="number" className="w-full border p-2 rounded" value={limitsForm.maxStaff} onChange={e => setLimitsForm({...limitsForm, maxStaff: parseInt(e.target.value)})} /></div>
+                        <div>
+                            <label className="text-xs font-bold text-gray-500 uppercase">Plano</label>
+                            <select 
+                                className="w-full border p-2 rounded bg-white font-bold text-blue-600" 
+                                value={editForm.plan || ''} 
+                                onChange={e => setEditForm({...editForm, plan: e.target.value})}
+                            >
+                                {state.plans.map(p => (
+                                    <option key={p.id} value={p.key}>{p.name}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="text-xs font-bold text-gray-500 uppercase">Status do Cliente</label>
+                            <select 
+                                className={`w-full border p-2 rounded font-bold ${editForm.status === 'ACTIVE' ? 'text-green-600 bg-green-50' : 'text-red-600 bg-red-50'}`}
+                                value={editForm.status || 'ACTIVE'} 
+                                onChange={e => setEditForm({...editForm, status: e.target.value as any})}
+                            >
+                                <option value="ACTIVE">ATIVO</option>
+                                <option value="INACTIVE">INATIVO</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div className="pt-2">
+                        <Button 
+                            variant="outline" 
+                            className="w-full flex items-center justify-center gap-2"
+                            onClick={() => {
+                                if (onOpenLinks) {
+                                    onClose();
+                                    onOpenLinks();
+                                }
+                            }}
+                        >
+                            <Copy size={16} /> Central de Links de Acesso
+                        </Button>
                     </div>
                 </div>
-            )}
-            
-            {tab === 'MODULES' && (
-                <div className="space-y-4 h-[60vh] overflow-y-auto pr-2">
-                    <p className="text-sm text-gray-500">Selecione os módulos e funcionalidades disponíveis.</p>
-                    <div className="space-y-2">
-                        {Object.entries(MODULE_STRUCTURE).map(([modKey, modData]) => {
-                            const isSelected = selectedModules.includes(modKey as SystemModule);
-                            const isExpanded = expandedModules.includes(modKey as SystemModule);
-
-                            return (
-                                <div key={modKey} className={`border rounded-lg ${isSelected ? 'border-blue-200 bg-blue-50/30' : 'border-gray-200'}`}>
-                                    <div className="flex items-center justify-between p-3">
-                                        <div className="flex items-center gap-3">
-                                            <input 
-                                                type="checkbox" 
-                                                checked={isSelected} 
-                                                onChange={() => toggleModule(modKey as SystemModule)} 
-                                                className="w-5 h-5 text-blue-600 rounded cursor-pointer" 
-                                            />
-                                            <div className="cursor-pointer" onClick={() => toggleExpand(modKey as SystemModule)}>
-                                                <span className="font-bold text-slate-800 block">{modData.label}</span>
-                                                <span className="text-xs text-gray-400">{modData.description}</span>
-                                            </div>
-                                        </div>
-                                        <button onClick={() => toggleExpand(modKey as SystemModule)} className="text-gray-400 hover:text-gray-600">
-                                            {isExpanded ? <ChevronDown size={18}/> : <ChevronRight size={18}/>}
-                                        </button>
-                                    </div>
-                                    
-                                    {isExpanded && (
-                                        <div className="px-3 pb-3 pt-0 ml-8 border-l-2 border-gray-100 space-y-2">
-                                            {modData.features.map(feat => (
-                                                <label key={feat.key} className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-1.5 rounded">
-                                                    <input 
-                                                        type="checkbox" 
-                                                        checked={selectedFeatures.includes(feat.key)} 
-                                                        onChange={() => toggleFeature(feat.key, modKey as SystemModule)}
-                                                        className="w-4 h-4 text-blue-500 rounded"
-                                                    />
-                                                    <span className="text-sm text-gray-700">{feat.label}</span>
-                                                </label>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            );
-                        })}
-                    </div>
-                </div>
-            )}
-
-            {tab === 'ADMIN' && (
-                <div className="space-y-4">
-                    <div className="bg-yellow-50 border border-yellow-200 p-3 rounded text-xs text-yellow-800 mb-2"><p className="font-bold">Atenção:</p><p>Isso criará um novo usuário ADMIN.</p></div>
-                    <input type="text" placeholder="Nome" className="w-full border p-2 rounded" value={adminForm.name} onChange={e => setAdminForm({...adminForm, name: e.target.value})} required />
-                    <input type="email" placeholder="Email" className="w-full border p-2 rounded" value={adminForm.email} onChange={e => setAdminForm({...adminForm, email: e.target.value})} required />
-                    <input type="text" placeholder="PIN" className="w-full border p-2 rounded" value={adminForm.pin} onChange={e => setAdminForm({...adminForm, pin: e.target.value})} required />
-                    <input type="password" placeholder="Senha (Opcional)" className="w-full border p-2 rounded" value={adminForm.password} onChange={e => setAdminForm({...adminForm, password: e.target.value})} />
-                </div>
-            )}
+            </div>
         </Modal>
     );
 };
