@@ -88,8 +88,13 @@ const restaurantReducer = (state: RestaurantState, action: Action): RestaurantSt
             businessInfo: action.payload.business_info || state.businessInfo,
             allowedModules: action.payload.allowed_modules || state.allowedModules,
             allowedFeatures: action.payload.allowed_features || state.allowedFeatures,
-            isInactiveTenant: action.payload.status === 'INACTIVE'
+            isInactiveTenant: action.payload.status === 'INACTIVE',
+            // If plan changed, we might need to update limits, but we can't do async here.
+            // We'll handle the side effect in the component or use a separate effect.
+            // For now, let's just update the tenantId/Slug if needed, though unlikely to change.
         };
+    case 'UPDATE_PLAN_LIMITS':
+        return { ...state, planLimits: action.limits };
     default: return state;
   }
 };
@@ -163,9 +168,17 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                   table: 'tenants', 
                   filter: `id=eq.${state.tenantId}` 
               }, 
-              (payload) => {
+              async (payload) => {
                   if (payload.new) {
                       localDispatch({ type: 'SYNC_REALTIME_DATA', payload: payload.new });
+                      
+                      // Fetch new plan limits if plan changed
+                      if (payload.new.plan && payload.new.plan !== payload.old.plan) {
+                          const { data: planData } = await supabase.from('plans').select('limits').eq('key', payload.new.plan).maybeSingle();
+                          if (planData && planData.limits) {
+                              localDispatch({ type: 'UPDATE_PLAN_LIMITS', limits: planData.limits });
+                          }
+                      }
                   }
               }
           )
