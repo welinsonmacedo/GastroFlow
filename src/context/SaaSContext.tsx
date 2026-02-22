@@ -346,6 +346,7 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     if (action.type === 'UPDATE_TENANT') {
         try {
+            console.log("UPDATE_TENANT action received:", action);
             const updates: any = {
                 name: action.payload.name,
                 slug: action.payload.slug,
@@ -356,10 +357,13 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
             // Se o plano mudou, incluímos as atualizações de plano aqui para evitar race conditions
             if (action.payload.plan) {
                 const tenant = state.tenants.find(t => t.id === action.payload.id);
+                console.log("Current tenant:", tenant);
+                console.log("New plan:", action.payload.plan);
                 
                 if (tenant && tenant.plan !== action.payload.plan) {
                     updates.plan = action.payload.plan;
                     const selectedPlan = state.plans.find(p => p.key === action.payload.plan);
+                    console.log("Selected plan from state:", selectedPlan);
 
                     if (selectedPlan && selectedPlan.limits) {
                         if (selectedPlan.limits.allowedModules) updates.allowed_modules = selectedPlan.limits.allowedModules;
@@ -369,7 +373,10 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 }
             }
 
-            const { error } = await supabase.from('tenants').update(updates).eq('id', action.payload.id);
+            console.log("Sending updates to Supabase:", updates);
+            const { data, error } = await supabase.from('tenants').update(updates).eq('id', action.payload.id).select();
+            console.log("Supabase response:", { data, error });
+
             if (error) throw error;
             dispatch(action);
         } catch (error) {
