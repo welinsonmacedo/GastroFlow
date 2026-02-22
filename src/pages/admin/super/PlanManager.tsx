@@ -38,7 +38,10 @@ const MODULES_CONFIG = [
             { id: 'fin_entries', label: 'Entradas' },
             { id: 'fin_exits', label: 'Saídas' },
             { id: 'fin_dre', label: 'DRE Gerencial' },
-            { id: 'fin_cashier', label: 'Histórico de Caixa' }
+            { id: 'fin_cashier', label: 'Histórico de Caixa' },
+            { id: 'fin_bi', label: 'Inteligência (BI)' },
+            { id: 'fin_reports', label: 'Relatórios' },
+            { id: 'fin_tips', label: 'Dicas Financeiras' }
         ]
     },
     {

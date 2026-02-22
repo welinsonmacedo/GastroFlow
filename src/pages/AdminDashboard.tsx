@@ -25,13 +25,15 @@ export const AdminDashboard: React.FC = () => {
   // Definição das Abas do Gestor
   const tabs = [
     { path: '/admin', label: 'Visão Geral', icon: LayoutDashboard, exact: true, featureKeys: ['admin_overview', 'rest_dashboard'] },
-    { path: '/admin/monitoring', label: 'Monitoramento', icon: Activity, featureKeys: ['admin_overview', 'rest_dashboard'] }, // Incluído na visão geral ou criar featureKey nova
+    { path: '/admin/monitoring', label: 'Monitoramento', icon: Activity, featureKeys: ['admin_overview', 'rest_dashboard'] }, 
+    { path: '/admin/products', label: 'Cardápio', icon: Utensils, featureKeys: ['admin_products', 'rest_menu'] },
+    { path: '/admin/tables', label: 'Mesas', icon: QrCode, featureKeys: ['admin_tables', 'rest_tables'] },
   ];
 
   // Filtra abas
   const visibleTabs = tabs.filter(tab => {
       // 1. Checa Limites do Plano
-      if (tab.required === 'allowTableMgmt' && !planLimits.allowTableMgmt) return false;
+      if (tab.path === '/admin/tables' && !planLimits.allowTableMgmt) return false;
       
       // 2. Checagem de features granulares (Tenant)
       if (allowedFeatures && allowedFeatures.length > 0) {
@@ -141,6 +143,8 @@ export const AdminDashboard: React.FC = () => {
                 <Routes>
                     <Route path="/" element={<AdminOverview />} />
                     <Route path="monitoring" element={<AdminMonitoring />} />
+                    <Route path="products" element={<AdminProducts />} />
+                    <Route path="tables" element={<AdminTables />} />
                     
                     {/* Fallback */}
                     <Route path="*" element={<Navigate to="" replace />} />
