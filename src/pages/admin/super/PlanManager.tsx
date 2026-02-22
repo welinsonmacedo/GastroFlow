@@ -86,8 +86,6 @@ export const PlanManager: React.FC = () => {
             price: 'R$ 0,00',
             period: 'Mensal',
             features: [],
-            allowedModules: [],
-            allowedFeatures: [],
             limits: {
                 maxTables: 10,
                 maxProducts: 50,
@@ -102,7 +100,9 @@ export const PlanManager: React.FC = () => {
                 allowTableMgmt: true,
                 allowCustomization: true,
                 allowHR: false,
-                allowProductImages: true
+                allowProductImages: true,
+                allowedModules: [],
+                allowedFeatures: []
             },
             is_popular: false,
             button_text: 'Contratar'
@@ -129,10 +129,10 @@ export const PlanManager: React.FC = () => {
 
         // Sync legacy boolean flags with modules
         const newLimits = { ...editingPlan.limits } as PlanLimits;
-        const modules = editingPlan.allowedModules || [];
+        const modules = newLimits.allowedModules || [];
         
         newLimits.allowTableMgmt = modules.includes('RESTAURANT');
-        newLimits.allowKds = modules.includes('RESTAURANT') && (editingPlan.allowedFeatures?.includes('rest_kds') || false);
+        newLimits.allowKds = modules.includes('RESTAURANT') && (newLimits.allowedFeatures?.includes('rest_kds') || false);
         newLimits.allowExpenses = modules.includes('FINANCE');
         newLimits.allowInventory = modules.includes('INVENTORY');
         newLimits.allowPurchases = modules.includes('INVENTORY'); // Coupled with Inventory usually
@@ -153,21 +153,33 @@ export const PlanManager: React.FC = () => {
     };
 
     const toggleModule = (moduleId: SystemModule) => {
-        const current = editingPlan.allowedModules || [];
-        if (current.includes(moduleId)) {
-            setEditingPlan({ ...editingPlan, allowedModules: current.filter(m => m !== moduleId) });
-        } else {
-            setEditingPlan({ ...editingPlan, allowedModules: [...current, moduleId] });
-        }
+        const current = editingPlan.limits?.allowedModules || [];
+        const newModules = current.includes(moduleId) 
+            ? current.filter(m => m !== moduleId) 
+            : [...current, moduleId];
+            
+        setEditingPlan({ 
+            ...editingPlan, 
+            limits: { 
+                ...editingPlan.limits!, 
+                allowedModules: newModules 
+            } 
+        });
     };
 
     const toggleFeature = (featureId: string) => {
-        const current = editingPlan.allowedFeatures || [];
-        if (current.includes(featureId)) {
-            setEditingPlan({ ...editingPlan, allowedFeatures: current.filter(f => f !== featureId) });
-        } else {
-            setEditingPlan({ ...editingPlan, allowedFeatures: [...current, featureId] });
-        }
+        const current = editingPlan.limits?.allowedFeatures || [];
+        const newFeatures = current.includes(featureId) 
+            ? current.filter(f => f !== featureId) 
+            : [...current, featureId];
+            
+        setEditingPlan({ 
+            ...editingPlan, 
+            limits: { 
+                ...editingPlan.limits!, 
+                allowedFeatures: newFeatures 
+            } 
+        });
     };
 
     return (
@@ -203,12 +215,12 @@ export const PlanManager: React.FC = () => {
                             <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
                                 <h4 className="text-xs font-bold text-gray-500 uppercase mb-2">Módulos Inclusos</h4>
                                 <div className="flex flex-wrap gap-2">
-                                    {plan.allowedModules?.map(mod => (
+                                    {plan.limits?.allowedModules?.map(mod => (
                                         <span key={mod} className="text-[10px] font-bold bg-white border px-2 py-1 rounded text-slate-700 shadow-sm">
                                             {MODULES_CONFIG.find(m => m.id === mod)?.label || mod}
                                         </span>
                                     ))}
-                                    {(!plan.allowedModules || plan.allowedModules.length === 0) && <span className="text-xs text-gray-400 italic">Nenhum módulo</span>}
+                                    {(!plan.limits?.allowedModules || plan.limits?.allowedModules.length === 0) && <span className="text-xs text-gray-400 italic">Nenhum módulo</span>}
                                 </div>
                             </div>
 
@@ -318,7 +330,7 @@ export const PlanManager: React.FC = () => {
                         <h3 className="font-bold text-lg text-gray-800 border-b pb-2">Módulos e Permissões</h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {MODULES_CONFIG.map(module => {
-                                const isModuleEnabled = editingPlan.allowedModules?.includes(module.id);
+                                const isModuleEnabled = editingPlan.limits?.allowedModules?.includes(module.id);
                                 return (
                                     <div key={module.id} className={`border rounded-xl p-4 transition-all ${isModuleEnabled ? 'bg-blue-50/50 border-blue-200' : 'bg-gray-50 border-gray-200 opacity-75'}`}>
                                         <div className="flex items-center justify-between mb-4">
@@ -343,7 +355,7 @@ export const PlanManager: React.FC = () => {
                                                             <input 
                                                                 type="checkbox" 
                                                                 className="rounded text-blue-600 focus:ring-blue-500"
-                                                                checked={editingPlan.allowedFeatures?.includes(feature.id) || false}
+                                                                checked={editingPlan.limits?.allowedFeatures?.includes(feature.id) || false}
                                                                 onChange={() => toggleFeature(feature.id)}
                                                             />
                                                             <span className="text-sm text-gray-700">{feature.label}</span>

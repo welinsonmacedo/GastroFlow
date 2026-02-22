@@ -190,8 +190,7 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
                  name: p.name,
                  price: p.price,
                  period: p.period,
-                 features: p.features || [], // Garante array vazio
-                 // Garante objeto de limites com defaults
+                 features: p.features || [], 
                  limits: { 
                      maxTables: p.limits?.maxTables ?? 10,
                      maxProducts: p.limits?.maxProducts ?? 30,
@@ -204,12 +203,13 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
                      allowExpenses: p.limits?.allowExpenses ?? false,
                      allowStaff: p.limits?.allowStaff ?? true,
                      allowTableMgmt: p.limits?.allowTableMgmt ?? true,
-                     allowCustomization: p.limits?.allowCustomization ?? true
+                     allowCustomization: p.limits?.allowCustomization ?? true,
+                     allowProductImages: p.limits?.allowProductImages ?? true,
+                     allowedModules: p.limits?.allowedModules || p.allowed_modules || [],
+                     allowedFeatures: p.limits?.allowedFeatures || p.allowed_features || []
                  },
                  is_popular: p.is_popular,
-                 button_text: p.button_text,
-                 allowedModules: p.allowed_modules || [],
-                 allowedFeatures: p.allowed_features || []
+                 button_text: p.button_text
              }));
              dispatch({ type: 'SET_PLANS', payload: mappedPlans });
          }
@@ -432,9 +432,7 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
             price: action.plan.price, 
             features: action.plan.features, 
             limits: action.plan.limits, 
-            button_text: action.plan.button_text,
-            allowed_modules: action.plan.allowedModules,
-            allowed_features: action.plan.allowedFeatures
+            button_text: action.plan.button_text
         }).eq('id', action.plan.id);
         
         if (!error) dispatch(action);
@@ -452,8 +450,6 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 features: action.plan.features,
                 limits: action.plan.limits,
                 button_text: action.plan.button_text,
-                allowed_modules: action.plan.allowedModules,
-                allowed_features: action.plan.allowedFeatures,
                 is_popular: action.plan.is_popular
             }).select().single();
 
@@ -469,11 +465,13 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
                      price: p.price,
                      period: p.period,
                      features: p.features || [],
-                     limits: p.limits || {},
+                     limits: {
+                         ...p.limits,
+                         allowedModules: p.limits?.allowedModules || p.allowed_modules || [],
+                         allowedFeatures: p.limits?.allowedFeatures || p.allowed_features || []
+                     },
                      is_popular: p.is_popular,
-                     button_text: p.button_text,
-                     allowedModules: p.allowed_modules || [],
-                     allowedFeatures: p.allowed_features || []
+                     button_text: p.button_text
                  }));
                  dispatch({ type: 'SET_PLANS', payload: mappedPlans });
             }
@@ -503,9 +501,9 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const selectedPlan = state.plans.find(p => p.key === action.plan);
         const updates: any = { plan: action.plan };
         
-        if (selectedPlan) {
-            if (selectedPlan.allowedModules) updates.allowed_modules = selectedPlan.allowedModules;
-            if (selectedPlan.allowedFeatures) updates.allowed_features = selectedPlan.allowedFeatures;
+        if (selectedPlan && selectedPlan.limits) {
+            if (selectedPlan.limits.allowedModules) updates.allowed_modules = selectedPlan.limits.allowedModules;
+            if (selectedPlan.limits.allowedFeatures) updates.allowed_features = selectedPlan.limits.allowedFeatures;
             // Reset custom limits to use plan limits
             updates.custom_limits = null;
         }
