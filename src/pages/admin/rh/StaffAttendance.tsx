@@ -19,59 +19,62 @@ export const StaffAttendance: React.FC = () => {
     const [isEntryModalOpen, setIsEntryModalOpen] = useState(false);
     const [entryToEdit, setEntryToEdit] = useState<TimeEntry | null>(null);
     const [selectedStaffId, setSelectedStaffId] = useState<string>('');
-    const [summary, setSummary] = useState({ overtime: 0, missingHours: 0, bankHours: 0 });
     const [isSummaryModalOpen, setIsSummaryModalOpen] = useState(false);
+    const [summary, setSummary] = useState({ overtime: 0, missingHours: 0, bankHours: 0 });
 
     const getStaffName = (id: string) => staffState.users.find(u => u.id === id)?.name || 'Desconhecido';
     
-    const filteredEntries = staffState.timeEntries.filter(entry => {
+        const filteredEntries = staffState.timeEntries.filter(entry => {
         const matchesDate = entry.entryDate.toISOString().split('T')[0] === filterDate;
         const matchesSearch = getStaffName(entry.staffId).toLowerCase().includes(searchTerm.toLowerCase());
         return matchesDate && matchesSearch;
     });
 
-    const [selectedEmployee, setSelectedEmployee] = useState<any>(null);
+    const [summaries, setSummaries] = useState<{[key: string]: {overtime: number, missingHours: number, bankHours: number}}>({});
 
     useEffect(() => {
-        const matchingUsers = staffState.users.filter(u => u.name.toLowerCase().includes(searchTerm.toLowerCase()));
-        if (searchTerm && matchingUsers.length === 1) {
-            setSelectedEmployee(matchingUsers[0]);
-        } else {
-            setSelectedEmployee(null);
-        }
+        const calculateSummaries = () => {
+            const newSummaries: {[key: string]: {overtime: number, missingHours: number, bankHours: number}} = {};
+            const month = filterDate.slice(0, 7);
 
-        const calculateSummary = () => {
-            let overtime = 0;
-            let missingHours = 0;
-            let bankHours = 0;
+            const uniqueStaffIds = [...new Set(staffState.timeEntries.filter(entry => entry.entryDate.toISOString().slice(0, 7) === month).map(entry => entry.staffId))];
 
-            const entriesToSummarize = selectedEmployee ? filteredEntries.filter(e => e.staffId === selectedEmployee.id) : filteredEntries;
+            uniqueStaffIds.forEach(staffId => {
+                const userEntries = staffState.timeEntries.filter(entry => entry.staffId === staffId && entry.entryDate.toISOString().slice(0, 7) === month);
+                let overtime = 0;
+                let missingHours = 0;
 
-            entriesToSummarize.forEach(entry => {
-                const user = staffState.users.find(u => u.id === entry.staffId);
+                const user = staffState.users.find(u => u.id === staffId);
                 if (!user) return;
 
                 const shift = staffState.shifts.find(s => s.id === user.shiftId);
                 const targetHours = shift ? (new Date(`1970-01-01T${shift.endTime}`).getTime() - new Date(`1970-01-01T${shift.startTime}`).getTime()) / 3600000 - (shift.breakMinutes / 60) : 8;
 
-                if (entry.clockIn && entry.clockOut) {
-                    const hoursWorked = ((new Date(entry.clockOut).getTime() - new Date(entry.clockIn).getTime()) / 3600000);
-                    const balance = hoursWorked - targetHours;
+                userEntries.forEach(entry => {
+                    if (entry.clockIn && entry.clockOut) {
+                        const hoursWorked = ((new Date(entry.clockOut).getTime() - new Date(entry.clockIn).getTime()) / 3600000);
+                        const balance = hoursWorked - targetHours;
 
-                    if (balance > 0) {
-                        overtime += balance;
-                    } else {
-                        missingHours += Math.abs(balance);
+                        if (balance > 0) {
+                            overtime += balance;
+                        } else {
+                            missingHours += Math.abs(balance);
+                        }
                     }
-                    bankHours = user.bankHoursBalance || 0;
-                }
+                });
+
+                newSummaries[staffId] = {
+                    overtime,
+                    missingHours,
+                    bankHours: user.bankHoursBalance || 0
+                };
             });
 
-            setSummary({ overtime, missingHours, bankHours });
+            setSummaries(newSummaries);
         };
 
-        calculateSummary();
-    }, [searchTerm, staffState.users, filteredEntries]);
+        calculateSummaries();
+    }, [filterDate, staffState.timeEntries, staffState.users, staffState.shifts]);
 
     const handleSendToPayroll = () => {
         showAlert({ title: 'Enviado', message: 'Dados enviados para a pré-folha com sucesso!', type: 'SUCCESS' });
@@ -113,33 +116,7 @@ export const StaffAttendance: React.FC = () => {
                 </div>
             </div>
 
-            {selectedEmployee && (
-                <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden"> 
-                    <div className="p-4 bg-slate-50 border-b">
-                        <h3 className="font-bold text-slate-700">Resumo de {selectedEmployee.name}</h3>
-                    </div>
-                    <div className="p-6 space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div className="bg-green-50 p-4 rounded-xl border border-green-200">
-                                <h4 className="font-bold text-green-800">Horas Extras</h4>
-                                <p className="text-2xl font-black text-green-600">{summary.overtime.toFixed(1)}h</p>
-                            </div>
-                            <div className="bg-red-50 p-4 rounded-xl border border-red-200">
-                                <h4 className="font-bold text-red-800">Horas Faltantes</h4>
-                                <p className="text-2xl font-black text-red-600">{summary.missingHours.toFixed(1)}h</p>
-                            </div>
-                            <div className="bg-blue-50 p-4 rounded-xl border border-blue-200 flex flex-col justify-between">
-                                <h4 className="font-bold text-blue-800">Banco de Horas</h4>
-                                <p className="text-2xl font-black text-blue-600">{summary.bankHours.toFixed(1)}h</p>
-                            </div>
-                        </div>
-                        <div className="flex justify-end gap-2">
-                            <Button onClick={() => setIsSummaryModalOpen(true)} variant="secondary"><Edit size={16} className="mr-2"/> Editar Resumo</Button>
-                            <Button onClick={handleSendToPayroll} className="bg-green-600 hover:bg-green-700"><ArrowRight size={16} className="mr-2"/> Enviar para Pré-Folha</Button>
-                        </div>
-                    </div>
-                </div>
-            )}
+
 
             <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
                 <div className="overflow-x-auto">
@@ -156,45 +133,84 @@ export const StaffAttendance: React.FC = () => {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
-                            {filteredEntries.map(entry => {
-                                const hours = entry.clockIn && entry.clockOut 
-                                    ? ((new Date(entry.clockOut).getTime() - new Date(entry.clockIn).getTime()) / 3600000).toFixed(1) 
-                                    : '-';
+                            {(() => {
+                                if (filteredEntries.length === 0) {
+                                    return <tr><td colSpan={7} className="p-12 text-center text-gray-400 italic">Nenhum registro de ponto encontrado para este dia.</td></tr>;
+                                }
+
+                                const uniqueIds = [...new Set(filteredEntries.map(entry => entry.staffId))];
+                                const singleEmployeeSelected = uniqueIds.length === 1;
 
                                 return (
-                                    <tr key={entry.id} className="hover:bg-slate-50 transition-colors group">
-                                        <td className="p-4">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-8 h-8 rounded-lg bg-pink-50 text-pink-600 flex items-center justify-center font-bold text-xs">{getStaffName(entry.staffId).charAt(0)}</div>
-                                                <span className="font-bold text-slate-800">{getStaffName(entry.staffId)}</span>
-                                            </div>
-                                        </td>
-                                        <td className="p-4 font-mono text-slate-600">{entry.clockIn ? new Date(entry.clockIn).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '--:--'}</td>
-                                        <td className="p-4 font-mono text-slate-400 text-xs">
-                                            {entry.breakStart && entry.breakEnd ? 
-                                                `${new Date(entry.breakStart).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})} - ${new Date(entry.breakEnd).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}` 
-                                                : '--:--'}
-                                        </td>
-                                        <td className="p-4 font-mono text-slate-600">{entry.clockOut ? new Date(entry.clockOut).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '--:--'}</td>
-                                        <td className="p-4 font-black text-slate-800">{hours}h</td>
-                                        <td className="p-4 text-center">
-                                            <span className={`text-[9px] font-black px-2 py-1 rounded-full uppercase border ${entry.status === 'APPROVED' ? 'bg-green-100 text-green-700 border-green-200' : (entry.status === 'REJECTED' ? 'bg-red-100 text-red-700 border-red-200' : 'bg-yellow-100 text-yellow-700 border-yellow-200')}`}>
-                                                {entry.status}
-                                            </span>
-                                            {entry.justification && <div className="text-[9px] text-gray-400 italic mt-1 max-w-[100px] truncate mx-auto" title={entry.justification}>{entry.justification}</div>}
-                                        </td>
-                                        <td className="p-4 text-right">
-                                            <div className="flex justify-end gap-1">
-                                                <button onClick={() => handleEditEntry(entry)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-xl transition-all" title="Editar"><Edit size={18}/></button>
-                                                {/* Botões de Aprov/Reprov podem ser adicionados aqui no futuro */}
-                                            </div>
-                                        </td>
-                                    </tr>
+                                    <>
+                                        {filteredEntries.map(entry => {
+                                            const hours = entry.clockIn && entry.clockOut 
+                                                ? ((new Date(entry.clockOut).getTime() - new Date(entry.clockIn).getTime()) / 3600000).toFixed(1) 
+                                                : '-';
+
+                                            return (
+                                                <tr key={entry.id} className="hover:bg-slate-50 transition-colors group">
+                                                    <td className="p-4">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-8 h-8 rounded-lg bg-pink-50 text-pink-600 flex items-center justify-center font-bold text-xs">{getStaffName(entry.staffId).charAt(0)}</div>
+                                                            <span className="font-bold text-slate-800">{getStaffName(entry.staffId)}</span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="p-4 font-mono text-slate-600">{entry.clockIn ? new Date(entry.clockIn).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '--:--'}</td>
+                                                    <td className="p-4 font-mono text-slate-400 text-xs">
+                                                        {entry.breakStart && entry.breakEnd ? 
+                                                            `${new Date(entry.breakStart).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})} - ${new Date(entry.breakEnd).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}` 
+                                                            : '--:--'}
+                                                    </td>
+                                                    <td className="p-4 font-mono text-slate-600">{entry.clockOut ? new Date(entry.clockOut).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '--:--'}</td>
+                                                    <td className="p-4 font-black text-slate-800">{hours}h</td>
+                                                    <td className="p-4 text-center">
+                                                        <span className={`text-[9px] font-black px-2 py-1 rounded-full uppercase border ${entry.status === 'APPROVED' ? 'bg-green-100 text-green-700 border-green-200' : (entry.status === 'REJECTED' ? 'bg-red-100 text-red-700 border-red-200' : 'bg-yellow-100 text-yellow-700 border-yellow-200')}`}>
+                                                            {entry.status}
+                                                        </span>
+                                                        {entry.justification && <div className="text-[9px] text-gray-400 italic mt-1 max-w-[100px] truncate mx-auto" title={entry.justification}>{entry.justification}</div>}
+                                                    </td>
+                                                    <td className="p-4 text-right">
+                                                        <div className="flex justify-end gap-1">
+                                                            <button onClick={() => handleEditEntry(entry)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-xl transition-all" title="Editar"><Edit size={18}/></button>
+                                                            {/* Botões de Aprov/Reprov podem ser adicionados aqui no futuro */}
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+
+                                        {singleEmployeeSelected && summaries[uniqueIds[0]] && (
+                                            <tr className="bg-slate-100 border-t-2 border-slate-200">
+                                                <td colSpan={7} className="p-4">
+                                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
+                                                        <div className="bg-green-50 p-4 rounded-xl border border-green-200">
+                                                            <h4 className="font-bold text-green-800">Horas Extras (Mês)</h4>
+                                                            <p className="text-2xl font-black text-green-600">{summaries[uniqueIds[0]].overtime.toFixed(1)}h</p>
+                                                        </div>
+                                                        <div className="bg-red-50 p-4 rounded-xl border border-red-200">
+                                                            <h4 className="font-bold text-red-800">Horas Faltantes (Mês)</h4>
+                                                            <p className="text-2xl font-black text-red-600">{summaries[uniqueIds[0]].missingHours.toFixed(1)}h</p>
+                                                        </div>
+                                                        <div className="bg-blue-50 p-4 rounded-xl border border-blue-200 flex flex-col justify-between">
+                                                            <h4 className="font-bold text-blue-800">Banco de Horas (Saldo)</h4>
+                                                            <p className="text-2xl font-black text-blue-600">{summaries[uniqueIds[0]].bankHours.toFixed(1)}h</p>
+                                                        </div>
+                                                        <div className="flex justify-end gap-2">
+                                                            <Button onClick={() => {
+                                                                setSelectedStaffId(uniqueIds[0]);
+                                                                setSummary(summaries[uniqueIds[0]]);
+                                                                setIsSummaryModalOpen(true);
+                                                            }} variant="secondary"><Edit size={16} className="mr-2"/> Editar</Button>
+                                                            <Button onClick={handleSendToPayroll} className="bg-green-600 hover:bg-green-700"><ArrowRight size={16} className="mr-2"/> Enviar</Button>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </>
                                 );
-                            })}
-                            {filteredEntries.length === 0 && (
-                                <tr><td colSpan={7} className="p-12 text-center text-gray-400 italic">Nenhum registro de ponto encontrado para este dia.</td></tr>
-                            )}
+                            })()}
                         </tbody>
                     </table>
                 </div>
