@@ -9,6 +9,7 @@ import { Building2, DollarSign, Activity, Settings, Search, ExternalLink, LogOut
 // @ts-ignore
 import { useNavigate } from 'react-router-dom';
 import { PlanManager } from './admin/super/PlanManager';
+import { AdminSecurity } from './admin/AdminSecurity';
 
 type ViewMode = 'RESTAURANTS' | 'FINANCIAL' | 'PLANS' | 'SETTINGS' | 'CONTRACTS' | 'SECURITY';
 
@@ -296,8 +297,21 @@ export const SuperAdminDashboard: React.FC = () => {
                                                 <td className="p-4"><div className="font-bold text-gray-800">{tenant.name}</div><div className="text-xs text-gray-500">{tenant.slug}</div></td>
                                                 <td className="p-4 text-gray-700">{tenant.ownerName}</td>
                                                 <td className="p-4"><span className="bg-blue-50 text-blue-700 px-2 py-1 rounded text-xs font-bold">{tenant.plan}</span></td>
-                                                <td className="p-4"><span className={`px-2 py-1 rounded text-xs font-bold ${tenant.status === 'ACTIVE' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{tenant.status}</span></td>
-                                                <td className="p-4 text-right"><div className="flex justify-end gap-2"><button onClick={() => openLinksModal(tenant)} className="p-2 bg-gray-100 rounded hover:bg-gray-200"><LinkIcon size={16}/></button><button onClick={() => openEditModal(tenant)} className="p-2 bg-gray-100 rounded hover:bg-gray-200"><Edit size={16}/></button></div></td>
+                                                <td className="p-4">
+                                                    <button 
+                                                        onClick={() => dispatch({ type: 'TOGGLE_STATUS', tenantId: tenant.id })}
+                                                        className={`px-3 py-1 rounded-full text-xs font-bold transition-all flex items-center gap-2 ${tenant.status === 'ACTIVE' ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-red-100 text-red-700 hover:bg-red-200'}`}
+                                                    >
+                                                        <div className={`w-2 h-2 rounded-full ${tenant.status === 'ACTIVE' ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                                                        {tenant.status === 'ACTIVE' ? 'ATIVO' : 'INATIVO'}
+                                                    </button>
+                                                </td>
+                                                <td className="p-4 text-right">
+                                                    <div className="flex justify-end gap-2">
+                                                        <button onClick={() => openLinksModal(tenant)} className="p-2 bg-gray-100 rounded hover:bg-gray-200 text-blue-600" title="Links de Acesso"><LinkIcon size={16}/></button>
+                                                        <button onClick={() => openEditModal(tenant)} className="p-2 bg-gray-100 rounded hover:bg-gray-200 text-slate-600" title="Editar / Configurar"><Edit size={16}/></button>
+                                                    </div>
+                                                </td>
                                             </tr>
                                         ))}
                                     </tbody>
@@ -341,7 +355,16 @@ export const SuperAdminDashboard: React.FC = () => {
 
        {/* Modais */}
        <SaaSTenantCreateModal isOpen={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} />
-       <SaaSEditTenantModal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} tenant={selectedTenant} />
+       <SaaSEditTenantModal 
+           isOpen={isEditModalOpen} 
+           onClose={() => setIsEditModalOpen(false)} 
+           tenant={selectedTenant} 
+           onOpenLinks={() => {
+               if (selectedTenant) {
+                   setIsLinksModalOpen(true);
+               }
+           }}
+       />
        <SaaSTenantLinksModal isOpen={isLinksModalOpen} onClose={() => setIsLinksModalOpen(false)} tenant={selectedTenant} />
     </div>
   );

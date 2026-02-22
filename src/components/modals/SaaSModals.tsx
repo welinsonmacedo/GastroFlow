@@ -146,7 +146,7 @@ interface SaaSEditTenantModalProps {
     tenant: RestaurantTenant | null;
 }
 
-export const SaaSEditTenantModal: React.FC<SaaSEditTenantModalProps> = ({ isOpen, onClose, tenant }) => {
+export const SaaSEditTenantModal: React.FC<SaaSEditTenantModalProps & { onOpenLinks?: () => void }> = ({ isOpen, onClose, tenant, onOpenLinks }) => {
     const { state, dispatch } = useSaaS();
     const [tab, setTab] = useState<'DETAILS' | 'MODULES' | 'LIMITS' | 'ADMIN'>('DETAILS');
     const [editForm, setEditForm] = useState<Partial<RestaurantTenant>>({});
@@ -177,13 +177,6 @@ export const SaaSEditTenantModal: React.FC<SaaSEditTenantModalProps> = ({ isOpen
                     maxStaff: tenant.customLimits.maxStaff
                 });
             } else {
-                // Se não tiver limites customizados, tenta pegar do plano ou define defaults
-                // Como não temos acesso fácil ao plano aqui, vamos deixar como -1 (ilimitado/padrão) ou tentar inferir
-                // Mas o ideal é mostrar o que está valendo.
-                // Vamos deixar zerado ou com valores do plano se possível.
-                // Como tenant.plan é apenas o tipo, precisaríamos buscar o plano no estado global.
-                // Mas o modal não recebe o estado global de planos.
-                // Vamos assumir -1 como "Padrão do Plano" se não estiver definido.
                 setLimitsForm({ maxTables: -1, maxProducts: -1, maxStaff: -1 });
             }
 
@@ -210,6 +203,10 @@ export const SaaSEditTenantModal: React.FC<SaaSEditTenantModalProps> = ({ isOpen
             
             if (editForm.plan && editForm.plan !== tenant.plan) {
                 dispatch({ type: 'CHANGE_PLAN', tenantId: tenant.id, plan: editForm.plan });
+            }
+
+            if (editForm.status && editForm.status !== tenant.status) {
+                dispatch({ type: 'TOGGLE_STATUS', tenantId: tenant.id });
             }
 
             onClose();
@@ -301,21 +298,58 @@ export const SaaSEditTenantModal: React.FC<SaaSEditTenantModalProps> = ({ isOpen
 
             {tab === 'DETAILS' && (
                 <div className="space-y-4">
-                    <div><label className="text-xs font-bold text-gray-500 uppercase">Nome</label><input className="w-full border p-2 rounded" value={editForm.name} onChange={e => setEditForm({...editForm, name: e.target.value})} /></div>
-                    <div><label className="text-xs font-bold text-gray-500 uppercase">Slug</label><input className="w-full border p-2 rounded" value={editForm.slug} onChange={e => setEditForm({...editForm, slug: e.target.value})} /></div>
-                    <div><label className="text-xs font-bold text-gray-500 uppercase">Dono</label><input className="w-full border p-2 rounded" value={editForm.ownerName} onChange={e => setEditForm({...editForm, ownerName: e.target.value})} /></div>
-                    <div><label className="text-xs font-bold text-gray-500 uppercase">Email</label><input className="w-full border p-2 rounded" value={editForm.email} onChange={e => setEditForm({...editForm, email: e.target.value})} /></div>
-                    <div>
-                        <label className="text-xs font-bold text-gray-500 uppercase">Plano</label>
-                        <select 
-                            className="w-full border p-2 rounded bg-white" 
-                            value={editForm.plan || ''} 
-                            onChange={e => setEditForm({...editForm, plan: e.target.value})}
-                        >
-                            {state.plans.map(p => (
-                                <option key={p.id} value={p.key}>{p.name}</option>
-                            ))}
-                        </select>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div><label className="text-xs font-bold text-gray-500 uppercase">Nome</label><input className="w-full border p-2 rounded" value={editForm.name} onChange={e => setEditForm({...editForm, name: e.target.value})} /></div>
+                        <div><label className="text-xs font-bold text-gray-500 uppercase">Slug</label><input className="w-full border p-2 rounded" value={editForm.slug} onChange={e => setEditForm({...editForm, slug: e.target.value})} /></div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div><label className="text-xs font-bold text-gray-500 uppercase">Dono</label><input className="w-full border p-2 rounded" value={editForm.ownerName} onChange={e => setEditForm({...editForm, ownerName: e.target.value})} /></div>
+                        <div><label className="text-xs font-bold text-gray-500 uppercase">Email</label><input className="w-full border p-2 rounded" value={editForm.email} onChange={e => setEditForm({...editForm, email: e.target.value})} /></div>
+                    </div>
+                    
+                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-4">
+                        <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">Configurações Principais</h4>
+                        
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="text-xs font-bold text-gray-500 uppercase">Plano</label>
+                                <select 
+                                    className="w-full border p-2 rounded bg-white font-bold text-blue-600" 
+                                    value={editForm.plan || ''} 
+                                    onChange={e => setEditForm({...editForm, plan: e.target.value})}
+                                >
+                                    {state.plans.map(p => (
+                                        <option key={p.id} value={p.key}>{p.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="text-xs font-bold text-gray-500 uppercase">Status do Cliente</label>
+                                <select 
+                                    className={`w-full border p-2 rounded font-bold ${editForm.status === 'ACTIVE' ? 'text-green-600 bg-green-50' : 'text-red-600 bg-red-50'}`}
+                                    value={editForm.status || 'ACTIVE'} 
+                                    onChange={e => setEditForm({...editForm, status: e.target.value as any})}
+                                >
+                                    <option value="ACTIVE">ATIVO</option>
+                                    <option value="INACTIVE">INATIVO</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div className="pt-2">
+                            <Button 
+                                variant="outline" 
+                                className="w-full flex items-center justify-center gap-2"
+                                onClick={() => {
+                                    if (onOpenLinks) {
+                                        onClose();
+                                        onOpenLinks();
+                                    }
+                                }}
+                            >
+                                <Copy size={16} /> Central de Links de Acesso
+                            </Button>
+                        </div>
                     </div>
                 </div>
             )}
