@@ -346,39 +346,42 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     if (action.type === 'UPDATE_TENANT') {
         try {
-            console.log("UPDATE_TENANT action received:", action);
-            const updates: any = {
-                name: action.payload.name,
-                slug: action.payload.slug,
-                owner_name: action.payload.ownerName,
-                email: action.payload.email
-            };
+            let plan: string | null = null;
+            let allowed_modules: string[] | null = null;
+            let allowed_features: string[] | null = null;
 
             // Se o plano mudou, incluímos as atualizações de plano aqui para evitar race conditions
             if (action.payload.plan) {
                 const tenant = state.tenants.find(t => t.id === action.payload.id);
-                console.log("Current tenant:", tenant);
-                console.log("New plan:", action.payload.plan);
                 
                 if (tenant && tenant.plan !== action.payload.plan) {
-                    updates.plan = action.payload.plan;
+                    plan = action.payload.plan;
                     const selectedPlan = state.plans.find(p => p.key === action.payload.plan);
-                    console.log("Selected plan from state:", selectedPlan);
 
                     if (selectedPlan && selectedPlan.limits) {
-                        if (selectedPlan.limits.allowedModules) updates.allowed_modules = selectedPlan.limits.allowedModules;
-                        if (selectedPlan.limits.allowedFeatures) updates.allowed_features = selectedPlan.limits.allowedFeatures;
-                        updates.custom_limits = null;
+                        if (selectedPlan.limits.allowedModules) allowed_modules = selectedPlan.limits.allowedModules;
+                        if (selectedPlan.limits.allowedFeatures) allowed_features = selectedPlan.limits.allowedFeatures;
                     }
                 }
             }
 
-            console.log("Sending updates to Supabase:", updates);
-            const { data, error } = await supabase.from('tenants').update(updates).eq('id', action.payload.id).select();
-            console.log("Supabase response:", { data, error });
+            const { data, error } = await supabase.rpc('update_tenant_by_saas_admin', {
+                p_admin_id: state.adminId,
+                p_tenant_id: action.payload.id,
+                p_name: action.payload.name,
+                p_slug: action.payload.slug,
+                p_owner_name: action.payload.ownerName,
+                p_email: action.payload.email,
+                p_plan: plan,
+                p_allowed_modules: allowed_modules,
+                p_allowed_features: allowed_features
+            });
 
             if (error) throw error;
+            if (data && data.success === false) throw new Error(data.error || 'Unknown error');
+
             dispatch(action);
+            showAlert({ title: "Sucesso", message: "Restaurante atualizado!", type: 'SUCCESS' });
         } catch (error) {
             console.error("Erro ao atualizar tenant:", error);
             showAlert({ title: "Erro", message: "Erro ao atualizar.", type: 'ERROR' });
