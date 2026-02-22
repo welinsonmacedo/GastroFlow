@@ -77,7 +77,7 @@ export const SuperAdminDashboard: React.FC = () => {
   const selectedContractPlan = selectedContractTenant ? state.plans.find(p => p.key === selectedContractTenant.plan) : null;
 
   return (
-    <div className="min-h-screen bg-slate-50 flex">
+    <div className="min-h-screen bg-slate-50 flex print:block print:bg-white">
        {/* Sidebar */}
        <div className="w-64 bg-slate-900 text-white p-6 sticky top-0 h-screen flex flex-col justify-between shrink-0 z-20 print:hidden">
           <div>
@@ -97,7 +97,7 @@ export const SuperAdminDashboard: React.FC = () => {
        </div>
 
        {/* Main Content */}
-       <div className="flex-1 p-0 h-screen overflow-hidden bg-slate-100">
+       <div className="flex-1 p-0 h-screen overflow-hidden bg-slate-100 print:h-auto print:overflow-visible print:bg-white">
            {activeView !== 'SECURITY' && (
                 <div className="p-8 pb-0 print:hidden">
                     <header className="flex justify-between items-center mb-8">
