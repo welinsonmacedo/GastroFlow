@@ -75,7 +75,7 @@ export const InventorySuppliersView: React.FC = () => {
                                   <td className="p-4 text-right">
                                       <div className="flex items-center justify-end gap-2">
                                           <Button variant="outline" size="sm" onClick={() => handleOpenModal(s)}><Edit size={14}/> Editar</Button>
-                                          <Button variant="ghost" size="sm" className="text-red-500 hover:bg-red-100" onClick={() => handleDeleteSupplier(s.id)}><Trash2 size={14}/></Button>
+                                          <Button variant="secondary" size="sm" className="text-red-500 hover:bg-red-100" onClick={() => handleDeleteSupplier(s.id)}><Trash2 size={14}/></Button>
                                       </div>
                                   </td>
                               </tr>

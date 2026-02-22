@@ -13,7 +13,7 @@ export const AdminSecurity: React.FC = () => {
 
     const fetchIncidents = async () => {
         setLoading(true);
-        const { data, error } = await supabase
+        const { data } = await supabase
             .from('security_incidents')
             .select('*')
             .order('created_at', { ascending: false })
@@ -31,7 +31,16 @@ export const AdminSecurity: React.FC = () => {
     const toggleConfig = async (key: keyof typeof config) => {
         const newConfig = { ...config, [key]: !config[key] };
         setConfig(newConfig);
-        await supabase.from('system_settings').upsert({ key: 'security_config', value: newConfig });
+        const { error } = await supabase.from('system_settings').upsert({ key: 'security_config', value: newConfig });
+        if (error) {
+            console.error("Erro ao salvar configuração de segurança:", error);
+            alert("Erro ao salvar configuração: " + error.message);
+            // Revert state on error
+            setConfig(config);
+        } else {
+            // Dispatch a custom event so SecurityGuard can update immediately
+            window.dispatchEvent(new CustomEvent('securityConfigChanged', { detail: newConfig }));
+        }
     };
 
     useEffect(() => {

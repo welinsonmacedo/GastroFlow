@@ -23,6 +23,15 @@ export const SecurityGuard: React.FC<{ children: React.ReactNode }> = ({ childre
         }
     };
     fetchConfig();
+
+    const handleConfigChange = (e: Event) => {
+        const customEvent = e as CustomEvent;
+        if (customEvent.detail) {
+            setSecurityConfig(customEvent.detail);
+        }
+    };
+    window.addEventListener('securityConfigChanged', handleConfigChange);
+    return () => window.removeEventListener('securityConfigChanged', handleConfigChange);
   }, []);
 
   // Helper para logar apenas uma vez por refresh para evitar spam
