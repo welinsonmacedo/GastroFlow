@@ -25,7 +25,7 @@ type SaaSAction =
   | { type: 'UPDATE_TENANT_STATS'; payload: { id: string; count: number }[] }
   | { type: 'SET_PLANS'; payload: Plan[] }
   | { type: 'CREATE_TENANT'; payload: { name: string; slug: string; ownerName: string; email: string; plan: PlanType } }
-  | { type: 'UPDATE_TENANT'; payload: { id: string; name: string; slug: string; ownerName: string; email: string } }
+  | { type: 'UPDATE_TENANT'; payload: { id: string; name: string; slug: string; ownerName: string; email: string; plan?: PlanType } }
   | { type: 'UPDATE_TENANT_MODULES'; tenantId: string; modules: SystemModule[]; features: string[] }
   | { type: 'UPDATE_TENANT_LIMITS'; tenantId: string; limits: any }
   | { type: 'CREATE_TENANT_ADMIN'; payload: { tenantId: string; name: string; email: string; pin: string; password?: string } }
@@ -109,7 +109,14 @@ const saasReducer = (state: SaaSState, action: SaaSAction): SaaSState => {
         ...state,
         tenants: state.tenants.map(t => 
           t.id === action.payload.id
-            ? { ...t, name: action.payload.name, slug: action.payload.slug, ownerName: action.payload.ownerName, email: action.payload.email } 
+            ? { 
+                ...t, 
+                name: action.payload.name, 
+                slug: action.payload.slug, 
+                ownerName: action.payload.ownerName, 
+                email: action.payload.email,
+                plan: action.payload.plan || t.plan
+              } 
             : t
         )
       };
@@ -339,15 +346,32 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     if (action.type === 'UPDATE_TENANT') {
         try {
-            const { error } = await supabase.from('tenants').update({
+            const updates: any = {
                 name: action.payload.name,
                 slug: action.payload.slug,
                 owner_name: action.payload.ownerName,
                 email: action.payload.email
-            }).eq('id', action.payload.id);
+            };
+
+            // Se o plano mudou, incluímos as atualizações de plano aqui para evitar race conditions
+            if (action.payload.plan) {
+                const tenant = state.tenants.find(t => t.id === action.payload.id);
+                if (tenant && tenant.plan !== action.payload.plan) {
+                    updates.plan = action.payload.plan;
+                    const selectedPlan = state.plans.find(p => p.key === action.payload.plan);
+                    if (selectedPlan && selectedPlan.limits) {
+                        if (selectedPlan.limits.allowedModules) updates.allowed_modules = selectedPlan.limits.allowedModules;
+                        if (selectedPlan.limits.allowedFeatures) updates.allowed_features = selectedPlan.limits.allowedFeatures;
+                        updates.custom_limits = null;
+                    }
+                }
+            }
+
+            const { error } = await supabase.from('tenants').update(updates).eq('id', action.payload.id);
             if (error) throw error;
             dispatch(action);
         } catch (error) {
+            console.error("Erro ao atualizar tenant:", error);
             showAlert({ title: "Erro", message: "Erro ao atualizar.", type: 'ERROR' });
         }
         return;
