@@ -44,11 +44,11 @@ export const StaffSettings: React.FC = () => {
 
     const handleResetLegal = () => {
         showConfirm({
-            title: "Carregar Tabela Oficial?",
-            message: "Isso irá sobrescrever as faixas de INSS e IRRF com os valores padrão de 2024/2025.",
+            title: "Carregar Tabela Oficial 2026?",
+            message: "Isso irá sobrescrever as faixas de INSS e IRRF com os valores padrão de 2026.",
             onConfirm: async () => {
-                await applyLegalDefaults();
-                showAlert({ title: "Atualizado", message: "Tabelas atualizadas com sucesso.", type: "SUCCESS" });
+                await applyLegalDefaults('2026');
+                showAlert({ title: "Atualizado", message: "Tabela de 2026 carregada com sucesso.", type: "SUCCESS" });
             }
         });
     };
@@ -61,6 +61,17 @@ export const StaffSettings: React.FC = () => {
             onConfirm: async () => {
                 await applyRegimeDefaults(regime);
                 showAlert({ title: "Redefinido", message: "Impostos atualizados.", type: "SUCCESS" });
+            }
+        });
+    };
+
+    const handleSelectYear = (year: '2024' | '2026') => {
+        showConfirm({
+            title: `Carregar Tabela ${year}?`,
+            message: `Isso irá substituir os valores atuais de INSS e IRRF.`,
+            onConfirm: async () => {
+                await applyLegalDefaults(year);
+                showAlert({ title: "Tabela Carregada", message: `Tabela de ${year} aplicada com sucesso.`, type: "SUCCESS" });
             }
         });
     };
@@ -94,12 +105,17 @@ export const StaffSettings: React.FC = () => {
                                 <Edit3 size={16} className="mr-2"/> Editar Tabelas
                             </Button>
                             <Button onClick={handleResetLegal} variant="secondary" className="bg-white border text-blue-700">
-                                <RefreshCcw size={16} className="mr-2"/> Restaurar Padrão
+                                <RefreshCcw size={16} className="mr-2"/> Restaurar Padrão 2026
                             </Button>
                         </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-center gap-4 md:col-span-2">
+                            <span className="text-sm font-bold text-slate-600">Usar outra tabela:</span>
+                            <Button onClick={() => handleSelectYear('2024')} variant="secondary" size="sm">Tabela 2024</Button>
+                            <Button onClick={() => handleSelectYear('2026')} variant="secondary" size="sm">Tabela 2026</Button>
+                        </div>
                         {/* INSS Progressivo */}
                         <div className="bg-white p-6 rounded-2xl shadow-sm border border-orange-100">
                             <h3 className="font-bold text-orange-700 mb-4 flex items-center gap-2"><Scale size={18}/> INSS Progressivo</h3>

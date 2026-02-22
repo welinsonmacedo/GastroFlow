@@ -42,7 +42,7 @@ interface StaffContextType {
   saveLegalSettings: (settings: Partial<RhPayrollSetting>) => Promise<void>;
   saveInssBrackets: (brackets: RhInssBracket[]) => Promise<void>;
   saveIrrfBrackets: (brackets: RhIrrfBracket[]) => Promise<void>;
-  applyLegalDefaults: () => Promise<void>;
+  applyLegalDefaults: (year?: '2024' | '2026') => Promise<void>;
 
   addTax: (tax: Partial<RHTax>) => Promise<void>;
   deleteTax: (id: string) => Promise<void>;
@@ -279,12 +279,47 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       fetchData();
   };
 
-  const applyLegalDefaults = async () => {
+  const applyLegalDefaults = async (year: '2024' | '2026' = '2026') => {
       if (!tenantId) return;
       const today = new Date().toISOString().split('T')[0];
-      await saveLegalSettings({ minWage: 1412.00, inssCeiling: 7786.02, irrfDependentDeduction: 189.59, fgtsRate: 8.00, validFrom: today });
-      await saveInssBrackets([ { id: '', minValue: 0, maxValue: 1412.00, rate: 7.5, validFrom: today }, { id: '', minValue: 1412.01, maxValue: 2666.68, rate: 9.0, validFrom: today }, { id: '', minValue: 2666.69, maxValue: 4000.03, rate: 12.0, validFrom: today }, { id: '', minValue: 4000.04, maxValue: 7786.02, rate: 14.0, validFrom: today } ]);
-      await saveIrrfBrackets([ { id: '', minValue: 0, maxValue: 2259.20, rate: 0, deduction: 0, validFrom: today }, { id: '', minValue: 2259.21, maxValue: 2826.65, rate: 7.5, deduction: 169.44, validFrom: today }, { id: '', minValue: 2826.66, maxValue: 3751.05, rate: 15.0, deduction: 381.44, validFrom: today }, { id: '', minValue: 3751.06, maxValue: 4664.68, rate: 22.5, deduction: 662.77, validFrom: today }, { id: '', minValue: 4664.69, maxValue: null, rate: 27.5, deduction: 896.00, validFrom: today } ]);
+
+      let settings, inssBrackets, irrfBrackets;
+
+      if (year === '2024') {
+          settings = { minWage: 1412.00, inssCeiling: 7786.02, irrfDependentDeduction: 189.59, fgtsRate: 8.00, validFrom: '2024-01-01' };
+          inssBrackets = [
+              { id: '', minValue: 0, maxValue: 1412.00, rate: 7.5, validFrom: '2024-01-01' },
+              { id: '', minValue: 1412.01, maxValue: 2666.68, rate: 9.0, validFrom: '2024-01-01' },
+              { id: '', minValue: 2666.69, maxValue: 4000.03, rate: 12.0, validFrom: '2024-01-01' },
+              { id: '', minValue: 4000.04, maxValue: 7786.02, rate: 14.0, validFrom: '2024-01-01' }
+          ];
+          irrfBrackets = [
+              { id: '', minValue: 0, maxValue: 2259.20, rate: 0, deduction: 0, validFrom: '2024-01-01' },
+              { id: '', minValue: 2259.21, maxValue: 2826.65, rate: 7.5, deduction: 169.44, validFrom: '2024-01-01' },
+              { id: '', minValue: 2826.66, maxValue: 3751.05, rate: 15.0, deduction: 381.44, validFrom: '2024-01-01' },
+              { id: '', minValue: 3751.06, maxValue: 4664.68, rate: 22.5, deduction: 662.77, validFrom: '2024-01-01' },
+              { id: '', minValue: 4664.69, maxValue: null, rate: 27.5, deduction: 896.00, validFrom: '2024-01-01' }
+          ];
+      } else { // 2026 - Valores hipotéticos
+          settings = { minWage: 1650.00, inssCeiling: 8564.62, irrfDependentDeduction: 189.59, fgtsRate: 8.00, validFrom: '2026-01-01' };
+          inssBrackets = [
+              { id: '', minValue: 0, maxValue: 1650.00, rate: 7.5, validFrom: '2026-01-01' },
+              { id: '', minValue: 1650.01, maxValue: 3000.00, rate: 9.0, validFrom: '2026-01-01' },
+              { id: '', minValue: 3000.01, maxValue: 4500.00, rate: 12.0, validFrom: '2026-01-01' },
+              { id: '', minValue: 4500.01, maxValue: 8564.62, rate: 14.0, validFrom: '2026-01-01' }
+          ];
+          irrfBrackets = [
+              { id: '', minValue: 0, maxValue: 2500.00, rate: 0, deduction: 0, validFrom: '2026-01-01' },
+              { id: '', minValue: 2500.01, maxValue: 3200.00, rate: 7.5, deduction: 187.50, validFrom: '2026-01-01' },
+              { id: '', minValue: 3200.01, maxValue: 4250.00, rate: 15.0, deduction: 427.50, validFrom: '2026-01-01' },
+              { id: '', minValue: 4250.01, maxValue: 5300.00, rate: 22.5, deduction: 746.25, validFrom: '2026-01-01' },
+              { id: '', minValue: 5300.01, maxValue: null, rate: 27.5, deduction: 1011.25, validFrom: '2026-01-01' }
+          ];
+      }
+
+      await saveLegalSettings(settings);
+      await saveInssBrackets(inssBrackets);
+      await saveIrrfBrackets(irrfBrackets);
   };
 
   const addTax = async (tax: Partial<RHTax>) => { if (!tenantId) return; await supabase.from('rh_taxes').insert({ tenant_id: tenantId, name: tax.name, type: tax.type, value: tax.value, payer_type: tax.payerType, calculation_basis: tax.calculationBasis, is_active: true }); };

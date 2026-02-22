@@ -20,6 +20,7 @@ export const LegalSettingsModal: React.FC<LegalSettingsModalProps> = ({ isOpen, 
     const [inssCeiling, setInssCeiling] = useState(0);
     const [irrfDeduction, setIrrfDeduction] = useState(0);
     const [fgtsRate, setFgtsRate] = useState(8);
+    const [validFrom, setValidFrom] = useState(new Date().toISOString().split('T')[0]);
     
     const [inssList, setInssList] = useState<RhInssBracket[]>([]);
     const [irrfList, setIrrfList] = useState<RhIrrfBracket[]>([]);
@@ -30,6 +31,7 @@ export const LegalSettingsModal: React.FC<LegalSettingsModalProps> = ({ isOpen, 
             setInssCeiling(state.legalSettings.inssCeiling);
             setIrrfDeduction(state.legalSettings.irrfDependentDeduction);
             setFgtsRate(state.legalSettings.fgtsRate);
+            setValidFrom(state.legalSettings.validFrom || new Date().toISOString().split('T')[0]);
             setInssList([...state.inssBrackets]);
             setIrrfList([...state.irrfBrackets]);
         }
@@ -39,7 +41,7 @@ export const LegalSettingsModal: React.FC<LegalSettingsModalProps> = ({ isOpen, 
         try {
             await saveLegalSettings({
                 minWage, inssCeiling, irrfDependentDeduction: irrfDeduction, fgtsRate,
-                validFrom: new Date().toISOString().split('T')[0]
+                validFrom
             });
             await saveInssBrackets(inssList);
             await saveIrrfBrackets(irrfList);
@@ -71,7 +73,8 @@ export const LegalSettingsModal: React.FC<LegalSettingsModalProps> = ({ isOpen, 
             <div className="space-y-8 max-w-4xl mx-auto pb-20">
                 <div className="bg-blue-50 p-6 rounded-2xl border border-blue-200">
                     <h4 className="font-bold text-blue-900 mb-4 flex items-center gap-2"><Calculator size={18}/> Parâmetros Gerais</h4>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-6">
+                        <div><label className="text-xs font-bold text-gray-500 uppercase">Vigência</label><input type="date" className="w-full border p-2 rounded-xl mt-1" value={validFrom} onChange={e => setValidFrom(e.target.value)}/></div>
                         <div><label className="text-xs font-bold text-gray-500 uppercase">Salário Mínimo</label><input type="number" step="0.01" className="w-full border p-2 rounded-xl mt-1" value={minWage} onChange={e => setMinWage(parseFloat(e.target.value))}/></div>
                         <div><label className="text-xs font-bold text-gray-500 uppercase">Teto INSS</label><input type="number" step="0.01" className="w-full border p-2 rounded-xl mt-1" value={inssCeiling} onChange={e => setInssCeiling(parseFloat(e.target.value))}/></div>
                         <div><label className="text-xs font-bold text-gray-500 uppercase">Dedução Dep. (IRRF)</label><input type="number" step="0.01" className="w-full border p-2 rounded-xl mt-1" value={irrfDeduction} onChange={e => setIrrfDeduction(parseFloat(e.target.value))}/></div>
