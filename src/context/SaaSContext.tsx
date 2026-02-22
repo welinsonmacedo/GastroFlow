@@ -475,7 +475,30 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
             button_text: action.plan.button_text
         }).eq('id', action.plan.id);
         
-        if (!error) dispatch(action);
+        if (!error) {
+            dispatch(action);
+            
+            // Propagate changes to all tenants with this plan
+            // We update allowed_modules, allowed_features and custom_limits (which stores the plan limits)
+            try {
+                const { error: propError } = await supabase.from('tenants')
+                    .update({
+                        allowed_modules: action.plan.limits.allowedModules,
+                        allowed_features: action.plan.limits.allowedFeatures,
+                        custom_limits: action.plan.limits
+                    })
+                    .eq('plan', action.plan.key);
+
+                if (propError) {
+                    console.error("Erro ao propagar atualizações do plano para os tenants:", propError);
+                    showAlert({ title: "Aviso", message: "Plano salvo, mas houve erro ao atualizar alguns clientes.", type: 'WARNING' });
+                } else {
+                    showAlert({ title: "Sucesso", message: "Plano atualizado e propagado para todos os clientes!", type: 'SUCCESS' });
+                }
+            } catch (err) {
+                console.error("Erro na propagação:", err);
+            }
+        }
         else showAlert({ title: "Erro", message: "Erro ao salvar plano.", type: 'ERROR' });
         return;
     }
