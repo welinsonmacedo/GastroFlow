@@ -33,7 +33,7 @@ export const CommerceDashboard: React.FC = () => {
         icon: ShoppingCart, 
         roles: [Role.ADMIN, Role.CASHIER],
         required: 'allowCashier',
-        featureKeys: ['commerce_pos', 'distributor_sales', 'snackbar_pos']
+        featureKeys: ['commerce_pos', 'distributor_sales', 'snackbar_pos', 'pos_terminal']
     },
     { 
         path: '/commerce/history', 
@@ -41,7 +41,7 @@ export const CommerceDashboard: React.FC = () => {
         icon: History, 
         roles: [Role.ADMIN, Role.CASHIER],
         required: 'allowCashier',
-        featureKeys: ['commerce_pos', 'distributor_sales', 'snackbar_pos']
+        featureKeys: ['commerce_pos', 'distributor_sales', 'snackbar_pos', 'pos_sales']
     },
     { 
         path: '/commerce/routes', 

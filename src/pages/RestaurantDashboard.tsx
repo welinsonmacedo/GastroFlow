@@ -37,7 +37,7 @@ export const RestaurantDashboard: React.FC = () => {
         icon: Coffee, 
         roles: [Role.ADMIN, Role.WAITER, Role.CASHIER], 
         required: null,
-        featureKeys: ['restaurant_waiter']
+        featureKeys: ['restaurant_waiter', 'rest_waiter']
     },
     { 
         path: '/restaurant/kitchen', 
@@ -45,7 +45,7 @@ export const RestaurantDashboard: React.FC = () => {
         icon: Monitor, 
         roles: [Role.ADMIN, Role.KITCHEN],
         required: 'allowKds',
-        featureKeys: ['restaurant_kds', 'snackbar_kds']
+        featureKeys: ['restaurant_kds', 'snackbar_kds', 'rest_kds']
     },
     { 
         path: '/restaurant/cashier', 
@@ -53,7 +53,7 @@ export const RestaurantDashboard: React.FC = () => {
         icon: DollarSign, 
         roles: [Role.ADMIN, Role.CASHIER],
         required: 'allowCashier',
-        featureKeys: ['restaurant_cashier', 'snackbar_pos']
+        featureKeys: ['restaurant_cashier', 'snackbar_pos', 'rest_orders']
     },
     { 
         path: '/restaurant/panel', 
@@ -70,7 +70,7 @@ export const RestaurantDashboard: React.FC = () => {
         icon: QrCode, 
         roles: [Role.ADMIN],
         required: 'allowTableMgmt',
-        featureKeys: ['admin_tables']
+        featureKeys: ['admin_tables', 'rest_tables']
     },
     { 
         path: '/restaurant/menu', 
@@ -78,7 +78,7 @@ export const RestaurantDashboard: React.FC = () => {
         icon: Utensils, 
         roles: [Role.ADMIN],
         required: null,
-        featureKeys: ['admin_products']
+        featureKeys: ['admin_products', 'rest_menu']
     },
     { 
         path: '/restaurant/appearance', 

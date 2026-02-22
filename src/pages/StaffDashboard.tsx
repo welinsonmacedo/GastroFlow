@@ -33,31 +33,31 @@ export const StaffDashboard: React.FC = () => {
         label: 'Colaboradores', 
         icon: Users, 
         exact: true,
-        featureKey: 'rh_staff_list'
+        featureKeys: ['rh_staff_list', 'hr_staff', 'hr_dashboard']
     },
     { 
         path: '/rh/attendance', 
         label: 'Controle de Ponto', 
         icon: Timer, 
-        featureKey: 'rh_attendance'
+        featureKeys: ['rh_attendance', 'hr_timeclock']
     },
     { 
         path: '/rh/schedules', 
         label: 'Escalas & Turnos', 
         icon: Calendar, 
-        featureKey: 'rh_schedules'
+        featureKeys: ['rh_schedules', 'hr_schedule']
     },
     { 
         path: '/rh/payroll', 
         label: 'Pré-Folha (💰)', 
         icon: FileText, 
-        featureKey: 'rh_payroll'
+        featureKeys: ['rh_payroll', 'hr_payroll']
     },
     { 
         path: '/rh/settings', 
         label: 'Configurações', 
         icon: Settings, 
-        featureKey: 'rh_payroll' // Usa a mesma feature key da folha por enquanto ou criar nova
+        featureKeys: ['rh_payroll', 'hr_payroll'] // Usa a mesma feature key da folha por enquanto ou criar nova
     },
   ];
 
@@ -67,13 +67,15 @@ export const StaffDashboard: React.FC = () => {
       
       // 2. Checagem de features (Tenant)
       if (allowedFeatures && allowedFeatures.length > 0) {
-          if (!allowedFeatures.includes(tab.featureKey)) return false;
+          const hasFeature = tab.featureKeys.some(key => allowedFeatures.includes(key));
+          if (!hasFeature) return false;
       }
 
       // 3. Permissões do Usuário (Cargos Personalizados)
       if (authState.currentUser?.role !== 'ADMIN' && authState.currentUser?.customRoleId) {
           const userFeatures = authState.currentUser.allowedFeatures || [];
-          if (!userFeatures.includes(tab.featureKey)) return false;
+          const hasUserFeature = tab.featureKeys.some(key => userFeatures.includes(key));
+          if (!hasUserFeature) return false;
       }
 
       return true;

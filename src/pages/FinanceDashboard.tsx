@@ -25,11 +25,11 @@ export const FinanceDashboard: React.FC = () => {
 
   // Definição das Abas do Módulo Financeiro com Feature Keys
   const tabs = [
-    { path: '/finance', label: 'Caixa & Despesas', icon: DollarSign, exact: true, featureKey: 'finance_expenses' },
-    { path: '/finance/dre', label: 'DRE Gerencial', icon: PieChart, required: 'allowReports', featureKey: 'finance_dre' },
-    { path: '/finance/bi', label: 'Inteligência (BI)', icon: TrendingUp, required: 'allowReports', featureKey: 'finance_bi' },
-    { path: '/finance/reports', label: 'Relatórios', icon: FileText, required: 'allowReports', featureKey: 'finance_reports' },
-    { path: '/finance/tips', label: 'Dicas & Insights', icon: Lightbulb, required: 'allowReports', featureKey: 'finance_tips' },
+    { path: '/finance', label: 'Caixa & Despesas', icon: DollarSign, exact: true, featureKeys: ['finance_expenses', 'fin_dashboard', 'fin_entries', 'fin_exits'] },
+    { path: '/finance/dre', label: 'DRE Gerencial', icon: PieChart, required: 'allowReports', featureKeys: ['finance_dre', 'fin_dre'] },
+    { path: '/finance/bi', label: 'Inteligência (BI)', icon: TrendingUp, required: 'allowReports', featureKeys: ['finance_bi'] },
+    { path: '/finance/reports', label: 'Relatórios', icon: FileText, required: 'allowReports', featureKeys: ['finance_reports'] },
+    { path: '/finance/tips', label: 'Dicas & Insights', icon: Lightbulb, required: 'allowReports', featureKeys: ['finance_tips'] },
   ];
 
   // Filtra abas
@@ -39,13 +39,15 @@ export const FinanceDashboard: React.FC = () => {
       
       // 2. Checagem de features (Tenant)
       if (allowedFeatures && allowedFeatures.length > 0) {
-          if (!allowedFeatures.includes(tab.featureKey)) return false;
+          const hasFeature = tab.featureKeys.some(key => allowedFeatures.includes(key));
+          if (!hasFeature) return false;
       }
 
       // 3. Permissões do Usuário (Cargos Personalizados)
       if (authState.currentUser?.role !== 'ADMIN' && authState.currentUser?.customRoleId) {
           const userFeatures = authState.currentUser.allowedFeatures || [];
-          if (!userFeatures.includes(tab.featureKey)) return false;
+          const hasUserFeature = tab.featureKeys.some(key => userFeatures.includes(key));
+          if (!hasUserFeature) return false;
       }
 
       return true;
