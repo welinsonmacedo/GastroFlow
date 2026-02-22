@@ -156,22 +156,30 @@ export const SaaSEditTenantModal: React.FC<SaaSEditTenantModalProps & { onOpenLi
         }
     }, [tenant, isOpen]);
 
-    const handleUpdate = () => {
+    const handleUpdate = async () => {
         if(tenant) {
-             dispatch({ 
-                type: 'UPDATE_TENANT', 
-                payload: { id: tenant.id, name: editForm.name!, slug: editForm.slug!, ownerName: editForm.ownerName!, email: editForm.email! } 
-            });
-            
-            if (editForm.plan && editForm.plan !== tenant.plan) {
-                dispatch({ type: 'CHANGE_PLAN', tenantId: tenant.id, plan: editForm.plan });
-            }
+            try {
+                await dispatch({ 
+                    type: 'UPDATE_TENANT', 
+                    payload: { 
+                        id: tenant.id, 
+                        name: editForm.name!, 
+                        slug: editForm.slug!, 
+                        ownerName: editForm.ownerName!, 
+                        email: editForm.email!,
+                        plan: editForm.plan 
+                    } 
+                });
 
-            if (editForm.status && editForm.status !== tenant.status) {
-                dispatch({ type: 'TOGGLE_STATUS', tenantId: tenant.id });
-            }
+                if (editForm.status && editForm.status !== tenant.status) {
+                    await dispatch({ type: 'TOGGLE_STATUS', tenantId: tenant.id });
+                }
 
-            onClose();
+                onClose();
+            } catch (error) {
+                console.error("Failed to update tenant:", error);
+                // Modal stays open so user can retry or see error
+            }
         }
     };
 

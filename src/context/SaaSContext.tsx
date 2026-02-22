@@ -48,7 +48,7 @@ const initialState: SaaSState = {
 
 const SaaSContext = createContext<{
   state: SaaSState;
-  dispatch: React.Dispatch<SaaSAction>;
+  dispatch: (action: SaaSAction) => Promise<void>;
 } | undefined>(undefined);
 
 const saasReducer = (state: SaaSState, action: SaaSAction): SaaSState => {
@@ -356,9 +356,11 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
             // Se o plano mudou, incluímos as atualizações de plano aqui para evitar race conditions
             if (action.payload.plan) {
                 const tenant = state.tenants.find(t => t.id === action.payload.id);
+                
                 if (tenant && tenant.plan !== action.payload.plan) {
                     updates.plan = action.payload.plan;
                     const selectedPlan = state.plans.find(p => p.key === action.payload.plan);
+
                     if (selectedPlan && selectedPlan.limits) {
                         if (selectedPlan.limits.allowedModules) updates.allowed_modules = selectedPlan.limits.allowedModules;
                         if (selectedPlan.limits.allowedFeatures) updates.allowed_features = selectedPlan.limits.allowedFeatures;
@@ -373,6 +375,7 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } catch (error) {
             console.error("Erro ao atualizar tenant:", error);
             showAlert({ title: "Erro", message: "Erro ao atualizar.", type: 'ERROR' });
+            throw error;
         }
         return;
     }
@@ -521,19 +524,6 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     dispatch(action);
 
-    if (action.type === 'CHANGE_PLAN') {
-        const selectedPlan = state.plans.find(p => p.key === action.plan);
-        const updates: any = { plan: action.plan };
-        
-        if (selectedPlan && selectedPlan.limits) {
-            if (selectedPlan.limits.allowedModules) updates.allowed_modules = selectedPlan.limits.allowedModules;
-            if (selectedPlan.limits.allowedFeatures) updates.allowed_features = selectedPlan.limits.allowedFeatures;
-            // Reset custom limits to use plan limits
-            updates.custom_limits = null;
-        }
-
-        await supabase.from('tenants').update(updates).eq('id', action.tenantId);
-    }
     if (action.type === 'TOGGLE_STATUS') {
         const tenant = state.tenants.find(t => t.id === action.tenantId);
         if (tenant) {
