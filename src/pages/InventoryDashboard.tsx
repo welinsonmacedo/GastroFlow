@@ -24,14 +24,13 @@ export const InventoryDashboard: React.FC = () => {
 
   // Definição das Abas do Módulo Estoque
   const tabs = [
-    { path: '/inventory', label: 'Itens', icon: Package, exact: true, featureKeys: ['inventory_manage', 'distributor_inventory', 'inv_items', 'inv_dashboard'] },
-    { path: '/inventory/new', label: 'Novo Item', icon: PlusCircle, featureKeys: ['inventory_manage', 'distributor_inventory', 'inv_items'] },
-    { path: '/inventory/entry', label: 'Entrada Nota', icon: FileInput, featureKeys: ['inventory_purchases', 'inv_purchases'] },
-    { path: '/inventory/count', label: 'Balanço', icon: Scale, featureKeys: ['inventory_manage', 'distributor_inventory', 'inv_items'] },
-    { path: '/inventory/purchases', label: 'Sugestões', icon: ShoppingCart, featureKeys: ['inventory_purchases', 'inv_purchases'] },
-    { path: '/inventory/suppliers', label: 'Fornecedores', icon: Truck, featureKeys: ['inventory_suppliers', 'inv_suppliers'] },
-    { path: '/inventory/orders', label: 'Ordens de Pedido', icon: ClipboardList, featureKeys: ['inventory_purchases', 'inv_purchases'] },
-
+    { path: '/inventory', label: 'ITENS', icon: Package, exact: true, featureKeys: ['inv_items'] },
+    { path: '/inventory/new', label: 'NOVO ITEM', icon: PlusCircle, featureKeys: ['inv_new_item'] },
+    { path: '/inventory/entry', label: 'ENTRADA DE NOTA', icon: FileInput, featureKeys: ['inv_entry'] },
+    { path: '/inventory/count', label: 'BALANCO', icon: Scale, featureKeys: ['inv_count'] },
+    { path: '/inventory/purchases', label: 'SUGESTOES', icon: ShoppingCart, featureKeys: ['inv_purchases'] },
+    { path: '/inventory/suppliers', label: 'FORNECEDORES', icon: Truck, featureKeys: ['inv_suppliers'] },
+    { path: '/inventory/orders', label: 'ORDENS DE PEDIDO', icon: ClipboardList, featureKeys: ['inv_orders'] },
   ];
 
   // Filtra abas

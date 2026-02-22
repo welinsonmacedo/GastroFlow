@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 // @ts-ignore
 import { Link } from 'react-router-dom';
+import { useRestaurant } from '../context/RestaurantContext';
 import { 
   ChefHat, Coffee, DollarSign, Settings, 
   ArrowRight, CheckCircle, Bell, QrCode, 
@@ -62,7 +63,26 @@ const FaqItem = ({ question, answer }: any) => (
 type ManualTab = 'WAITER' | 'KITCHEN' | 'CASHIER' | 'INVENTORY' | 'FINANCE' | 'ADMIN' | 'CLIENT' | 'SUPPORT';
 
 export const ManualPage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<ManualTab>('WAITER');
+  const [activeTab, setActiveTab] = useState<ManualTab>('SUPPORT');
+  const { state } = useRestaurant();
+  const allowed = state.allowedModules || [];
+
+  const showRestaurant = allowed.includes('RESTAURANT') || allowed.includes('SNACKBAR');
+  const showCommerce = allowed.includes('COMMERCE') || allowed.includes('DISTRIBUTOR');
+  const showInventory = allowed.includes('INVENTORY');
+  const showFinance = allowed.includes('FINANCE');
+  const showAdmin = allowed.includes('MANAGER') || allowed.includes('CONFIG');
+  const showClient = showRestaurant || showCommerce;
+
+  // Set initial active tab based on what's available
+  React.useEffect(() => {
+      if (showRestaurant) setActiveTab('WAITER');
+      else if (showInventory) setActiveTab('INVENTORY');
+      else if (showFinance) setActiveTab('FINANCE');
+      else if (showAdmin) setActiveTab('ADMIN');
+      else if (showClient) setActiveTab('CLIENT');
+      else setActiveTab('SUPPORT');
+  }, [showRestaurant, showInventory, showFinance, showAdmin, showClient]);
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row font-sans">
@@ -76,67 +96,87 @@ export const ManualPage: React.FC = () => {
         </div>
 
         <div className="space-y-1">
-          <div className="text-[10px] font-bold text-slate-400 uppercase mb-2 ml-2 tracking-wider">Operacional</div>
-          
-          <RoleCard 
-            icon={<Coffee size={18} />} 
-            title="Garçom & Salão" 
-            color="orange" 
-            active={activeTab === 'WAITER'} 
-            onClick={() => setActiveTab('WAITER')}
-          />
-          
-          <RoleCard 
-            icon={<Monitor size={18} />} 
-            title="Cozinha (KDS)" 
-            color="red" 
-            active={activeTab === 'KITCHEN'} 
-            onClick={() => setActiveTab('KITCHEN')}
-          />
-          
-          <RoleCard 
-            icon={<DollarSign size={18} />} 
-            title="Frente de Caixa" 
-            color="green" 
-            active={activeTab === 'CASHIER'} 
-            onClick={() => setActiveTab('CASHIER')}
-          />
+          {(showRestaurant || showCommerce) && (
+            <>
+              <div className="text-[10px] font-bold text-slate-400 uppercase mb-2 ml-2 tracking-wider">Operacional</div>
+              
+              {showRestaurant && (
+                <>
+                  <RoleCard 
+                    icon={<Coffee size={18} />} 
+                    title="Garçom & Salão" 
+                    color="orange" 
+                    active={activeTab === 'WAITER'} 
+                    onClick={() => setActiveTab('WAITER')}
+                  />
+                  
+                  <RoleCard 
+                    icon={<Monitor size={18} />} 
+                    title="Cozinha (KDS)" 
+                    color="red" 
+                    active={activeTab === 'KITCHEN'} 
+                    onClick={() => setActiveTab('KITCHEN')}
+                  />
+                </>
+              )}
+              
+              <RoleCard 
+                icon={<DollarSign size={18} />} 
+                title="Frente de Caixa" 
+                color="green" 
+                active={activeTab === 'CASHIER'} 
+                onClick={() => setActiveTab('CASHIER')}
+              />
+            </>
+          )}
 
-          <div className="text-[10px] font-bold text-slate-400 uppercase mb-2 mt-4 ml-2 tracking-wider">Gestão (ERP)</div>
+          {(showInventory || showFinance || showAdmin) && (
+            <>
+              <div className="text-[10px] font-bold text-slate-400 uppercase mb-2 mt-4 ml-2 tracking-wider">Gestão (ERP)</div>
 
-          <RoleCard 
-            icon={<Package size={18} />} 
-            title="Estoque & Fichas" 
-            color="purple" 
-            active={activeTab === 'INVENTORY'} 
-            onClick={() => setActiveTab('INVENTORY')}
-          />
+              {showInventory && (
+                <RoleCard 
+                  icon={<Package size={18} />} 
+                  title="Estoque & Fichas" 
+                  color="purple" 
+                  active={activeTab === 'INVENTORY'} 
+                  onClick={() => setActiveTab('INVENTORY')}
+                />
+              )}
 
-          <RoleCard 
-            icon={<TrendingUp size={18} />} 
-            title="Financeiro & DRE" 
-            color="emerald" 
-            active={activeTab === 'FINANCE'} 
-            onClick={() => setActiveTab('FINANCE')}
-          />
-          
-          <RoleCard 
-            icon={<Settings size={18} />} 
-            title="Admin & Config" 
-            color="blue" 
-            active={activeTab === 'ADMIN'} 
-            onClick={() => setActiveTab('ADMIN')}
-          />
+              {showFinance && (
+                <RoleCard 
+                  icon={<TrendingUp size={18} />} 
+                  title="Financeiro & DRE" 
+                  color="emerald" 
+                  active={activeTab === 'FINANCE'} 
+                  onClick={() => setActiveTab('FINANCE')}
+                />
+              )}
+              
+              {showAdmin && (
+                <RoleCard 
+                  icon={<Settings size={18} />} 
+                  title="Admin & Config" 
+                  color="blue" 
+                  active={activeTab === 'ADMIN'} 
+                  onClick={() => setActiveTab('ADMIN')}
+                />
+              )}
+            </>
+          )}
 
           <div className="text-[10px] font-bold text-slate-400 uppercase mb-2 mt-4 ml-2 tracking-wider">Cliente & Ajuda</div>
 
-          <RoleCard 
-            icon={<Smartphone size={18} />} 
-            title="App do Cliente" 
-            color="pink" 
-            active={activeTab === 'CLIENT'} 
-            onClick={() => setActiveTab('CLIENT')}
-          />
+          {showClient && (
+            <RoleCard 
+              icon={<Smartphone size={18} />} 
+              title="App do Cliente" 
+              color="pink" 
+              active={activeTab === 'CLIENT'} 
+              onClick={() => setActiveTab('CLIENT')}
+            />
+          )}
 
           <RoleCard 
             icon={<HelpCircle size={18} />} 

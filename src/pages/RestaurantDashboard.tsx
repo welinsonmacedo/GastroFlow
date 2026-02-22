@@ -33,60 +33,60 @@ export const RestaurantDashboard: React.FC = () => {
   const tabs = [
     { 
         path: '/restaurant/waiter', 
-        label: 'Salão & Mesas', 
+        label: 'SALÃO & MESAS', 
         icon: Coffee, 
         roles: [Role.ADMIN, Role.WAITER, Role.CASHIER], 
         required: null,
-        featureKeys: ['restaurant_waiter', 'rest_waiter']
+        featureKeys: ['rest_tables']
     },
     { 
         path: '/restaurant/kitchen', 
-        label: 'Cozinha (KDS)', 
+        label: 'COZINHA(KDS)', 
         icon: Monitor, 
         roles: [Role.ADMIN, Role.KITCHEN],
         required: 'allowKds',
-        featureKeys: ['restaurant_kds', 'snackbar_kds', 'rest_kds']
+        featureKeys: ['rest_kds']
     },
     { 
         path: '/restaurant/cashier', 
-        label: 'Caixa & Delivery', 
+        label: 'CAIXA & DELIVERY', 
         icon: DollarSign, 
         roles: [Role.ADMIN, Role.CASHIER],
         required: 'allowCashier',
-        featureKeys: ['restaurant_cashier', 'snackbar_pos', 'rest_orders']
+        featureKeys: ['rest_orders']
     },
     { 
         path: '/restaurant/panel', 
-        label: 'Painel TV', 
+        label: 'PAINEL TV', 
         icon: Monitor, 
         roles: [Role.ADMIN, Role.WAITER, Role.CASHIER],
         required: null,
-        featureKeys: ['snackbar_call_panel']
+        featureKeys: ['rest_tv']
     },
     // Novas Abas Adicionadas
     { 
         path: '/restaurant/tables', 
-        label: 'Cadastro Mesas', 
+        label: 'CADASTROS MESAS', 
         icon: QrCode, 
         roles: [Role.ADMIN],
         required: 'allowTableMgmt',
-        featureKeys: ['admin_tables', 'rest_tables']
+        featureKeys: ['rest_tables_config']
     },
     { 
         path: '/restaurant/menu', 
-        label: 'Cardápio', 
+        label: 'CARDAPIO', 
         icon: Utensils, 
         roles: [Role.ADMIN],
         required: null,
-        featureKeys: ['admin_products', 'rest_menu']
+        featureKeys: ['rest_menu']
     },
     { 
         path: '/restaurant/appearance', 
-        label: 'Aparência', 
+        label: 'APARENCIA', 
         icon: Palette, 
         roles: [Role.ADMIN],
         required: 'allowCustomization',
-        featureKeys: ['config_appearance']
+        featureKeys: ['rest_appearance']
     },
   ];
 

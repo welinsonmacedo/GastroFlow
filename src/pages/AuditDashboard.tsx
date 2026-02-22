@@ -116,6 +116,14 @@ export const AuditDashboard: React.FC = () => {
                         </button>
                     </div>
                 </div>
+
+                {/* Linha Inferior (Abas) */}
+                <div className="px-6 flex gap-1 overflow-x-auto scrollbar-hide pt-2 max-w-[1920px] mx-auto">
+                    <div className="flex items-center gap-2 px-5 py-3 text-sm font-bold border-b-2 transition-all whitespace-nowrap border-slate-400 text-white bg-white/5 rounded-t-lg">
+                        <FileText size={18} className="text-slate-300" />
+                        LOGS
+                    </div>
+                </div>
             </header>
 
             {/* Main Content */}

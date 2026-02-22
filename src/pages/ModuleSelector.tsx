@@ -128,10 +128,8 @@ export const ModuleSelector: React.FC = () => {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4 max-w-6xl w-full">
-                    {/* Bater Ponto - Acessível se o plano tiver RH */}
-                    {planLimits.allowHR && (
-                         <ModuleCard type="TIME_CLOCK" title="Bater Ponto" desc="Registro de entrada, saída e intervalos." icon={Clock} colorClass="text-cyan-400" onClick={handleTimeClock} />
-                    )}
+                    {/* Bater Ponto - Acessível a todos os usuários */}
+                    <ModuleCard type="TIME_CLOCK" title="Bater Ponto" desc="Registro de entrada, saída e intervalos." icon={Clock} colorClass="text-cyan-400" onClick={handleTimeClock} />
                     
                     {allowed.includes('RESTAURANT') && isModuleAllowed('RESTAURANT') && (
                         <ModuleCard type="RESTAURANT" title="Restaurante" desc="Salão, Mesas, KDS e Caixa Gastronômico." icon={ChefHat} colorClass="text-blue-600" onClick={() => handleSelect('RESTAURANT')} />

@@ -24,10 +24,8 @@ export const AdminDashboard: React.FC = () => {
 
   // Definição das Abas do Gestor
   const tabs = [
-    { path: '/admin', label: 'Visão Geral', icon: LayoutDashboard, exact: true, featureKeys: ['admin_overview', 'rest_dashboard'] },
-    { path: '/admin/monitoring', label: 'Monitoramento', icon: Activity, featureKeys: ['admin_monitoring', 'admin_overview', 'rest_dashboard'] }, 
-    { path: '/admin/products', label: 'Cardápio', icon: Utensils, featureKeys: ['admin_products', 'rest_menu'] },
-    { path: '/admin/tables', label: 'Mesas', icon: QrCode, featureKeys: ['admin_tables', 'rest_tables'] },
+    { path: '/admin', label: 'VISAO GERAL', icon: LayoutDashboard, exact: true, featureKeys: ['admin_overview'] },
+    { path: '/admin/monitoring', label: 'MONITORAMENTO', icon: Activity, featureKeys: ['admin_monitoring'] }, 
   ];
 
   // Filtra abas

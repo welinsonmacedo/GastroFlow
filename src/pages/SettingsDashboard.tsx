@@ -23,14 +23,14 @@ export const SettingsDashboard: React.FC = () => {
 
   // Definição das Abas do Módulo Configurações (Agora separadas)
   const tabs = [
-    { path: '/settings', label: 'Dados da Empresa', icon: Building2, exact: true, featureKeys: ['config_business', 'config_general'] },
-    { path: '/settings/operations', label: 'Regras & Operação', icon: SlidersHorizontal, featureKeys: ['config_operations', 'config_general'] },
-    { path: '/settings/delivery', label: 'Delivery', icon: Bike, required: 'allowCashier', featureKeys: ['config_delivery', 'config_general'] },
-    { path: '/settings/finance-config', label: 'Financeiro', icon: DollarSign, required: 'allowExpenses', featureKeys: ['config_finance_settings', 'config_general'] },
-    { path: '/settings/security', label: 'Segurança', icon: ShieldCheck, featureKeys: ['config_security', 'config_general'] },
-    { path: '/settings/time-clock', label: 'Ponto Eletrônico', icon: Clock, required: 'allowHR', featureKeys: ['config_operations', 'config_general'] },
-    { path: '/settings/appearance', label: 'Aparência & Marca', icon: Palette, required: 'allowCustomization', featureKeys: ['config_appearance', 'config_general'] },
-    { path: '/settings/staff', label: 'Equipe & Acessos', icon: Users, required: 'allowStaff', featureKeys: ['config_staff', 'config_general'] },
+    { path: '/settings', label: 'DADOS DA EMPRESA', icon: Building2, exact: true, featureKeys: ['config_business'] },
+    { path: '/settings/operations', label: 'REGRAS & OPERAÇÃO', icon: SlidersHorizontal, featureKeys: ['config_operations'] },
+    { path: '/settings/delivery', label: 'DELIVERY', icon: Bike, required: 'allowCashier', featureKeys: ['config_delivery'] },
+    { path: '/settings/finance-config', label: 'FINANCEIRO', icon: DollarSign, required: 'allowExpenses', featureKeys: ['config_finance_settings'] },
+    { path: '/settings/security', label: 'SEGURANÇA', icon: ShieldCheck, featureKeys: ['config_security'] },
+    { path: '/settings/time-clock', label: 'PONTO ELETRONICO', icon: Clock, required: 'allowHR', featureKeys: ['config_timeclock'] },
+    { path: '/settings/appearance', label: 'APARENCIA & MARCA', icon: Palette, required: 'allowCustomization', featureKeys: ['config_appearance'] },
+    { path: '/settings/staff', label: 'EQUIPE & ACESSOS', icon: Users, required: 'allowStaff', featureKeys: ['config_staff'] },
   ];
 
   // Filtra abas

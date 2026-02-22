@@ -29,30 +29,20 @@ export const CommerceDashboard: React.FC = () => {
   const tabs = [
     { 
         path: '/commerce/pos', 
-        label: 'PDV (Caixa)', 
+        label: 'PDV', 
         icon: ShoppingCart, 
         roles: [Role.ADMIN, Role.CASHIER],
         required: 'allowCashier',
-        featureKeys: ['commerce_pos', 'distributor_sales', 'snackbar_pos', 'pos_terminal']
+        featureKeys: ['pos_terminal']
     },
     { 
         path: '/commerce/history', 
-        label: 'Histórico', 
+        label: 'HISTORICO', 
         icon: History, 
         roles: [Role.ADMIN, Role.CASHIER],
         required: 'allowCashier',
-        featureKeys: ['commerce_pos', 'distributor_sales', 'snackbar_pos', 'pos_sales']
-    },
-    { 
-        path: '/commerce/routes', 
-        label: 'Rotas', 
-        icon: Truck, 
-        roles: [Role.ADMIN],
-        required: null,
-        featureKeys: ['distributor_routes']
-    },
-
-
+        featureKeys: ['pos_sales']
+    }
   ];
 
   // Filtra abas

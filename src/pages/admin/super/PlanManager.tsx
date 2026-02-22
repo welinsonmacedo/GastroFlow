@@ -3,60 +3,52 @@ import { useSaaS } from '../../../context/SaaSContext';
 import { Plan, SystemModule, PlanLimits } from '../../../types';
 import { Button } from '../../../components/Button';
 import { Modal } from '../../../components/Modal';
-import { Plus, Edit, Trash2, Check, X, ChefHat, DollarSign, Package, Users, Store, Settings, ShieldAlert, Briefcase } from 'lucide-react';
+import { 
+    Plus, Edit, Trash2, Check, X, ChefHat, DollarSign, Package, Users, Store, 
+    Settings, ShieldAlert, Briefcase, Clock, Tv, LayoutGrid, BookOpen, Palette, 
+    Truck, HelpCircle, FileText, ClipboardList, BarChart3, Shield, UserPlus, 
+    History, Monitor, ListChecks, Settings2
+} from 'lucide-react';
 
 const MODULES_CONFIG = [
     {
         id: 'RESTAURANT' as SystemModule,
-        label: 'Restaurante & Mesas',
+        label: 'Restaurante',
         icon: ChefHat,
         features: [
-            { id: 'rest_dashboard', label: 'Dashboard' },
-            { id: 'rest_tables', label: 'Gestão de Mesas' },
-            { id: 'rest_orders', label: 'Pedidos' },
-            { id: 'rest_kds', label: 'KDS (Cozinha)' },
-            { id: 'rest_waiter', label: 'App Garçom' },
-            { id: 'rest_menu', label: 'Cardápio Digital' }
+            { id: 'rest_tables', label: 'SALÃO & MESAS' },
+            { id: 'rest_kds', label: 'COZINHA(KDS)' },
+            { id: 'rest_orders', label: 'CAIXA & DELIVERY' },
+            { id: 'rest_tv', label: 'PAINEL TV' },
+            { id: 'rest_tables_config', label: 'CADASTROS MESAS' },
+            { id: 'rest_menu', label: 'CARDAPIO' },
+            { id: 'rest_appearance', label: 'APARENCIA' }
+        ]
+    },
+    {
+        id: 'TIMECLOCK' as SystemModule,
+        label: 'Bater Ponto',
+        icon: Clock,
+        features: [
+            { id: 'timeclock_access', label: 'Acesso ao Ponto' }
+        ]
+    },
+    {
+        id: 'COMMERCE' as SystemModule,
+        label: 'Varejo',
+        icon: Store,
+        features: [
+            { id: 'pos_terminal', label: 'PDV' },
+            { id: 'pos_sales', label: 'HISTORICO' }
         ]
     },
     {
         id: 'MANAGER' as SystemModule,
-        label: 'Gestor (Backoffice)',
+        label: 'Gestor',
         icon: Briefcase,
         features: [
-            { id: 'admin_overview', label: 'Visão Geral' },
-            { id: 'admin_monitoring', label: 'Monitoramento' },
-            { id: 'admin_products', label: 'Cardápio Digital' },
-            { id: 'admin_tables', label: 'Mesas & QR Code' }
-        ]
-    },
-    {
-        id: 'CONFIG' as SystemModule,
-        label: 'Configurações',
-        icon: Settings,
-        features: [
-            { id: 'config_business', label: 'Dados da Empresa' },
-            { id: 'config_operations', label: 'Regras & Operação' },
-            { id: 'config_delivery', label: 'Delivery' },
-            { id: 'config_finance_settings', label: 'Financeiro' },
-            { id: 'config_security', label: 'Segurança' },
-            { id: 'config_appearance', label: 'Aparência & Marca' },
-            { id: 'config_staff', label: 'Equipe & Acessos' }
-        ]
-    },
-    {
-        id: 'FINANCE' as SystemModule,
-        label: 'Financeiro',
-        icon: DollarSign,
-        features: [
-            { id: 'fin_dashboard', label: 'Dashboard' },
-            { id: 'fin_entries', label: 'Entradas' },
-            { id: 'fin_exits', label: 'Saídas' },
-            { id: 'fin_dre', label: 'DRE Gerencial' },
-            { id: 'fin_cashier', label: 'Histórico de Caixa' },
-            { id: 'fin_bi', label: 'Inteligência (BI)' },
-            { id: 'fin_reports', label: 'Relatórios' },
-            { id: 'fin_tips', label: 'Dicas Financeiras' }
+            { id: 'admin_overview', label: 'VISAO GERAL' },
+            { id: 'admin_monitoring', label: 'MONITORAMENTO' }
         ]
     },
     {
@@ -64,32 +56,52 @@ const MODULES_CONFIG = [
         label: 'Estoque',
         icon: Package,
         features: [
-            { id: 'inv_dashboard', label: 'Dashboard' },
-            { id: 'inv_items', label: 'Itens & Produtos' },
-            { id: 'inv_suppliers', label: 'Fornecedores' },
-            { id: 'inv_purchases', label: 'Compras' },
-            { id: 'inv_recipes', label: 'Fichas Técnicas' }
+            { id: 'inv_items', label: 'ITENS' },
+            { id: 'inv_new_item', label: 'NOVO ITEM' },
+            { id: 'inv_entry', label: 'ENTRADA DE NOTA' },
+            { id: 'inv_count', label: 'BALANCO' },
+            { id: 'inv_purchases', label: 'SUGESTOES' },
+            { id: 'inv_suppliers', label: 'FORNECEDORES' },
+            { id: 'inv_orders', label: 'ORDENS DE PEDIDO' }
         ]
     },
     {
         id: 'HR' as SystemModule,
-        label: 'RH & Ponto',
+        label: 'Rh & Equipe',
         icon: Users,
         features: [
-            { id: 'hr_dashboard', label: 'Dashboard' },
-            { id: 'hr_staff', label: 'Colaboradores' },
-            { id: 'hr_timeclock', label: 'Ponto Eletrônico' },
-            { id: 'hr_payroll', label: 'Folha de Pagamento' },
-            { id: 'hr_schedule', label: 'Escalas' }
+            { id: 'hr_staff', label: 'COLABORADORES' },
+            { id: 'hr_timeclock', label: 'CONTROLE DE PONTO' },
+            { id: 'hr_schedule', label: 'ESCALAS & TURNOS' },
+            { id: 'hr_payroll', label: 'PRÉ-FOLHA' },
+            { id: 'hr_config', label: 'CONFIGURAÇÕES' }
         ]
     },
     {
-        id: 'COMMERCE' as SystemModule,
-        label: 'Varejo / PDV',
-        icon: Store,
+        id: 'FINANCE' as SystemModule,
+        label: 'Financeiro',
+        icon: DollarSign,
         features: [
-            { id: 'pos_terminal', label: 'Terminal PDV' },
-            { id: 'pos_sales', label: 'Histórico de Vendas' }
+            { id: 'fin_cashier', label: 'CAIXA & DESPESAS' },
+            { id: 'fin_dre', label: 'DRE GERENCIAL' },
+            { id: 'fin_bi', label: 'INTELIGENCIA BI' },
+            { id: 'fin_reports', label: 'RELATORIOS' },
+            { id: 'fin_tips', label: 'DICAS & INSIGHTS' }
+        ]
+    },
+    {
+        id: 'CONFIG' as SystemModule,
+        label: 'Configurações',
+        icon: Settings,
+        features: [
+            { id: 'config_business', label: 'DADOS DA EMPRESA' },
+            { id: 'config_operations', label: 'REGRAS & OPERAÇÃO' },
+            { id: 'config_delivery', label: 'DELIVERY' },
+            { id: 'config_finance_settings', label: 'FINANCEIRO' },
+            { id: 'config_security', label: 'SEGURANÇA' },
+            { id: 'config_timeclock', label: 'PONTO ELETRONICO' },
+            { id: 'config_appearance', label: 'APARENCIA & MARCA' },
+            { id: 'config_staff', label: 'EQUIPE & ACESSOS' }
         ]
     },
     {
@@ -97,7 +109,15 @@ const MODULES_CONFIG = [
         label: 'Auditoria',
         icon: ShieldAlert,
         features: [
-            { id: 'audit_logs', label: 'Logs de Sistema' }
+            { id: 'audit_logs', label: 'LOGS' }
+        ]
+    },
+    {
+        id: 'SUPPORT' as SystemModule,
+        label: 'Suporte & Ajuda',
+        icon: HelpCircle,
+        features: [
+            { id: 'support_manuals', label: 'Manuais dos Módulos' }
         ]
     }
 ];
@@ -158,12 +178,13 @@ export const PlanManager: React.FC = () => {
         // Sync legacy boolean flags with modules
         const newLimits = { ...editingPlan.limits } as PlanLimits;
         const modules = newLimits.allowedModules || [];
+        const features = newLimits.allowedFeatures || [];
         
-        // Table Management: Active for Restaurant or Manager
-        newLimits.allowTableMgmt = modules.includes('RESTAURANT') || modules.includes('MANAGER');
+        // Table Management: Active for Restaurant
+        newLimits.allowTableMgmt = modules.includes('RESTAURANT');
         
         // KDS: Active for Restaurant if the specific feature is selected
-        newLimits.allowKds = modules.includes('RESTAURANT') && (newLimits.allowedFeatures?.includes('rest_kds') || false);
+        newLimits.allowKds = modules.includes('RESTAURANT') && features.includes('rest_kds');
         
         // Expenses/Finance: Active for Finance module
         newLimits.allowExpenses = modules.includes('FINANCE');
@@ -175,14 +196,12 @@ export const PlanManager: React.FC = () => {
         // HR: Active for HR module
         newLimits.allowHR = modules.includes('HR');
         
-        // Cashier: Active for Commerce OR Restaurant (if they have cashier feature)
-        // We make it permissive: if Commerce is on, allowCashier is true.
+        // Cashier: Active for Commerce OR Restaurant
         newLimits.allowCashier = modules.includes('COMMERCE') || modules.includes('RESTAURANT');
 
         // Reports: Active if any major module is active
         newLimits.allowReports = modules.includes('FINANCE') || modules.includes('COMMERCE') || modules.includes('RESTAURANT') || modules.includes('INVENTORY');
 
-        // Customization/Staff: Generally allowed for all plans except maybe very basic ones, but let's default to true if Config/HR are present or just keep existing value
         newLimits.allowCustomization = true; 
         newLimits.allowStaff = true;
 

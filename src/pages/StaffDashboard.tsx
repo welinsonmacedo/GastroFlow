@@ -30,34 +30,34 @@ export const StaffDashboard: React.FC = () => {
   const tabs = [
     { 
         path: '/rh', 
-        label: 'Colaboradores', 
+        label: 'COLABORADORES', 
         icon: Users, 
         exact: true,
-        featureKeys: ['rh_staff_list', 'hr_staff', 'hr_dashboard']
+        featureKeys: ['hr_staff']
     },
     { 
         path: '/rh/attendance', 
-        label: 'Controle de Ponto', 
+        label: 'CONTROLE DE PONTO', 
         icon: Timer, 
-        featureKeys: ['rh_attendance', 'hr_timeclock']
+        featureKeys: ['hr_timeclock']
     },
     { 
         path: '/rh/schedules', 
-        label: 'Escalas & Turnos', 
+        label: 'ESCALAS & TURNOS', 
         icon: Calendar, 
-        featureKeys: ['rh_schedules', 'hr_schedule']
+        featureKeys: ['hr_schedule']
     },
     { 
         path: '/rh/payroll', 
-        label: 'Pré-Folha (💰)', 
+        label: 'PRÉ-FOLHA', 
         icon: FileText, 
-        featureKeys: ['rh_payroll', 'hr_payroll']
+        featureKeys: ['hr_payroll']
     },
     { 
         path: '/rh/settings', 
-        label: 'Configurações', 
+        label: 'CONFIGURAÇÕES', 
         icon: Settings, 
-        featureKeys: ['rh_payroll', 'hr_payroll'] // Usa a mesma feature key da folha por enquanto ou criar nova
+        featureKeys: ['hr_config']
     },
   ];
 
