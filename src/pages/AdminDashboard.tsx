@@ -24,8 +24,8 @@ export const AdminDashboard: React.FC = () => {
 
   // Definição das Abas do Gestor
   const tabs = [
-    { path: '/admin', label: 'Visão Geral', icon: LayoutDashboard, exact: true, featureKey: 'admin_overview' },
-    { path: '/admin/monitoring', label: 'Monitoramento', icon: Activity, featureKey: 'admin_overview' }, // Incluído na visão geral ou criar featureKey nova
+    { path: '/admin', label: 'Visão Geral', icon: LayoutDashboard, exact: true, featureKeys: ['admin_overview', 'rest_dashboard'] },
+    { path: '/admin/monitoring', label: 'Monitoramento', icon: Activity, featureKeys: ['admin_overview', 'rest_dashboard'] }, // Incluído na visão geral ou criar featureKey nova
   ];
 
   // Filtra abas
@@ -35,14 +35,16 @@ export const AdminDashboard: React.FC = () => {
       
       // 2. Checagem de features granulares (Tenant)
       if (allowedFeatures && allowedFeatures.length > 0) {
-          if (!allowedFeatures.includes(tab.featureKey)) return false;
+          const hasFeature = tab.featureKeys.some(key => allowedFeatures.includes(key));
+          if (!hasFeature) return false;
       }
 
       // 3. Permissões do Usuário (Cargos Personalizados)
       if (authState.currentUser?.role !== 'ADMIN' && authState.currentUser?.customRoleId) {
           const userFeatures = authState.currentUser.allowedFeatures || [];
           if (userFeatures.length > 0) {
-              if (!userFeatures.includes(tab.featureKey)) return false;
+              const hasUserFeature = tab.featureKeys.some(key => userFeatures.includes(key));
+              if (!hasUserFeature) return false;
           }
       }
 

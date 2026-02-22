@@ -3,7 +3,7 @@ import { useSaaS } from '../../../context/SaaSContext';
 import { Plan, SystemModule, PlanLimits } from '../../../types';
 import { Button } from '../../../components/Button';
 import { Modal } from '../../../components/Modal';
-import { Plus, Edit, Trash2, Check, X, ChefHat, DollarSign, Package, Users, Store, Settings, ShieldAlert } from 'lucide-react';
+import { Plus, Edit, Trash2, Check, X, ChefHat, DollarSign, Package, Users, Store, Settings, ShieldAlert, Briefcase } from 'lucide-react';
 
 const MODULES_CONFIG = [
     {
@@ -17,6 +17,16 @@ const MODULES_CONFIG = [
             { id: 'rest_kds', label: 'KDS (Cozinha)' },
             { id: 'rest_waiter', label: 'App Garçom' },
             { id: 'rest_menu', label: 'Cardápio Digital' }
+        ]
+    },
+    {
+        id: 'MANAGER' as SystemModule,
+        label: 'Gestor (Backoffice)',
+        icon: Briefcase,
+        features: [
+            { id: 'admin_overview', label: 'Visão Geral' },
+            { id: 'admin_products', label: 'Cardápio Digital' },
+            { id: 'admin_tables', label: 'Mesas & QR Code' }
         ]
     },
     {

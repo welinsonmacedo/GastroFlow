@@ -23,14 +23,14 @@ export const SettingsDashboard: React.FC = () => {
 
   // Definição das Abas do Módulo Configurações (Agora separadas)
   const tabs = [
-    { path: '/settings', label: 'Dados da Empresa', icon: Building2, exact: true, featureKey: 'config_business' },
-    { path: '/settings/operations', label: 'Regras & Operação', icon: SlidersHorizontal, featureKey: 'config_operations' },
-    { path: '/settings/delivery', label: 'Delivery', icon: Bike, required: 'allowCashier', featureKey: 'config_delivery' },
-    { path: '/settings/finance-config', label: 'Financeiro', icon: DollarSign, required: 'allowExpenses', featureKey: 'config_finance_settings' },
-    { path: '/settings/security', label: 'Segurança', icon: ShieldCheck, featureKey: 'config_security' },
-    { path: '/settings/time-clock', label: 'Ponto Eletrônico', icon: Clock, required: 'allowHR', featureKey: 'config_operations' },
-    { path: '/settings/appearance', label: 'Aparência & Marca', icon: Palette, required: 'allowCustomization', featureKey: 'config_appearance' },
-    { path: '/settings/staff', label: 'Equipe & Acessos', icon: Users, required: 'allowStaff', featureKey: 'config_staff' },
+    { path: '/settings', label: 'Dados da Empresa', icon: Building2, exact: true, featureKeys: ['config_business', 'config_general'] },
+    { path: '/settings/operations', label: 'Regras & Operação', icon: SlidersHorizontal, featureKeys: ['config_operations', 'config_general'] },
+    { path: '/settings/delivery', label: 'Delivery', icon: Bike, required: 'allowCashier', featureKeys: ['config_delivery', 'config_general'] },
+    { path: '/settings/finance-config', label: 'Financeiro', icon: DollarSign, required: 'allowExpenses', featureKeys: ['config_finance_settings', 'config_general'] },
+    { path: '/settings/security', label: 'Segurança', icon: ShieldCheck, featureKeys: ['config_security', 'config_general'] },
+    { path: '/settings/time-clock', label: 'Ponto Eletrônico', icon: Clock, required: 'allowHR', featureKeys: ['config_operations', 'config_general'] },
+    { path: '/settings/appearance', label: 'Aparência & Marca', icon: Palette, required: 'allowCustomization', featureKeys: ['config_appearance', 'config_general'] },
+    { path: '/settings/staff', label: 'Equipe & Acessos', icon: Users, required: 'allowStaff', featureKeys: ['config_staff', 'config_general'] },
   ];
 
   // Filtra abas
@@ -43,24 +43,16 @@ export const SettingsDashboard: React.FC = () => {
       
       // 2. Checa Features Granulares (Tenant)
       if (allowedFeatures && allowedFeatures.length > 0) {
-          // Se for uma das novas features separadas
-          if (['config_business', 'config_operations', 'config_delivery', 'config_finance_settings', 'config_security'].includes(tab.featureKey)) {
-              // Se tiver a feature específica OU a antiga config_general
-              if (!allowedFeatures.includes(tab.featureKey) && !allowedFeatures.includes('config_general')) return false;
-          } else {
-              if (!allowedFeatures.includes(tab.featureKey)) return false;
-          }
+          const hasFeature = tab.featureKeys.some(key => allowedFeatures.includes(key));
+          if (!hasFeature) return false;
       }
 
       // 3. Permissões do Usuário (Cargos Personalizados)
       if (authState.currentUser?.role !== 'ADMIN' && authState.currentUser?.customRoleId) {
           const userFeatures = authState.currentUser.allowedFeatures || [];
           if (userFeatures.length > 0) {
-              if (['config_business', 'config_operations', 'config_delivery', 'config_finance_settings', 'config_security'].includes(tab.featureKey)) {
-                  if (!userFeatures.includes(tab.featureKey) && !userFeatures.includes('config_general')) return false;
-              } else {
-                  if (!userFeatures.includes(tab.featureKey)) return false;
-              }
+              const hasUserFeature = tab.featureKeys.some(key => userFeatures.includes(key));
+              if (!hasUserFeature) return false;
           }
       }
 
