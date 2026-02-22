@@ -22,6 +22,14 @@ export const StaffAttendance: React.FC = () => {
     const [summary, setSummary] = useState({ overtime: 0, missingHours: 0, bankHours: 0 });
     const [isSummaryModalOpen, setIsSummaryModalOpen] = useState(false);
 
+    const getStaffName = (id: string) => staffState.users.find(u => u.id === id)?.name || 'Desconhecido';
+    
+    const filteredEntries = staffState.timeEntries.filter(entry => {
+        const matchesDate = entry.entryDate.toISOString().split('T')[0] === filterDate;
+        const matchesSearch = getStaffName(entry.staffId).toLowerCase().includes(searchTerm.toLowerCase());
+        return matchesDate && matchesSearch;
+    });
+
     useEffect(() => {
         const calculateSummary = () => {
             let overtime = 0;
@@ -57,15 +65,6 @@ export const StaffAttendance: React.FC = () => {
     const handleSendToPayroll = () => {
         showAlert({ title: 'Enviado', message: 'Dados enviados para a pré-folha com sucesso!', type: 'SUCCESS' });
     };
-
-
-    const getStaffName = (id: string) => staffState.users.find(u => u.id === id)?.name || 'Desconhecido';
-    
-    const filteredEntries = staffState.timeEntries.filter(entry => {
-        const matchesDate = entry.entryDate.toISOString().split('T')[0] === filterDate;
-        const matchesSearch = getStaffName(entry.staffId).toLowerCase().includes(searchTerm.toLowerCase());
-        return matchesDate && matchesSearch;
-    });
 
     const handleEditEntry = (entry: TimeEntry) => {
         setEntryToEdit(entry);
