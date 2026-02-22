@@ -33,6 +33,7 @@ export const AdminDashboard: React.FC = () => {
   // Filtra abas
   const visibleTabs = tabs.filter(tab => {
       // 1. Checa Limites do Plano
+      // Overview and Monitoring should be available if Manager module is active, regardless of allowTableMgmt
       if (tab.path === '/admin/tables' && !planLimits.allowTableMgmt) return false;
       
       // 2. Checagem de features granulares (Tenant)

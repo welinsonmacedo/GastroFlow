@@ -35,7 +35,17 @@ export const FinanceDashboard: React.FC = () => {
   // Filtra abas
   const visibleTabs = tabs.filter(tab => {
       // 1. Checa Limites do Plano
-      if (tab.required === 'allowReports' && !planLimits.allowReports) return false;
+      // We removed strict 'allowReports' check here because PlanManager now sets it correctly based on modules.
+      // But just in case, we rely more on featureKeys.
+      if (tab.required === 'allowReports' && !planLimits.allowReports) {
+          // If allowReports is false, but the specific feature is enabled in allowedFeatures, we should show it.
+          // This handles cases where legacy plans might have allowReports=false but new features enabled.
+          if (allowedFeatures && allowedFeatures.length > 0) {
+             const hasFeature = tab.featureKeys.some(key => allowedFeatures.includes(key));
+             if (hasFeature) return true;
+          }
+          return false;
+      }
       
       // 2. Checagem de features (Tenant)
       if (allowedFeatures && allowedFeatures.length > 0) {

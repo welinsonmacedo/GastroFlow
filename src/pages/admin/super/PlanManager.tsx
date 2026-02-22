@@ -144,13 +144,32 @@ export const PlanManager: React.FC = () => {
         const newLimits = { ...editingPlan.limits } as PlanLimits;
         const modules = newLimits.allowedModules || [];
         
+        // Table Management: Active for Restaurant or Manager
         newLimits.allowTableMgmt = modules.includes('RESTAURANT') || modules.includes('MANAGER');
+        
+        // KDS: Active for Restaurant if the specific feature is selected
         newLimits.allowKds = modules.includes('RESTAURANT') && (newLimits.allowedFeatures?.includes('rest_kds') || false);
+        
+        // Expenses/Finance: Active for Finance module
         newLimits.allowExpenses = modules.includes('FINANCE');
+        
+        // Inventory/Purchases: Active for Inventory module
         newLimits.allowInventory = modules.includes('INVENTORY');
-        newLimits.allowPurchases = modules.includes('INVENTORY'); // Coupled with Inventory usually
+        newLimits.allowPurchases = modules.includes('INVENTORY');
+        
+        // HR: Active for HR module
         newLimits.allowHR = modules.includes('HR');
-        newLimits.allowCashier = modules.includes('COMMERCE');
+        
+        // Cashier: Active for Commerce OR Restaurant (if they have cashier feature)
+        // We make it permissive: if Commerce is on, allowCashier is true.
+        newLimits.allowCashier = modules.includes('COMMERCE') || modules.includes('RESTAURANT');
+
+        // Reports: Active if any major module is active
+        newLimits.allowReports = modules.includes('FINANCE') || modules.includes('COMMERCE') || modules.includes('RESTAURANT') || modules.includes('INVENTORY');
+
+        // Customization/Staff: Generally allowed for all plans except maybe very basic ones, but let's default to true if Config/HR are present or just keep existing value
+        newLimits.allowCustomization = true; 
+        newLimits.allowStaff = true;
 
         const planToSave = {
             ...editingPlan,
