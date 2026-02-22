@@ -144,7 +144,7 @@ export const PlanManager: React.FC = () => {
         const newLimits = { ...editingPlan.limits } as PlanLimits;
         const modules = newLimits.allowedModules || [];
         
-        newLimits.allowTableMgmt = modules.includes('RESTAURANT');
+        newLimits.allowTableMgmt = modules.includes('RESTAURANT') || modules.includes('MANAGER');
         newLimits.allowKds = modules.includes('RESTAURANT') && (newLimits.allowedFeatures?.includes('rest_kds') || false);
         newLimits.allowExpenses = modules.includes('FINANCE');
         newLimits.allowInventory = modules.includes('INVENTORY');

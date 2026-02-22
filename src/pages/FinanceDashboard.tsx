@@ -27,9 +27,9 @@ export const FinanceDashboard: React.FC = () => {
   const tabs = [
     { path: '/finance', label: 'Caixa & Despesas', icon: DollarSign, exact: true, featureKeys: ['finance_expenses', 'fin_dashboard', 'fin_entries', 'fin_exits'] },
     { path: '/finance/dre', label: 'DRE Gerencial', icon: PieChart, required: 'allowReports', featureKeys: ['finance_dre', 'fin_dre'] },
-    { path: '/finance/bi', label: 'Inteligência (BI)', icon: TrendingUp, required: 'allowReports', featureKeys: ['finance_bi'] },
-    { path: '/finance/reports', label: 'Relatórios', icon: FileText, required: 'allowReports', featureKeys: ['finance_reports'] },
-    { path: '/finance/tips', label: 'Dicas & Insights', icon: Lightbulb, required: 'allowReports', featureKeys: ['finance_tips'] },
+    { path: '/finance/bi', label: 'Inteligência (BI)', icon: TrendingUp, required: 'allowReports', featureKeys: ['finance_bi', 'fin_bi'] },
+    { path: '/finance/reports', label: 'Relatórios', icon: FileText, required: 'allowReports', featureKeys: ['finance_reports', 'fin_reports'] },
+    { path: '/finance/tips', label: 'Dicas & Insights', icon: Lightbulb, required: 'allowReports', featureKeys: ['finance_tips', 'fin_tips'] },
   ];
 
   // Filtra abas
