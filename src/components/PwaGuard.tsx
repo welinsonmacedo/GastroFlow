@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 // @ts-ignore
 import { useLocation } from 'react-router-dom';
-import { Download, Smartphone, Share, PlusSquare, Monitor, ChefHat } from 'lucide-react';
+import { Download, Smartphone, Share, PlusSquare, Monitor } from 'lucide-react';
 
 export const PwaGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();

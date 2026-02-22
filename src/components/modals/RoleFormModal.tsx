@@ -76,7 +76,7 @@ export const RoleFormModal: React.FC<RoleFormModalProps> = ({ isOpen, onClose, r
         setSelectedFeatures(newSelectedFeatures);
 
         // @ts-ignore
-        const moduleFeatures = PERMISSIONS_SCHEMA[moduleKey]?.features.map(f => f.key) || [];
+        const moduleFeatures = PERMISSIONS_SCHEMA[moduleKey]?.features.map((f: { key: string }) => f.key) || [];
         const hasAnyFeatureInModule = moduleFeatures.some(f => newSelectedFeatures.includes(f));
 
         if (hasAnyFeatureInModule) {

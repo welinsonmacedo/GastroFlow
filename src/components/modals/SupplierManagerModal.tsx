@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Modal } from '../Modal';
-import { Button } from '../Button'; // Ainda usado para layout interno
+
 import { useInventory } from '../../context/InventoryContext';
 import { useUI } from '../../context/UIContext';
 import { Supplier } from '../../types';

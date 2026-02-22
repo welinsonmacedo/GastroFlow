@@ -4,8 +4,8 @@ import { useAuth } from '../context/AuthProvider'; // Use AuthProvider
 import { useRestaurant } from '../context/RestaurantContext';
 // @ts-ignore
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { ChefHat, Lock, Loader2, Mail, AlertCircle, UserPlus, ArrowLeft, BookOpen } from 'lucide-react';
-import { Role } from '../types';
+import { Loader2, BookOpen } from 'lucide-react';
+
 import { supabase } from '../lib/supabase';
 import { Button } from '../components/Button';
 import { getTenantSlug } from '../utils/tenant';
@@ -99,18 +99,16 @@ export const Login: React.FC = () => {
 
               if (staffData) {
                   let allowedRoutes = staffData.allowed_routes || [];
-                  let allowedFeatures = [];
+                  
                   
                   if (staffData.custom_roles?.permissions) {
                       if (staffData.custom_roles.permissions.allowed_modules) {
                           allowedRoutes = staffData.custom_roles.permissions.allowed_modules;
                       }
-                      if (staffData.custom_roles.permissions.allowed_features) {
-                          allowedFeatures = staffData.custom_roles.permissions.allowed_features;
-                      }
+                      
                   } else if (staffData.role === 'ADMIN') {
                       allowedRoutes = ['RESTAURANT', 'SNACKBAR', 'DISTRIBUTOR', 'COMMERCE', 'MANAGER', 'CONFIG', 'FINANCE', 'INVENTORY', 'HR'];
-                      allowedFeatures = [];
+                      
                   } else if (!staffData.custom_role_id && allowedRoutes.length === 0) {
                       if (['WAITER', 'KITCHEN', 'CASHIER'].includes(staffData.role)) {
                           allowedRoutes = ['RESTAURANT'];
@@ -123,7 +121,7 @@ export const Login: React.FC = () => {
                       email: staffData.email, auth_user_id: staffData.auth_user_id, 
                       customRoleId: staffData.custom_role_id,
                       allowedRoutes: allowedRoutes,
-                      allowedFeatures: allowedFeatures
+                      allowedFeatures: staffData.custom_roles?.permissions?.allowed_features || []
                   });
                   return;
               }

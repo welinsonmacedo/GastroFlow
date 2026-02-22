@@ -4,15 +4,17 @@ import { useUI } from '../../../context/UIContext';
 import { Button } from '../../../components/Button';
 import { TimeEntry } from '../../../types';
 import { User, Calendar, ArrowRight, Edit, Search } from 'lucide-react';
+import { SummaryModal } from '../../../components/modals/SummaryModal';
 
 export const SendToPayrollTab: React.FC = () => {
-    const { state: staffState } = useStaff();
+    const { state: staffState, addPayrollEntry } = useStaff();
     const { showAlert } = useUI();
 
     const [selectedStaffId, setSelectedStaffId] = useState<string>('');
     const [filterMonth, setFilterMonth] = useState(new Date().toISOString().slice(0, 7));
     const [summary, setSummary] = useState({ overtime: 0, missingHours: 0, bankHours: 0 });
     const [monthlyEntries, setMonthlyEntries] = useState<TimeEntry[]>([]);
+    const [isSummaryModalOpen, setIsSummaryModalOpen] = useState(false);
 
     const getStaffName = (id: string) => staffState.users.find(u => u.id === id)?.name || 'Desconhecido';
 
@@ -59,12 +61,22 @@ export const SendToPayrollTab: React.FC = () => {
 
     }, [selectedStaffId, filterMonth, staffState.timeEntries, staffState.users, staffState.shifts]);
 
-    const handleSendToPayroll = () => {
+    const handleSendToPayroll = async () => {
         if (!selectedStaffId) {
             showAlert({ title: 'Atenção', message: 'Por favor, selecione um colaborador para enviar os dados.', type: 'WARNING' });
             return;
         }
-        showAlert({ title: 'Enviado', message: `Dados de ${getStaffName(selectedStaffId)} enviados para a pré-folha com sucesso!`, type: 'SUCCESS' });
+        try {
+            await addPayrollEntry({
+                staffId: selectedStaffId,
+                month: filterMonth,
+                overtimeHours: summary.overtime,
+                missingHours: summary.missingHours,
+            });
+            showAlert({ title: 'Enviado', message: `Dados de ${getStaffName(selectedStaffId)} enviados para a pré-folha com sucesso!`, type: 'SUCCESS' });
+        } catch (error) {
+            showAlert({ title: 'Erro', message: 'Não foi possível enviar os dados para a pré-folha.', type: 'ERROR' });
+        }
     };
 
     return (
@@ -115,7 +127,8 @@ export const SendToPayrollTab: React.FC = () => {
                                     <p className="text-2xl font-black text-blue-600">{summary.bankHours.toFixed(1)}h</p>
                                 </div>
                             </div>
-                            <div className="flex justify-end">
+                            <div className="flex justify-end gap-2">
+                                <Button onClick={() => setIsSummaryModalOpen(true)} variant="secondary"><Edit size={16} className="mr-2"/> Editar Resumo</Button>
                                 <Button onClick={handleSendToPayroll} className="bg-green-600 hover:bg-green-700"><ArrowRight size={16} className="mr-2"/> Enviar para Pré-Folha</Button>
                             </div>
                         </div>
@@ -164,6 +177,16 @@ export const SendToPayrollTab: React.FC = () => {
                     </div>
                 </>
             )}
+
+            <SummaryModal 
+                isOpen={isSummaryModalOpen} 
+                onClose={() => setIsSummaryModalOpen(false)} 
+                summary={summary}
+                onSave={(newSummary) => {
+                    setSummary(newSummary);
+                    showAlert({ title: 'Sucesso', message: 'Resumo atualizado localmente. Clique em Enviar para salvar.', type: 'SUCCESS' });
+                }}
+            />
         </div>
     );
 };

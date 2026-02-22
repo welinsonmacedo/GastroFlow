@@ -4,7 +4,7 @@ import {
     User, Shift, TimeEntry, PayrollPreview, CustomRole, 
     RHTax, RHBenefit, TaxRegime, TaxPayerType, TaxCalculationBasis,
     RhPayrollSetting, RhInssBracket, RhIrrfBracket, ClosedPayroll,
-    PayrollEvent, PayrollEventType
+    PayrollEvent, PayrollEventType, PayrollEntry
 } from '../types';
 import { supabase, logAudit } from '../lib/supabase';
 import { useRestaurant } from './RestaurantContext';
@@ -22,6 +22,7 @@ interface StaffState {
   inssBrackets: RhInssBracket[];
   irrfBrackets: RhIrrfBracket[];
   payrollEvents: PayrollEvent[];
+  payrollEntries: PayrollEntry[];
   isLoading: boolean;
 }
 
@@ -52,6 +53,7 @@ interface StaffContextType {
 
   addPayrollEvent: (event: Partial<PayrollEvent>) => Promise<void>;
   deletePayrollEvent: (id: string) => Promise<void>;
+  addPayrollEntry: (entry: Partial<PayrollEntry>) => Promise<void>;
 
   getPayroll: (month: number, year: number) => Promise<{ payroll: PayrollPreview[], isClosed: boolean, closedInfo?: ClosedPayroll }>;
   closePayroll: (month: number, year: number) => Promise<void>;
@@ -70,7 +72,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   
   const [state, setState] = useState<StaffState>({ 
     users: [], shifts: [], timeEntries: [], roles: [], taxes: [], benefits: [],
-    legalSettings: null, inssBrackets: [], irrfBrackets: [], payrollEvents: [], isLoading: true 
+    legalSettings: null, inssBrackets: [], irrfBrackets: [], payrollEvents: [], payrollEntries: [], isLoading: true 
   });
 
   const fetchData = useCallback(async () => {
@@ -108,33 +110,33 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               fgtsRate: Number(settingsRes.data.fgts_rate), validFrom: settingsRes.data.valid_from, validUntil: settingsRes.data.valid_until
           } : null;
 
-          const inssBrackets = (inssRes.data || []).map(i => ({
+          const inssBrackets = (inssRes.data || []).map((i: any) => ({
               id: i.id, minValue: Number(i.min_value), maxValue: i.max_value ? Number(i.max_value) : undefined,
               rate: Number(i.rate), validFrom: i.valid_from
           }));
 
-          const irrfBrackets = (irrfRes.data || []).map(i => ({
+          const irrfBrackets = (irrfRes.data || []).map((i: any) => ({
               id: i.id, minValue: Number(i.min_value), maxValue: i.max_value ? Number(i.max_value) : undefined,
               rate: Number(i.rate), deduction: Number(i.deduction), validFrom: i.valid_from
           }));
 
-          const mappedTaxes = (taxesRes.data || []).map(t => ({
+          const mappedTaxes = (taxesRes.data || []).map((t: any) => ({
               id: t.id, name: t.name, type: t.type, value: Number(t.value),
               payerType: (t.payer_type || 'EMPLOYEE') as TaxPayerType,
               calculationBasis: (t.calculation_basis || 'GROSS_TOTAL') as TaxCalculationBasis,
               isActive: t.is_active
           }));
 
-          const mappedBenefits = (benefitsRes.data || []).map(b => ({
+          const mappedBenefits = (benefitsRes.data || []).map((b: any) => ({
               id: b.id, name: b.name, type: b.type, value: Number(b.value), isActive: b.is_active
           }));
           
-          const mappedShifts = (shiftsRes.data || []).map(s => ({
+          const mappedShifts = (shiftsRes.data || []).map((s: any) => ({
               id: s.id, name: s.name, startTime: s.start_time, endTime: s.end_time,
               breakMinutes: s.break_minutes, toleranceMinutes: s.tolerance_minutes, nightShift: s.night_shift
           }));
 
-          const mappedTime = (timeRes.data || []).map(t => ({
+          const mappedTime = (timeRes.data || []).map((t: any) => ({
               id: t.id, staffId: t.staff_id, entryDate: new Date(t.entry_date),
               clockIn: t.clock_in ? new Date(t.clock_in) : undefined,
               breakStart: t.break_start ? new Date(t.break_start) : undefined,
@@ -143,7 +145,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               justification: t.justification, status: t.status
           }));
 
-          const mappedRoles = (rolesRes.data || []).map(r => ({
+          const mappedRoles = (rolesRes.data || []).map((r: any) => ({
               id: r.id, name: r.name, description: r.description,
               permissions: r.permissions || { allowed_modules: [], allowed_features: [] }
           }));
@@ -151,7 +153,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           setState({ 
             users: mappedUsers, shifts: mappedShifts, timeEntries: mappedTime, roles: mappedRoles,
             taxes: mappedTaxes, benefits: mappedBenefits, legalSettings, inssBrackets, irrfBrackets, 
-            payrollEvents: [], isLoading: false 
+            payrollEvents: [], payrollEntries: [], isLoading: false 
           });
       }
   }, [tenantId]);
@@ -298,7 +300,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               { id: '', minValue: 2259.21, maxValue: 2826.65, rate: 7.5, deduction: 169.44, validFrom: '2024-01-01' },
               { id: '', minValue: 2826.66, maxValue: 3751.05, rate: 15.0, deduction: 381.44, validFrom: '2024-01-01' },
               { id: '', minValue: 3751.06, maxValue: 4664.68, rate: 22.5, deduction: 662.77, validFrom: '2024-01-01' },
-              { id: '', minValue: 4664.69, maxValue: null, rate: 27.5, deduction: 896.00, validFrom: '2024-01-01' }
+              { id: '', minValue: 4664.69, rate: 27.5, deduction: 896.00, validFrom: '2024-01-01' }
           ];
       } else { // 2026 - Valores hipotéticos
           settings = { minWage: 1650.00, inssCeiling: 8564.62, irrfDependentDeduction: 189.59, fgtsRate: 8.00, validFrom: '2026-01-01' };
@@ -313,7 +315,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               { id: '', minValue: 2500.01, maxValue: 3200.00, rate: 7.5, deduction: 187.50, validFrom: '2026-01-01' },
               { id: '', minValue: 3200.01, maxValue: 4250.00, rate: 15.0, deduction: 427.50, validFrom: '2026-01-01' },
               { id: '', minValue: 4250.01, maxValue: 5300.00, rate: 22.5, deduction: 746.25, validFrom: '2026-01-01' },
-              { id: '', minValue: 5300.01, maxValue: null, rate: 27.5, deduction: 1011.25, validFrom: '2026-01-01' }
+              { id: '', minValue: 5300.01, rate: 27.5, deduction: 1011.25, validFrom: '2026-01-01' }
           ];
       }
 
@@ -359,6 +361,19 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   
   const deletePayrollEvent = async (id: string) => {
       await supabase.from('rh_payroll_events').delete().eq('id', id);
+  };
+
+  const addPayrollEntry = async (entry: Partial<PayrollEntry>) => {
+      if (!tenantId) return;
+      const { error } = await supabase.from('rh_payroll_entries').insert({
+          tenant_id: tenantId,
+          staff_id: entry.staffId,
+          month: entry.month,
+          overtime_hours: entry.overtimeHours,
+          missing_hours: entry.missingHours,
+      });
+      if (error) throw error;
+      fetchData();
   };
 
   const calculateINSS = (grossSalary: number): number => {
@@ -449,7 +464,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           let totalMins = 0;
           let nightMins = 0; // Adicional noturno
           
-          userEntries.forEach(e => {
+          userEntries.forEach((e: any) => {
               if (e.clock_in && e.clock_out) {
                   const inTime = new Date(e.clock_in);
                   const outTime = new Date(e.clock_out);
@@ -638,7 +653,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         saveLegalSettings, saveInssBrackets, saveIrrfBrackets, applyLegalDefaults,
         addTax, deleteTax, applyRegimeDefaults,
         addBenefit, deleteBenefit,
-        addPayrollEvent, deletePayrollEvent
+        addPayrollEvent, deletePayrollEvent, addPayrollEntry
     }}>
       {children}
     </StaffContext.Provider>

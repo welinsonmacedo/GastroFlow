@@ -1,16 +1,16 @@
 
-import React, { PropsWithChildren, useState, useEffect } from 'react';
+import React, { PropsWithChildren } from 'react';
 // @ts-ignore
-import { BrowserRouter, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthProvider'; 
 import { RestaurantProvider, useRestaurant } from './context/RestaurantContext';
 import { InventoryProvider } from './context/InventoryContext'; 
 import { FinanceProvider } from './context/FinanceContext'; 
 import { MenuProvider } from './context/MenuContext'; 
 import { OrderProvider } from './context/OrderContext'; 
-import { StaffProvider, useStaff } from './context/StaffContext'; 
+import { StaffProvider } from './context/StaffContext'; 
 import { SaaSProvider, useSaaS } from './context/SaaSContext';
-import { UIProvider, useUI } from './context/UIContext';
+import { UIProvider } from './context/UIContext';
 import { ClientApp } from './pages/ClientApp';
 import { AdminDashboard } from './pages/AdminDashboard';
 import { FinanceDashboard } from './pages/FinanceDashboard'; 
@@ -21,7 +21,7 @@ import { InventoryDashboard } from './pages/InventoryDashboard';
 import { StaffDashboard } from './pages/StaffDashboard'; 
 import { AuditDashboard } from './pages/AuditDashboard';
 import { SuperAdminDashboard } from './pages/SuperAdminDashboard';
-import { LandingPage } from './pages/LandingPage';
+
 import { Login } from './pages/Login';
 import { SaaSLogin } from './pages/SaaSLogin';
 import { RegisterRestaurant } from './pages/RegisterRestaurant';

@@ -76,7 +76,7 @@ export const PurchaseOrderView: React.FC<PurchaseOrderViewProps> = ({ order, onB
             suggestedQty: 1, 
             estimatedCost: itemToAdd.costPrice,
             salesCount: 0, 
-            supplierId: itemToAdd.supplierId,
+            
             supplierName: order.supplierName
         };
         setItems(prev => [...prev, newItem]);
@@ -134,7 +134,7 @@ export const PurchaseOrderView: React.FC<PurchaseOrderViewProps> = ({ order, onB
                                 </td>
                                 <td className="p-3 text-right font-mono font-bold">R$ {(item.suggestedQty * item.costPrice).toFixed(2)}</td>
                                 <td className="p-3 text-center">
-                                    <Button onClick={() => handleRemoveItem(item.id)} variant="ghost" size="sm" className="text-red-500 hover:bg-red-100">
+                                    <Button onClick={() => handleRemoveItem(item.id)} variant="secondary" size="sm" className="text-red-500 hover:bg-red-100">
                                         <X size={16}/>
                                     </Button>
                                 </td>

@@ -6,7 +6,7 @@ import { useRestaurant } from '../../context/RestaurantContext';
 import { useInventory } from '../../context/InventoryContext';
 import { useUI } from '../../context/UIContext';
 import { InventoryItem, InventoryType } from '../../types';
-import { Layers, CheckSquare, Square, Plus, X, Tag, ScanLine, FileText, Sparkles, Loader2, DollarSign } from 'lucide-react';
+import { Layers, CheckSquare, Square, Plus, X, Tag, ScanLine, FileText, Sparkles, Loader2 } from 'lucide-react';
 import { generateProductDescription } from '../../services/geminiService';
 import { Button } from '../Button'; // Ainda necessário para botões internos como Adicionar Insumo
 

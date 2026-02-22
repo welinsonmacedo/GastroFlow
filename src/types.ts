@@ -78,6 +78,15 @@ export interface TimeEntry {
     status: 'PENDING' | 'APPROVED' | 'REJECTED';
 }
 
+export interface PayrollEntry {
+    id: string;
+    staffId: string;
+    month: string; // YYYY-MM
+    overtimeHours: number;
+    missingHours: number;
+    // Adicionar outros campos relevantes para a folha se necessário
+}
+
 export interface PayrollEvent {
     id: string;
     staffId: string;
@@ -270,6 +279,13 @@ export interface TimeClockSettings {
     longitude?: number;
 }
 
+export interface TimeClockConfig {
+    validationType: 'NONE' | 'GEOLOCATION';
+    maxDailyPunches?: number;
+    maxDistanceMeters?: number;
+    restaurantLocation?: { lat: number; lng: number };
+}
+
 export interface RestaurantBusinessInfo {
     restaurantName?: string;
     ownerName?: string;
@@ -414,6 +430,7 @@ export interface InventoryItem {
     recipe?: InventoryRecipeItem[];
     isExtra: boolean; 
     targetCategories?: string[];
+    supplierId?: string;
 }
 
 export interface InventoryLog {

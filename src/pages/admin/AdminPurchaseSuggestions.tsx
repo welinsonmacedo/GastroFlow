@@ -91,7 +91,7 @@ export const AdminPurchaseSuggestions: React.FC = () => {
                     suggestedQty: suggest,
                     estimatedCost: suggest * item.costPrice,
                     salesCount: popularityMap[item.id] || 0,
-                    supplierId: item.supplierId,
+                    
                     supplierName: invState.suppliers.find(s => s.id === item.supplierId)?.name || 'Não especificado'
                 });
             });

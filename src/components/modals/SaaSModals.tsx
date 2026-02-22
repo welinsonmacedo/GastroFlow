@@ -3,10 +3,10 @@ import React, { useState, useEffect } from 'react';
 import { Modal } from '../Modal';
 import { Button } from '../Button';
 import { useSaaS } from '../../context/SaaSContext';
-import { RestaurantTenant, PlanType, SystemModule, PlanLimits } from '../../types';
-import { ChevronDown, ChevronRight, Check, Copy, Settings } from 'lucide-react';
+import { RestaurantTenant, PlanType } from '../../types';
+import { Check, Copy } from 'lucide-react';
 
-const MODULE_STRUCTURE = {
+export const MODULE_STRUCTURE = {
     RESTAURANT: {
         label: "Restaurante",
         description: "Operação completa de salão e cozinha.",

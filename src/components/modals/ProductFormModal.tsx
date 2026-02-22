@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Modal } from '../Modal';
 import { useMenu } from '../../context/MenuContext';
-import { useRestaurant } from '../../context/RestaurantContext';
+
 import { useInventory } from '../../context/InventoryContext';
 import { useUI } from '../../context/UIContext';
 import { Product, ProductType } from '../../types';

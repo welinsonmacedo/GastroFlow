@@ -5,7 +5,7 @@ import { useOrder } from '../../context/OrderContext';
 import { useFinance } from '../../context/FinanceContext';
 import { useUI } from '../../context/UIContext';
 import { InventoryItem } from '../../types';
-import { Search, Plus, AlertTriangle, ShoppingCart, Trash2, Package, Banknote, Zap, CreditCard } from 'lucide-react';
+import { Search, Plus, AlertTriangle, ShoppingCart, Trash2, Package, Banknote, Zap } from 'lucide-react';
 import { AddToCartModal } from '../modals/AddToCartModal';
 import { Modal } from '../Modal';
 import { Button } from '../Button';
@@ -19,7 +19,7 @@ export const CashierPOSView: React.FC = () => {
     const [cart, setCart] = useState<{ item: InventoryItem; quantity: number; notes: string; extras: InventoryItem[] }[]>([]);
     const [search, setSearch] = useState('');
     const [customerName, setCustomerName] = useState('');
-    const [processing, setProcessing] = useState(false);
+    
 
     // Modal Item
     const [itemModalOpen, setItemModalOpen] = useState(false);
@@ -53,7 +53,6 @@ export const CashierPOSView: React.FC = () => {
     };
 
     const finalizeSale = async (method: string) => {
-        setProcessing(true);
         try {
             const itemsPayload: any[] = [];
             cart.forEach(cartItem => {
@@ -64,7 +63,7 @@ export const CashierPOSView: React.FC = () => {
             setCart([]); setCustomerName(''); setCashModalOpen(false);
             showAlert({ title: "Venda Registrada", message: `Venda de R$ ${cartTotal.toFixed(2)} realizada!`, type: 'SUCCESS' });
             await refreshTransactions();
-        } catch (error: any) { showAlert({ title: "Erro na Venda", message: "Não foi possível salvar.", type: 'ERROR' }); } finally { setProcessing(false); }
+        } catch (error: any) { showAlert({ title: "Erro na Venda", message: "Não foi possível salvar.", type: 'ERROR' }); }
     };
 
     return (

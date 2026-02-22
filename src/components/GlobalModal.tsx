@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { X, CheckCircle, AlertTriangle, Info, AlertCircle } from 'lucide-react';
+import { CheckCircle, AlertTriangle, Info, AlertCircle } from 'lucide-react';
 import { Button } from './Button';
 
 export type ModalType = 'SUCCESS' | 'ERROR' | 'WARNING' | 'INFO' | 'CONFIRM';

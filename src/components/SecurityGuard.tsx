@@ -14,7 +14,7 @@ export const SecurityGuard: React.FC<{ children: React.ReactNode }> = ({ childre
   useEffect(() => {
     const fetchConfig = async () => {
         try {
-            const { data, error } = await supabase.from('system_settings').select('value').eq('key', 'security_config').single();
+            const { data } = await supabase.from('system_settings').select('value').eq('key', 'security_config').single();
             if (data && data.value) {
                 setSecurityConfig(data.value);
             }
