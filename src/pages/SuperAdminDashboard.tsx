@@ -173,98 +173,156 @@ export const SuperAdminDashboard: React.FC = () => {
                             </div>
 
                             {selectedContractTenant ? (
-                                <div 
-                                    key={selectedContractTenantId}
-                                    contentEditable={isEditingContract}
-                                    suppressContentEditableWarning={true}
-                                    className={`bg-white shadow-2xl p-[2cm] max-w-[21cm] min-h-[29.7cm] mx-auto text-justify text-sm leading-relaxed print:shadow-none print:w-full print:max-w-none print:mx-0 print:p-0 transition-all ${isEditingContract ? 'ring-4 ring-blue-200 outline-none cursor-text' : ''}`}
-                                >
-                                    <div className="text-center mb-8">
-                                        <h1 className="text-xl font-bold uppercase mb-2">Contrato de Licenciamento de Software (SaaS)</h1>
-                                        <p className="text-xs text-gray-500 font-bold">Nº {selectedContractTenant.id.slice(0,8).toUpperCase()}/{new Date().getFullYear()}</p>
+                                <div className="space-y-8 print:space-y-0">
+                                    {/* PAGE 1 */}
+                                    <div 
+                                        key={`${selectedContractTenantId}-p1`}
+                                        contentEditable={isEditingContract}
+                                        suppressContentEditableWarning={true}
+                                        className={`bg-white shadow-2xl p-[2cm] w-[21cm] min-h-[29.7cm] mx-auto text-justify text-sm leading-relaxed print:shadow-none print:w-full print:max-w-none print:mx-0 print:p-0 transition-all ${isEditingContract ? 'ring-4 ring-blue-200 outline-none cursor-text' : ''}`}
+                                    >
+                                        <div className="text-center mb-8">
+                                            <h1 className="text-xl font-bold uppercase mb-2">Contrato de Licenciamento de Software (SaaS)</h1>
+                                            <p className="text-xs text-gray-500 font-bold">Nº {selectedContractTenant.id.slice(0,8).toUpperCase()}/{new Date().getFullYear()}</p>
+                                        </div>
+
+                                        <div className="space-y-6">
+                                            <section>
+                                                <h3 className="font-bold uppercase mb-2 text-xs text-gray-900 border-b border-gray-300 pb-1">1. Identificação das Partes</h3>
+                                                <p className="mb-2">
+                                                    <strong>CONTRATADA:</strong> <strong>FLUX EAT TECNOLOGIA LTDA</strong>, inscrita no CNPJ sob o nº 00.000.000/0001-00, com sede em Uberlândia/MG, doravante denominada simplesmente "CONTRATADA".
+                                                </p>
+                                                <p>
+                                                    <strong>CONTRATANTE:</strong> <strong>{selectedContractTenant.businessInfo?.restaurantName || selectedContractTenant.name.toUpperCase()}</strong>, 
+                                                    {selectedContractTenant.businessInfo?.cnpj ? ` inscrita no CNPJ nº ${selectedContractTenant.businessInfo.cnpj},` : ''} 
+                                                    representada neste ato por <strong>{selectedContractTenant.ownerName.toUpperCase()}</strong>,
+                                                    {selectedContractTenant.businessInfo?.address?.street ? ` localizada em ${selectedContractTenant.businessInfo.address.street}, ${selectedContractTenant.businessInfo.address.number || ''} - ${selectedContractTenant.businessInfo.address.city || ''}/${selectedContractTenant.businessInfo.address.state || ''},` : ''}
+                                                    com e-mail de contato <strong>{selectedContractTenant.email}</strong>.
+                                                </p>
+                                            </section>
+
+                                            <section>
+                                                <h3 className="font-bold uppercase mb-2 text-xs text-gray-900 border-b border-gray-300 pb-1">2. Objeto</h3>
+                                                <p>
+                                                    O presente contrato tem como objeto o licenciamento de uso do software <strong>Flux Eat</strong>, na modalidade SaaS (Software as a Service), para gestão de restaurante, incluindo módulos de cardápio digital, KDS e controle financeiro, conforme as especificações do plano contratado.
+                                                </p>
+                                            </section>
+
+                                            <section>
+                                                <h3 className="font-bold uppercase mb-2 text-xs text-gray-900 border-b border-gray-300 pb-1">3. Plano e Escopo de Uso</h3>
+                                                <p>
+                                                    A CONTRATANTE opta pelo plano <strong>{selectedContractPlan?.name.toUpperCase() || selectedContractTenant.plan}</strong>.
+                                                    A licença de software concede direito de uso das seguintes funcionalidades e limites operacionais:
+                                                </p>
+                                                
+                                                <ul className="list-disc pl-5 my-3 text-xs space-y-1">
+                                                    {(selectedContractPlan?.features || []).map((feature, idx) => (
+                                                        <li key={idx}>{feature}</li>
+                                                    ))}
+
+                                                    {selectedContractPlan?.limits && (
+                                                        <>
+                                                            <li><strong>Capacidade de Mesas:</strong> {selectedContractPlan.limits.maxTables === -1 ? 'Ilimitada' : `${selectedContractPlan.limits.maxTables} mesas simultâneas`}</li>
+                                                            <li><strong>Contas de Staff (Usuários):</strong> {selectedContractPlan.limits.maxStaff === -1 ? 'Ilimitadas' : `Até ${selectedContractPlan.limits.maxStaff} usuários`}</li>
+                                                            
+                                                            {/* Modules */}
+                                                            <li><strong>Módulo KDS (Cozinha):</strong> {selectedContractPlan.limits.allowKds ? 'Incluso' : 'Não contratado'}</li>
+                                                            <li><strong>Frente de Caixa (PDV):</strong> {selectedContractPlan.limits.allowCashier ? 'Incluso' : 'Não contratado'}</li>
+                                                            <li><strong>Controle de Estoque:</strong> {selectedContractPlan.limits.allowInventory ? 'Incluso' : 'Não contratado'}</li>
+                                                            <li><strong>Gestão Financeira:</strong> {selectedContractPlan.limits.allowExpenses ? 'Incluso' : 'Não contratado'}</li>
+                                                            <li><strong>RH & Ponto:</strong> {selectedContractPlan.limits.allowHR ? 'Incluso' : 'Não contratado'}</li>
+                                                        </>
+                                                    )}
+                                                </ul>
+                                            </section>
+
+                                            <section>
+                                                <h3 className="font-bold uppercase mb-2 text-xs text-gray-900 border-b border-gray-300 pb-1">4. Obrigações da Contratada</h3>
+                                                <p>
+                                                    A CONTRATADA obriga-se a manter o software disponível por 99% do tempo mensal, prestar suporte técnico via e-mail e chat em horário comercial, e garantir a segurança e backup dos dados inseridos pela CONTRATANTE na plataforma.
+                                                </p>
+                                            </section>
+
+                                            <section>
+                                                <h3 className="font-bold uppercase mb-2 text-xs text-gray-900 border-b border-gray-300 pb-1">5. Obrigações da Contratante</h3>
+                                                <p>
+                                                    A CONTRATANTE obriga-se a utilizar o software de acordo com as leis vigentes, manter seus dados de acesso em sigilo, efetuar os pagamentos pontualmente e fornecer as informações necessárias para a correta configuração do sistema.
+                                                </p>
+                                            </section>
+                                        </div>
                                     </div>
 
-                                    <div className="space-y-6">
-                                        <section>
-                                            <h3 className="font-bold uppercase mb-2 text-xs text-gray-900 border-b border-gray-300 pb-1">1. Identificação das Partes</h3>
-                                            <p className="mb-2">
-                                                <strong>CONTRATADA:</strong> <strong>FLUX EAT TECNOLOGIA LTDA</strong>, inscrita no CNPJ sob o nº 00.000.000/0001-00, com sede em Uberlândia/MG, doravante denominada simplesmente "CONTRATADA".
-                                            </p>
-                                            <p>
-                                                <strong>CONTRATANTE:</strong> <strong>{selectedContractTenant.businessInfo?.restaurantName || selectedContractTenant.name.toUpperCase()}</strong>, 
-                                                {selectedContractTenant.businessInfo?.cnpj ? ` inscrita no CNPJ nº ${selectedContractTenant.businessInfo.cnpj},` : ''} 
-                                                representada neste ato por <strong>{selectedContractTenant.ownerName.toUpperCase()}</strong>,
-                                                {selectedContractTenant.businessInfo?.address?.street ? ` localizada em ${selectedContractTenant.businessInfo.address.street}, ${selectedContractTenant.businessInfo.address.number || ''} - ${selectedContractTenant.businessInfo.address.city || ''}/${selectedContractTenant.businessInfo.address.state || ''},` : ''}
-                                                com e-mail de contato <strong>{selectedContractTenant.email}</strong>.
-                                            </p>
-                                        </section>
+                                    {/* PAGE 2 */}
+                                    <div 
+                                        key={`${selectedContractTenantId}-p2`}
+                                        contentEditable={isEditingContract}
+                                        suppressContentEditableWarning={true}
+                                        className={`bg-white shadow-2xl p-[2cm] w-[21cm] min-h-[29.7cm] mx-auto text-justify text-sm leading-relaxed print:shadow-none print:w-full print:max-w-none print:mx-0 print:p-0 transition-all page-break ${isEditingContract ? 'ring-4 ring-blue-200 outline-none cursor-text' : ''}`}
+                                    >
+                                        <div className="space-y-6">
+                                            <section>
+                                                <h3 className="font-bold uppercase mb-2 text-xs text-gray-900 border-b border-gray-300 pb-1">6. Pagamento e Cobrança</h3>
+                                                <p>
+                                                    Pela licença de uso, a CONTRATANTE pagará à CONTRATADA o valor mensal de <strong>{selectedContractPlan?.price || 'A DEFINIR'}</strong>.
+                                                    Os pagamentos deverão ser efetuados via Boleto, Pix ou Cartão de Crédito até o dia 10 de cada mês. O atraso no pagamento implicará em multa de 2% e juros de 1% ao mês.
+                                                </p>
+                                            </section>
 
-                                        <section>
-                                            <h3 className="font-bold uppercase mb-2 text-xs text-gray-900 border-b border-gray-300 pb-1">2. Objeto</h3>
-                                            <p>
-                                                O presente contrato tem como objeto o licenciamento de uso do software <strong>Flux Eat</strong>, na modalidade SaaS (Software as a Service), para gestão de restaurante, incluindo módulos de cardápio digital, KDS e controle financeiro, conforme as especificações do plano contratado.
-                                            </p>
-                                        </section>
+                                            <section>
+                                                <h3 className="font-bold uppercase mb-2 text-xs text-gray-900 border-b border-gray-300 pb-1">7. Propriedade Intelectual</h3>
+                                                <p>
+                                                    A CONTRATADA é a única titular de todos os direitos de propriedade intelectual sobre o software Flux Eat. Este contrato concede apenas uma licença de uso, não transferindo qualquer direito de propriedade ou código-fonte à CONTRATANTE.
+                                                </p>
+                                            </section>
 
-                                        <section>
-                                            <h3 className="font-bold uppercase mb-2 text-xs text-gray-900 border-b border-gray-300 pb-1">3. Plano e Escopo de Uso</h3>
-                                            <p>
-                                                A CONTRATANTE opta pelo plano <strong>{selectedContractPlan?.name.toUpperCase() || selectedContractTenant.plan}</strong>.
-                                                A licença de software concede direito de uso das seguintes funcionalidades e limites operacionais:
-                                            </p>
-                                            
-                                            <ul className="list-disc pl-5 my-3 text-xs space-y-1">
-                                                {(selectedContractPlan?.features || []).map((feature, idx) => (
-                                                    <li key={idx}>{feature}</li>
-                                                ))}
+                                            <section>
+                                                <h3 className="font-bold uppercase mb-2 text-xs text-gray-900 border-b border-gray-300 pb-1">8. Privacidade e LGPD</h3>
+                                                <p>
+                                                    As partes comprometem-se a cumprir a Lei Geral de Proteção de Dados (Lei nº 13.709/2018). A CONTRATADA atuará como operadora dos dados inseridos pela CONTRATANTE, que é a controladora dos dados de seus clientes e funcionários.
+                                                </p>
+                                            </section>
 
-                                                {selectedContractPlan?.limits && (
-                                                    <>
-                                                        <li><strong>Capacidade de Mesas:</strong> {selectedContractPlan.limits.maxTables === -1 ? 'Ilimitada' : `${selectedContractPlan.limits.maxTables} mesas simultâneas`}</li>
-                                                        <li><strong>Contas de Staff (Usuários):</strong> {selectedContractPlan.limits.maxStaff === -1 ? 'Ilimitadas' : `Até ${selectedContractPlan.limits.maxStaff} usuários`}</li>
-                                                        
-                                                        {/* Modules */}
-                                                        <li><strong>Módulo KDS (Cozinha):</strong> {selectedContractPlan.limits.allowKds ? 'Incluso' : 'Não contratado'}</li>
-                                                        <li><strong>Frente de Caixa (PDV):</strong> {selectedContractPlan.limits.allowCashier ? 'Incluso' : 'Não contratado'}</li>
-                                                        <li><strong>Controle de Estoque:</strong> {selectedContractPlan.limits.allowInventory ? 'Incluso' : 'Não contratado'}</li>
-                                                        <li><strong>Gestão Financeira:</strong> {selectedContractPlan.limits.allowExpenses ? 'Incluso' : 'Não contratado'}</li>
-                                                        <li><strong>RH & Ponto:</strong> {selectedContractPlan.limits.allowHR ? 'Incluso' : 'Não contratado'}</li>
-                                                    </>
-                                                )}
-                                            </ul>
+                                            <section>
+                                                <h3 className="font-bold uppercase mb-2 text-xs text-gray-900 border-b border-gray-300 pb-1">9. Vigência e Rescisão</h3>
+                                                <p>
+                                                    Este contrato entra em vigor na data de sua assinatura e vigorará por prazo indeterminado. Qualquer uma das partes poderá rescindir este contrato mediante aviso prévio de 30 (trinta) dias, sem incidência de multa, desde que não haja pendências financeiras.
+                                                </p>
+                                            </section>
 
-                                            <p className="mt-2">
-                                                Pela licença de uso, a CONTRATANTE pagará à CONTRATADA o valor mensal de <strong>{selectedContractPlan?.price || 'A DEFINIR'}</strong>.
-                                                Os pagamentos deverão ser efetuados via [Boleto/Pix/Cartão] até o dia [Dia] de cada mês.
-                                            </p>
-                                        </section>
+                                            <section>
+                                                <h3 className="font-bold uppercase mb-2 text-xs text-gray-900 border-b border-gray-300 pb-1">10. Disposições Gerais</h3>
+                                                <p>
+                                                    Qualquer alteração neste contrato deverá ser feita por termo aditivo. A tolerância de qualquer das partes quanto ao descumprimento de obrigações não importará em renúncia ou novação.
+                                                </p>
+                                            </section>
 
-                                        <section>
-                                            <h3 className="font-bold uppercase mb-2 text-xs text-gray-900 border-b border-gray-300 pb-1">4. Vigência e Cancelamento</h3>
-                                            <p>
-                                                Este contrato entra em vigor na data de sua assinatura e vigorará por prazo indeterminado. Qualquer uma das partes poderá rescindir este contrato mediante aviso prévio de 30 (trinta) dias, sem incidência de multa, desde que não haja pendências financeiras.
-                                            </p>
-                                        </section>
+                                            <section>
+                                                <h3 className="font-bold uppercase mb-2 text-xs text-gray-900 border-b border-gray-300 pb-1">11. Foro</h3>
+                                                <p>
+                                                    As partes elegem o foro da Comarca de Uberlândia/MG para dirimir quaisquer dúvidas ou controvérsias oriundas deste contrato, com exclusão de qualquer outro, por mais privilegiado que seja.
+                                                </p>
+                                            </section>
 
-                                        <section className="mt-12 pt-12">
-                                            <p className="mb-12">
-                                                E, por estarem assim justas e contratadas, as partes assinam o presente instrumento.
-                                            </p>
-                                            <p className="text-right mb-16">
-                                                Uberlândia/MG, {new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })}.
-                                            </p>
+                                            <section className="mt-12 pt-12">
+                                                <p className="mb-12">
+                                                    E, por estarem assim justas e contratadas, as partes assinam o presente instrumento.
+                                                </p>
+                                                <p className="text-right mb-16">
+                                                    Uberlândia/MG, {new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })}.
+                                                </p>
 
-                                            <div className="flex justify-between gap-8 pt-8">
-                                                <div className="flex-1 border-t border-black text-center pt-2">
-                                                    <p className="font-bold text-xs uppercase">Flux Eat Tecnologia</p>
-                                                    <p className="text-[10px] text-gray-500">Contratada</p>
+                                                <div className="flex justify-between gap-8 pt-8">
+                                                    <div className="flex-1 border-t border-black text-center pt-2">
+                                                        <p className="font-bold text-xs uppercase">Flux Eat Tecnologia</p>
+                                                        <p className="text-[10px] text-gray-500">Contratada</p>
+                                                    </div>
+                                                    <div className="flex-1 border-t border-black text-center pt-2">
+                                                        <p className="font-bold text-xs uppercase">{selectedContractTenant.ownerName}</p>
+                                                        <p className="text-[10px] text-gray-500">Contratante</p>
+                                                    </div>
                                                 </div>
-                                                <div className="flex-1 border-t border-black text-center pt-2">
-                                                    <p className="font-bold text-xs uppercase">{selectedContractTenant.ownerName}</p>
-                                                    <p className="text-[10px] text-gray-500">Contratante</p>
-                                                </div>
-                                            </div>
-                                         </section>
+                                            </section>
+                                        </div>
                                     </div>
                                 </div>
                             ) : (
