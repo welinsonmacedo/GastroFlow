@@ -99,10 +99,13 @@ export const RestaurantDashboard: React.FC = () => {
       if (tab.required === 'allowCustomization' && !planLimits.allowCustomization) return false;
       
       // 2. Checa Features Granulares (Tenant + User)
+      /* 
+      // Desabilitado temporariamente para evitar conflitos com planos mal configurados
       if (allowedFeatures && allowedFeatures.length > 0) {
           const hasTenantFeature = tab.featureKeys.some(key => allowedFeatures.includes(key));
           if (!hasTenantFeature) return false;
       }
+      */
 
       // 3. Permissões do Usuário (Cargos Personalizados)
       if (authState.currentUser?.role !== 'ADMIN' && authState.currentUser?.customRoleId) {
