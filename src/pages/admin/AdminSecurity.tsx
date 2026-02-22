@@ -9,6 +9,7 @@ export const AdminSecurity: React.FC = () => {
     const [incidents, setIncidents] = useState<SecurityIncident[]>([]);
     const [loading, setLoading] = useState(false);
     const [filter, setFilter] = useState('');
+    const [config, setConfig] = useState({ blockDevTools: true, blockRightClick: true, blockExtensions: true });
 
     const fetchIncidents = async () => {
         setLoading(true);
@@ -22,8 +23,20 @@ export const AdminSecurity: React.FC = () => {
         setLoading(false);
     };
 
+    const fetchConfig = async () => {
+        const { data } = await supabase.from('system_settings').select('value').eq('key', 'security_config').single();
+        if (data?.value) setConfig(data.value);
+    };
+
+    const toggleConfig = async (key: keyof typeof config) => {
+        const newConfig = { ...config, [key]: !config[key] };
+        setConfig(newConfig);
+        await supabase.from('system_settings').upsert({ key: 'security_config', value: newConfig });
+    };
+
     useEffect(() => {
         fetchIncidents();
+        fetchConfig();
     }, []);
 
     const filtered = incidents.filter(i => 
@@ -61,6 +74,44 @@ export const AdminSecurity: React.FC = () => {
                      </Button>
                 </div>
             </header>
+
+            {/* Configurações de Proteção */}
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
+                <h3 className="font-bold text-slate-700 text-sm uppercase tracking-wide mb-4 flex items-center gap-2">
+                    <Lock size={16} /> Configurações de Proteção Ativa
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className={`p-4 rounded-xl border cursor-pointer transition-all ${config.blockDevTools ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200 opacity-75'}`} onClick={() => toggleConfig('blockDevTools')}>
+                        <div className="flex justify-between items-center mb-2">
+                            <span className="font-bold text-sm text-slate-700">Bloquear DevTools</span>
+                            <div className={`w-10 h-5 rounded-full relative transition-colors ${config.blockDevTools ? 'bg-green-500' : 'bg-gray-300'}`}>
+                                <div className={`absolute top-1 w-3 h-3 rounded-full bg-white transition-all ${config.blockDevTools ? 'left-6' : 'left-1'}`}></div>
+                            </div>
+                        </div>
+                        <p className="text-xs text-slate-500">Impede inspeção de código e atalhos F12/Ctrl+Shift+I.</p>
+                    </div>
+
+                    <div className={`p-4 rounded-xl border cursor-pointer transition-all ${config.blockRightClick ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200 opacity-75'}`} onClick={() => toggleConfig('blockRightClick')}>
+                        <div className="flex justify-between items-center mb-2">
+                            <span className="font-bold text-sm text-slate-700">Bloquear Botão Direito</span>
+                            <div className={`w-10 h-5 rounded-full relative transition-colors ${config.blockRightClick ? 'bg-green-500' : 'bg-gray-300'}`}>
+                                <div className={`absolute top-1 w-3 h-3 rounded-full bg-white transition-all ${config.blockRightClick ? 'left-6' : 'left-1'}`}></div>
+                            </div>
+                        </div>
+                        <p className="text-xs text-slate-500">Previne menu de contexto para "Salvar Como" ou "Inspecionar".</p>
+                    </div>
+
+                    <div className={`p-4 rounded-xl border cursor-pointer transition-all ${config.blockExtensions ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200 opacity-75'}`} onClick={() => toggleConfig('blockExtensions')}>
+                        <div className="flex justify-between items-center mb-2">
+                            <span className="font-bold text-sm text-slate-700">Bloquear Extensões</span>
+                            <div className={`w-10 h-5 rounded-full relative transition-colors ${config.blockExtensions ? 'bg-green-500' : 'bg-gray-300'}`}>
+                                <div className={`absolute top-1 w-3 h-3 rounded-full bg-white transition-all ${config.blockExtensions ? 'left-6' : 'left-1'}`}></div>
+                            </div>
+                        </div>
+                        <p className="text-xs text-slate-500">Detecta e bloqueia injeção de scripts por extensões de browser.</p>
+                    </div>
+                </div>
+            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-green-100 flex items-center justify-between">

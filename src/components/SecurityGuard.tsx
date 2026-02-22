@@ -2,11 +2,28 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { ShieldAlert, RefreshCcw, Lock } from 'lucide-react';
 import { logSecurityIncident } from '../utils/security';
+import { supabase } from '../lib/supabase';
 
 export const SecurityGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isLocked, setIsLocked] = useState(false);
   const [lockReason, setLockReason] = useState('Modo Desenvolvedor Detectado');
+  const [securityConfig, setSecurityConfig] = useState({ blockDevTools: true, blockRightClick: true, blockExtensions: true });
   const logSent = useRef(false);
+
+  // Fetch Security Config
+  useEffect(() => {
+    const fetchConfig = async () => {
+        try {
+            const { data, error } = await supabase.from('system_settings').select('value').eq('key', 'security_config').single();
+            if (data && data.value) {
+                setSecurityConfig(data.value);
+            }
+        } catch (err) {
+            console.warn("Using default security config due to fetch error", err);
+        }
+    };
+    fetchConfig();
+  }, []);
 
   // Helper para logar apenas uma vez por refresh para evitar spam
   const handleLog = (reason: string, type: string) => {
@@ -23,14 +40,20 @@ export const SecurityGuard: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   useEffect(() => {
+    if (!securityConfig.blockRightClick && !securityConfig.blockDevTools && !securityConfig.blockExtensions) return;
+
     // 1. Bloquear Botão Direito
     const handleContextMenu = (e: MouseEvent) => {
-      e.preventDefault();
-      return false;
+      if (securityConfig.blockRightClick) {
+          e.preventDefault();
+          return false;
+      }
     };
 
     // 2. Bloquear Atalhos DevTools
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (!securityConfig.blockDevTools) return;
+
       if (
         e.key === 'F12' || 
         (e.ctrlKey && e.shiftKey && ['I', 'J', 'C'].includes(e.key.toUpperCase())) ||
@@ -45,12 +68,14 @@ export const SecurityGuard: React.FC<{ children: React.ReactNode }> = ({ childre
     };
 
     // 3. Detectar Automação (WebDriver)
-    if (navigator.webdriver) {
+    if (securityConfig.blockDevTools && navigator.webdriver) {
         handleLog('Software de Automação Detectado (Bot)', 'BOT_DETECTED');
     }
 
     // 4. Detectar Injeção de Extensões via MutationObserver
     const observer = new MutationObserver((mutations) => {
+        if (!securityConfig.blockExtensions) return;
+
         mutations.forEach((mutation) => {
             mutation.addedNodes.forEach((node) => {
                 if (node.nodeType === 1) { 
@@ -69,25 +94,24 @@ export const SecurityGuard: React.FC<{ children: React.ReactNode }> = ({ childre
         });
     });
 
-    observer.observe(document.documentElement, {
-        childList: true,
-        subtree: true,
-        attributes: true,
-        attributeFilter: ['src', 'href', 'style', 'class'] 
-    });
+    if (securityConfig.blockExtensions) {
+        observer.observe(document.documentElement, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: ['src', 'href', 'style', 'class'] 
+        });
+    }
 
     document.addEventListener('contextmenu', handleContextMenu);
     window.addEventListener('keydown', handleKeyDown);
 
     // Limpa o console
     const clearConsole = setInterval(() => {
-        if (process.env.NODE_ENV === 'production') {
+        if (process.env.NODE_ENV === 'production' && securityConfig.blockDevTools) {
             console.clear();
         }
     }, 2000);
-
-    // Detecção de Enumeração de Rotas (Simulada - se cair em 404 repetido, o AppRouter deve lidar, aqui é global)
-    // Se o usuário tentar acessar URL inválida, cai no Router, não aqui.
 
     return () => {
       document.removeEventListener('contextmenu', handleContextMenu);
@@ -95,7 +119,7 @@ export const SecurityGuard: React.FC<{ children: React.ReactNode }> = ({ childre
       observer.disconnect();
       clearInterval(clearConsole);
     };
-  }, []);
+  }, [securityConfig]);
 
   if (isLocked) {
     return (
