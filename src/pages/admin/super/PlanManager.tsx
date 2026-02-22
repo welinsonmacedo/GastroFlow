@@ -25,8 +25,23 @@ const MODULES_CONFIG = [
         icon: Briefcase,
         features: [
             { id: 'admin_overview', label: 'Visão Geral' },
+            { id: 'admin_monitoring', label: 'Monitoramento' },
             { id: 'admin_products', label: 'Cardápio Digital' },
             { id: 'admin_tables', label: 'Mesas & QR Code' }
+        ]
+    },
+    {
+        id: 'CONFIG' as SystemModule,
+        label: 'Configurações',
+        icon: Settings,
+        features: [
+            { id: 'config_business', label: 'Dados da Empresa' },
+            { id: 'config_operations', label: 'Regras & Operação' },
+            { id: 'config_delivery', label: 'Delivery' },
+            { id: 'config_finance_settings', label: 'Financeiro' },
+            { id: 'config_security', label: 'Segurança' },
+            { id: 'config_appearance', label: 'Aparência & Marca' },
+            { id: 'config_staff', label: 'Equipe & Acessos' }
         ]
     },
     {
