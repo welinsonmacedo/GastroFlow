@@ -233,9 +233,10 @@ export interface PlanLimits {
     allowTableMgmt?: boolean;
     allowCustomization?: boolean;
     allowHR?: boolean;
+    allowProductImages?: boolean; // New field
 }
 
-export type PlanType = 'FREE' | 'PRO' | 'ENTERPRISE';
+export type PlanType = string; // Changed from enum to string to allow dynamic plans
 
 export interface Plan {
     id: string;
@@ -243,8 +244,10 @@ export interface Plan {
     name: string;
     price: string;
     period: string;
-    features: string[];
+    features: string[]; // Display features (marketing text)
     limits?: PlanLimits;
+    allowedModules?: SystemModule[]; // New field
+    allowedFeatures?: string[]; // New field (granular tabs)
     is_popular: boolean;
     button_text: string;
 }

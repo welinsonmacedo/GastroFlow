@@ -8,7 +8,7 @@ import { SaaSTenantCreateModal, SaaSEditTenantModal, SaaSTenantLinksModal } from
 import { Building2, DollarSign, Activity, Settings, Search, ExternalLink, LogOut, Plus, X, List, Edit, Lock, BarChart2, Unlock, Link as LinkIcon, FileText, Printer, ChevronDown, Edit3, RotateCcw, ShieldAlert } from 'lucide-react';
 // @ts-ignore
 import { useNavigate } from 'react-router-dom';
-import { AdminSecurity } from './admin/AdminSecurity';
+import { PlanManager } from './admin/super/PlanManager';
 
 type ViewMode = 'RESTAURANTS' | 'FINANCIAL' | 'PLANS' | 'SETTINGS' | 'CONTRACTS' | 'SECURITY';
 
@@ -307,34 +307,7 @@ export const SuperAdminDashboard: React.FC = () => {
                     )}
 
                     {/* --- VIEW: PLANS --- */}
-                    {activeView === 'PLANS' && (
-                        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-                            {state.plans.map(plan => (
-                                <div key={plan.id} className="bg-white rounded-xl shadow-sm border p-6">
-                                    <h3 className="font-bold text-lg">{plan.name}</h3>
-                                    <p className="text-2xl font-black text-blue-600">{plan.price}</p>
-                                    <ul className="space-y-1 my-4 text-xs text-gray-600">
-                                        {(plan.features || []).map((f, i) => <li key={i}>• {f}</li>)}
-                                    </ul>
-                                    <div className="bg-gray-50 p-3 rounded-lg border border-gray-200 space-y-3">
-                                        <h4 className="text-xs font-bold text-gray-700 flex items-center gap-1"><Settings size={12}/> Limites</h4>
-                                        <div className="grid grid-cols-3 gap-2 text-sm text-gray-700">
-                                            <div><label className="text-[10px] font-bold text-gray-500">Max Mesas:</label> {plan.limits.maxTables === -1 ? 'Ilimitado' : plan.limits.maxTables}</div>
-                                            <div><label className="text-[10px] font-bold text-gray-500">Max Prod:</label> {plan.limits.maxProducts === -1 ? 'Ilimitado' : plan.limits.maxProducts}</div>
-                                            <div><label className="text-[10px] font-bold text-gray-500">Max Staff:</label> {plan.limits.maxStaff === -1 ? 'Ilimitado' : plan.limits.maxStaff}</div>
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-2 text-xs text-gray-700">
-                                            <p className="flex items-center gap-2"><span className={`w-3 h-3 rounded-full ${plan.limits.allowKds ? 'bg-green-500' : 'bg-red-300'}`}></span> KDS</p>
-                                            <p className="flex items-center gap-2"><span className={`w-3 h-3 rounded-full ${plan.limits.allowCashier ? 'bg-green-500' : 'bg-red-300'}`}></span> Frente de Caixa</p>
-                                            <p className="flex items-center gap-2"><span className={`w-3 h-3 rounded-full ${plan.limits.allowInventory ? 'bg-green-500' : 'bg-red-300'}`}></span> Estoque</p>
-                                            <p className="flex items-center gap-2"><span className={`w-3 h-3 rounded-full ${plan.limits.allowExpenses ? 'bg-green-500' : 'bg-red-300'}`}></span> Financeiro</p>
-                                            <p className="flex items-center gap-2"><span className={`w-3 h-3 rounded-full ${plan.limits.allowHR ? 'bg-green-500' : 'bg-red-300'}`}></span> RH & Ponto</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
+                    {activeView === 'PLANS' && <PlanManager />}
 
                     {/* --- VIEW: FINANCIAL --- */}
                     {activeView === 'FINANCIAL' && (

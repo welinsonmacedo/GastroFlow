@@ -99,8 +99,8 @@ const MODULE_STRUCTURE = {
 
 // --- Create Tenant Modal ---
 export const SaaSTenantCreateModal: React.FC<{ isOpen: boolean, onClose: () => void }> = ({ isOpen, onClose }) => {
-    const { dispatch } = useSaaS();
-    const [form, setForm] = useState({ name: '', slug: '', ownerName: '', email: '', plan: 'FREE' as PlanType });
+    const { state, dispatch } = useSaaS();
+    const [form, setForm] = useState({ name: '', slug: '', ownerName: '', email: '', plan: '' as PlanType });
 
     const autoGenerateSlug = (name: string) => {
         const slug = name.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-').replace(/--+/g, '-');
@@ -108,8 +108,12 @@ export const SaaSTenantCreateModal: React.FC<{ isOpen: boolean, onClose: () => v
     };
 
     const handleSubmit = () => {
+        if (!form.plan) {
+            alert('Selecione um plano');
+            return;
+        }
         dispatch({ type: 'CREATE_TENANT', payload: form });
-        setForm({ name: '', slug: '', ownerName: '', email: '', plan: 'FREE' });
+        setForm({ name: '', slug: '', ownerName: '', email: '', plan: '' });
         onClose();
     };
 
@@ -120,6 +124,16 @@ export const SaaSTenantCreateModal: React.FC<{ isOpen: boolean, onClose: () => v
                 <input type="text" required className="w-full border p-2.5 rounded-lg" placeholder="Slug (URL)" value={form.slug} onChange={(e) => setForm({...form, slug: e.target.value})} />
                 <input type="text" required className="w-full border p-2.5 rounded-lg" placeholder="Nome do Dono" value={form.ownerName} onChange={(e) => setForm({...form, ownerName: e.target.value})} />
                 <input type="email" required className="w-full border p-2.5 rounded-lg" placeholder="Email do Dono" value={form.email} onChange={(e) => setForm({...form, email: e.target.value})} />
+                <select 
+                    className="w-full border p-2.5 rounded-lg bg-white" 
+                    value={form.plan} 
+                    onChange={(e) => setForm({...form, plan: e.target.value})}
+                >
+                    <option value="" disabled>Selecione um Plano</option>
+                    {state.plans.map(p => (
+                        <option key={p.id} value={p.key}>{p.name} - {p.price}</option>
+                    ))}
+                </select>
             </div>
         </Modal>
     );
@@ -133,7 +147,7 @@ interface SaaSEditTenantModalProps {
 }
 
 export const SaaSEditTenantModal: React.FC<SaaSEditTenantModalProps> = ({ isOpen, onClose, tenant }) => {
-    const { dispatch } = useSaaS();
+    const { state, dispatch } = useSaaS();
     const [tab, setTab] = useState<'DETAILS' | 'MODULES' | 'LIMITS' | 'ADMIN'>('DETAILS');
     const [editForm, setEditForm] = useState<Partial<RestaurantTenant>>({});
     const [adminForm, setAdminForm] = useState({ name: 'Admin', email: '', pin: '1234', password: '' });
@@ -193,6 +207,11 @@ export const SaaSEditTenantModal: React.FC<SaaSEditTenantModalProps> = ({ isOpen
                 type: 'UPDATE_TENANT', 
                 payload: { id: tenant.id, name: editForm.name!, slug: editForm.slug!, ownerName: editForm.ownerName!, email: editForm.email! } 
             });
+            
+            if (editForm.plan && editForm.plan !== tenant.plan) {
+                dispatch({ type: 'CHANGE_PLAN', tenantId: tenant.id, plan: editForm.plan });
+            }
+
             onClose();
         }
     };
@@ -286,6 +305,18 @@ export const SaaSEditTenantModal: React.FC<SaaSEditTenantModalProps> = ({ isOpen
                     <div><label className="text-xs font-bold text-gray-500 uppercase">Slug</label><input className="w-full border p-2 rounded" value={editForm.slug} onChange={e => setEditForm({...editForm, slug: e.target.value})} /></div>
                     <div><label className="text-xs font-bold text-gray-500 uppercase">Dono</label><input className="w-full border p-2 rounded" value={editForm.ownerName} onChange={e => setEditForm({...editForm, ownerName: e.target.value})} /></div>
                     <div><label className="text-xs font-bold text-gray-500 uppercase">Email</label><input className="w-full border p-2 rounded" value={editForm.email} onChange={e => setEditForm({...editForm, email: e.target.value})} /></div>
+                    <div>
+                        <label className="text-xs font-bold text-gray-500 uppercase">Plano</label>
+                        <select 
+                            className="w-full border p-2 rounded bg-white" 
+                            value={editForm.plan || ''} 
+                            onChange={e => setEditForm({...editForm, plan: e.target.value})}
+                        >
+                            {state.plans.map(p => (
+                                <option key={p.id} value={p.key}>{p.name}</option>
+                            ))}
+                        </select>
+                    </div>
                 </div>
             )}
             

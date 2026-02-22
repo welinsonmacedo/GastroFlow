@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Modal } from '../Modal';
 import { ImageUploader } from '../ImageUploader';
+import { useRestaurant } from '../../context/RestaurantContext';
 import { useInventory } from '../../context/InventoryContext';
 import { useUI } from '../../context/UIContext';
 import { InventoryItem, InventoryType } from '../../types';
@@ -17,6 +18,8 @@ interface InventoryItemModalProps {
 
 export const InventoryItemModal: React.FC<InventoryItemModalProps> = ({ isOpen, onClose, itemToEdit }) => {
   const { state, addInventoryItem, updateInventoryItem } = useInventory();
+  const { state: restaurantState } = useRestaurant();
+  const { planLimits } = restaurantState;
   const { showAlert } = useUI();
 
   const [form, setForm] = useState<Partial<InventoryItem>>({
@@ -285,7 +288,9 @@ export const InventoryItemModal: React.FC<InventoryItemModalProps> = ({ isOpen, 
                 <div className="bg-white p-6 rounded-2xl border border-slate-200 space-y-4">
                     <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2">4. Detalhes do Produto</h4>
                     
-                    <ImageUploader value={form.image || ''} onChange={(val) => setForm({ ...form, image: val })} maxSizeKB={250} />
+                    {planLimits.allowProductImages && (
+                        <ImageUploader value={form.image || ''} onChange={(val) => setForm({ ...form, image: val })} maxSizeKB={250} />
+                    )}
 
                     <div>
                         <div className="flex justify-between items-center mb-1">

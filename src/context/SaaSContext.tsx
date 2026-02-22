@@ -33,7 +33,9 @@ type SaaSAction =
   | { type: 'TOGGLE_STATUS'; tenantId: string }
   | { type: 'CHANGE_PLAN'; tenantId: string; plan: PlanType }
   | { type: 'UPDATE_PROFILE'; name: string; email: string }
-  | { type: 'UPDATE_PLAN_DETAILS'; plan: Plan };
+  | { type: 'UPDATE_PLAN_DETAILS'; plan: Plan }
+  | { type: 'CREATE_PLAN'; plan: Omit<Plan, 'id'> }
+  | { type: 'DELETE_PLAN'; planId: string };
 
 const initialState: SaaSState = {
   isAuthenticated: false,
@@ -141,6 +143,19 @@ const saasReducer = (state: SaaSState, action: SaaSAction): SaaSState => {
             plans: state.plans.map(p => p.id === action.plan.id ? action.plan : p)
         };
 
+    case 'CREATE_PLAN':
+        // Optimistic update, will be replaced by fetch or real ID
+        return {
+            ...state,
+            plans: [...state.plans, { ...action.plan, id: 'temp-' + Date.now() }] 
+        };
+
+    case 'DELETE_PLAN':
+        return {
+            ...state,
+            plans: state.plans.filter(p => p.id !== action.planId)
+        };
+
     default:
       return state;
   }
@@ -192,7 +207,9 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
                      allowCustomization: p.limits?.allowCustomization ?? true
                  },
                  is_popular: p.is_popular,
-                 button_text: p.button_text
+                 button_text: p.button_text,
+                 allowedModules: p.allowed_modules || [],
+                 allowedFeatures: p.allowed_features || []
              }));
              dispatch({ type: 'SET_PLANS', payload: mappedPlans });
          }
@@ -411,17 +428,89 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     if (action.type === 'UPDATE_PLAN_DETAILS') {
         const { error } = await supabase.from('plans').update({
-            name: action.plan.name, price: action.plan.price, features: action.plan.features, limits: action.plan.limits, button_text: action.plan.button_text
+            name: action.plan.name, 
+            price: action.plan.price, 
+            features: action.plan.features, 
+            limits: action.plan.limits, 
+            button_text: action.plan.button_text,
+            allowed_modules: action.plan.allowedModules,
+            allowed_features: action.plan.allowedFeatures
         }).eq('id', action.plan.id);
+        
         if (!error) dispatch(action);
         else showAlert({ title: "Erro", message: "Erro ao salvar plano.", type: 'ERROR' });
+        return;
+    }
+
+    if (action.type === 'CREATE_PLAN') {
+        try {
+            const { data, error } = await supabase.from('plans').insert({
+                key: action.plan.key,
+                name: action.plan.name,
+                price: action.plan.price,
+                period: action.plan.period,
+                features: action.plan.features,
+                limits: action.plan.limits,
+                button_text: action.plan.button_text,
+                allowed_modules: action.plan.allowedModules,
+                allowed_features: action.plan.allowedFeatures,
+                is_popular: action.plan.is_popular
+            }).select().single();
+
+            if (error) throw error;
+            
+            // Refresh plans to get the real ID
+            const { data: plans } = await supabase.from('plans').select('*').order('created_at', { ascending: true });
+            if (plans) {
+                 const mappedPlans: Plan[] = plans.map(p => ({
+                     id: p.id,
+                     key: p.key as PlanType,
+                     name: p.name,
+                     price: p.price,
+                     period: p.period,
+                     features: p.features || [],
+                     limits: p.limits || {},
+                     is_popular: p.is_popular,
+                     button_text: p.button_text,
+                     allowedModules: p.allowed_modules || [],
+                     allowedFeatures: p.allowed_features || []
+                 }));
+                 dispatch({ type: 'SET_PLANS', payload: mappedPlans });
+            }
+            showAlert({ title: "Sucesso", message: "Plano criado com sucesso!", type: 'SUCCESS' });
+        } catch (error: any) {
+            console.error(error);
+            showAlert({ title: "Erro", message: "Erro ao criar plano.", type: 'ERROR' });
+        }
+        return;
+    }
+
+    if (action.type === 'DELETE_PLAN') {
+        try {
+            const { error } = await supabase.from('plans').delete().eq('id', action.planId);
+            if (error) throw error;
+            dispatch(action);
+            showAlert({ title: "Sucesso", message: "Plano removido!", type: 'SUCCESS' });
+        } catch (error) {
+            showAlert({ title: "Erro", message: "Erro ao remover plano.", type: 'ERROR' });
+        }
         return;
     }
 
     dispatch(action);
 
     if (action.type === 'CHANGE_PLAN') {
-        await supabase.from('tenants').update({ plan: action.plan }).eq('id', action.tenantId);
+        const selectedPlan = state.plans.find(p => p.key === action.plan);
+        const updates: any = { plan: action.plan };
+        
+        if (selectedPlan) {
+            if (selectedPlan.allowedModules) updates.allowed_modules = selectedPlan.allowedModules;
+            if (selectedPlan.allowedFeatures) updates.allowed_features = selectedPlan.allowedFeatures;
+            // Reset custom limits to use plan limits
+            updates.custom_limits = null;
+        }
+
+        await supabase.from('tenants').update(updates).eq('id', action.tenantId);
     }
     if (action.type === 'TOGGLE_STATUS') {
         const tenant = state.tenants.find(t => t.id === action.tenantId);

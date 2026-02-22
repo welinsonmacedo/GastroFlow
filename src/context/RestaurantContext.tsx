@@ -34,7 +34,13 @@ const initialState: RestaurantState = {
   tenantId: null,
   isValidTenant: false,
   isInactiveTenant: false,
-  planLimits: { maxTables: -1, maxProducts: -1, maxStaff: -1, allowKds: true, allowCashier: true, allowReports: true, allowInventory: true, allowPurchases: true, allowExpenses: true, allowStaff: true, allowTableMgmt: true, allowCustomization: true },
+  planLimits: { 
+      maxTables: -1, maxProducts: -1, maxStaff: -1, 
+      allowKds: true, allowCashier: true, allowReports: true, 
+      allowInventory: true, allowPurchases: true, allowExpenses: true, 
+      allowStaff: true, allowTableMgmt: true, allowCustomization: true,
+      allowHR: true, allowProductImages: true 
+  },
   allowedModules: ['RESTAURANT'],
   allowedFeatures: [], // Inicializa vazio
   activeModule: null,
