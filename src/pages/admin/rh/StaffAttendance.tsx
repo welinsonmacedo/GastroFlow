@@ -6,6 +6,7 @@ import { Button } from '../../../components/Button';
 import { TimeEntry } from '../../../types';
 import { Timer, CheckCircle, XCircle, Search, Calendar, User, Clock, AlertTriangle, Check, ArrowRight, Edit, Plus } from 'lucide-react';
 import { TimeEntryModal } from '../../../components/modals/TimeEntryModal';
+import { SummaryModal } from '../../../components/modals/SummaryModal';
 
 export const StaffAttendance: React.FC = () => {
     const { state: staffState } = useStaff();
@@ -17,7 +18,45 @@ export const StaffAttendance: React.FC = () => {
     // Modal States
     const [isEntryModalOpen, setIsEntryModalOpen] = useState(false);
     const [entryToEdit, setEntryToEdit] = useState<TimeEntry | null>(null);
-    const [selectedStaffId, setSelectedStaffId] = useState<string>(''); // Para novo lançamento
+    const [summary, setSummary] = useState({ overtime: 0, missingHours: 0, bankHours: 0 });
+    const [isSummaryModalOpen, setIsSummaryModalOpen] = useState(false);
+
+    useEffect(() => {
+        const calculateSummary = () => {
+            let overtime = 0;
+            let missingHours = 0;
+            let bankHours = 0;
+
+            filteredEntries.forEach(entry => {
+                const user = staffState.users.find(u => u.id === entry.staffId);
+                if (!user) return;
+
+                const shift = staffState.shifts.find(s => s.id === user.shiftId);
+                const targetHours = shift ? (new Date(`1970-01-01T${shift.endTime}`).getTime() - new Date(`1970-01-01T${shift.startTime}`).getTime()) / 3600000 - (shift.breakMinutes / 60) : 8;
+
+                if (entry.clockIn && entry.clockOut) {
+                    const hoursWorked = ((new Date(entry.clockOut).getTime() - new Date(entry.clockIn).getTime()) / 3600000);
+                    const balance = hoursWorked - targetHours;
+
+                    if (balance > 0) {
+                        overtime += balance;
+                    } else {
+                        missingHours += Math.abs(balance);
+                    }
+                    bankHours += user.bankHoursBalance || 0;
+                }
+            });
+
+            setSummary({ overtime, missingHours, bankHours });
+        };
+
+        calculateSummary();
+    }, [filteredEntries, staffState.users, staffState.shifts]);
+
+    const handleSendToPayroll = () => {
+        showAlert({ title: 'Enviado', message: 'Dados enviados para a pré-folha com sucesso!', type: 'SUCCESS' });
+    };
+
 
     const getStaffName = (id: string) => staffState.users.find(u => u.id === id)?.name || 'Desconhecido';
     
@@ -60,6 +99,32 @@ export const StaffAttendance: React.FC = () => {
                     <Button onClick={handleNewEntry} className="bg-pink-600 hover:bg-pink-700 text-white border-transparent shadow-pink-200">
                         <Plus size={18}/> <span className="hidden sm:inline">Lançar Manual</span>
                     </Button>
+                </div>
+            </div>
+
+            <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
+                <div className="p-4 bg-slate-50 border-b">
+                    <h3 className="font-bold text-slate-700">Resumo do Dia</h3>
+                </div>
+                <div className="p-6 space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="bg-green-50 p-4 rounded-xl border border-green-200">
+                            <h4 className="font-bold text-green-800">Horas Extras</h4>
+                            <p className="text-2xl font-black text-green-600">{summary.overtime.toFixed(1)}h</p>
+                        </div>
+                        <div className="bg-red-50 p-4 rounded-xl border border-red-200">
+                            <h4 className="font-bold text-red-800">Horas Faltantes</h4>
+                            <p className="text-2xl font-black text-red-600">{summary.missingHours.toFixed(1)}h</p>
+                        </div>
+                        <div className="bg-blue-50 p-4 rounded-xl border border-blue-200 flex flex-col justify-between">
+                            <h4 className="font-bold text-blue-800">Banco de Horas</h4>
+                            <p className="text-2xl font-black text-blue-600">{summary.bankHours.toFixed(1)}h</p>
+                        </div>
+                    </div>
+                    <div className="flex justify-end gap-2">
+                        <Button onClick={() => setIsSummaryModalOpen(true)} variant="secondary"><Edit size={16} className="mr-2"/> Editar Resumo</Button>
+                        <Button onClick={handleSendToPayroll} className="bg-green-600 hover:bg-green-700"><ArrowRight size={16} className="mr-2"/> Enviar para Pré-Folha</Button>
+                    </div>
                 </div>
             </div>
 
@@ -152,6 +217,13 @@ export const StaffAttendance: React.FC = () => {
                 mas para manter simples, vou assumir que o modal já lida com staffId ou vou injetar um select lá se necessário. 
                 Atualização: O TimeEntryModal atual não tem select de staff. Vamos adicionar um wrapper aqui se for new.
             */}
+            <SummaryModal 
+                isOpen={isSummaryModalOpen} 
+                onClose={() => setIsSummaryModalOpen(false)} 
+                summary={summary}
+                onSave={(newSummary) => setSummary(newSummary)}
+            />
+
              {isEntryModalOpen && !entryToEdit && (
                 <div className="fixed inset-0 z-[60] flex items-center justify-center pointer-events-none">
                      {/* Overlay lógica para selecionar funcionário se não tiver pré-selecionado - 
