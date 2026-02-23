@@ -31,7 +31,7 @@ export const AdminSecurity: React.FC = () => {
     const toggleConfig = async (key: keyof typeof config) => {
         const newConfig = { ...config, [key]: !config[key] };
         setConfig(newConfig);
-        const { error } = await supabase.from('system_settings').upsert({ key: 'security_config', value: newConfig });
+        const { error } = await supabase.from('system_settings').upsert({ key: 'security_config', value: newConfig }, { onConflict: 'key' });
         if (error) {
             console.error("Erro ao salvar configuração de segurança:", error);
             alert("Erro ao salvar configuração: " + error.message);

@@ -1,5 +1,6 @@
 
 import React, { useState } from 'react';
+import { useRestaurant } from '../../../context/RestaurantContext';
 import { useInventory } from '../../../context/InventoryContext';
 import { useUI } from '../../../context/UIContext';
 import { Button } from '../../../components/Button';
@@ -10,6 +11,8 @@ import { generateProductDescription } from '../../../services/geminiService';
 
 export const InventoryNewItemView: React.FC = () => {
   const { state: invState, addInventoryItem } = useInventory();
+  const { state: restaurantState } = useRestaurant();
+  const { planLimits } = restaurantState;
   const { showAlert } = useUI();
   
   const [newItemForm, setNewItemForm] = useState<Partial<InventoryItem>>({
@@ -228,7 +231,9 @@ export const InventoryNewItemView: React.FC = () => {
                                           <div className="border rounded-2xl p-5 bg-gray-50 h-full flex flex-col">
                                               <h3 className="font-bold text-gray-800 text-sm mb-3">Imagem do Produto</h3>
                                               <div className="flex-1 flex flex-col justify-center">
-                                                  <ImageUploader value={newItemForm.image || ''} onChange={(val) => setNewItemForm({...newItemForm, image: val})} maxSizeKB={200} />
+                                                  {planLimits.allowProductImages && (
+                                                      <ImageUploader value={newItemForm.image || ''} onChange={(val) => setNewItemForm({...newItemForm, image: val})} maxSizeKB={200} />
+                                                  )}
                                               </div>
                                               
                                               <div className="mt-4">
@@ -267,10 +272,12 @@ export const InventoryNewItemView: React.FC = () => {
                           {/* Image Uploader for Composite */}
                           {newItemForm.type === 'COMPOSITE' && (
                               <div className="border rounded-xl p-3 bg-gray-50 mt-2 space-y-4">
-                                  <div>
-                                      <label className="block text-xs font-bold mb-2 text-slate-600">Foto do Prato</label>
-                                      <ImageUploader value={newItemForm.image || ''} onChange={(val) => setNewItemForm({...newItemForm, image: val})} maxSizeKB={200} />
-                                  </div>
+                                  {planLimits.allowProductImages && (
+                                      <div>
+                                          <label className="block text-xs font-bold mb-2 text-slate-600">Foto do Prato</label>
+                                          <ImageUploader value={newItemForm.image || ''} onChange={(val) => setNewItemForm({...newItemForm, image: val})} maxSizeKB={200} />
+                                      </div>
+                                  )}
                                   <div>
                                       <div className="flex justify-between items-center mb-1">
                                           <label className="text-xs font-bold text-slate-500 uppercase flex items-center gap-1">
