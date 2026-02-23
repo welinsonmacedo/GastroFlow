@@ -12,6 +12,7 @@ import {
   HelpCircle, MessageCircle, WifiOff, Printer, UserCheck, CreditCard,
   Utensils, RefreshCw, ShieldCheck, MousePointerClick
 } from 'lucide-react';
+import { TicketsClient } from '../components/TicketsClient';
 
 const RoleCard = ({ icon, title, color, active, onClick }: any) => (
   <button 
@@ -561,6 +562,11 @@ export const ManualPage: React.FC = () => {
               </div>
             </div>
           </div>
+        )}
+
+        {/* --- TICKETS SECTION --- */}
+        {activeTab === 'TICKETS' && (
+          <TicketsClient />
         )}
 
       </main>

@@ -644,3 +644,19 @@ export interface PurchaseOrder {
     status: string;
     supplierName?: string;
 }
+
+export interface Ticket {
+    id: string;
+    tenant_id: string;
+    tenant_name: string;
+    subject: string;
+    description: string;
+    status: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED';
+    created_at: string;
+    updated_at: string;
+    messages: {
+        sender: 'CLIENT' | 'SUPPORT';
+        text: string;
+        timestamp: string;
+    }[];
+}

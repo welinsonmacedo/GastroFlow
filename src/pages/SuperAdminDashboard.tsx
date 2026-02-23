@@ -5,13 +5,14 @@ import { useUI } from '../context/UIContext';
 import { Plan, PlanType, RestaurantTenant, PlanLimits } from '../types';
 import { Button } from '../components/Button';
 import { SaaSTenantCreateModal, SaaSEditTenantModal, SaaSTenantLinksModal } from '../components/modals/SaaSModals';
-import { Building2, DollarSign, Activity, Settings, Search, ExternalLink, LogOut, Plus, X, List, Edit, Lock, BarChart2, Unlock, Link as LinkIcon, FileText, Printer, ChevronDown, Edit3, RotateCcw, ShieldAlert } from 'lucide-react';
+import { Building2, DollarSign, Activity, Settings, Search, ExternalLink, LogOut, Plus, X, List, Edit, Lock, BarChart2, Unlock, Link as LinkIcon, FileText, Printer, ChevronDown, Edit3, RotateCcw, ShieldAlert, MessageCircle } from 'lucide-react';
 // @ts-ignore
 import { useNavigate } from 'react-router-dom';
 import { PlanManager } from './admin/super/PlanManager';
 import { AdminSecurity } from './admin/AdminSecurity';
+import { AdminTickets } from './admin/super/AdminTickets';
 
-type ViewMode = 'RESTAURANTS' | 'FINANCIAL' | 'PLANS' | 'SETTINGS' | 'CONTRACTS' | 'SECURITY';
+type ViewMode = 'RESTAURANTS' | 'FINANCIAL' | 'PLANS' | 'SETTINGS' | 'CONTRACTS' | 'SECURITY' | 'TICKETS';
 
 export const SuperAdminDashboard: React.FC = () => {
   const { state, dispatch } = useSaaS();
@@ -90,6 +91,7 @@ export const SuperAdminDashboard: React.FC = () => {
                 <button onClick={() => setActiveView('FINANCIAL')} className={`flex items-center gap-3 w-full p-3 rounded transition-colors ${activeView === 'FINANCIAL' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}><DollarSign size={20} /> Financeiro</button>
                 <button onClick={() => setActiveView('PLANS')} className={`flex items-center gap-3 w-full p-3 rounded transition-colors ${activeView === 'PLANS' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}><List size={20} /> Planos & Preços</button>
                 <button onClick={() => setActiveView('SECURITY')} className={`flex items-center gap-3 w-full p-3 rounded transition-colors ${activeView === 'SECURITY' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}><ShieldAlert size={20} /> Segurança</button>
+                <button onClick={() => setActiveView('TICKETS')} className={`flex items-center gap-3 w-full p-3 rounded transition-colors ${activeView === 'TICKETS' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}><MessageCircle size={20} /> Chamados</button>
                 <button onClick={() => setActiveView('SETTINGS')} className={`flex items-center gap-3 w-full p-3 rounded transition-colors ${activeView === 'SETTINGS' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}><Settings size={20} /> Configurações</button>
             </nav>
           </div>
@@ -98,7 +100,7 @@ export const SuperAdminDashboard: React.FC = () => {
 
        {/* Main Content */}
        <div className="flex-1 p-0 h-screen overflow-hidden bg-slate-100 print:h-auto print:overflow-visible print:bg-white">
-           {activeView !== 'SECURITY' && (
+           {activeView !== 'SECURITY' && activeView !== 'TICKETS' && (
                 <div className="p-8 pb-0 print:hidden">
                     <header className="flex justify-between items-center mb-8">
                         <div>
@@ -108,6 +110,7 @@ export const SuperAdminDashboard: React.FC = () => {
                                 {activeView === 'FINANCIAL' && 'Painel Financeiro'}
                                 {activeView === 'PLANS' && 'Gestão de Planos'}
                                 {activeView === 'SETTINGS' && 'Configurações do Sistema'}
+                                {activeView === 'TICKETS' && 'Gerenciamento de Chamados'}
                             </h1>
                             <p className="text-gray-500">Bem-vindo, {state.adminName}</p>
                         </div>
@@ -128,8 +131,9 @@ export const SuperAdminDashboard: React.FC = () => {
            )}
 
            {activeView === 'SECURITY' && <AdminSecurity />}
+           {activeView === 'TICKETS' && <AdminTickets />}
 
-           {activeView !== 'SECURITY' && (
+           {activeView !== 'SECURITY' && activeView !== 'TICKETS' && (
                <div className="p-8 pt-0 overflow-y-auto h-[calc(100vh-120px)] print:p-0 print:h-auto print:overflow-visible">
                     {/* --- VIEW: CONTRACTS --- */}
                     {activeView === 'CONTRACTS' && (
