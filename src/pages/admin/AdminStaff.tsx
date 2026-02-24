@@ -97,7 +97,8 @@ export const AdminStaff: React.FC = () => {
                         <tbody className="divide-y">
                             {staffState.users.map(user => {
                                 const isPending = !user.auth_user_id;
-                                const displayRole = user.customRoleName || user.role;
+                                const isSystemAdmin = user.role === 'ADMIN';
+                                const displayRole = user.customRoleName || (isSystemAdmin ? 'Administrador' : 'Cargo não definido');
                                 return (
                                     <tr key={user.id} className="hover:bg-gray-50 transition-colors">
                                         <td className="p-4 font-bold text-gray-800">
@@ -107,7 +108,7 @@ export const AdminStaff: React.FC = () => {
                                             </div>
                                         </td>
                                         <td className="p-4">
-                                            <span className={`px-2 py-1 rounded text-xs font-bold ${user.role === 'ADMIN' ? 'bg-purple-100 text-purple-700' : user.customRoleId ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'}`}>
+                                            <span className={`px-2 py-1 rounded text-xs font-bold ${isSystemAdmin ? 'bg-purple-100 text-purple-700' : user.customRoleId ? 'bg-blue-100 text-blue-700' : 'bg-red-50 text-red-600 border border-red-100'}`}>
                                                 {displayRole}
                                             </span>
                                         </td>

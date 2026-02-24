@@ -64,8 +64,10 @@ export const StaffList: React.FC = () => {
                                         </div>
                                     </td>
                                     <td className="p-4">
-                                        <span className="font-medium text-slate-700">{user.role}</span>
-                                        {user.customRoleName && <div className="text-[10px] text-gray-400">{user.customRoleName}</div>}
+                                        <div className="font-medium text-slate-700">
+                                            {user.customRoleName || (user.role === 'ADMIN' ? 'Administrador' : 'Cargo não definido')}
+                                        </div>
+                                        {user.role === 'ADMIN' && <div className="text-[10px] text-purple-600 font-bold uppercase">Sistema</div>}
                                     </td>
                                     <td className="p-4 text-slate-600">
                                         <div className="flex items-center gap-2">

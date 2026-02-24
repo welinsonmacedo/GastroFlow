@@ -39,6 +39,9 @@ export const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose,
 
       if (!form.name) return showAlert({ title: "Nome Obrigatório", message: "Informe o nome.", type: "WARNING" });
       if (variant === 'ACCESS' && !form.email) return showAlert({ title: "Email Obrigatório", message: "Informe o email.", type: "WARNING" });
+      if (variant === 'ACCESS' && !form.customRoleId && form.role !== Role.ADMIN) {
+          return showAlert({ title: "Cargo Obrigatório", message: "Selecione um cargo cadastrado para o colaborador.", type: "WARNING" });
+      }
 
       const userToSave = { 
           ...form, 
@@ -85,24 +88,20 @@ export const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose,
                         </label>
                         <select 
                             className="w-full border-2 p-3 rounded-xl text-sm bg-white focus:border-blue-500 outline-none" 
-                            value={form.customRoleId ? form.customRoleId : form.role} 
+                            value={form.customRoleId || ''} 
                             onChange={e => {
                                 const val = e.target.value;
-                                if (['WAITER', 'KITCHEN', 'CASHIER', 'ADMIN'].includes(val)) {
-                                    setForm({...form, role: val as Role, customRoleId: ''});
+                                if (val === 'ADMIN') {
+                                    setForm({...form, role: Role.ADMIN, customRoleId: ''});
                                 } else {
                                     setForm({...form, customRoleId: val, role: Role.WAITER});
                                 }
                             }}
                         >
-                            <optgroup label="Cargos Padrão">
-                                <option value="WAITER">Garçom</option>
-                                <option value="KITCHEN">Cozinha</option>
-                                <option value="CASHIER">Caixa</option>
-                                <option value="ADMIN">Gerente</option>
-                            </optgroup>
+                            <option value="">Selecione um Cargo...</option>
+                            <option value="ADMIN">Administrador (Acesso Total)</option>
                             {state.roles.length > 0 && (
-                                <optgroup label="Personalizados">
+                                <optgroup label="Cargos Cadastrados">
                                     {state.roles.map(role => (
                                         <option key={role.id} value={role.id}>{role.name}</option>
                                     ))}
@@ -144,6 +143,35 @@ export const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose,
                             <div>
                                 <label className="block text-xs font-bold mb-1 text-slate-600">CPF</label>
                                 <input className="w-full border p-2.5 rounded-xl text-sm" placeholder="000.000.000-00" value={form.documentCpf} onChange={e => setForm({...form, documentCpf: e.target.value})} />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold mb-1 text-slate-600">Cargo / Função</label>
+                                <select 
+                                    className="w-full border p-2.5 rounded-xl text-sm bg-white focus:border-blue-500 outline-none" 
+                                    value={form.customRoleId || ''} 
+                                    onChange={e => {
+                                        const val = e.target.value;
+                                        if (val === 'ADMIN') {
+                                            setForm({...form, role: Role.ADMIN, customRoleId: ''});
+                                        } else {
+                                            setForm({...form, customRoleId: val, role: Role.WAITER});
+                                        }
+                                    }}
+                                >
+                                    <option value="">Selecione um Cargo...</option>
+                                    <option value="ADMIN">Administrador (Acesso Total)</option>
+                                    {state.roles.length > 0 && (
+                                        <optgroup label="Cargos Cadastrados">
+                                            {state.roles.map(role => (
+                                                <option key={role.id} value={role.id}>{role.name}</option>
+                                            ))}
+                                        </optgroup>
+                                    )}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold mb-1 text-slate-600">Departamento</label>
+                                <input className="w-full border p-2.5 rounded-xl text-sm" placeholder="Ex: Salão, Cozinha" value={form.department} onChange={e => setForm({...form, department: e.target.value})} />
                             </div>
                         </div>
                     </div>
