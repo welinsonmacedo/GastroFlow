@@ -53,15 +53,19 @@ export const ModuleSelector: React.FC = () => {
     const { planLimits } = state;
 
     const isModuleAllowed = (module: SystemModule) => {
+        // O tenant PRECISA ter o módulo liberado para qualquer um ver (incluindo ADMIN)
+        if (!allowed.includes(module)) return false;
+
+        // Se o tenant tem, checamos permissão do usuário
         if (authState.currentUser?.role === 'ADMIN') return true;
         if (!authState.currentUser?.allowedRoutes?.includes(module)) return false;
 
         // Se o usuário tem cargo customizado, verifica se ele tem PELO MENOS UMA feature daquele módulo
         if (authState.currentUser?.customRoleId) {
-            // @ts-ignore
-            const moduleFeatures = PERMISSIONS_SCHEMA[module]?.features.map(f => f.key) || [];
+            const schema = PERMISSIONS_SCHEMA as any;
+            const moduleFeatures = schema[module]?.features.map((f: any) => f.key) || [];
             const userFeatures = authState.currentUser.allowedFeatures || [];
-            return moduleFeatures.some(mf => userFeatures.includes(mf));
+            return moduleFeatures.some((mf: string) => userFeatures.includes(mf));
         }
 
         return true;
@@ -131,34 +135,34 @@ export const ModuleSelector: React.FC = () => {
                     {/* Bater Ponto - Acessível a todos os usuários */}
                     <ModuleCard type="TIME_CLOCK" title="Bater Ponto" desc="Registro de entrada, saída e intervalos." icon={Clock} colorClass="text-cyan-400" onClick={handleTimeClock} />
                     
-                    {allowed.includes('RESTAURANT') && isModuleAllowed('RESTAURANT') && (
+                    {isModuleAllowed('RESTAURANT') && (
                         <ModuleCard type="RESTAURANT" title="Restaurante" desc="Salão, Mesas, KDS e Caixa Gastronômico." icon={ChefHat} colorClass="text-blue-600" onClick={() => handleSelect('RESTAURANT')} />
                     )}
-                    {allowed.includes('SNACKBAR') && isModuleAllowed('SNACKBAR') && (
+                    {isModuleAllowed('SNACKBAR') && (
                         <ModuleCard type="SNACKBAR" title="Lanchonete" desc="Fluxo Rápido: Caixa, Senha e Entrega." icon={Coffee} colorClass="text-orange-500" onClick={() => handleSelect('SNACKBAR')} />
                     )}
-                    {(allowed.includes('COMMERCE') || authState.currentUser?.role === 'ADMIN') && isModuleAllowed('COMMERCE') && (
+                    {isModuleAllowed('COMMERCE') && (
                         <ModuleCard type="COMMERCE" title="Varejo" desc="PDV Rápido, Leitor de Código e Venda Balcão." icon={Store} colorClass="text-indigo-500" onClick={() => handleSelect('COMMERCE')} />
                     )}
-                    {allowed.includes('DISTRIBUTOR') && isModuleAllowed('DISTRIBUTOR') && (
+                    {isModuleAllowed('DISTRIBUTOR') && (
                         <ModuleCard type="DISTRIBUTOR" title="Distribuidora" desc="Venda Atacado, Rotas e Estoque de Grade." icon={Truck} colorClass="text-cyan-600" onClick={() => handleSelect('DISTRIBUTOR')} />
                     )}
-                    {(allowed.includes('MANAGER') || authState.currentUser?.role === 'ADMIN') && isModuleAllowed('MANAGER') && (
+                    {isModuleAllowed('MANAGER') && (
                         <ModuleCard type="MANAGER" title="Gestor" desc="Backoffice Operacional. Cardápio e Mesas." icon={Briefcase} colorClass="text-purple-500" onClick={() => handleSelect('MANAGER')} />
                     )}
-                    {(allowed.includes('INVENTORY') || authState.currentUser?.role === 'ADMIN') && isModuleAllowed('INVENTORY') && (
+                    {isModuleAllowed('INVENTORY') && (
                         <ModuleCard type="INVENTORY" title="Estoque" desc="Insumos, Compras e Fichas Técnicas." icon={Package} colorClass="text-orange-500" onClick={() => handleSelect('INVENTORY')} />
                     )}
-                    {(allowed.includes('HR') || authState.currentUser?.role === 'ADMIN') && isModuleAllowed('HR') && (
+                    {isModuleAllowed('HR') && (
                         <ModuleCard type="HR" title="RH & Equipe" desc="Gestão de Ponto, Escalas e Pré-Folha." icon={Users} colorClass="text-pink-500" onClick={() => handleSelect('HR')} />
                     )}
-                    {(allowed.includes('FINANCE') || authState.currentUser?.role === 'ADMIN') && isModuleAllowed('FINANCE') && (
+                    {isModuleAllowed('FINANCE') && (
                         <ModuleCard type="FINANCE" title="Financeiro" desc="Fluxo de Caixa, DRE e BI." icon={DollarSign} colorClass="text-emerald-500" onClick={() => handleSelect('FINANCE')} />
                     )}
-                    {(allowed.includes('CONFIG') || authState.currentUser?.role === 'ADMIN') && isModuleAllowed('CONFIG') && (
+                    {isModuleAllowed('CONFIG') && (
                         <ModuleCard type="CONFIG" title="Configurações" desc="Dados da empresa e segurança." icon={Settings} colorClass="text-gray-500" onClick={() => handleSelect('CONFIG')} />
                     )}
-                    {(allowed.includes('AUDIT') || authState.currentUser?.role === 'ADMIN') && isModuleAllowed('AUDIT') && (
+                    {isModuleAllowed('AUDIT') && (
                         <ModuleCard type="AUDIT" title="Auditoria" desc="Logs de atividades e segurança." icon={ShieldCheck} colorClass="text-slate-600" onClick={() => handleSelect('AUDIT')} />
                     )}
 

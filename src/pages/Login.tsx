@@ -118,6 +118,7 @@ export const Login: React.FC = () => {
 
                   login({
                       id: staffData.id, name: staffData.name, role: staffData.role,
+                      tenant_id: tenantRef.id, // Adicionado aqui
                       email: staffData.email, auth_user_id: staffData.auth_user_id, 
                       customRoleId: staffData.custom_role_id,
                       allowedRoutes: allowedRoutes,

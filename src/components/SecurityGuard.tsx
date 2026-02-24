@@ -13,13 +13,15 @@ export const SecurityGuard: React.FC<{ children: React.ReactNode }> = ({ childre
   // Fetch Security Config
   useEffect(() => {
     const fetchConfig = async () => {
-        try {
-            const { data } = await supabase.from('system_settings').select('value').eq('key', 'security_config').single();
-            if (data && data.value) {
-                setSecurityConfig(data.value);
+        const { data, error } = await supabase.from('system_settings').select('value').eq('key', 'security_config').single();
+        if (error) {
+            if (error.code !== '42P01' && error.code !== 'PGRST116') {
+                console.warn("Error fetching security config:", error);
             }
-        } catch (err) {
-            console.warn("Using default security config due to fetch error", err);
+            return;
+        }
+        if (data && data.value) {
+            setSecurityConfig(data.value);
         }
     };
     fetchConfig();

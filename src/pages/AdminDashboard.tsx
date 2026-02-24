@@ -26,27 +26,27 @@ export const AdminDashboard: React.FC = () => {
   const tabs = [
     { path: '/admin', label: 'VISAO GERAL', icon: LayoutDashboard, exact: true, featureKeys: ['admin_overview'] },
     { path: '/admin/monitoring', label: 'MONITORAMENTO', icon: Activity, featureKeys: ['admin_monitoring'] }, 
+    { path: '/admin/products', label: 'PRODUTOS', icon: Utensils, featureKeys: ['admin_products'] },
+    { path: '/admin/tables', label: 'MESAS & QR CODES', icon: QrCode, featureKeys: ['admin_tables'], required: 'allowTableMgmt' },
   ];
 
   // Filtra abas
   const visibleTabs = tabs.filter(tab => {
       // 1. Checa Limites do Plano
-      // Overview and Monitoring should be available if Manager module is active, regardless of allowTableMgmt
-      if (tab.path === '/admin/tables' && !planLimits.allowTableMgmt) return false;
+      if (tab.required === 'allowTableMgmt' && !planLimits.allowTableMgmt) return false;
       
       // 2. Checagem de features granulares (Tenant)
-      if (allowedFeatures && allowedFeatures.length > 0) {
-          const hasFeature = tab.featureKeys.some(key => allowedFeatures.includes(key));
+      if (restState.allowedFeatures && restState.allowedFeatures.length > 0) {
+          const hasFeature = tab.featureKeys.some(key => restState.allowedFeatures!.includes(key));
           if (!hasFeature) return false;
       }
 
       // 3. Permissões do Usuário (Cargos Personalizados)
       if (authState.currentUser?.role !== 'ADMIN' && authState.currentUser?.customRoleId) {
           const userFeatures = authState.currentUser.allowedFeatures || [];
-          if (userFeatures.length > 0) {
-              const hasUserFeature = tab.featureKeys.some(key => userFeatures.includes(key));
-              if (!hasUserFeature) return false;
-          }
+          // Se o usuário tem features definidas, ele PRECISA ter a feature da aba
+          const hasUserFeature = tab.featureKeys.some(key => userFeatures.includes(key));
+          if (!hasUserFeature) return false;
       }
 
       return true;

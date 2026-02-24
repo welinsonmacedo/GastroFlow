@@ -3,25 +3,33 @@ export const PERMISSIONS_SCHEMA = {
     RESTAURANT: {
         label: "Restaurante",
         features: [
-            { key: "restaurant_waiter", label: "Salão & Mesas (Garçom)" },
-            { key: "restaurant_kds", label: "Cozinha (KDS)" },
-            { key: "restaurant_cashier", label: "Caixa Gastronômico" }
+            { key: "rest_tables", label: "Salão & Mesas (Garçom)" },
+            { key: "rest_kds", label: "Cozinha (KDS)" },
+            { key: "rest_orders", label: "Caixa & Delivery" },
+            { key: "rest_tv", label: "Painel TV" },
+            { key: "rest_tables_config", label: "Cadastro de Mesas" },
+            { key: "rest_menu", label: "Gestão de Cardápio" },
+            { key: "rest_appearance", label: "Aparência do Cardápio" }
         ]
     },
     COMMERCE: {
-        label: "Comércio",
+        label: "Comércio / Varejo",
         features: [
-            { key: "commerce_pos", label: "PDV (Caixa Rápido)" },
-            { key: "commerce_finance", label: "Financeiro Simplificado" },
-            { key: "commerce_reports", label: "Relatórios de Venda" }
+            { key: "pos_terminal", label: "PDV (Caixa Rápido)" },
+            { key: "pos_sales", label: "Histórico de Vendas" },
+            { key: "pos_routes", label: "Gestão de Rotas" }
         ]
     },
     INVENTORY: {
         label: "Estoque",
         features: [
-            { key: "inventory_manage", label: "Gestão de Itens" },
-            { key: "inventory_purchases", label: "Compras & Notas" },
-            { key: "inventory_suppliers", label: "Fornecedores" }
+            { key: "inv_items", label: "Gestão de Itens" },
+            { key: "inv_new_item", label: "Cadastrar Itens" },
+            { key: "inv_entry", label: "Entrada de Nota" },
+            { key: "inv_count", label: "Balanço de Estoque" },
+            { key: "inv_purchases", label: "Sugestões de Compra" },
+            { key: "inv_suppliers", label: "Fornecedores" },
+            { key: "inv_orders", label: "Ordens de Pedido" }
         ]
     },
     HR: {
@@ -36,10 +44,20 @@ export const PERMISSIONS_SCHEMA = {
     FINANCE: {
         label: "Financeiro",
         features: [
-            { key: "finance_expenses", label: "Contas & Despesas" },
-            { key: "finance_dre", label: "DRE Gerencial" },
-            { key: "finance_bi", label: "Business Intelligence" },
-            { key: "finance_reports", label: "Relatórios Detalhados" }
+            { key: "fin_cashier", label: "Fluxo de Caixa" },
+            { key: "fin_dre", label: "DRE Gerencial" },
+            { key: "fin_bi", label: "Business Intelligence" },
+            { key: "fin_reports", label: "Relatórios Financeiros" },
+            { key: "fin_tips", label: "Dicas & Insights" }
+        ]
+    },
+    MANAGER: {
+        label: "Gestor",
+        features: [
+            { key: "admin_overview", label: "Visão Geral" },
+            { key: "admin_monitoring", label: "Monitoramento" },
+            { key: "admin_products", label: "Gestão de Produtos" },
+            { key: "admin_tables", label: "Gestão de Mesas" }
         ]
     },
     CONFIG: {
@@ -50,8 +68,9 @@ export const PERMISSIONS_SCHEMA = {
             { key: "config_delivery", label: "Delivery" },
             { key: "config_finance_settings", label: "Config. Financeira" },
             { key: "config_security", label: "Segurança" },
-            { key: "config_appearance", label: "Aparência" },
-            { key: "config_staff", label: "Acessos (Cargos)" }
+            { key: "config_timeclock", label: "Ponto Eletrônico" },
+            { key: "config_appearance", label: "Aparência & Marca" },
+            { key: "config_staff", label: "Equipe & Acessos" }
         ]
     },
     AUDIT: {

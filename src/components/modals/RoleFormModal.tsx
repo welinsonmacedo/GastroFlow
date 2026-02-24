@@ -5,6 +5,7 @@ import { CustomRole, SystemModule } from '../../types';
 import { PERMISSIONS_SCHEMA } from '../../constants';
 import { useStaff } from '../../context/StaffContext';
 import { useUI } from '../../context/UIContext';
+import { useRestaurant } from '../../context/RestaurantContext';
 import { Shield, ChevronDown, ChevronRight, Check } from 'lucide-react';
 
 interface RoleFormModalProps {
@@ -17,6 +18,7 @@ interface RoleFormModalProps {
 export const RoleFormModal: React.FC<RoleFormModalProps> = ({ isOpen, onClose, roleToEdit }) => {
     const { addRole, updateRole } = useStaff();
     const { showAlert } = useUI();
+    const { state: restState } = useRestaurant();
     
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
@@ -75,9 +77,9 @@ export const RoleFormModal: React.FC<RoleFormModalProps> = ({ isOpen, onClose, r
 
         setSelectedFeatures(newSelectedFeatures);
 
-        // @ts-ignore
-        const moduleFeatures = PERMISSIONS_SCHEMA[moduleKey]?.features.map((f: { key: string }) => f.key) || [];
-        const hasAnyFeatureInModule = moduleFeatures.some(f => newSelectedFeatures.includes(f));
+        const schema = PERMISSIONS_SCHEMA as any;
+        const moduleFeatures = schema[moduleKey]?.features.map((f: any) => f.key) || [];
+        const hasAnyFeatureInModule = moduleFeatures.some((f: string) => newSelectedFeatures.includes(f));
 
         if (hasAnyFeatureInModule) {
             if (!selectedModules.includes(moduleKey)) {
@@ -137,6 +139,10 @@ export const RoleFormModal: React.FC<RoleFormModalProps> = ({ isOpen, onClose, r
                     </div>
                     <div className="max-h-80 overflow-y-auto p-2 bg-white">
                         {Object.entries(PERMISSIONS_SCHEMA).map(([modKey, modData]) => {
+                            // Filtra módulos permitidos para o tenant
+                            const tenantAllowedModules = restState.allowedModules || ['RESTAURANT', 'MANAGER', 'CONFIG', 'FINANCE', 'COMMERCE', 'INVENTORY', 'HR', 'AUDIT'];
+                            if (!tenantAllowedModules.includes(modKey as SystemModule)) return null;
+
                             const isSelected = selectedModules.includes(modKey as SystemModule);
                             const isExpanded = expandedModules.includes(modKey as SystemModule);
 
@@ -164,7 +170,12 @@ export const RoleFormModal: React.FC<RoleFormModalProps> = ({ isOpen, onClose, r
 
                                     {isExpanded && (
                                         <div className="pl-9 pr-2 py-2 space-y-2 border-l-2 border-slate-100 ml-4 my-1">
-                                            {modData.features.map(feat => {
+                                            {modData.features.map((feat: { key: string; label: string }) => {
+                                                // Filtra features permitidas para o tenant
+                                                if (restState.allowedFeatures && restState.allowedFeatures.length > 0) {
+                                                    if (!restState.allowedFeatures.includes(feat.key)) return null;
+                                                }
+
                                                 const featSelected = selectedFeatures.includes(feat.key);
                                                 return (
                                                     <div 

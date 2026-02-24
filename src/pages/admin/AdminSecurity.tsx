@@ -13,19 +13,44 @@ export const AdminSecurity: React.FC = () => {
 
     const fetchIncidents = async () => {
         setLoading(true);
-        const { data } = await supabase
-            .from('security_incidents')
-            .select('*')
-            .order('created_at', { ascending: false })
-            .limit(100);
-        
-        if (data) setIncidents(data);
-        setLoading(false);
+        try {
+            const { data, error } = await supabase
+                .from('security_incidents')
+                .select('*')
+                .order('created_at', { ascending: false })
+                .limit(100);
+            
+            if (error) {
+                console.error("Error fetching security incidents:", error);
+                if (error.code === '42P01') {
+                    // Table does not exist
+                    console.warn("Table security_incidents does not exist. Please run the security_schema.sql script.");
+                } else {
+                    alert("Erro ao carregar incidentes de segurança: " + error.message);
+                }
+            }
+            if (data) setIncidents(data);
+        } catch (err) {
+            console.error("Unexpected error fetching incidents:", err);
+        } finally {
+            setLoading(false);
+        }
     };
 
     const fetchConfig = async () => {
-        const { data } = await supabase.from('system_settings').select('value').eq('key', 'security_config').single();
-        if (data?.value) setConfig(data.value);
+        try {
+            const { data, error } = await supabase.from('system_settings').select('value').eq('key', 'security_config').single();
+            if (error) {
+                if (error.code === '42P01') {
+                    console.warn("Table system_settings does not exist. Please run the security_schema.sql script.");
+                } else if (error.code !== 'PGRST116') { // PGRST116 is "no rows returned" which is fine for .single() if empty
+                    console.error("Error fetching security config:", error);
+                }
+            }
+            if (data?.value) setConfig(data.value);
+        } catch (err) {
+            console.error("Unexpected error fetching config:", err);
+        }
     };
 
     const toggleConfig = async (key: keyof typeof config) => {
