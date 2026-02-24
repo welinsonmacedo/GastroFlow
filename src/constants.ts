@@ -12,12 +12,29 @@ export const PERMISSIONS_SCHEMA = {
             { key: "rest_appearance", label: "Aparência do Cardápio" }
         ]
     },
+    SNACKBAR: {
+        label: "Lanchonete",
+        features: [
+            { key: "snack_pos", label: "Caixa Rápido" },
+            { key: "snack_kds", label: "KDS Lanchonete" },
+            { key: "snack_delivery", label: "Gestão de Entregas" },
+            { key: "snack_menu", label: "Cardápio Lanchonete" }
+        ]
+    },
     COMMERCE: {
         label: "Comércio / Varejo",
         features: [
             { key: "pos_terminal", label: "PDV (Caixa Rápido)" },
             { key: "pos_sales", label: "Histórico de Vendas" },
             { key: "pos_routes", label: "Gestão de Rotas" }
+        ]
+    },
+    DISTRIBUTOR: {
+        label: "Distribuidora",
+        features: [
+            { key: "dist_sales", label: "Vendas Atacado" },
+            { key: "dist_inventory", label: "Estoque de Grade" },
+            { key: "dist_routes", label: "Logística & Rotas" }
         ]
     },
     INVENTORY: {
@@ -78,6 +95,20 @@ export const PERMISSIONS_SCHEMA = {
         features: [
             { key: "audit_view", label: "Visualizar Logs" },
             { key: "audit_export", label: "Exportar/Imprimir" }
+        ]
+    },
+    SUPPORT: {
+        label: "Suporte & Ajuda",
+        features: [
+            { key: "supp_chat", label: "Chat com Suporte" },
+            { key: "supp_manual", label: "Manual do Sistema" }
+        ]
+    },
+    TIMECLOCK: {
+        label: "Ponto Eletrônico",
+        features: [
+            { key: "clock_register", label: "Registro de Ponto" },
+            { key: "clock_history", label: "Meu Histórico" }
         ]
     }
 };

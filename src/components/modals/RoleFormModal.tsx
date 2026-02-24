@@ -140,7 +140,7 @@ export const RoleFormModal: React.FC<RoleFormModalProps> = ({ isOpen, onClose, r
                     <div className="max-h-80 overflow-y-auto p-2 bg-white">
                         {Object.entries(PERMISSIONS_SCHEMA).map(([modKey, modData]) => {
                             // Filtra módulos permitidos para o tenant
-                            const tenantAllowedModules = restState.allowedModules || ['RESTAURANT', 'MANAGER', 'CONFIG', 'FINANCE', 'COMMERCE', 'INVENTORY', 'HR', 'AUDIT'];
+                            const tenantAllowedModules = restState.allowedModules || ['RESTAURANT', 'SNACKBAR', 'DISTRIBUTOR', 'COMMERCE', 'MANAGER', 'CONFIG', 'FINANCE', 'INVENTORY', 'HR', 'AUDIT', 'SUPPORT', 'TIMECLOCK'];
                             if (!tenantAllowedModules.includes(modKey as SystemModule)) return null;
 
                             const isSelected = selectedModules.includes(modKey as SystemModule);
