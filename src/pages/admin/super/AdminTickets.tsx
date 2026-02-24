@@ -52,6 +52,12 @@ export const AdminTickets: React.FC = () => {
 
     useEffect(() => {
         fetchTickets();
+        
+        const channel = supabase.channel('admin_tickets')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'tickets' }, fetchTickets)
+            .subscribe();
+            
+        return () => { supabase.removeChannel(channel); };
     }, [statusFilter]);
 
     const handleReply = async () => {

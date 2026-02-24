@@ -233,7 +233,6 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
       restoreSession();
   }, []);
 
-  useEffect(() => {
     const fetchPlans = async () => {
          const { data } = await supabase.from('plans').select('*').order('created_at', { ascending: true });
          if(data) {
@@ -267,6 +266,8 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
              dispatch({ type: 'SET_PLANS', payload: mappedPlans });
          }
     };
+
+  useEffect(() => {
     fetchPlans();
   }, []);
 
@@ -354,6 +355,8 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         const channel = supabase.channel('saas_admin_updates')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'tenants' }, fetchTenants)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'plans' }, fetchPlans)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'saas_config' }, fetchTenants)
             .subscribe();
 
         return () => { 

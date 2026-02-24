@@ -44,6 +44,12 @@ export const TicketsClient: React.FC = () => {
     useEffect(() => {
         if (state.tenantId) {
             fetchTickets();
+            
+            const channel = supabase.channel(`tickets_client:${state.tenantId}`)
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'tickets', filter: `tenant_id=eq.${state.tenantId}` }, fetchTickets)
+                .subscribe();
+                
+            return () => { supabase.removeChannel(channel); };
         }
     }, [state.tenantId]);
 

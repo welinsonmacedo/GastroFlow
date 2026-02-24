@@ -77,6 +77,12 @@ export const AdminSecurity: React.FC = () => {
     useEffect(() => {
         fetchIncidents();
         fetchConfig();
+        
+        const channel = supabase.channel('admin_security')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'security_incidents' }, fetchIncidents)
+            .subscribe();
+            
+        return () => { supabase.removeChannel(channel); };
     }, []);
 
     const filtered = incidents.filter(i => 
