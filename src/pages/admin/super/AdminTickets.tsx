@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../../../../lib/supabase';
-import { Ticket } from '../../../../types';
+import { supabase } from '../../../lib/supabase';
+import { Ticket } from '../../../types';
 import { MessageCircle, Clock, CheckCircle, XCircle, Send, Search } from 'lucide-react';
-import { Button } from '../../../../components/Button';
-import { useUI } from '../../../../context/UIContext';
+import { Button } from '../../../components/Button';
+import { useUI } from '../../../context/UIContext';
 
 export const AdminTickets: React.FC = () => {
     const { showAlert } = useUI();

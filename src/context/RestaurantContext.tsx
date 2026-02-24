@@ -26,7 +26,8 @@ type Action =
   | { type: 'SET_ACTIVE_MODULE'; module: SystemModule }
   | { type: 'UPDATE_THEME'; theme: RestaurantTheme }
   | { type: 'UPDATE_BUSINESS_INFO'; info: RestaurantBusinessInfo }
-  | { type: 'SYNC_REALTIME_DATA'; payload: any };
+  | { type: 'SYNC_REALTIME_DATA'; payload: any }
+  | { type: 'UPDATE_PLAN_LIMITS'; limits: PlanLimits };
 
 const initialState: RestaurantState = {
   isLoading: true,
