@@ -139,18 +139,21 @@ export const Login: React.FC = () => {
 
   if (authState.isLoading) return <div>Carregando...</div>;
 
+  const bgUrl = restState.theme.loginBgUrl || restState.globalSettings.loginBgUrl;
+  const boxColor = restState.theme.loginBoxColor || restState.globalSettings.loginBoxColor || '#ffffff';
+
   return (
     <div 
         className="min-h-screen bg-slate-900 flex items-center justify-center p-4"
-        style={restState.theme.loginBgUrl ? {
-            backgroundImage: `url(${restState.theme.loginBgUrl})`,
+        style={bgUrl ? {
+            backgroundImage: `url(${bgUrl})`,
             backgroundSize: 'cover',
             backgroundPosition: 'center'
         } : {}}
     >
       <div 
         className="rounded-2xl shadow-xl p-8 w-full max-w-md backdrop-blur-sm"
-        style={{ backgroundColor: restState.theme.loginBoxColor || '#ffffff' }}
+        style={{ backgroundColor: boxColor }}
       >
         <div className="flex flex-col items-center mb-6">
             <h1 className="text-2xl font-bold text-gray-800">{restState.theme.restaurantName}</h1>

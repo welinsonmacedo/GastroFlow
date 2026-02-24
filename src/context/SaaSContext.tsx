@@ -5,17 +5,45 @@ import { supabase } from '../lib/supabase';
 import { createClient } from '@supabase/supabase-js';
 import { useUI } from './UIContext';
 
+export const uploadImage = async (file: File, path: string): Promise<string> => {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
+    const filePath = `${path}/${fileName}`;
+
+    const { error: uploadError } = await supabase.storage
+        .from('branding')
+        .upload(filePath, file);
+
+    if (uploadError) {
+        throw uploadError;
+    }
+
+    const { data } = supabase.storage
+        .from('branding')
+        .getPublicUrl(filePath);
+
+    return data.publicUrl;
+};
+
 const env: any = import.meta.env || {};
 const supabaseUrl = env.VITE_SUPABASE_URL || '';
 const supabaseKey = env.VITE_SUPABASE_ANON_KEY || '';
 
-interface SaaSState {
+export interface GlobalSettings {
+  moduleSelectorBgUrl?: string;
+  loginBgUrl?: string;
+  loginBoxColor?: string;
+  moduleIcons?: Record<string, string>;
+}
+
+export interface SaaSState {
   isAuthenticated: boolean; 
   adminName: string | null;
   adminId: string | null;
   adminEmail: string | null;
   tenants: RestaurantTenant[];
   plans: Plan[];
+  globalSettings: GlobalSettings;
 }
 
 type SaaSAction =
@@ -33,6 +61,7 @@ type SaaSAction =
   | { type: 'TOGGLE_STATUS'; tenantId: string }
   | { type: 'CHANGE_PLAN'; tenantId: string; plan: PlanType }
   | { type: 'UPDATE_PROFILE'; name: string; email: string }
+  | { type: 'UPDATE_GLOBAL_SETTINGS'; settings: GlobalSettings }
   | { type: 'UPDATE_PLAN_DETAILS'; plan: Plan }
   | { type: 'CREATE_PLAN'; plan: Omit<Plan, 'id'> }
   | { type: 'DELETE_PLAN'; planId: string };
@@ -43,7 +72,8 @@ const initialState: SaaSState = {
   adminId: null,
   adminEmail: null,
   tenants: [],
-  plans: []
+  plans: [],
+  globalSettings: {}
 };
 
 const SaaSContext = createContext<{
@@ -145,6 +175,9 @@ const saasReducer = (state: SaaSState, action: SaaSAction): SaaSState => {
     case 'UPDATE_PROFILE':
         return { ...state, adminName: action.name, adminEmail: action.email };
 
+    case 'UPDATE_GLOBAL_SETTINGS':
+        return { ...state, globalSettings: action.settings };
+
     case 'UPDATE_PLAN_DETAILS':
         return {
             ...state,
@@ -231,6 +264,17 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (state.isAuthenticated) {
         const fetchTenants = async () => {
             try {
+                // Fetch Global Settings
+                const { data: configData } = await supabase
+                    .from('saas_config')
+                    .select('global_settings')
+                    .eq('id', 1)
+                    .maybeSingle();
+                
+                if (configData) {
+                    dispatch({ type: 'UPDATE_GLOBAL_SETTINGS', settings: configData.global_settings });
+                }
+
                 const { data, error } = await supabase
                     .from('tenants')
                     .select('*')
@@ -473,6 +517,19 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return;
     }
     
+    if (action.type === 'UPDATE_GLOBAL_SETTINGS') {
+        try {
+            const { error } = await supabase.from('saas_config').upsert({ id: 1, global_settings: action.settings });
+            if (error) throw error;
+            dispatch(action);
+            showAlert({ title: "Sucesso", message: "Configurações globais atualizadas!", type: 'SUCCESS' });
+        } catch (error) {
+            console.error(error);
+            showAlert({ title: "Erro", message: "Falha ao atualizar configurações.", type: 'ERROR' });
+        }
+        return;
+    }
+
     if (action.type === 'UPDATE_PLAN_DETAILS') {
         const { error } = await supabase.from('plans').update({
             name: action.plan.name, 
@@ -490,9 +547,9 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
             try {
                 const { error: propError } = await supabase.from('tenants')
                     .update({
-                        allowed_modules: action.plan.limits.allowedModules,
-                        allowed_features: action.plan.limits.allowedFeatures,
-                        custom_limits: action.plan.limits
+                        allowed_modules: action.plan.limits?.allowedModules || [],
+                        allowed_features: action.plan.limits?.allowedFeatures || [],
+                        custom_limits: action.plan.limits || {}
                     })
                     .eq('plan', action.plan.key);
 

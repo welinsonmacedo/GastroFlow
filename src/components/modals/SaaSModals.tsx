@@ -4,8 +4,99 @@ import { Modal } from '../Modal';
 import { Button } from '../Button';
 import { useSaaS } from '../../context/SaaSContext';
 import { RestaurantTenant, PlanType } from '../../types';
-import { Check, Copy, Palette, Layout, Image as ImageIcon, Box } from 'lucide-react';
+import { Check, Copy, Palette, Layout, Image as ImageIcon, Box, Upload, Link as LinkIcon, Loader2 } from 'lucide-react';
 import { PERMISSIONS_SCHEMA } from '../../constants';
+import { uploadImage } from '../../context/SaaSContext';
+
+export const ImageUploadField = ({ 
+    label, 
+    value, 
+    onChange, 
+    path = 'branding' 
+}: { 
+    label: string, 
+    value: string, 
+    onChange: (val: string) => void,
+    path?: string
+}) => {
+    const [uploading, setUploading] = useState(false);
+    const [mode, setMode] = useState<'URL' | 'UPLOAD'>(value?.startsWith('http') ? 'URL' : 'UPLOAD');
+
+    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setUploading(true);
+        try {
+            const url = await uploadImage(file, path);
+            onChange(url);
+        } catch (error) {
+            console.error("Upload failed:", error);
+            alert("Falha no upload da imagem.");
+        } finally {
+            setUploading(false);
+        }
+    };
+
+    return (
+        <div className="space-y-1.5">
+            <div className="flex justify-between items-center">
+                <label className="text-[10px] font-bold text-gray-500 uppercase">{label}</label>
+                <div className="flex gap-1 bg-slate-100 p-0.5 rounded-md">
+                    <button 
+                        onClick={() => setMode('URL')}
+                        className={`p-1 rounded text-[9px] font-bold transition-all ${mode === 'URL' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-400'}`}
+                    >
+                        <LinkIcon size={10} className="inline mr-1" /> URL
+                    </button>
+                    <button 
+                        onClick={() => setMode('UPLOAD')}
+                        className={`p-1 rounded text-[9px] font-bold transition-all ${mode === 'UPLOAD' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-400'}`}
+                    >
+                        <Upload size={10} className="inline mr-1" /> UPLOAD
+                    </button>
+                </div>
+            </div>
+            
+            {mode === 'URL' ? (
+                <input 
+                    className="w-full border p-2 rounded text-sm" 
+                    placeholder="https://..."
+                    value={value || ''} 
+                    onChange={e => onChange(e.target.value)} 
+                />
+            ) : (
+                <div className="relative">
+                    <input 
+                        type="file" 
+                        accept="image/*"
+                        onChange={handleFileChange}
+                        className="hidden" 
+                        id={`upload-${label}`}
+                        disabled={uploading}
+                    />
+                    <label 
+                        htmlFor={`upload-${label}`}
+                        className={`w-full border-2 border-dashed p-2 rounded-lg text-xs flex items-center justify-center gap-2 cursor-pointer transition-colors ${uploading ? 'bg-slate-50 border-slate-200' : 'hover:bg-blue-50 hover:border-blue-200 border-slate-300'}`}
+                    >
+                        {uploading ? (
+                            <Loader2 size={14} className="animate-spin text-blue-600" />
+                        ) : (
+                            <Upload size={14} className="text-slate-400" />
+                        )}
+                        <span className="truncate max-w-[150px]">{value ? 'Alterar Imagem' : 'Selecionar Arquivo'}</span>
+                    </label>
+                    {value && !uploading && (
+                        <div className="mt-1 flex items-center gap-2">
+                            <img src={value} className="w-8 h-8 rounded border object-cover" />
+                            <span className="text-[10px] text-slate-400 truncate flex-1">{value}</span>
+                        </div>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+};
 
 export const MODULE_STRUCTURE = {
     RESTAURANT: {
@@ -273,24 +364,16 @@ export const SaaSEditTenantModal: React.FC<SaaSEditTenantModalProps & { onOpenLi
                                     <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
                                         <ImageIcon size={14} /> Imagens de Fundo
                                     </h4>
-                                    <div>
-                                        <label className="text-[10px] font-bold text-gray-500 uppercase">Seletor de Módulos (URL)</label>
-                                        <input 
-                                            className="w-full border p-2 rounded text-sm" 
-                                            placeholder="https://..."
-                                            value={editForm.theme?.moduleSelectorBgUrl || ''} 
-                                            onChange={e => setEditForm({...editForm, theme: {...(editForm.theme || {}), moduleSelectorBgUrl: e.target.value} as any})} 
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="text-[10px] font-bold text-gray-500 uppercase">Página de Login (URL)</label>
-                                        <input 
-                                            className="w-full border p-2 rounded text-sm" 
-                                            placeholder="https://..."
-                                            value={editForm.theme?.loginBgUrl || ''} 
-                                            onChange={e => setEditForm({...editForm, theme: {...(editForm.theme || {}), loginBgUrl: e.target.value} as any})} 
-                                        />
-                                    </div>
+                                    <ImageUploadField 
+                                        label="Seletor de Módulos"
+                                        value={editForm.theme?.moduleSelectorBgUrl || ''}
+                                        onChange={val => setEditForm({...editForm, theme: {...(editForm.theme || {}), moduleSelectorBgUrl: val} as any})}
+                                    />
+                                    <ImageUploadField 
+                                        label="Página de Login"
+                                        value={editForm.theme?.loginBgUrl || ''}
+                                        onChange={val => setEditForm({...editForm, theme: {...(editForm.theme || {}), loginBgUrl: val} as any})}
+                                    />
                                     <div>
                                         <label className="text-[10px] font-bold text-gray-500 uppercase">Cor do Box de Login</label>
                                         <div className="flex gap-2">
@@ -315,19 +398,16 @@ export const SaaSEditTenantModal: React.FC<SaaSEditTenantModalProps & { onOpenLi
                                     </h4>
                                     <div className="max-h-[300px] overflow-y-auto pr-2 space-y-3">
                                         {Object.entries(PERMISSIONS_SCHEMA).map(([key, data]) => (
-                                            <div key={key}>
-                                                <label className="text-[10px] font-bold text-gray-500 uppercase">{data.label}</label>
-                                                <input 
-                                                    className="w-full border p-2 rounded text-xs" 
-                                                    placeholder="URL do ícone..."
-                                                    value={editForm.theme?.moduleIcons?.[key] || ''} 
-                                                    onChange={e => {
-                                                        const icons = { ...(editForm.theme?.moduleIcons || {}) };
-                                                        icons[key] = e.target.value;
-                                                        setEditForm({...editForm, theme: {...(editForm.theme || {}), moduleIcons: icons} as any});
-                                                    }} 
-                                                />
-                                            </div>
+                                            <ImageUploadField 
+                                                key={key}
+                                                label={data.label}
+                                                value={editForm.theme?.moduleIcons?.[key] || ''}
+                                                onChange={val => {
+                                                    const icons = { ...(editForm.theme?.moduleIcons || {}) };
+                                                    icons[key] = val;
+                                                    setEditForm({...editForm, theme: {...(editForm.theme || {}), moduleIcons: icons} as any});
+                                                }}
+                                            />
                                         ))}
                                     </div>
                                 </div>

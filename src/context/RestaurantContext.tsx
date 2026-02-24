@@ -15,6 +15,7 @@ interface RestaurantState {
   allowedFeatures: string[]; // Adicionado
   activeModule: SystemModule | null;
   theme: RestaurantTheme;
+  globalSettings: any; // Added
   businessInfo: RestaurantBusinessInfo;
 }
 
@@ -55,6 +56,7 @@ const initialState: RestaurantState = {
       borderRadius: 'lg',
       buttonStyle: 'fill'
   },
+  globalSettings: {},
   businessInfo: {
       paymentMethods: [
           { id: '1', name: 'Dinheiro', type: 'CASH', feePercentage: 0, isActive: true },
@@ -118,6 +120,15 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     if (!tenant) { localDispatch({ type: 'TENANT_NOT_FOUND' }); return; }
     if (tenant.status === 'INACTIVE') { localDispatch({ type: 'TENANT_INACTIVE' }); return; }
 
+    // Fetch Global Settings
+    const { data: configData } = await supabase
+        .from('saas_config')
+        .select('global_settings')
+        .eq('id', 1)
+        .maybeSingle();
+    
+    const globalSettings = configData?.global_settings || {};
+
     // Busca os limites do plano
     let fetchedLimits = initialState.planLimits;
     if (tenant.plan) {
@@ -144,6 +155,7 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             tenantId: tenant.id,
             tenantSlug: tenant.slug,
             theme: tenant.theme_config || initialState.theme,
+            globalSettings: globalSettings,
             businessInfo: mergedBusinessInfo,
             planLimits: fetchedLimits,
             allowedModules: tenant.allowed_modules || ['RESTAURANT'],

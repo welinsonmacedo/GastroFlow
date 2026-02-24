@@ -2,10 +2,11 @@
 import React, { useState } from 'react';
 import { useSaaS } from '../context/SaaSContext';
 import { useUI } from '../context/UIContext';
-import { Plan, PlanType, RestaurantTenant, PlanLimits } from '../types';
+import { RestaurantTenant } from '../types';
 import { Button } from '../components/Button';
-import { SaaSTenantCreateModal, SaaSEditTenantModal, SaaSTenantLinksModal } from '../components/modals/SaaSModals';
-import { Building2, DollarSign, Activity, Settings, Search, ExternalLink, LogOut, Plus, X, List, Edit, Lock, BarChart2, Unlock, Link as LinkIcon, FileText, Printer, ChevronDown, Edit3, RotateCcw, ShieldAlert, MessageCircle } from 'lucide-react';
+import { SaaSTenantCreateModal, SaaSEditTenantModal, SaaSTenantLinksModal, ImageUploadField } from '../components/modals/SaaSModals';
+import { Building2, DollarSign, Activity, Settings, Search, LogOut, Plus, List, Edit, FileText, Printer, ChevronDown, Edit3, RotateCcw, ShieldAlert, MessageCircle, Box, ImageIcon } from 'lucide-react';
+import { PERMISSIONS_SCHEMA } from '../constants';
 // @ts-ignore
 import { useNavigate } from 'react-router-dom';
 import { PlanManager } from './admin/super/PlanManager';
@@ -33,6 +34,8 @@ export const SuperAdminDashboard: React.FC = () => {
 
   // Settings State
   const [settingsForm, setSettingsForm] = useState({ name: state.adminName || '', email: state.adminEmail || '', password: '' });
+  const [globalThemeForm, setGlobalThemeForm] = useState(state.globalSettings);
+  const [settingsTab, setSettingsTab] = useState<'PROFILE' | 'THEME'>('PROFILE');
   
   // Plans Edit State
 
@@ -401,13 +404,106 @@ export const SuperAdminDashboard: React.FC = () => {
 
                     {/* --- VIEW: SETTINGS --- */}
                     {activeView === 'SETTINGS' && (
-                        <div className="max-w-2xl mx-auto bg-white p-8 rounded-xl shadow-sm border">
-                            <h2 className="text-2xl font-bold mb-6">Meu Perfil</h2>
-                            <form onSubmit={handleUpdateProfile} className="space-y-6">
-                                <input className="w-full border p-3 rounded-lg" value={settingsForm.name} onChange={e => setSettingsForm({...settingsForm, name: e.target.value})} />
-                                <input className="w-full border p-3 rounded-lg" value={settingsForm.email} onChange={e => setSettingsForm({...settingsForm, email: e.target.value})} />
-                                <Button type="submit" className="w-full py-3">Atualizar</Button>
-                            </form>
+                        <div className="max-w-4xl mx-auto space-y-6">
+                            <div className="flex gap-4 mb-2">
+                                <button 
+                                    onClick={() => setSettingsTab('PROFILE')}
+                                    className={`px-4 py-2 rounded-lg font-bold text-sm transition-all ${settingsTab === 'PROFILE' ? 'bg-blue-600 text-white shadow-md' : 'bg-white text-slate-500 border hover:bg-slate-50'}`}
+                                >
+                                    Meu Perfil
+                                </button>
+                                <button 
+                                    onClick={() => setSettingsTab('THEME')}
+                                    className={`px-4 py-2 rounded-lg font-bold text-sm transition-all ${settingsTab === 'THEME' ? 'bg-blue-600 text-white shadow-md' : 'bg-white text-slate-500 border hover:bg-slate-50'}`}
+                                >
+                                    Aparência Global (Default)
+                                </button>
+                            </div>
+
+                            {settingsTab === 'PROFILE' ? (
+                                <div className="bg-white p-8 rounded-xl shadow-sm border">
+                                    <h2 className="text-2xl font-bold mb-6">Meu Perfil</h2>
+                                    <form onSubmit={handleUpdateProfile} className="space-y-6">
+                                        <div>
+                                            <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Nome</label>
+                                            <input className="w-full border p-3 rounded-lg" value={settingsForm.name} onChange={e => setSettingsForm({...settingsForm, name: e.target.value})} />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Email</label>
+                                            <input className="w-full border p-3 rounded-lg" value={settingsForm.email} onChange={e => setSettingsForm({...settingsForm, email: e.target.value})} />
+                                        </div>
+                                        <Button type="submit" className="w-full py-3">Atualizar Perfil</Button>
+                                    </form>
+                                </div>
+                            ) : (
+                                <div className="bg-white p-8 rounded-xl shadow-sm border">
+                                    <h2 className="text-2xl font-bold mb-2">Aparência Global</h2>
+                                    <p className="text-sm text-slate-500 mb-8">Estas configurações serão usadas como padrão para todos os restaurantes que não tiverem customização própria.</p>
+                                    
+                                    <div className="grid grid-cols-2 gap-8">
+                                        <div className="space-y-6">
+                                            <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                                                <ImageIcon size={14} /> Imagens de Fundo Padrão
+                                            </h4>
+                                            <ImageUploadField 
+                                                label="Seletor de Módulos"
+                                                value={globalThemeForm.moduleSelectorBgUrl || ''}
+                                                onChange={val => setGlobalThemeForm({...globalThemeForm, moduleSelectorBgUrl: val})}
+                                            />
+                                            <ImageUploadField 
+                                                label="Página de Login"
+                                                value={globalThemeForm.loginBgUrl || ''}
+                                                onChange={val => setGlobalThemeForm({...globalThemeForm, loginBgUrl: val})}
+                                            />
+                                            <div>
+                                                <label className="text-[10px] font-bold text-gray-500 uppercase">Cor do Box de Login</label>
+                                                <div className="flex gap-2">
+                                                    <input 
+                                                        type="color"
+                                                        className="h-9 w-12 border rounded cursor-pointer" 
+                                                        value={globalThemeForm.loginBoxColor || '#ffffff'} 
+                                                        onChange={e => setGlobalThemeForm({...globalThemeForm, loginBoxColor: e.target.value})} 
+                                                    />
+                                                    <input 
+                                                        className="flex-1 border p-2 rounded text-sm" 
+                                                        value={globalThemeForm.loginBoxColor || '#ffffff'} 
+                                                        onChange={e => setGlobalThemeForm({...globalThemeForm, loginBoxColor: e.target.value})} 
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-6">
+                                            <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                                                <Box size={14} /> Ícones dos Módulos Padrão
+                                            </h4>
+                                            <div className="max-h-[400px] overflow-y-auto pr-2 space-y-4">
+                                                {Object.entries(PERMISSIONS_SCHEMA).map(([key, data]) => (
+                                                    <ImageUploadField 
+                                                        key={key}
+                                                        label={data.label}
+                                                        value={globalThemeForm.moduleIcons?.[key] || ''}
+                                                        onChange={val => {
+                                                            const icons = { ...(globalThemeForm.moduleIcons || {}) };
+                                                            icons[key] = val;
+                                                            setGlobalThemeForm({...globalThemeForm, moduleIcons: icons});
+                                                        }}
+                                                    />
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="mt-8 pt-6 border-t">
+                                        <Button 
+                                            className="w-full py-3"
+                                            onClick={() => dispatch({ type: 'UPDATE_GLOBAL_SETTINGS', settings: globalThemeForm })}
+                                        >
+                                            Salvar Configurações Globais
+                                        </Button>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     )}
                </div>
