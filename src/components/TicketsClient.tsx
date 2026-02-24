@@ -60,7 +60,6 @@ export const TicketsClient: React.FC = () => {
         }
 
         const newTicket = {
-            id: Math.random().toString(36).substring(2),
             tenant_id: state.tenantId,
             tenant_name: state.theme.restaurantName || 'Restaurante',
             subject: newSubject,
@@ -70,28 +69,38 @@ export const TicketsClient: React.FC = () => {
                 sender: 'CLIENT' as const,
                 text: newDescription,
                 timestamp: new Date().toISOString()
-            }],
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
+            }]
         };
 
         try {
-            const { error } = await supabase.from('tickets').insert(newTicket);
+            const { data, error } = await supabase.from('tickets').insert(newTicket).select().single();
             if (error) throw error;
+
+            if (data) {
+                const newTicketWithId = { ...data, tenant_name: newTicket.tenant_name } as Ticket;
+                setTickets(prev => [newTicketWithId, ...prev]);
+            }
+
         } catch (e) {
             console.warn("Falling back to localStorage for tickets:", e);
-            const localTickets = [...tickets, newTicket];
+            const localTicket = {
+                ...newTicket,
+                id: Math.random().toString(36).substring(2),
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+            };
+            const localTickets = [...tickets, localTicket];
             localStorage.setItem(`flux_tickets_${state.tenantId}`, JSON.stringify(localTickets));
             // Also save to a global list for the super admin
             const allTickets = JSON.parse(localStorage.getItem('flux_all_tickets') || '[]');
-            localStorage.setItem('flux_all_tickets', JSON.stringify([...allTickets, newTicket]));
+            localStorage.setItem('flux_all_tickets', JSON.stringify([...allTickets, localTicket]));
         }
 
         showAlert({ title: 'Sucesso', message: 'Chamado criado com sucesso.', type: 'SUCCESS' });
         setIsNewTicketModalOpen(false);
         setNewSubject('');
         setNewDescription('');
-        fetchTickets();
+        // fetchTickets(); No longer needed, we update the state optimistically
     };
 
     const handleReply = async () => {
