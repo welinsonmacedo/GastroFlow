@@ -326,6 +326,7 @@ export interface RestaurantTenant {
   allowedFeatures?: string[]; 
   customLimits?: PlanLimits;
   businessInfo?: RestaurantBusinessInfo;
+  theme?: RestaurantTheme;
 }
 
 export interface User {
@@ -511,6 +512,10 @@ export interface RestaurantTheme {
   fontFamily?: 'Inter' | 'Roboto' | 'Playfair Display' | 'Montserrat';
   borderRadius?: 'none' | 'sm' | 'md' | 'lg' | 'full';
   buttonStyle?: 'fill' | 'outline' | 'minimal';
+  moduleSelectorBgUrl?: string;
+  loginBgUrl?: string;
+  loginBoxColor?: string;
+  moduleIcons?: Record<string, string>;
 }
 
 export interface Supplier {

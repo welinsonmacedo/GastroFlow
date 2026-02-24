@@ -25,7 +25,7 @@ type SaaSAction =
   | { type: 'UPDATE_TENANT_STATS'; payload: { id: string; count: number }[] }
   | { type: 'SET_PLANS'; payload: Plan[] }
   | { type: 'CREATE_TENANT'; payload: { name: string; slug: string; ownerName: string; email: string; plan: PlanType } }
-  | { type: 'UPDATE_TENANT'; payload: { id: string; name: string; slug: string; ownerName: string; email: string; plan?: PlanType } }
+  | { type: 'UPDATE_TENANT'; payload: { id: string; name: string; slug: string; ownerName: string; email: string; plan?: PlanType; theme?: any } }
   | { type: 'UPDATE_TENANT_MODULES'; tenantId: string; modules: SystemModule[]; features: string[] }
   | { type: 'UPDATE_TENANT_LIMITS'; tenantId: string; limits: any }
   | { type: 'CREATE_TENANT_ADMIN'; payload: { tenantId: string; name: string; email: string; pin: string; password?: string } }
@@ -115,7 +115,8 @@ const saasReducer = (state: SaaSState, action: SaaSAction): SaaSState => {
                 slug: action.payload.slug, 
                 ownerName: action.payload.ownerName, 
                 email: action.payload.email,
-                plan: action.payload.plan || t.plan
+                plan: action.payload.plan || t.plan,
+                theme: action.payload.theme || t.theme
               } 
             : t
         )
@@ -250,6 +251,7 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
                         joinedAt: new Date(t.created_at),
                         requestCount: 0, 
                         businessInfo: t.business_info || {},
+                        theme: t.theme_config || {},
                         allowedModules: t.allowed_modules || ['RESTAURANT'],
                         allowedFeatures: t.allowed_features || [],
                         customLimits: t.custom_limits || null
@@ -382,6 +384,11 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
             if (error) throw error;
             if (data && data.success === false) throw new Error(data.error || 'Unknown error');
+
+            // Update theme separately to ensure it works even if RPC doesn't support it yet
+            if (action.payload.theme) {
+                await supabase.from('tenants').update({ theme_config: action.payload.theme }).eq('id', action.payload.id);
+            }
 
             dispatch(action);
             showAlert({ title: "Sucesso", message: "Restaurante atualizado!", type: 'SUCCESS' });

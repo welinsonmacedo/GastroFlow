@@ -4,7 +4,8 @@ import { Modal } from '../Modal';
 import { Button } from '../Button';
 import { useSaaS } from '../../context/SaaSContext';
 import { RestaurantTenant, PlanType } from '../../types';
-import { Check, Copy } from 'lucide-react';
+import { Check, Copy, Palette, Layout, Image as ImageIcon, Box } from 'lucide-react';
+import { PERMISSIONS_SCHEMA } from '../../constants';
 
 export const MODULE_STRUCTURE = {
     RESTAURANT: {
@@ -149,6 +150,7 @@ interface SaaSEditTenantModalProps {
 export const SaaSEditTenantModal: React.FC<SaaSEditTenantModalProps & { onOpenLinks?: () => void }> = ({ isOpen, onClose, tenant, onOpenLinks }) => {
     const { state, dispatch } = useSaaS();
     const [editForm, setEditForm] = useState<Partial<RestaurantTenant>>({});
+    const [activeTab, setActiveTab] = useState<'GENERAL' | 'THEME'>('GENERAL');
 
     useEffect(() => {
         if(tenant) {
@@ -167,7 +169,8 @@ export const SaaSEditTenantModal: React.FC<SaaSEditTenantModalProps & { onOpenLi
                         slug: editForm.slug!, 
                         ownerName: editForm.ownerName!, 
                         email: editForm.email!,
-                        plan: editForm.plan 
+                        plan: editForm.plan,
+                        theme: editForm.theme
                     } 
                 });
 
@@ -178,7 +181,6 @@ export const SaaSEditTenantModal: React.FC<SaaSEditTenantModalProps & { onOpenLi
                 onClose();
             } catch (error) {
                 console.error("Failed to update tenant:", error);
-                // Modal stays open so user can retry or see error
             }
         }
     };
@@ -186,60 +188,152 @@ export const SaaSEditTenantModal: React.FC<SaaSEditTenantModalProps & { onOpenLi
     if (!tenant) return null;
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title={`Gerenciar ${tenant.name}`} variant="dialog" maxWidth="md" onSave={handleUpdate}>
-            <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                    <div><label className="text-xs font-bold text-gray-500 uppercase">Nome</label><input className="w-full border p-2 rounded" value={editForm.name} onChange={e => setEditForm({...editForm, name: e.target.value})} /></div>
-                    <div><label className="text-xs font-bold text-gray-500 uppercase">Slug</label><input className="w-full border p-2 rounded" value={editForm.slug} onChange={e => setEditForm({...editForm, slug: e.target.value})} /></div>
+        <Modal isOpen={isOpen} onClose={onClose} title={`Gerenciar ${tenant.name}`} variant="dialog" maxWidth="lg" onSave={handleUpdate}>
+            <div className="flex gap-6">
+                {/* Sidebar Tabs */}
+                <div className="w-48 shrink-0 space-y-2">
+                    <button 
+                        onClick={() => setActiveTab('GENERAL')}
+                        className={`w-full flex items-center gap-3 p-3 rounded-lg text-sm font-bold transition-all ${activeTab === 'GENERAL' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-100'}`}
+                    >
+                        <Layout size={18} /> Geral
+                    </button>
+                    <button 
+                        onClick={() => setActiveTab('THEME')}
+                        className={`w-full flex items-center gap-3 p-3 rounded-lg text-sm font-bold transition-all ${activeTab === 'THEME' ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-100'}`}
+                    >
+                        <Palette size={18} /> Aparência
+                    </button>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                    <div><label className="text-xs font-bold text-gray-500 uppercase">Dono</label><input className="w-full border p-2 rounded" value={editForm.ownerName} onChange={e => setEditForm({...editForm, ownerName: e.target.value})} /></div>
-                    <div><label className="text-xs font-bold text-gray-500 uppercase">Email</label><input className="w-full border p-2 rounded" value={editForm.email} onChange={e => setEditForm({...editForm, email: e.target.value})} /></div>
-                </div>
-                
-                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-4">
-                    <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">Configurações Principais</h4>
-                    
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="text-xs font-bold text-gray-500 uppercase">Plano</label>
-                            <select 
-                                className="w-full border p-2 rounded bg-white font-bold text-blue-600" 
-                                value={editForm.plan || ''} 
-                                onChange={e => setEditForm({...editForm, plan: e.target.value})}
-                            >
-                                {state.plans.map(p => (
-                                    <option key={p.id} value={p.key}>{p.name}</option>
-                                ))}
-                            </select>
-                        </div>
-                        <div>
-                            <label className="text-xs font-bold text-gray-500 uppercase">Status do Cliente</label>
-                            <select 
-                                className={`w-full border p-2 rounded font-bold ${editForm.status === 'ACTIVE' ? 'text-green-600 bg-green-50' : 'text-red-600 bg-red-50'}`}
-                                value={editForm.status || 'ACTIVE'} 
-                                onChange={e => setEditForm({...editForm, status: e.target.value as any})}
-                            >
-                                <option value="ACTIVE">ATIVO</option>
-                                <option value="INACTIVE">INATIVO</option>
-                            </select>
-                        </div>
-                    </div>
 
-                    <div className="pt-2">
-                        <Button 
-                            variant="outline" 
-                            className="w-full flex items-center justify-center gap-2"
-                            onClick={() => {
-                                if (onOpenLinks) {
-                                    onClose();
-                                    onOpenLinks();
-                                }
-                            }}
-                        >
-                            <Copy size={16} /> Central de Links de Acesso
-                        </Button>
-                    </div>
+                {/* Content Area */}
+                <div className="flex-1 min-h-[400px]">
+                    {activeTab === 'GENERAL' && (
+                        <div className="space-y-6">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div><label className="text-xs font-bold text-gray-500 uppercase">Nome</label><input className="w-full border p-2 rounded" value={editForm.name} onChange={e => setEditForm({...editForm, name: e.target.value})} /></div>
+                                <div><label className="text-xs font-bold text-gray-500 uppercase">Slug</label><input className="w-full border p-2 rounded" value={editForm.slug} onChange={e => setEditForm({...editForm, slug: e.target.value})} /></div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div><label className="text-xs font-bold text-gray-500 uppercase">Dono</label><input className="w-full border p-2 rounded" value={editForm.ownerName} onChange={e => setEditForm({...editForm, ownerName: e.target.value})} /></div>
+                                <div><label className="text-xs font-bold text-gray-500 uppercase">Email</label><input className="w-full border p-2 rounded" value={editForm.email} onChange={e => setEditForm({...editForm, email: e.target.value})} /></div>
+                            </div>
+                            
+                            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-4">
+                                <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">Configurações Principais</h4>
+                                
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="text-xs font-bold text-gray-500 uppercase">Plano</label>
+                                        <select 
+                                            className="w-full border p-2 rounded bg-white font-bold text-blue-600" 
+                                            value={editForm.plan || ''} 
+                                            onChange={e => setEditForm({...editForm, plan: e.target.value as PlanType})}
+                                        >
+                                            {state.plans.map(p => (
+                                                <option key={p.id} value={p.key}>{p.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="text-xs font-bold text-gray-500 uppercase">Status do Cliente</label>
+                                        <select 
+                                            className={`w-full border p-2 rounded font-bold ${editForm.status === 'ACTIVE' ? 'text-green-600 bg-green-50' : 'text-red-600 bg-red-50'}`}
+                                            value={editForm.status || 'ACTIVE'} 
+                                            onChange={e => setEditForm({...editForm, status: e.target.value as any})}
+                                        >
+                                            <option value="ACTIVE">ATIVO</option>
+                                            <option value="INACTIVE">INATIVO</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div className="pt-2">
+                                    <Button 
+                                        variant="outline" 
+                                        className="w-full flex items-center justify-center gap-2"
+                                        onClick={() => {
+                                            if (onOpenLinks) {
+                                                onClose();
+                                                onOpenLinks();
+                                            }
+                                        }}
+                                    >
+                                        <Copy size={16} /> Central de Links de Acesso
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'THEME' && (
+                        <div className="space-y-6">
+                            <div className="grid grid-cols-2 gap-6">
+                                <div className="space-y-4">
+                                    <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                                        <ImageIcon size={14} /> Imagens de Fundo
+                                    </h4>
+                                    <div>
+                                        <label className="text-[10px] font-bold text-gray-500 uppercase">Seletor de Módulos (URL)</label>
+                                        <input 
+                                            className="w-full border p-2 rounded text-sm" 
+                                            placeholder="https://..."
+                                            value={editForm.theme?.moduleSelectorBgUrl || ''} 
+                                            onChange={e => setEditForm({...editForm, theme: {...(editForm.theme || {}), moduleSelectorBgUrl: e.target.value} as any})} 
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] font-bold text-gray-500 uppercase">Página de Login (URL)</label>
+                                        <input 
+                                            className="w-full border p-2 rounded text-sm" 
+                                            placeholder="https://..."
+                                            value={editForm.theme?.loginBgUrl || ''} 
+                                            onChange={e => setEditForm({...editForm, theme: {...(editForm.theme || {}), loginBgUrl: e.target.value} as any})} 
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] font-bold text-gray-500 uppercase">Cor do Box de Login</label>
+                                        <div className="flex gap-2">
+                                            <input 
+                                                type="color"
+                                                className="h-9 w-12 border rounded cursor-pointer" 
+                                                value={editForm.theme?.loginBoxColor || '#ffffff'} 
+                                                onChange={e => setEditForm({...editForm, theme: {...(editForm.theme || {}), loginBoxColor: e.target.value} as any})} 
+                                            />
+                                            <input 
+                                                className="flex-1 border p-2 rounded text-sm" 
+                                                value={editForm.theme?.loginBoxColor || '#ffffff'} 
+                                                onChange={e => setEditForm({...editForm, theme: {...(editForm.theme || {}), loginBoxColor: e.target.value} as any})} 
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-4">
+                                    <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                                        <Box size={14} /> Ícones dos Módulos (URL)
+                                    </h4>
+                                    <div className="max-h-[300px] overflow-y-auto pr-2 space-y-3">
+                                        {Object.entries(PERMISSIONS_SCHEMA).map(([key, data]) => (
+                                            <div key={key}>
+                                                <label className="text-[10px] font-bold text-gray-500 uppercase">{data.label}</label>
+                                                <input 
+                                                    className="w-full border p-2 rounded text-xs" 
+                                                    placeholder="URL do ícone..."
+                                                    value={editForm.theme?.moduleIcons?.[key] || ''} 
+                                                    onChange={e => {
+                                                        const icons = { ...(editForm.theme?.moduleIcons || {}) };
+                                                        icons[key] = e.target.value;
+                                                        setEditForm({...editForm, theme: {...(editForm.theme || {}), moduleIcons: icons} as any});
+                                                    }} 
+                                                />
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
         </Modal>

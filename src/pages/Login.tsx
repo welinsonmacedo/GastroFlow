@@ -140,8 +140,18 @@ export const Login: React.FC = () => {
   if (authState.isLoading) return <div>Carregando...</div>;
 
   return (
-    <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md">
+    <div 
+        className="min-h-screen bg-slate-900 flex items-center justify-center p-4"
+        style={restState.theme.loginBgUrl ? {
+            backgroundImage: `url(${restState.theme.loginBgUrl})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center'
+        } : {}}
+    >
+      <div 
+        className="rounded-2xl shadow-xl p-8 w-full max-w-md backdrop-blur-sm"
+        style={{ backgroundColor: restState.theme.loginBoxColor || '#ffffff' }}
+      >
         <div className="flex flex-col items-center mb-6">
             <h1 className="text-2xl font-bold text-gray-800">{restState.theme.restaurantName}</h1>
             <p className="text-gray-500 text-sm">{isRegistering ? 'Criar Senha' : 'Acesso Staff'}</p>
