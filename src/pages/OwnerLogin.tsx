@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase';
 import { useNavigate } from 'react-router-dom';
 import { ChefHat, Loader2, Mail, Lock, AlertCircle } from 'lucide-react';
 import { Button } from '../components/Button';
+import { logSecurityIncident } from '../utils/security';
 
 export const OwnerLogin: React.FC = () => {
     const navigate = useNavigate();
@@ -27,6 +28,11 @@ export const OwnerLogin: React.FC = () => {
             });
 
             if (authError) {
+                logSecurityIncident({
+                    type: 'FAILED_LOGIN',
+                    severity: 'MEDIUM',
+                    details: `Falha de login para o e-mail: ${emailTrimmed}. Motivo: ${authError.message}`
+                });
                 if (authError.message.includes("Email not confirmed")) {
                     throw new Error("E-mail não confirmado. Verifique sua caixa de entrada antes de acessar.");
                 } else if (authError.message.includes("Invalid login credentials")) {

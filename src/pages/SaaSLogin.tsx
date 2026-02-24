@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { useSaaS } from '../context/SaaSContext';
 import { Activity, Lock, AlertCircle, Wifi, WifiOff, Loader2 } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { logSecurityIncident } from '../utils/security';
 
 export const SaaSLogin: React.FC = () => {
   const navigate = useNavigate();
@@ -129,6 +130,11 @@ export const SaaSLogin: React.FC = () => {
             navigate('/dashboard');
         } else {
             // Se falhou no Auth e na Tabela
+            logSecurityIncident({
+                type: 'FAILED_LOGIN_SAAS',
+                severity: 'CRITICAL',
+                details: `Falha de login no painel SaaS para o e-mail: ${email}`
+            });
             setError('Credenciais inválidas ou usuário não encontrado.');
         }
     } catch (err) {

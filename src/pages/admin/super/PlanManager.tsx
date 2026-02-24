@@ -9,6 +9,7 @@ import {
     Truck, HelpCircle, FileText, ClipboardList, BarChart3, Shield, UserPlus, 
     History, Monitor, ListChecks, Settings2
 } from 'lucide-react';
+import { logSecurityIncident } from '../../../utils/security';
 
 const MODULES_CONFIG = [
     {
@@ -166,6 +167,11 @@ export const PlanManager: React.FC = () => {
     const handleDeletePlan = (planId: string) => {
         if (window.confirm('Tem certeza que deseja excluir este plano?')) {
             dispatch({ type: 'DELETE_PLAN', planId });
+            logSecurityIncident({
+                type: 'PLAN_DELETED',
+                severity: 'CRITICAL',
+                details: `Plano excluído: ${planId}`
+            });
         }
     };
 
@@ -212,8 +218,18 @@ export const PlanManager: React.FC = () => {
 
         if (editingPlan.id) {
             dispatch({ type: 'UPDATE_PLAN_DETAILS', plan: planToSave });
+            logSecurityIncident({
+                type: 'PLAN_UPDATED',
+                severity: 'MEDIUM',
+                details: `Plano atualizado: ${planToSave.name} (${planToSave.key})`
+            });
         } else {
             dispatch({ type: 'CREATE_PLAN', plan: planToSave });
+            logSecurityIncident({
+                type: 'PLAN_CREATED',
+                severity: 'MEDIUM',
+                details: `Novo plano criado: ${planToSave.name} (${planToSave.key})`
+            });
         }
         setIsModalOpen(false);
     };

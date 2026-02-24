@@ -12,6 +12,7 @@ import { useNavigate } from 'react-router-dom';
 import { PlanManager } from './admin/super/PlanManager';
 import { AdminSecurity } from './admin/AdminSecurity';
 import { AdminTickets } from './admin/super/AdminTickets';
+import { logSecurityIncident } from '../utils/security';
 
 type ViewMode = 'RESTAURANTS' | 'FINANCIAL' | 'PLANS' | 'SETTINGS' | 'CONTRACTS' | 'SECURITY' | 'TICKETS';
 
@@ -78,6 +79,11 @@ export const SuperAdminDashboard: React.FC = () => {
   const handleUpdateProfile = (e: React.FormEvent) => {
       e.preventDefault();
       dispatch({ type: 'UPDATE_PROFILE', name: settingsForm.name, email: settingsForm.email });
+      logSecurityIncident({
+          type: 'SUPER_ADMIN_PROFILE_UPDATED',
+          severity: 'MEDIUM',
+          details: `Perfil do Super Admin atualizado: Nome=${settingsForm.name}, Email=${settingsForm.email}`
+      });
       showAlert({ title: "Sucesso", message: "Perfil atualizado com sucesso!", type: 'SUCCESS' });
   };
   
@@ -369,7 +375,14 @@ export const SuperAdminDashboard: React.FC = () => {
                                                 <td className="p-4"><span className="bg-blue-50 text-blue-700 px-2 py-1 rounded text-xs font-bold">{tenant.plan}</span></td>
                                                 <td className="p-4">
                                                     <button 
-                                                        onClick={() => dispatch({ type: 'TOGGLE_STATUS', tenantId: tenant.id })}
+                                                        onClick={() => {
+                                                            dispatch({ type: 'TOGGLE_STATUS', tenantId: tenant.id });
+                                                            logSecurityIncident({
+                                                                type: 'TENANT_STATUS_CHANGED',
+                                                                severity: 'CRITICAL',
+                                                                details: `Status do inquilino ${tenant.name} alterado pelo painel rápido.`
+                                                            });
+                                                        }}
                                                         className={`px-3 py-1 rounded-full text-xs font-bold transition-all flex items-center gap-2 ${tenant.status === 'ACTIVE' ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-red-100 text-red-700 hover:bg-red-200'}`}
                                                     >
                                                         <div className={`w-2 h-2 rounded-full ${tenant.status === 'ACTIVE' ? 'bg-green-500' : 'bg-red-500'}`}></div>

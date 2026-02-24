@@ -7,6 +7,7 @@ import { RestaurantTenant, PlanType } from '../../types';
 import { Check, Copy, Palette, Layout, Image as ImageIcon, Box, Upload, Link as LinkIcon, Loader2 } from 'lucide-react';
 import { PERMISSIONS_SCHEMA } from '../../constants';
 import { uploadImage } from '../../context/SaaSContext';
+import { logSecurityIncident } from '../../utils/security';
 
 export const ImageUploadField = ({ 
     label, 
@@ -205,6 +206,11 @@ export const SaaSTenantCreateModal: React.FC<{ isOpen: boolean, onClose: () => v
             return;
         }
         dispatch({ type: 'CREATE_TENANT', payload: form });
+        logSecurityIncident({
+            type: 'TENANT_CREATED',
+            severity: 'MEDIUM',
+            details: `Novo inquilino criado: ${form.name} (${form.slug}) com plano ${form.plan}`
+        });
         setForm({ name: '', slug: '', ownerName: '', email: '', plan: '' });
         onClose();
     };
@@ -267,7 +273,18 @@ export const SaaSEditTenantModal: React.FC<SaaSEditTenantModalProps & { onOpenLi
 
                 if (editForm.status && editForm.status !== tenant.status) {
                     await dispatch({ type: 'TOGGLE_STATUS', tenantId: tenant.id });
+                    logSecurityIncident({
+                        type: 'TENANT_STATUS_CHANGED',
+                        severity: 'CRITICAL',
+                        details: `Status do inquilino ${tenant.name} alterado para ${editForm.status}`
+                    });
                 }
+
+                logSecurityIncident({
+                    type: 'TENANT_UPDATED',
+                    severity: 'MEDIUM',
+                    details: `Inquilino atualizado: ${editForm.name} (${editForm.slug})`
+                });
 
                 onClose();
             } catch (error) {

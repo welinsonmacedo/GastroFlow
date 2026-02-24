@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase';
 import { SecurityIncident } from '../../types';
 import { ShieldAlert, ShieldCheck, Activity, Search, RefreshCcw, Lock } from 'lucide-react';
 import { Button } from '../../components/Button';
+import { logSecurityIncident } from '../../utils/security';
 
 export const AdminSecurity: React.FC = () => {
     const [incidents, setIncidents] = useState<SecurityIncident[]>([]);
@@ -65,6 +66,11 @@ export const AdminSecurity: React.FC = () => {
         } else {
             // Dispatch a custom event so SecurityGuard can update immediately
             window.dispatchEvent(new CustomEvent('securityConfigChanged', { detail: newConfig }));
+            logSecurityIncident({
+                type: 'SECURITY_CONFIG_CHANGED',
+                severity: 'MEDIUM',
+                details: `Configuração de segurança alterada: ${key} = ${newConfig[key]}`
+            });
         }
     };
 
