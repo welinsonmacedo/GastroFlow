@@ -5,7 +5,7 @@ import { useUI } from '../context/UIContext';
 import { RestaurantTenant } from '../types';
 import { Button } from '../components/Button';
 import { SaaSTenantCreateModal, SaaSEditTenantModal, SaaSTenantLinksModal, ImageUploadField } from '../components/modals/SaaSModals';
-import { Building2, DollarSign, Activity, Settings, Search, LogOut, Plus, List, Edit, FileText, Printer, ChevronDown, Edit3, RotateCcw, ShieldAlert, MessageCircle, Box, ImageIcon } from 'lucide-react';
+import { Building2, DollarSign, Activity, Settings, Search, LogOut, Plus, List, Edit, FileText, Printer, ChevronDown, Edit3, RotateCcw, ShieldAlert, MessageCircle, Box, ImageIcon, Link as LinkIcon } from 'lucide-react';
 import { PERMISSIONS_SCHEMA } from '../constants';
 // @ts-ignore
 import { useNavigate } from 'react-router-dom';
