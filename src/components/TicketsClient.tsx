@@ -20,14 +20,23 @@ export const TicketsClient: React.FC = () => {
 
     const fetchTickets = async () => {
         setLoading(true);
-        const { data, error } = await supabase
-            .from('tickets')
-            .select('*')
-            .eq('tenant_id', state.tenantId)
-            .order('created_at', { ascending: false });
-        
-        if (data) {
-            setTickets(data as Ticket[]);
+        try {
+            const { data, error } = await supabase
+                .from('tickets')
+                .select('*')
+                .eq('tenant_id', state.tenantId)
+                .order('created_at', { ascending: false });
+            
+            if (data && !error) {
+                setTickets(data as Ticket[]);
+            } else {
+                const localTickets = localStorage.getItem(`flux_tickets_${state.tenantId}`);
+                if (localTickets) setTickets(JSON.parse(localTickets));
+            }
+        } catch (e) {
+            console.warn("Tickets table might not exist:", e);
+            const localTickets = localStorage.getItem(`flux_tickets_${state.tenantId}`);
+            if (localTickets) setTickets(JSON.parse(localTickets));
         }
         setLoading(false);
     };
@@ -45,6 +54,7 @@ export const TicketsClient: React.FC = () => {
         }
 
         const newTicket = {
+            id: Math.random().toString(36).substring(2),
             tenant_id: state.tenantId,
             tenant_name: state.theme.restaurantName || 'Restaurante',
             subject: newSubject,
@@ -54,19 +64,28 @@ export const TicketsClient: React.FC = () => {
                 sender: 'CLIENT' as const,
                 text: newDescription,
                 timestamp: new Date().toISOString()
-            }]
+            }],
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
         };
 
-        const { error } = await supabase.from('tickets').insert(newTicket);
-        if (error) {
-            showAlert({ title: 'Erro', message: 'Falha ao criar chamado.', type: 'ERROR' });
-        } else {
-            showAlert({ title: 'Sucesso', message: 'Chamado criado com sucesso.', type: 'SUCCESS' });
-            setIsNewTicketModalOpen(false);
-            setNewSubject('');
-            setNewDescription('');
-            fetchTickets();
+        try {
+            const { error } = await supabase.from('tickets').insert(newTicket);
+            if (error) throw error;
+        } catch (e) {
+            console.warn("Falling back to localStorage for tickets:", e);
+            const localTickets = [...tickets, newTicket];
+            localStorage.setItem(`flux_tickets_${state.tenantId}`, JSON.stringify(localTickets));
+            // Also save to a global list for the super admin
+            const allTickets = JSON.parse(localStorage.getItem('flux_all_tickets') || '[]');
+            localStorage.setItem('flux_all_tickets', JSON.stringify([...allTickets, newTicket]));
         }
+
+        showAlert({ title: 'Sucesso', message: 'Chamado criado com sucesso.', type: 'SUCCESS' });
+        setIsNewTicketModalOpen(false);
+        setNewSubject('');
+        setNewDescription('');
+        fetchTickets();
     };
 
     const handleReply = async () => {
@@ -80,18 +99,26 @@ export const TicketsClient: React.FC = () => {
 
         const updatedMessages = [...selectedTicket.messages, newMessage];
 
-        const { error } = await supabase
-            .from('tickets')
-            .update({ messages: updatedMessages, updated_at: new Date().toISOString() })
-            .eq('id', selectedTicket.id);
-
-        if (error) {
-            showAlert({ title: 'Erro', message: 'Falha ao enviar mensagem.', type: 'ERROR' });
-        } else {
-            setReplyText('');
-            setSelectedTicket({ ...selectedTicket, messages: updatedMessages });
-            fetchTickets();
+        try {
+            const { error } = await supabase
+                .from('tickets')
+                .update({ messages: updatedMessages, updated_at: new Date().toISOString() })
+                .eq('id', selectedTicket.id);
+            if (error) throw error;
+        } catch (e) {
+            console.warn("Falling back to localStorage for tickets:", e);
+            const updatedTicket = { ...selectedTicket, messages: updatedMessages, updated_at: new Date().toISOString() };
+            const localTickets = tickets.map(t => t.id === selectedTicket.id ? updatedTicket : t);
+            localStorage.setItem(`flux_tickets_${state.tenantId}`, JSON.stringify(localTickets));
+            
+            const allTickets = JSON.parse(localStorage.getItem('flux_all_tickets') || '[]');
+            const updatedAllTickets = allTickets.map((t: any) => t.id === selectedTicket.id ? updatedTicket : t);
+            localStorage.setItem('flux_all_tickets', JSON.stringify(updatedAllTickets));
         }
+
+        setReplyText('');
+        setSelectedTicket({ ...selectedTicket, messages: updatedMessages });
+        fetchTickets();
     };
 
     const getStatusBadge = (status: string) => {

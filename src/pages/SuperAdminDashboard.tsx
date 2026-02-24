@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSaaS } from '../context/SaaSContext';
 import { useUI } from '../context/UIContext';
 import { RestaurantTenant } from '../types';
@@ -36,6 +36,12 @@ export const SuperAdminDashboard: React.FC = () => {
   const [settingsForm, setSettingsForm] = useState({ name: state.adminName || '', email: state.adminEmail || '', password: '' });
   const [globalThemeForm, setGlobalThemeForm] = useState(state.globalSettings);
   const [settingsTab, setSettingsTab] = useState<'PROFILE' | 'THEME'>('PROFILE');
+
+  useEffect(() => {
+    if (state.globalSettings && Object.keys(state.globalSettings).length > 0) {
+      setGlobalThemeForm(state.globalSettings);
+    }
+  }, [state.globalSettings]);
   
   // Plans Edit State
 
@@ -113,7 +119,6 @@ export const SuperAdminDashboard: React.FC = () => {
                                 {activeView === 'FINANCIAL' && 'Painel Financeiro'}
                                 {activeView === 'PLANS' && 'Gestão de Planos'}
                                 {activeView === 'SETTINGS' && 'Configurações do Sistema'}
-                                {activeView === 'TICKETS' && 'Gerenciamento de Chamados'}
                             </h1>
                             <p className="text-gray-500">Bem-vindo, {state.adminName}</p>
                         </div>

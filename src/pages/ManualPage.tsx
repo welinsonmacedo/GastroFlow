@@ -61,7 +61,7 @@ const FaqItem = ({ question, answer }: any) => (
   </div>
 );
 
-type ManualTab = 'WAITER' | 'KITCHEN' | 'CASHIER' | 'INVENTORY' | 'FINANCE' | 'ADMIN' | 'CLIENT' | 'SUPPORT';
+type ManualTab = 'WAITER' | 'KITCHEN' | 'CASHIER' | 'INVENTORY' | 'FINANCE' | 'ADMIN' | 'CLIENT' | 'SUPPORT' | 'TICKETS';
 
 export const ManualPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<ManualTab>('SUPPORT');
@@ -185,6 +185,14 @@ export const ManualPage: React.FC = () => {
             color="slate" 
             active={activeTab === 'SUPPORT'} 
             onClick={() => setActiveTab('SUPPORT')}
+          />
+
+          <RoleCard 
+            icon={<MessageCircle size={18} />} 
+            title="Chamados" 
+            color="indigo" 
+            active={activeTab === 'TICKETS'} 
+            onClick={() => setActiveTab('TICKETS')}
           />
         </div>
       </aside>

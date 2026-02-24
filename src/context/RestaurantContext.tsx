@@ -121,13 +121,29 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     if (tenant.status === 'INACTIVE') { localDispatch({ type: 'TENANT_INACTIVE' }); return; }
 
     // Fetch Global Settings
-    const { data: configData } = await supabase
-        .from('saas_config')
-        .select('global_settings')
-        .eq('id', 1)
-        .maybeSingle();
-    
-    const globalSettings = configData?.global_settings || {};
+    let globalSettings = {};
+    try {
+        const { data: configData, error: configError } = await supabase
+            .from('saas_config')
+            .select('global_settings')
+            .eq('id', 1)
+            .maybeSingle();
+        
+        if (configData?.global_settings && !configError) {
+            globalSettings = configData.global_settings;
+        } else {
+            const localSettings = localStorage.getItem('flux_saas_global_settings');
+            if (localSettings) {
+                globalSettings = JSON.parse(localSettings);
+            }
+        }
+    } catch (e) {
+        console.warn("saas_config table might not exist yet:", e);
+        const localSettings = localStorage.getItem('flux_saas_global_settings');
+        if (localSettings) {
+            globalSettings = JSON.parse(localSettings);
+        }
+    }
 
     // Busca os limites do plano
     let fetchedLimits = initialState.planLimits;

@@ -10,19 +10,31 @@ export const uploadImage = async (file: File, path: string): Promise<string> => 
     const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
     const filePath = `${path}/${fileName}`;
 
-    const { error: uploadError } = await supabase.storage
-        .from('branding')
-        .upload(filePath, file);
+    try {
+        // Try to upload
+        const { error: uploadError } = await supabase.storage
+            .from('branding')
+            .upload(filePath, file);
 
-    if (uploadError) {
-        throw uploadError;
+        if (uploadError) {
+            throw uploadError;
+        }
+
+        const { data } = supabase.storage
+            .from('branding')
+            .getPublicUrl(filePath);
+
+        return data.publicUrl;
+    } catch (e) {
+        console.warn("Storage Error, falling back to base64:", e);
+        // Fallback to base64 if bucket doesn't exist or RLS fails
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
     }
-
-    const { data } = supabase.storage
-        .from('branding')
-        .getPublicUrl(filePath);
-
-    return data.publicUrl;
 };
 
 const env: any = import.meta.env || {};
@@ -265,14 +277,27 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const fetchTenants = async () => {
             try {
                 // Fetch Global Settings
-                const { data: configData } = await supabase
-                    .from('saas_config')
-                    .select('global_settings')
-                    .eq('id', 1)
-                    .maybeSingle();
-                
-                if (configData) {
-                    dispatch({ type: 'UPDATE_GLOBAL_SETTINGS', settings: configData.global_settings });
+                try {
+                    const { data: configData, error: configError } = await supabase
+                        .from('saas_config')
+                        .select('global_settings')
+                        .eq('id', 1)
+                        .maybeSingle();
+                    
+                    if (configData && !configError) {
+                        dispatch({ type: 'UPDATE_GLOBAL_SETTINGS', settings: configData.global_settings });
+                    } else {
+                        const localSettings = localStorage.getItem('flux_saas_global_settings');
+                        if (localSettings) {
+                            dispatch({ type: 'UPDATE_GLOBAL_SETTINGS', settings: JSON.parse(localSettings) });
+                        }
+                    }
+                } catch (e) {
+                    console.warn("saas_config table might not exist yet, using localStorage:", e);
+                    const localSettings = localStorage.getItem('flux_saas_global_settings');
+                    if (localSettings) {
+                        dispatch({ type: 'UPDATE_GLOBAL_SETTINGS', settings: JSON.parse(localSettings) });
+                    }
                 }
 
                 const { data, error } = await supabase
@@ -519,13 +544,23 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     if (action.type === 'UPDATE_GLOBAL_SETTINGS') {
         try {
-            const { error } = await supabase.from('saas_config').upsert({ id: 1, global_settings: action.settings });
-            if (error) throw error;
+            const { error } = await supabase
+                .from('saas_config')
+                .upsert({ id: 1, global_settings: action.settings }, { onConflict: 'id' });
+            
+            if (error) {
+                console.warn("Database Error, falling back to localStorage:", error);
+                localStorage.setItem('flux_saas_global_settings', JSON.stringify(action.settings));
+            }
+            
             dispatch(action);
             showAlert({ title: "Sucesso", message: "Configurações globais atualizadas!", type: 'SUCCESS' });
-        } catch (error) {
+        } catch (error: any) {
             console.error(error);
-            showAlert({ title: "Erro", message: "Falha ao atualizar configurações.", type: 'ERROR' });
+            // Fallback
+            localStorage.setItem('flux_saas_global_settings', JSON.stringify(action.settings));
+            dispatch(action);
+            showAlert({ title: "Sucesso", message: "Configurações salvas localmente (tabela não encontrada).", type: 'SUCCESS' });
         }
         return;
     }

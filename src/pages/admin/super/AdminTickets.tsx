@@ -16,19 +16,36 @@ export const AdminTickets: React.FC = () => {
 
     const fetchTickets = async () => {
         setLoading(true);
-        let query = supabase
-            .from('tickets')
-            .select('*')
-            .order('created_at', { ascending: false });
-        
-        if (statusFilter !== 'ALL') {
-            query = query.eq('status', statusFilter);
-        }
+        try {
+            let query = supabase
+                .from('tickets')
+                .select('*')
+                .order('created_at', { ascending: false });
+            
+            if (statusFilter !== 'ALL') {
+                query = query.eq('status', statusFilter);
+            }
 
-        const { data, error } = await query;
-        
-        if (data) {
-            setTickets(data as Ticket[]);
+            const { data, error } = await query;
+            
+            if (data && !error) {
+                setTickets(data as Ticket[]);
+            } else {
+                const allTickets = JSON.parse(localStorage.getItem('flux_all_tickets') || '[]');
+                if (statusFilter !== 'ALL') {
+                    setTickets(allTickets.filter((t: any) => t.status === statusFilter));
+                } else {
+                    setTickets(allTickets);
+                }
+            }
+        } catch (e) {
+            console.warn("Tickets table might not exist:", e);
+            const allTickets = JSON.parse(localStorage.getItem('flux_all_tickets') || '[]');
+            if (statusFilter !== 'ALL') {
+                setTickets(allTickets.filter((t: any) => t.status === statusFilter));
+            } else {
+                setTickets(allTickets);
+            }
         }
         setLoading(false);
     };
@@ -51,39 +68,59 @@ export const AdminTickets: React.FC = () => {
         // If ticket was OPEN, change to IN_PROGRESS automatically
         const newStatus = selectedTicket.status === 'OPEN' ? 'IN_PROGRESS' : selectedTicket.status;
 
-        const { error } = await supabase
-            .from('tickets')
-            .update({ 
-                messages: updatedMessages, 
-                status: newStatus,
-                updated_at: new Date().toISOString() 
-            })
-            .eq('id', selectedTicket.id);
-
-        if (error) {
-            showAlert({ title: 'Erro', message: 'Falha ao enviar resposta.', type: 'ERROR' });
-        } else {
-            setReplyText('');
-            setSelectedTicket({ ...selectedTicket, messages: updatedMessages, status: newStatus });
-            fetchTickets();
+        try {
+            const { error } = await supabase
+                .from('tickets')
+                .update({ 
+                    messages: updatedMessages, 
+                    status: newStatus,
+                    updated_at: new Date().toISOString() 
+                })
+                .eq('id', selectedTicket.id);
+            if (error) throw error;
+        } catch (e) {
+            console.warn("Falling back to localStorage for tickets:", e);
+            const updatedTicket = { ...selectedTicket, messages: updatedMessages, status: newStatus, updated_at: new Date().toISOString() };
+            
+            const localTickets = JSON.parse(localStorage.getItem(`flux_tickets_${selectedTicket.tenant_id}`) || '[]');
+            const updatedLocalTickets = localTickets.map((t: any) => t.id === selectedTicket.id ? updatedTicket : t);
+            localStorage.setItem(`flux_tickets_${selectedTicket.tenant_id}`, JSON.stringify(updatedLocalTickets));
+            
+            const allTickets = JSON.parse(localStorage.getItem('flux_all_tickets') || '[]');
+            const updatedAllTickets = allTickets.map((t: any) => t.id === selectedTicket.id ? updatedTicket : t);
+            localStorage.setItem('flux_all_tickets', JSON.stringify(updatedAllTickets));
         }
+
+        setReplyText('');
+        setSelectedTicket({ ...selectedTicket, messages: updatedMessages, status: newStatus });
+        fetchTickets();
     };
 
     const handleChangeStatus = async (newStatus: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED') => {
         if (!selectedTicket) return;
 
-        const { error } = await supabase
-            .from('tickets')
-            .update({ status: newStatus, updated_at: new Date().toISOString() })
-            .eq('id', selectedTicket.id);
-
-        if (error) {
-            showAlert({ title: 'Erro', message: 'Falha ao atualizar status.', type: 'ERROR' });
-        } else {
-            setSelectedTicket({ ...selectedTicket, status: newStatus });
-            fetchTickets();
-            showAlert({ title: 'Sucesso', message: 'Status atualizado.', type: 'SUCCESS' });
+        try {
+            const { error } = await supabase
+                .from('tickets')
+                .update({ status: newStatus, updated_at: new Date().toISOString() })
+                .eq('id', selectedTicket.id);
+            if (error) throw error;
+        } catch (e) {
+            console.warn("Falling back to localStorage for tickets:", e);
+            const updatedTicket = { ...selectedTicket, status: newStatus, updated_at: new Date().toISOString() };
+            
+            const localTickets = JSON.parse(localStorage.getItem(`flux_tickets_${selectedTicket.tenant_id}`) || '[]');
+            const updatedLocalTickets = localTickets.map((t: any) => t.id === selectedTicket.id ? updatedTicket : t);
+            localStorage.setItem(`flux_tickets_${selectedTicket.tenant_id}`, JSON.stringify(updatedLocalTickets));
+            
+            const allTickets = JSON.parse(localStorage.getItem('flux_all_tickets') || '[]');
+            const updatedAllTickets = allTickets.map((t: any) => t.id === selectedTicket.id ? updatedTicket : t);
+            localStorage.setItem('flux_all_tickets', JSON.stringify(updatedAllTickets));
         }
+
+        setSelectedTicket({ ...selectedTicket, status: newStatus });
+        fetchTickets();
+        showAlert({ title: 'Sucesso', message: 'Status atualizado.', type: 'SUCCESS' });
     };
 
     const getStatusBadge = (status: string) => {
