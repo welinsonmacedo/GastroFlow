@@ -157,7 +157,7 @@ export const Login: React.FC = () => {
       >
         <div className="flex flex-col items-center mb-6">
             <h1 className="text-2xl font-bold text-gray-800">{restState.theme.restaurantName}</h1>
-            <p className="text-gray-500 text-sm">{isRegistering ? 'Criar Senha' : 'Acesso Staff'}</p>
+            <p className="text-gray-500 text-sm">{isRegistering ? 'Criar Senha' : ''}</p>
         </div>
         {successMessage && <div className="bg-green-100 text-green-700 p-3 rounded mb-4 text-sm">{successMessage}</div>}
         <form onSubmit={handleAuthAction} className="space-y-4">
@@ -166,19 +166,7 @@ export const Login: React.FC = () => {
             {isRegistering && <input type="password" className="w-full border p-3 rounded" placeholder="Confirmar Senha" value={confirmPassword} onChange={e=>setConfirmPassword(e.target.value)} required />}
             {error && <div className="text-red-500 text-sm">{error}</div>}
             <Button type="submit" disabled={loading} className="w-full py-3">{loading ? <Loader2 className="animate-spin mx-auto"/> : 'Entrar'}</Button>
-            <div className="text-center pt-4 border-t">
-                {!isRegistering && (
-                    <div className="flex flex-col gap-3">
-                        <button type="button" onClick={() => setIsRegistering(true)} className="text-blue-600 text-sm hover:underline">Primeiro Acesso?</button>
-                        <Link to="/manual" className="text-slate-500 text-xs hover:text-slate-700 flex items-center justify-center gap-1 transition-colors">
-                            <BookOpen size={14} /> Manual do Sistema & Ajuda
-                        </Link>
-                    </div>
-                )}
-                {isRegistering && (
-                    <button type="button" onClick={() => setIsRegistering(false)} className="text-slate-500 text-sm hover:underline">Voltar para Login</button>
-                )}
-            </div>
+            
         </form>
       </div>
     </div>
