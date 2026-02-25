@@ -652,6 +652,7 @@ export interface PurchaseOrder {
     total_cost: number;
     status: string;
     supplierName?: string;
+    linkedExpenseId?: string;
 }
 
 export interface Ticket {

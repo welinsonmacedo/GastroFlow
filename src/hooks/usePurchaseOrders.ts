@@ -22,7 +22,8 @@ export const usePurchaseOrders = () => {
                 tenant_id: tenantId,
                 supplier_id: order.supplierId || null,
                 total_cost: order.totalCost,
-                status: 'PENDING'
+                status: order.status || 'PENDING',
+                linked_expense_id: order.linkedExpenseId || null
             })
             .select('id')
             .single();
@@ -70,7 +71,8 @@ export const usePurchaseOrders = () => {
             .from('purchase_orders')
             .update({
                 total_cost: order.totalCost,
-                status: order.status
+                status: order.status,
+                linked_expense_id: order.linkedExpenseId || null
             })
             .eq('id', orderId);
         

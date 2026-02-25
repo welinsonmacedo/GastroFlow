@@ -30,6 +30,7 @@ export const AdminPurchaseOrders: React.FC = () => {
                     supplier_id, 
                     total_cost, 
                     status,
+                    linked_expense_id,
                     suppliers (name)
                 `)
                 .eq('tenant_id', restState.tenantId)
@@ -37,7 +38,11 @@ export const AdminPurchaseOrders: React.FC = () => {
 
             if (error) throw error;
 
-            const formattedOrders = data.map((o: any) => ({ ...o, supplierName: o.suppliers?.name || 'Desconhecido' }));
+            const formattedOrders = data.map((o: any) => ({ 
+                ...o, 
+                supplierName: o.suppliers?.name || 'Desconhecido',
+                linkedExpenseId: o.linked_expense_id 
+            }));
             setOrders(formattedOrders);
         } catch (err) {
             console.error('Error fetching purchase orders:', err);
@@ -145,15 +150,34 @@ export const AdminPurchaseOrders: React.FC = () => {
                     <div class="total">
                         Total: R$ ${order.total_cost.toFixed(2)}
                     </div>
-                    <script>window.print();</script>
                 </body>
                 </html>
             `;
             
-            const printWindow = window.open('', '_blank');
-            if (printWindow) {
-                printWindow.document.write(printContent);
-                printWindow.document.close();
+            const iframe = document.createElement('iframe');
+            iframe.style.position = 'fixed';
+            iframe.style.right = '0';
+            iframe.style.bottom = '0';
+            iframe.style.width = '0';
+            iframe.style.height = '0';
+            iframe.style.border = '0';
+            document.body.appendChild(iframe);
+
+            const doc = iframe.contentWindow?.document;
+            if (doc) {
+                doc.open();
+                doc.write(printContent);
+                doc.close();
+                
+                setTimeout(() => {
+                    iframe.contentWindow?.focus();
+                    iframe.contentWindow?.print();
+                    setTimeout(() => {
+                        if (document.body.contains(iframe)) {
+                            document.body.removeChild(iframe);
+                        }
+                    }, 1000);
+                }, 500);
             }
         } catch (error) {
             console.error('Erro ao preparar impressão:', error);
@@ -265,10 +289,14 @@ export const AdminPurchaseOrders: React.FC = () => {
                                     <td className="p-3">
                                         <span className={`px-2 py-1 rounded-full text-xs font-bold ${
                                             order.status === 'PENDING' ? 'bg-yellow-100 text-yellow-700' :
-                                            order.status === 'COMPLETED' ? 'bg-green-100 text-green-700' :
+                                            order.status === 'PLACED' ? 'bg-blue-100 text-blue-700' :
+                                            order.status === 'DELIVERED' ? 'bg-green-100 text-green-700' :
                                             'bg-gray-100 text-gray-700'
                                         }`}>
-                                            {order.status === 'PENDING' ? 'Pendente' : order.status}
+                                            {order.status === 'PENDING' ? 'Pendente' : 
+                                             order.status === 'PLACED' ? 'Realizado' : 
+                                             order.status === 'DELIVERED' ? 'Entregue' : 
+                                             order.status}
                                         </span>
                                     </td>
                                     <td className="p-3 text-right">
