@@ -8,7 +8,7 @@ import { useUI } from '../context/UIContext';
 import { TableStatus, Product, OrderStatus, ProductType } from '../types';
 import { Button } from '../components/Button';
 import { WaiterProductModal, OpenTableModal, TableActionsModal } from '../components/modals/WaiterModals';
-import { Bell, Search, ShoppingCart, ArrowLeft, Utensils, Trash2, Clock, CheckCircle, ChevronUp, ChevronDown, Zap, RefreshCcw, Lock, List, Grid, History, AlertTriangle, PackageX, CheckCheck, Check, Plus, Minus, CreditCard, Banknote } from 'lucide-react';
+import { Bell, Search, ShoppingCart, ArrowLeft, Utensils, Trash2, Clock, CheckCircle, ChevronUp, ChevronDown, Zap, RefreshCcw, Lock, List, Grid, History, AlertTriangle, PackageX, CheckCheck, Check, Plus, Minus, CreditCard, Banknote, Volume2 } from 'lucide-react';
 import { Modal } from '../components/Modal';
 
 // Som de Notificação "Glass Ping" em Base64 (Carregamento Instantâneo)
@@ -51,8 +51,11 @@ export const WaiterApp: React.FC = () => {
 
 
 
-  const playSound = async () => {
-      if (!audioRef.current || !orderState.audioUnlocked) return;
+  const playSound = async (force: any = false) => {
+      // Se for evento (click), considera como force = true
+      const isForce = typeof force === 'object' || force === true;
+      
+      if (!audioRef.current || (!orderState.audioUnlocked && !isForce)) return;
       try {
           audioRef.current.currentTime = 0; 
           await audioRef.current.play();
@@ -60,6 +63,7 @@ export const WaiterApp: React.FC = () => {
           console.log("🔊 Som Garçom Tocado");
       } catch (e) {
           console.warn("Autoplay bloqueado. Interaja com a página.", e);
+          showAlert({ title: "Áudio Bloqueado", message: "Clique na página para ativar o som.", type: "WARNING" });
       }
   };
 
@@ -315,7 +319,13 @@ export const WaiterApp: React.FC = () => {
             
             {/* VIEW: TABLES (Mapa de Mesas) */}
             {activeTab === 'TABLES' && (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                <div className="space-y-4">
+                    <div className="flex justify-end px-2">
+                        <button onClick={playSound} className="text-[10px] font-bold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition-colors flex items-center gap-1">
+                            <Volume2 size={12} /> Testar Som
+                        </button>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
                     {orderState.tables.map(table => {
                         const call = pendingCalls.find(c => c.tableId === table.id);
                         const hasCall = !!call;
@@ -343,6 +353,7 @@ export const WaiterApp: React.FC = () => {
                             </div>
                         );
                     })}
+                    </div>
                 </div>
             )}
 

@@ -3,6 +3,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useRestaurant } from '../context/RestaurantContext';
 import { useMenu } from '../context/MenuContext';
 import { useOrder } from '../context/OrderContext';
+import { useUI } from '../context/UIContext';
 import { OrderStatus, ProductType, OrderItem } from '../types';
 import { Clock, ChefHat, CheckCircle, AlertTriangle, Volume2, Zap, Plus, Printer, RefreshCcw, Bike, ArrowRight } from 'lucide-react';
 import { printHtml, getReceiptStyles } from '../utils/printHelper';
@@ -14,6 +15,7 @@ export const KitchenDisplay: React.FC = () => {
   const { state: restState } = useRestaurant();
   const { state: menuState } = useMenu();
   const { state: orderState, dispatch: orderDispatch } = useOrder();
+  const { showAlert } = useUI();
   
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [, setTick] = useState(0);
@@ -62,10 +64,12 @@ export const KitchenDisplay: React.FC = () => {
 
 
 
-  const playSound = async () => {
-      if (!audioRef.current || !orderState.audioUnlocked) return;
+  const playSound = async (force: any = false) => {
+      const isForce = typeof force === 'object' || force === true;
+      if (!audioRef.current || (!orderState.audioUnlocked && !isForce)) return;
+      
       const now = Date.now();
-      if (now - (lastSoundTime.current || 0) > 3000) {
+      if (isForce || now - (lastSoundTime.current || 0) > 3000) {
           try {
               audioRef.current.currentTime = 0; 
               await audioRef.current.play();
@@ -74,6 +78,7 @@ export const KitchenDisplay: React.FC = () => {
               lastSoundTime.current = now;
           } catch (e) {
               console.warn("Autoplay bloqueado. Interaja com a página.", e);
+              showAlert({ title: "Áudio Bloqueado", message: "Clique na página para ativar o som.", type: "WARNING" });
           }
       }
   };
@@ -163,8 +168,9 @@ export const KitchenDisplay: React.FC = () => {
              <p className="text-xs text-slate-500">Fluxo de pedidos em tempo real</p>
          </div>
         <div className="flex items-center gap-3">
-            <button onClick={handleManualRefresh} className={`p-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all ${isRefreshing ? 'animate-spin' : ''}`}><RefreshCcw size={18} className="text-emerald-400" /></button>
-            <div className="text-sm font-black font-mono text-white bg-white/10 px-3 py-1.5 rounded-xl border border-white/5">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+             <button onClick={playSound} className="p-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all text-emerald-400" title="Testar Som"><Volume2 size={18} /></button>
+             <button onClick={handleManualRefresh} className={`p-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all ${isRefreshing ? 'animate-spin' : ''}`}><RefreshCcw size={18} className="text-emerald-400" /></button>
+             <div className="text-sm font-black font-mono text-white bg-white/10 px-3 py-1.5 rounded-xl border border-white/5">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
         </div>
       </div>
 
