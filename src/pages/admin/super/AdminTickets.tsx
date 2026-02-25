@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../../lib/supabase';
 import { Ticket } from '../../../types';
-import { MessageCircle, Clock, CheckCircle, XCircle, Send, Search } from 'lucide-react';
+import { MessageCircle, Clock, CheckCircle, XCircle, Send, Search, Circle } from 'lucide-react';
 import { Button } from '../../../components/Button';
 import { useUI } from '../../../context/UIContext';
 
@@ -13,6 +13,7 @@ export const AdminTickets: React.FC = () => {
     const [replyText, setReplyText] = useState('');
     const [statusFilter, setStatusFilter] = useState<string>('ALL');
     const [searchTerm, setSearchTerm] = useState('');
+    const [onlineTenants, setOnlineTenants] = useState<string[]>([]);
 
     const fetchTickets = async () => {
         setLoading(true);
@@ -57,7 +58,30 @@ export const AdminTickets: React.FC = () => {
             .on('postgres_changes', { event: '*', schema: 'public', table: 'tickets' }, fetchTickets)
             .subscribe();
             
-        return () => { supabase.removeChannel(channel); };
+        const presenceChannel = supabase.channel('support_presence', {
+            config: {
+                presence: {
+                    key: 'SUPPORT',
+                },
+            },
+        });
+
+        presenceChannel
+            .on('presence', { event: 'sync' }, () => {
+                const presenceState = presenceChannel.presenceState();
+                const tenants = Object.keys(presenceState).filter(k => k !== 'SUPPORT');
+                setOnlineTenants(tenants);
+            })
+            .subscribe(async (status: string) => {
+                if (status === 'SUBSCRIBED') {
+                    await presenceChannel.track({ online_at: new Date().toISOString(), role: 'SUPPORT' });
+                }
+            });
+
+        return () => { 
+            supabase.removeChannel(channel); 
+            supabase.removeChannel(presenceChannel);
+        };
     }, [statusFilter]);
 
     const handleReply = async () => {
@@ -193,7 +217,10 @@ export const AdminTickets: React.FC = () => {
                                     className={`p-4 cursor-pointer hover:bg-slate-50 transition-colors ${selectedTicket?.id === ticket.id ? 'bg-indigo-50 border-l-4 border-indigo-500' : ''}`}
                                 >
                                     <div className="flex justify-between items-start mb-1">
-                                        <span className="text-xs font-bold text-slate-500">{ticket.tenant_name}</span>
+                                        <span className="text-xs font-bold text-slate-500 flex items-center gap-1">
+                                            {ticket.tenant_name}
+                                            <Circle size={6} className={onlineTenants.includes(ticket.tenant_id) ? "fill-green-500 text-green-500" : "fill-gray-300 text-gray-300"} />
+                                        </span>
                                         <span className="text-[10px] text-slate-400">{new Date(ticket.updated_at || ticket.created_at).toLocaleDateString()}</span>
                                     </div>
                                     <h4 className={`font-bold text-sm mb-1 truncate ${selectedTicket?.id === ticket.id ? 'text-indigo-900' : 'text-slate-800'}`}>{ticket.subject}</h4>
@@ -215,8 +242,15 @@ export const AdminTickets: React.FC = () => {
                                 <div className="flex justify-between items-start mb-4">
                                     <div>
                                         <h2 className="text-xl font-bold text-slate-800 mb-1">{selectedTicket.subject}</h2>
-                                        <p className="text-sm text-slate-500">
-                                            Cliente: <span className="font-bold text-slate-700">{selectedTicket.tenant_name}</span> • ID: {selectedTicket.id}
+                                        <p className="text-sm text-slate-500 flex items-center gap-2">
+                                            Cliente: <span className="font-bold text-slate-700">{selectedTicket.tenant_name}</span> 
+                                            <div className="flex items-center gap-1 bg-slate-100 px-2 py-0.5 rounded-md">
+                                                <Circle size={8} className={onlineTenants.includes(selectedTicket.tenant_id) ? "fill-green-500 text-green-500" : "fill-gray-400 text-gray-400"} />
+                                                <span className="text-[10px] font-bold text-slate-600 uppercase">
+                                                    {onlineTenants.includes(selectedTicket.tenant_id) ? 'Online' : 'Offline'}
+                                                </span>
+                                            </div>
+                                            • ID: {selectedTicket.id}
                                         </p>
                                     </div>
                                     <div className="flex gap-2">

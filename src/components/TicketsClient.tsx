@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useRestaurant } from '../context/RestaurantContext';
 import { Ticket } from '../types';
-import { Plus, MessageCircle, Clock, CheckCircle, XCircle, Send } from 'lucide-react';
+import { Plus, MessageCircle, Clock, CheckCircle, XCircle, Send, Circle } from 'lucide-react';
 import { Button } from './Button';
 import { Modal } from './Modal';
 import { useUI } from '../context/UIContext';
@@ -17,6 +17,7 @@ export const TicketsClient: React.FC = () => {
     const [newDescription, setNewDescription] = useState('');
     const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
     const [replyText, setReplyText] = useState('');
+    const [isSupportOnline, setIsSupportOnline] = useState(false);
 
     const fetchTickets = async () => {
         setLoading(true);
@@ -49,7 +50,30 @@ export const TicketsClient: React.FC = () => {
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'tickets', filter: `tenant_id=eq.${state.tenantId}` }, fetchTickets)
                 .subscribe();
                 
-            return () => { supabase.removeChannel(channel); };
+            const presenceChannel = supabase.channel('support_presence', {
+                config: {
+                    presence: {
+                        key: state.tenantId,
+                    },
+                },
+            });
+
+            presenceChannel
+                .on('presence', { event: 'sync' }, () => {
+                    const presenceState = presenceChannel.presenceState();
+                    const supportOnline = Object.keys(presenceState).includes('SUPPORT');
+                    setIsSupportOnline(supportOnline);
+                })
+                .subscribe(async (status: string) => {
+                    if (status === 'SUBSCRIBED') {
+                        await presenceChannel.track({ online_at: new Date().toISOString(), role: 'CLIENT' });
+                    }
+                });
+
+            return () => { 
+                supabase.removeChannel(channel); 
+                supabase.removeChannel(presenceChannel);
+            };
         }
     }, [state.tenantId]);
 
@@ -200,7 +224,15 @@ export const TicketsClient: React.FC = () => {
                                         <h3 className="text-lg font-bold text-slate-800">{selectedTicket.subject}</h3>
                                         {getStatusBadge(selectedTicket.status)}
                                     </div>
-                                    <p className="text-sm text-slate-500">Aberto em {new Date(selectedTicket.created_at).toLocaleString()}</p>
+                                    <div className="flex justify-between items-center">
+                                        <p className="text-sm text-slate-500">Aberto em {new Date(selectedTicket.created_at).toLocaleString()}</p>
+                                        <div className="flex items-center gap-1.5 bg-white px-2 py-1 rounded-md border border-gray-200 shadow-sm">
+                                            <Circle size={8} className={isSupportOnline ? "fill-green-500 text-green-500" : "fill-gray-400 text-gray-400"} />
+                                            <span className="text-[10px] font-bold text-slate-600 uppercase">
+                                                Suporte {isSupportOnline ? 'Online' : 'Offline'}
+                                            </span>
+                                        </div>
+                                    </div>
                                 </div>
                                 
                                 <div className="flex-1 p-5 overflow-y-auto space-y-4 custom-scrollbar bg-slate-50/50">
