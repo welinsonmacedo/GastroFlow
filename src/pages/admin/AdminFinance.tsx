@@ -140,18 +140,16 @@ export const AdminFinance: React.FC = () => {
   // --- Calculations (Overview Tab) ---
   const activeTransactions = finState.transactions.filter(t => t.status !== 'CANCELLED');
 
-  // 1. Receitas Digitais (Banco)
-  const pixSales = activeTransactions.filter(t => t.method === 'PIX').reduce((acc, t) => acc + t.amount, 0);
-  const cardSales = activeTransactions.filter(t => ['CREDIT', 'DEBIT', 'CARD'].includes(t.method)).reduce((acc, t) => acc + t.amount, 0);
-  const totalDigitalRevenue = pixSales + cardSales;
+  // 1. Receitas Totais (Todas as transações válidas)
+  const totalRevenue = activeTransactions.reduce((acc, t) => acc + t.amount, 0);
 
-  // 2. Despesas Pagas via Banco (Acumulado visível)
-  const bankExpenses = finState.expenses
-      .filter(e => e.isPaid && e.paymentMethod === 'BANK')
+  // 2. Despesas Totais Pagas
+  const totalExpensesPaid = finState.expenses
+      .filter(e => e.isPaid)
       .reduce((acc, e) => acc + e.amount, 0);
 
-  // 3. Saldo Banco (Estimado: Receita Digital - Despesas Banco)
-  const bankBalance = totalDigitalRevenue - bankExpenses;
+  // 3. Saldo Absoluto (Tudo que a empresa tem: Banco + Cofre)
+  const absoluteBalance = totalRevenue - totalExpensesPaid;
 
   // 4. Lógica de Caixa (Dinheiro Físico) - Sessão Atual
   const activeSessionInitial = finState.activeCashSession?.initialAmount || 0;
@@ -161,22 +159,27 @@ export const AdminFinance: React.FC = () => {
       .reduce((acc, t) => acc + t.amount, 0);
       
   const sessionBleeds = finState.cashMovements
-      .filter(m => m.type === 'BLEED')
+      .filter(m => m.type === 'BLEED' && finState.activeCashSession && m.sessionId === finState.activeCashSession.id)
       .reduce((acc, m) => acc + m.amount, 0);
   const sessionSupplies = finState.cashMovements
-      .filter(m => m.type === 'SUPPLY')
+      .filter(m => m.type === 'SUPPLY' && finState.activeCashSession && m.sessionId === finState.activeCashSession.id)
       .reduce((acc, m) => acc + m.amount, 0);
   
   // Despesas pagas em DINHEIRO (na sessão atual, assumindo que sai da gaveta)
-  const cashExpensesToday = finState.expenses
-      .filter(e => e.isPaid && e.paymentMethod === 'CASH' && new Date(e.paidDate!).toDateString() === new Date().toDateString())
+  const sessionCashExpenses = finState.expenses
+      .filter(e => e.isPaid && e.paymentMethod === 'CASH' && finState.activeCashSession && e.paidDate && new Date(e.paidDate) >= finState.activeCashSession.openedAt)
       .reduce((acc, e) => acc + e.amount, 0);
 
   // 5. Saldo Dinheiro (Gaveta Real)
-  const drawerBalance = activeSessionInitial + sessionCashSales + sessionSupplies - sessionBleeds - cashExpensesToday;
+  const drawerBalance = finState.activeCashSession 
+      ? (activeSessionInitial + sessionCashSales + sessionSupplies - sessionBleeds - sessionCashExpenses)
+      : 0;
 
-  // 6. Valor Atual Esperado (Soma dos Saldos)
-  const totalExpectedBalance = bankBalance + drawerBalance;
+  // 6. Saldo Financeiro (Banco/Cofre) = Saldo Absoluto - Dinheiro na Gaveta
+  const bankBalance = absoluteBalance - drawerBalance;
+
+  // 7. Valor Atual Esperado (Soma dos Saldos)
+  const totalExpectedBalance = absoluteBalance;
 
   // Extra: Despesas do Mês para contexto
   const currentMonthExpenses = finState.expenses
@@ -314,21 +317,21 @@ export const AdminFinance: React.FC = () => {
                             value={`R$ ${totalExpectedBalance.toFixed(2)}`} 
                             icon={DollarSign} 
                             color="text-emerald-600"
-                            subtext="Soma de Banco + Dinheiro"
+                            subtext="Soma de Cofre/Banco + Dinheiro"
                         />
                         <StatBox 
-                            title="Saldo Banco" 
+                            title="Saldo Financeiro" 
                             value={`R$ ${bankBalance.toFixed(2)}`} 
                             icon={Banknote} 
                             color="text-blue-600"
-                            subtext="Digital (Pix/Cartão) - Pagos"
+                            subtext="Cofre e Contas Bancárias"
                         />
                         <StatBox 
-                            title="Saldo Dinheiro" 
+                            title="Dinheiro em Caixa" 
                             value={`R$ ${drawerBalance.toFixed(2)}`} 
                             icon={Wallet} 
                             color="text-green-600"
-                            subtext={finState.activeCashSession ? "Gaveta do Caixa Aberto" : "Caixa Fechado"}
+                            subtext={finState.activeCashSession ? "Gaveta do Caixa Aberto" : "Caixa Fechado (R$ 0,00)"}
                         />
                         <StatBox 
                             title="Despesas do Mês" 
