@@ -8,13 +8,14 @@ import { DeliveryInfo, DeliveryMethodConfig, InventoryItem, OrderStatus } from '
 import { Button } from '../Button';
 import { Search, User, Trash2, Printer, CheckCircle, MapPin, Loader2 } from 'lucide-react';
 import { AddToCartModal } from '../modals/AddToCartModal';
+import { DispatchModal } from '../modals/DispatchModal';
 import { printHtml, getReceiptStyles } from '../../utils/printHelper';
 
 export const CashierDeliveryView: React.FC = () => {
     const { state: restState } = useRestaurant();
     const { state: invState } = useInventory();
     const { state: orderState, dispatch: orderDispatch } = useOrder();
-    const { showAlert, showConfirm } = useUI();
+    const { showAlert } = useUI();
 
     const [cart, setCart] = useState<{ item: InventoryItem; quantity: number; notes: string; extras: InventoryItem[] }[]>([]);
     const [form, setForm] = useState<DeliveryInfo>({ 
@@ -26,6 +27,10 @@ export const CashierDeliveryView: React.FC = () => {
     // Modal de Item
     const [itemModalOpen, setItemModalOpen] = useState(false);
     const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
+
+    // Modal de Despacho
+    const [dispatchModalOpen, setDispatchModalOpen] = useState(false);
+    const [selectedOrderToDispatch, setSelectedOrderToDispatch] = useState<any>(null);
 
     const activeDeliveryOrders = orderState.orders.filter(o => o.type === 'DELIVERY' && !o.isPaid && o.status !== 'CANCELLED');
     const deliveryMethods = restState.businessInfo?.deliverySettings?.filter(m => m.isActive) || [];
@@ -111,25 +116,29 @@ export const CashierDeliveryView: React.FC = () => {
         }
     };
 
-    const handleDispatch = async (orderId: string) => {
+    const handleDispatch = (orderId: string) => {
         const order = activeDeliveryOrders.find(o => o.id === orderId);
         if (!order) return;
-        const total = order.items.reduce((acc, i) => acc + (i.productPrice * i.quantity), 0) + (order.deliveryInfo?.deliveryFee || 0);
-        
-        showConfirm({
-            title: "Despachar e Finalizar?",
-            message: `Confirma entrega e pagamento? Total: R$ ${total.toFixed(2)}`,
-            onConfirm: async () => {
-                await orderDispatch({ 
-                    type: 'PROCESS_PAYMENT', 
-                    amount: total, 
-                    method: order.deliveryInfo?.paymentMethod || 'CASH', 
-                    orderId: order.id,
-                    cashierName: 'Delivery'
-                });
-                showAlert({ title: "Despachado", message: "Pedido finalizado.", type: 'SUCCESS' });
-            }
+        setSelectedOrderToDispatch(order);
+        setDispatchModalOpen(true);
+    };
+
+    const confirmDispatch = async (courierInfo: { id: string, name: string }) => {
+        if (!selectedOrderToDispatch) return;
+        const order = selectedOrderToDispatch;
+        const total = order.items.reduce((acc: number, i: any) => acc + (i.productPrice * i.quantity), 0) + (order.deliveryInfo?.deliveryFee || 0);
+
+        await orderDispatch({ 
+            type: 'PROCESS_PAYMENT', 
+            amount: total, 
+            method: order.deliveryInfo?.paymentMethod || 'CASH', 
+            orderId: order.id,
+            cashierName: 'Delivery',
+            courierInfo
         });
+        showAlert({ title: "Despachado", message: `Pedido despachado por ${courierInfo.name}!`, type: 'SUCCESS' });
+        setDispatchModalOpen(false);
+        setSelectedOrderToDispatch(null);
     };
 
     const handlePrint = () => {
@@ -171,6 +180,50 @@ export const CashierDeliveryView: React.FC = () => {
                 </div>
                 <div class="footer">
                     ${new Date().toLocaleString()}
+                </div>
+            </body>
+            </html>
+        `;
+        printHtml(html);
+    };
+
+    const handlePrintOrder = (order: any) => {
+        const total = order.items.reduce((acc: number, i: any) => acc + (i.productPrice * i.quantity), 0) + (order.deliveryInfo?.deliveryFee || 0);
+        
+        const html = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Cupom Delivery</title>
+                ${getReceiptStyles()}
+            </head>
+            <body>
+                <div class="header">
+                    <span class="title">${restState.theme.restaurantName}</span>
+                    <span class="subtitle">DELIVERY / BALCÃO</span>
+                    <span class="subtitle">Pedido #${order.id.slice(0,4)}</span>
+                </div>
+                <div style="margin-bottom: 15px; font-size: 13px;">
+                    <strong>Cliente:</strong> ${order.deliveryInfo?.customerName}<br/>
+                    <strong>Telefone:</strong> ${order.deliveryInfo?.phone || '-'}<br/>
+                    <strong>Endereço:</strong> ${order.deliveryInfo?.address || 'Retirada'}<br/>
+                    <strong>Método:</strong> ${order.deliveryInfo?.platform} (${order.deliveryInfo?.paymentMethod})
+                </div>
+                <div style="border-bottom: 1px dashed #000; margin-bottom: 10px;"></div>
+                ${order.items.map((i: any) => `
+                    <div class="item-row">
+                        <span>${i.quantity}x ${i.productName}</span>
+                        <span>${(i.productPrice * i.quantity).toFixed(2)}</span>
+                    </div>
+                    ${i.notes ? `<div class="note">${i.notes}</div>` : ''}
+                `).join('')}
+                <div class="total">
+                    <div style="font-size: 12px; font-weight: normal;">Taxa: ${(order.deliveryInfo?.deliveryFee || 0).toFixed(2)}</div>
+                    <div style="margin-top: 5px;">TOTAL: R$ ${total.toFixed(2)}</div>
+                    ${order.deliveryInfo?.changeFor ? `<div style="font-size: 12px;">Troco para: ${order.deliveryInfo.changeFor.toFixed(2)}</div>` : ''}
+                </div>
+                <div class="footer">
+                    ${new Date(order.timestamp).toLocaleString()}
                 </div>
             </body>
             </html>
@@ -284,7 +337,10 @@ export const CashierDeliveryView: React.FC = () => {
                                             <span>#{order.id.slice(0,4)}</span>
                                         </div>
                                     </div>
-                                    <div className="text-right"><div className="font-black text-slate-800 text-sm">R$ {total.toFixed(2)}</div></div>
+                                    <div className="text-right">
+                                        <div className="font-black text-slate-800 text-sm">R$ {total.toFixed(2)}</div>
+                                        <button onClick={() => handlePrintOrder(order)} className="text-gray-400 hover:text-blue-600 mt-1" title="Imprimir Cupom"><Printer size={14}/></button>
+                                    </div>
                                 </div>
                                 <div className="text-[10px] text-gray-500 mb-2 truncate flex items-center gap-1"><MapPin size={10}/> {order.deliveryInfo?.address || 'Retirada'}</div>
                                 {isReady ? (
@@ -304,6 +360,13 @@ export const CashierDeliveryView: React.FC = () => {
                 onClose={() => setItemModalOpen(false)} 
                 item={selectedItem} 
                 onConfirm={handleAddToCart} 
+            />
+
+            <DispatchModal 
+                isOpen={dispatchModalOpen}
+                onClose={() => setDispatchModalOpen(false)}
+                order={selectedOrderToDispatch}
+                onConfirm={confirmDispatch}
             />
         </div>
     );

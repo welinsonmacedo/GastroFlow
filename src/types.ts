@@ -226,6 +226,8 @@ export interface DeliveryInfo {
     changeFor?: number; 
     paymentMethod?: string; 
     paymentStatus?: 'PENDING' | 'PAID';
+    courierId?: string;
+    courierName?: string;
 }
 
 export interface PlanLimits {

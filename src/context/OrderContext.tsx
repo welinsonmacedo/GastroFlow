@@ -50,7 +50,7 @@ interface OrderContextType {
   dispatch: (action: any) => void;
   placeOrder: (params: PlaceOrderParams) => Promise<void>;
   processPosSale: (data: any) => Promise<void>;
-  processPayment: (tableId: string | undefined, amount: number, method: string, cashierName?: string, orderId?: string, specificOrderIds?: string[]) => Promise<void>;
+  processPayment: (tableId: string | undefined, amount: number, method: string, cashierName?: string, orderId?: string, specificOrderIds?: string[], courierInfo?: { id: string, name: string }) => Promise<void>;
   updateItemStatus: (orderId: string, itemId: string, status: OrderStatus) => Promise<void>;
   cancelOrder: (orderId: string) => Promise<void>; 
   addTable: () => Promise<void>;
@@ -218,7 +218,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       fetchData();
   };
 
-  const processPayment = async (tableId: string | undefined, amount: number, method: string, cashierName: string = 'Caixa', orderId?: string, specificOrderIds?: string[]) => {
+  const processPayment = async (tableId: string | undefined, amount: number, method: string, cashierName: string = 'Caixa', orderId?: string, specificOrderIds?: string[], courierInfo?: { id: string, name: string }) => {
       if(!tenantId) return;
       
       if (tableId) {
@@ -228,7 +228,20 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           }
           await query;
       } else if (orderId) {
-          await supabase.from('orders').update({ is_paid: true, status: 'DELIVERED' }).eq('id', orderId);
+          const updatePayload: any = { is_paid: true, status: 'DELIVERED' };
+          
+          if (courierInfo) {
+             const { data: currentOrder } = await supabase.from('orders').select('delivery_info').eq('id', orderId).single();
+             if (currentOrder && currentOrder.delivery_info) {
+                 updatePayload.delivery_info = {
+                     ...currentOrder.delivery_info,
+                     courierId: courierInfo.id,
+                     courierName: courierInfo.name
+                 };
+             }
+          }
+
+          await supabase.from('orders').update(updatePayload).eq('id', orderId);
           await supabase.from('order_items').update({ status: 'DELIVERED' }).eq('order_id', orderId);
       }
 
@@ -264,7 +277,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           case 'PLACE_ORDER': await placeOrder(action); break;
           case 'CANCEL_ORDER': await cancelOrder(action.orderId); break;
           case 'PROCESS_POS_SALE': await processPosSale(action.sale); break;
-          case 'PROCESS_PAYMENT': await processPayment(action.tableId, action.amount, action.method, action.cashierName, action.orderId, action.specificOrderIds); break;
+          case 'PROCESS_PAYMENT': await processPayment(action.tableId, action.amount, action.method, action.cashierName, action.orderId, action.specificOrderIds, action.courierInfo); break;
           case 'UPDATE_ITEM_STATUS': await updateItemStatus(action.orderId, action.itemId, action.status); break;
           case 'ADD_TABLE': await addTable(); break;
           case 'DELETE_TABLE': await supabase.from('restaurant_tables').delete().eq('id', action.tableId); fetchData(); break;
