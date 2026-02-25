@@ -9,13 +9,17 @@ interface PurchaseOrderViewProps {
         supplierName: string; 
         items: SuggestionItem[];
         supplierId?: string;
+        id?: string;
+        status?: string;
     };
     onBack: () => void;
     inventoryItems: InventoryItem[];
+    isEditing?: boolean;
+    orderId?: string;
 }
 
-export const PurchaseOrderView: React.FC<PurchaseOrderViewProps> = ({ order, onBack, inventoryItems }) => {
-    const { savePurchaseOrder } = usePurchaseOrders();
+export const PurchaseOrderView: React.FC<PurchaseOrderViewProps> = ({ order, onBack, inventoryItems, isEditing = false, orderId }) => {
+    const { savePurchaseOrder, updatePurchaseOrder } = usePurchaseOrders();
     const [items, setItems] = useState<SuggestionItem[]>(order.items);
     const [isAdding, setIsAdding] = useState(false);
     const [search, setSearch] = useState('');
@@ -37,12 +41,18 @@ export const PurchaseOrderView: React.FC<PurchaseOrderViewProps> = ({ order, onB
         const orderToSave = {
             ...order,
             items: validatedItems,
-            totalCost
+            totalCost,
+            status: order.status || 'PENDING'
         };
 
         try {
-            await savePurchaseOrder(orderToSave);
-            alert('Ordem de pedido salva com sucesso!');
+            if (isEditing && orderId) {
+                await updatePurchaseOrder(orderId, orderToSave);
+                alert('Ordem de pedido atualizada com sucesso!');
+            } else {
+                await savePurchaseOrder(orderToSave);
+                alert('Ordem de pedido criada com sucesso!');
+            }
             onBack();
         } catch (error: any) {
             console.error('Erro ao salvar ordem de pedido:', error);

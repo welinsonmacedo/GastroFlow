@@ -3,17 +3,20 @@ import { supabase } from '../../lib/supabase';
 import { useRestaurant } from '../../context/RestaurantContext';
 import { useInventory } from '../../context/InventoryContext';
 import { Button } from '../../components/Button';
-import { PlusCircle, ArrowLeft } from 'lucide-react';
+import { PlusCircle, ArrowLeft, Trash2, Edit, Printer } from 'lucide-react';
 import { PurchaseOrderView } from '../../components/admin/PurchaseOrderView';
 import { PurchaseOrder, SuggestionItem } from '../../types';
+import { usePurchaseOrders } from '../../hooks/usePurchaseOrders';
 
 export const AdminPurchaseOrders: React.FC = () => {
     const { state: restState } = useRestaurant();
     const { state: invState } = useInventory();
+    const { deletePurchaseOrder, fetchPurchaseOrderItems } = usePurchaseOrders();
     const [orders, setOrders] = useState<PurchaseOrder[]>([]);
     const [loading, setLoading] = useState(true);
-    const [view, setView] = useState<'LIST' | 'CREATE'>('LIST');
+    const [view, setView] = useState<'LIST' | 'CREATE' | 'EDIT'>('LIST');
     const [selectedSupplierId, setSelectedSupplierId] = useState<string | null>(null);
+    const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
 
     const fetchOrders = async () => {
         if (!restState.tenantId) return;
@@ -52,6 +55,7 @@ export const AdminPurchaseOrders: React.FC = () => {
     const handleNewOrder = () => {
         setView('CREATE');
         setSelectedSupplierId(null);
+        setSelectedOrder(null);
     };
 
     const handleSelectSupplier = (supplierId: string) => {
@@ -61,6 +65,100 @@ export const AdminPurchaseOrders: React.FC = () => {
     const handleBack = () => {
         setView('LIST');
         setSelectedSupplierId(null);
+        setSelectedOrder(null);
+    };
+
+    const handleDeleteOrder = async (orderId: string) => {
+        if (window.confirm('Tem certeza que deseja excluir esta ordem de pedido?')) {
+            try {
+                await deletePurchaseOrder(orderId);
+                fetchOrders();
+            } catch (error) {
+                console.error('Erro ao excluir ordem:', error);
+                alert('Erro ao excluir ordem de pedido.');
+            }
+        }
+    };
+
+    const handleEditOrder = async (order: PurchaseOrder) => {
+        try {
+            const items = await fetchPurchaseOrderItems(order.id);
+            const orderToEdit = {
+                ...order,
+                items: items,
+                supplierName: order.supplierName || 'Desconhecido'
+            };
+            setSelectedOrder(orderToEdit);
+            setView('EDIT');
+        } catch (error) {
+            console.error('Erro ao carregar itens da ordem:', error);
+            alert('Erro ao carregar detalhes da ordem.');
+        }
+    };
+
+    const handlePrintOrder = async (order: PurchaseOrder) => {
+        try {
+            const items = await fetchPurchaseOrderItems(order.id);
+            const printContent = `
+                <html>
+                <head>
+                    <title>Ordem de Pedido #${order.id.slice(0, 8)}</title>
+                    <style>
+                        body { font-family: sans-serif; padding: 20px; }
+                        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+                        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+                        th { background-color: #f2f2f2; }
+                        .header { margin-bottom: 20px; }
+                        .total { margin-top: 20px; font-weight: bold; text-align: right; }
+                    </style>
+                </head>
+                <body>
+                    <div class="header">
+                        <h2>Ordem de Pedido</h2>
+                        <p><strong>ID:</strong> ${order.id}</p>
+                        <p><strong>Data:</strong> ${new Date(order.created_at).toLocaleDateString()}</p>
+                        <p><strong>Fornecedor:</strong> ${order.supplierName}</p>
+                        <p><strong>Status:</strong> ${order.status}</p>
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Item</th>
+                                <th>Qtd.</th>
+                                <th>Unidade</th>
+                                <th>Custo Unit.</th>
+                                <th>Subtotal</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${items.map((item: any) => `
+                                <tr>
+                                    <td>${item.name}</td>
+                                    <td>${item.suggestedQty}</td>
+                                    <td>${item.unit}</td>
+                                    <td>R$ ${item.costPrice.toFixed(2)}</td>
+                                    <td>R$ ${(item.suggestedQty * item.costPrice).toFixed(2)}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                    <div class="total">
+                        Total: R$ ${order.total_cost.toFixed(2)}
+                    </div>
+                    <script>window.print();</script>
+                </body>
+                </html>
+            `;
+            
+            const printWindow = window.open('', '_blank');
+            if (printWindow) {
+                printWindow.document.write(printContent);
+                printWindow.document.close();
+            }
+        } catch (error) {
+            console.error('Erro ao preparar impressão:', error);
+            alert('Erro ao preparar impressão.');
+        }
     };
 
     if (view === 'CREATE') {
@@ -112,6 +210,20 @@ export const AdminPurchaseOrders: React.FC = () => {
         );
     }
 
+    if (view === 'EDIT' && selectedOrder) {
+        return (
+            <div className="p-4 h-full">
+                <PurchaseOrderView 
+                    order={selectedOrder} 
+                    onBack={handleBack} 
+                    inventoryItems={invState.inventory}
+                    isEditing={true}
+                    orderId={selectedOrder.id}
+                />
+            </div>
+        );
+    }
+
     if (loading) {
         return <div className="p-4">Carregando ordens de pedido...</div>;
     }
@@ -141,11 +253,12 @@ export const AdminPurchaseOrders: React.FC = () => {
                                 <th className="p-3">Fornecedor</th>
                                 <th className="p-3">Custo Total</th>
                                 <th className="p-3">Status</th>
+                                <th className="p-3 text-right">Ações</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
                             {orders.map(order => (
-                                <tr key={order.id} className="hover:bg-slate-50">
+                                <tr key={order.id} className="hover:bg-slate-50 group">
                                     <td className="p-3">{new Date(order.created_at).toLocaleDateString()}</td>
                                     <td className="p-3 font-medium">{order.supplierName}</td>
                                     <td className="p-3 font-mono">R$ {order.total_cost.toFixed(2)}</td>
@@ -157,6 +270,19 @@ export const AdminPurchaseOrders: React.FC = () => {
                                         }`}>
                                             {order.status === 'PENDING' ? 'Pendente' : order.status}
                                         </span>
+                                    </td>
+                                    <td className="p-3 text-right">
+                                        <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <Button size="sm" variant="ghost" onClick={() => handlePrintOrder(order)} title="Imprimir">
+                                                <Printer size={16} className="text-slate-500 hover:text-blue-600"/>
+                                            </Button>
+                                            <Button size="sm" variant="ghost" onClick={() => handleEditOrder(order)} title="Editar">
+                                                <Edit size={16} className="text-slate-500 hover:text-blue-600"/>
+                                            </Button>
+                                            <Button size="sm" variant="ghost" onClick={() => handleDeleteOrder(order.id)} title="Excluir">
+                                                <Trash2 size={16} className="text-slate-500 hover:text-red-600"/>
+                                            </Button>
+                                        </div>
                                     </td>
                                 </tr>
                             ))}
