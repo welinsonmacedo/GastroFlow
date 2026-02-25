@@ -24,6 +24,7 @@ export const WaiterApp: React.FC = () => {
   const [showHistory, setShowHistory] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastSoundTime, setLastSoundTime] = useState(0); 
+  const [audioBlocked, setAudioBlocked] = useState(false);
   const { showAlert } = useUI();
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -61,9 +62,11 @@ export const WaiterApp: React.FC = () => {
           await audioRef.current.play();
           if (navigator.vibrate) navigator.vibrate([300, 100, 300]);
           console.log("🔊 Som Garçom Tocado");
+          setAudioBlocked(false);
       } catch (e) {
           console.warn("Autoplay bloqueado. Interaja com a página.", e);
-          showAlert({ title: "Áudio Bloqueado", message: "Clique na página para ativar o som.", type: "WARNING" });
+          setAudioBlocked(true);
+          showAlert({ title: "Áudio Bloqueado", message: "Clique no botão 'ATIVAR SOM' para habilitar.", type: "WARNING" });
       }
   };
 
@@ -307,6 +310,11 @@ export const WaiterApp: React.FC = () => {
                 <p className="text-xs text-slate-500">Gestão de salão em tempo real</p>
              </div>
              <div className="flex items-center gap-2">
+                 {audioBlocked && (
+                     <button onClick={() => playSound(true)} className="bg-red-500 text-white px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest animate-pulse shadow-lg shadow-red-500/30 flex items-center gap-1">
+                         <Volume2 size={14} /> Ativar Som
+                     </button>
+                 )}
                  <button onClick={handleManualRefresh} className={`p-2 rounded-lg bg-gray-100 text-blue-600 hover:bg-blue-50 transition-colors ${isRefreshing ? 'animate-spin' : ''}`}><RefreshCcw size={18}/></button>
                  <div className="flex items-center gap-1.5 bg-emerald-100 px-3 py-1.5 rounded-lg text-emerald-700 text-[10px] font-black uppercase tracking-widest border border-emerald-200">
                     <span className="w-1.5 h-1.5 bg-emerald-600 rounded-full animate-pulse"></span> Online

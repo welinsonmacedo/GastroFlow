@@ -18,6 +18,7 @@ export const KitchenDisplay: React.FC = () => {
   const { showAlert } = useUI();
   
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [audioBlocked, setAudioBlocked] = useState(false);
   const [, setTick] = useState(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const prevPendingCount = useRef(0);
@@ -76,9 +77,11 @@ export const KitchenDisplay: React.FC = () => {
               if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
               console.log("🔊 Som Cozinha Tocado");
               lastSoundTime.current = now;
+              setAudioBlocked(false);
           } catch (e) {
               console.warn("Autoplay bloqueado. Interaja com a página.", e);
-              showAlert({ title: "Áudio Bloqueado", message: "Clique na página para ativar o som.", type: "WARNING" });
+              setAudioBlocked(true);
+              showAlert({ title: "Áudio Bloqueado", message: "Clique no botão 'ATIVAR SOM' para habilitar.", type: "WARNING" });
           }
       }
   };
@@ -168,7 +171,12 @@ export const KitchenDisplay: React.FC = () => {
              <p className="text-xs text-slate-500">Fluxo de pedidos em tempo real</p>
          </div>
         <div className="flex items-center gap-3">
-             <button onClick={playSound} className="p-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all text-emerald-400" title="Testar Som"><Volume2 size={18} /></button>
+             {audioBlocked && (
+                 <button onClick={() => playSound(true)} className="bg-red-500 text-white px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest animate-pulse shadow-lg shadow-red-500/30 flex items-center gap-1">
+                     <Volume2 size={14} /> Ativar Som
+                 </button>
+             )}
+             <button onClick={() => playSound(true)} className="p-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all text-emerald-400" title="Testar Som"><Volume2 size={18} /></button>
              <button onClick={handleManualRefresh} className={`p-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all ${isRefreshing ? 'animate-spin' : ''}`}><RefreshCcw size={18} className="text-emerald-400" /></button>
              <div className="text-sm font-black font-mono text-white bg-white/10 px-3 py-1.5 rounded-xl border border-white/5">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
         </div>
