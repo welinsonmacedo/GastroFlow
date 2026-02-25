@@ -36,7 +36,7 @@ export const CommercePOS: React.FC = () => {
     const { state: finState, refreshTransactions, openRegister } = useFinance();
     const { state: authState, logout } = useAuth();
     const { state: restState } = useRestaurant();
-    const { showAlert, showConfirm } = useUI();
+    const { showAlert, showConfirm, closeAlert } = useUI();
 
     const [cart, setCart] = useState<{ item: InventoryItem; quantity: number; notes: string; extras: InventoryItem[] }[]>([]);
     const [customerName, setCustomerName] = useState('');
@@ -77,6 +77,13 @@ export const CommercePOS: React.FC = () => {
             if (e.key === 'F2') { e.preventDefault(); if (cart.length > 0) setPaymentModalOpen(true); }
             if (e.key === 'F9') { e.preventDefault(); setCart([]); }
             if (e.key === 'Escape') { setShowSuggestions(false); }
+            
+            // Foca o input automaticamente se o usuário começar a digitar (ou usar leitor de código de barras)
+            if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey && document.activeElement !== inputRef.current) {
+                inputRef.current?.focus();
+                setSearchInput(prev => prev + e.key);
+                closeAlert();
+            }
         };
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
@@ -148,9 +155,14 @@ export const CommercePOS: React.FC = () => {
             addToCart(item, qty);
             setSearchInput('');
             setShowSuggestions(false);
+            closeAlert();
         } else {
             if (filteredSuggestions.length > 0) setShowSuggestions(true);
-            else { showAlert({ title: "Não encontrado", message: "Produto não localizado.", type: 'WARNING' }); setSearchInput(''); }
+            else { 
+                showAlert({ title: "Não encontrado", message: "Produto não localizado.", type: 'WARNING' }); 
+                setSearchInput(''); 
+                setTimeout(() => inputRef.current?.focus(), 10);
+            }
         }
     };
 
@@ -256,7 +268,10 @@ export const CommercePOS: React.FC = () => {
                                 className="w-full pl-12 pr-4 py-3 rounded-xl border-2 border-indigo-100 focus:border-indigo-500 outline-none font-mono text-lg font-bold uppercase tracking-widest placeholder-indigo-300"
                                 placeholder="Escanear ou Pesquisar..."
                                 value={searchInput}
-                                onChange={e => setSearchInput(e.target.value)}
+                                onChange={e => {
+                                    setSearchInput(e.target.value);
+                                    closeAlert(); // Fecha o modal de erro automaticamente ao começar a digitar/escanear novamente
+                                }}
                                 onFocus={() => setShowSuggestions(true)}
                                 autoFocus
                                 autoComplete="off"

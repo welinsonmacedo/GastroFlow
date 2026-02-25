@@ -21,6 +21,7 @@ interface ConfirmOptions {
 interface UIContextType {
   showAlert: (options: AlertOptions) => void;
   showConfirm: (options: ConfirmOptions) => void;
+  closeAlert: () => void;
 }
 
 const UIContext = createContext<UIContextType | undefined>(undefined);
@@ -81,7 +82,7 @@ export const UIProvider: React.FC<{ children: React.ReactNode }> = ({ children }
   }, [close]);
 
   return (
-    <UIContext.Provider value={{ showAlert, showConfirm }}>
+    <UIContext.Provider value={{ showAlert, showConfirm, closeAlert: close }}>
       {children}
       <GlobalModal
         isOpen={isOpen}
