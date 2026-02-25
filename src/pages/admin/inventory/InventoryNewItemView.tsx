@@ -109,9 +109,9 @@ export const InventoryNewItemView: React.FC = () => {
                               <div>
                                   <label className="block text-xs font-bold mb-1 text-slate-600">Tipo</label>
                                   <select className="w-full border p-2.5 rounded-xl bg-white focus:border-blue-500 outline-none text-sm" value={newItemForm.type} onChange={e => setNewItemForm({ ...newItemForm, type: e.target.value as any })}>
-                                      <option value="INGREDIENT">Matéria Prima</option>
+                                      {planLimits.allowRawMaterials && <option value="INGREDIENT">Matéria Prima</option>}
                                       <option value="RESALE">Revenda</option>
-                                      <option value="COMPOSITE">Produzido</option>
+                                      {planLimits.allowCompositeProducts && <option value="COMPOSITE">Produzido</option>}
                                   </select>
                               </div>
                               <div>
@@ -176,24 +176,26 @@ export const InventoryNewItemView: React.FC = () => {
                           </div>
 
                           {/* Checkbox Adicional */}
-                          <div className="p-3 bg-white rounded-xl border border-orange-100 mt-2">
-                               <label className="flex items-center gap-3 cursor-pointer">
-                                   <input type="checkbox" checked={newItemForm.isExtra} onChange={e => setNewItemForm({...newItemForm, isExtra: e.target.checked})} className="w-4 h-4 text-orange-600 rounded focus:ring-orange-500"/>
-                                   <span className="text-xs font-bold text-slate-700">Vender como Adicional?</span>
-                               </label>
-                               {newItemForm.isExtra && (
-                                   <div className="mt-2 pl-7">
-                                       <p className="text-[10px] font-bold text-orange-800 mb-1">Categorias permitidas:</p>
-                                       <div className="flex flex-wrap gap-1">
-                                           {defaultCategories.slice(0,5).map(cat => (
-                                               <button type="button" key={cat} onClick={() => toggleTargetCategory(cat)} className={`text-[9px] px-2 py-0.5 rounded border ${newItemForm.targetCategories?.includes(cat) ? 'bg-orange-500 text-white border-orange-600' : 'bg-white text-gray-500 border-gray-200'}`}>
-                                                   {cat}
-                                               </button>
-                                           ))}
+                          {planLimits.allowProductExtras && (
+                              <div className="p-3 bg-white rounded-xl border border-orange-100 mt-2">
+                                   <label className="flex items-center gap-3 cursor-pointer">
+                                       <input type="checkbox" checked={newItemForm.isExtra} onChange={e => setNewItemForm({...newItemForm, isExtra: e.target.checked})} className="w-4 h-4 text-orange-600 rounded focus:ring-orange-500"/>
+                                       <span className="text-xs font-bold text-slate-700">Vender como Adicional?</span>
+                                   </label>
+                                   {newItemForm.isExtra && (
+                                       <div className="mt-2 pl-7">
+                                           <p className="text-[10px] font-bold text-orange-800 mb-1">Categorias permitidas:</p>
+                                           <div className="flex flex-wrap gap-1">
+                                               {defaultCategories.slice(0,5).map(cat => (
+                                                   <button type="button" key={cat} onClick={() => toggleTargetCategory(cat)} className={`text-[9px] px-2 py-0.5 rounded border ${newItemForm.targetCategories?.includes(cat) ? 'bg-orange-500 text-white border-orange-600' : 'bg-white text-gray-500 border-gray-200'}`}>
+                                                       {cat}
+                                                   </button>
+                                               ))}
+                                           </div>
                                        </div>
-                                   </div>
-                               )}
-                          </div>
+                                   )}
+                              </div>
+                          )}
                       </div>
 
                       {/* Coluna 3: Composição ou Imagem */}
@@ -236,28 +238,30 @@ export const InventoryNewItemView: React.FC = () => {
                                                   )}
                                               </div>
                                               
-                                              <div className="mt-4">
-                                                  <div className="flex justify-between items-center mb-1">
-                                                      <label className="text-xs font-bold text-slate-500 uppercase flex items-center gap-1">
-                                                          <FileText size={14}/> Descrição do Cardápio
-                                                      </label>
-                                                      <button 
-                                                          type="button"
-                                                          onClick={handleGenerateDescription}
-                                                          disabled={loadingAI}
-                                                          className="text-[10px] bg-purple-100 text-purple-700 px-2 py-0.5 rounded font-bold flex items-center gap-1 hover:bg-purple-200 transition-colors disabled:opacity-50"
-                                                      >
-                                                          {loadingAI ? <Loader2 size={10} className="animate-spin"/> : <Sparkles size={10}/>}
-                                                          Gerar com IA
-                                                      </button>
+                                              {planLimits.allowProductDescription && (
+                                                  <div className="mt-4">
+                                                      <div className="flex justify-between items-center mb-1">
+                                                          <label className="text-xs font-bold text-slate-500 uppercase flex items-center gap-1">
+                                                              <FileText size={14}/> Descrição do Cardápio
+                                                          </label>
+                                                          <button 
+                                                              type="button"
+                                                              onClick={handleGenerateDescription}
+                                                              disabled={loadingAI}
+                                                              className="text-[10px] bg-purple-100 text-purple-700 px-2 py-0.5 rounded font-bold flex items-center gap-1 hover:bg-purple-200 transition-colors disabled:opacity-50"
+                                                          >
+                                                              {loadingAI ? <Loader2 size={10} className="animate-spin"/> : <Sparkles size={10}/>}
+                                                              Gerar com IA
+                                                          </button>
+                                                      </div>
+                                                      <textarea 
+                                                          className="w-full border-2 p-2 rounded-xl text-sm outline-none focus:border-blue-500 resize-none h-24"
+                                                          placeholder="Descreva o produto..."
+                                                          value={newItemForm.description || ''}
+                                                          onChange={e => setNewItemForm({...newItemForm, description: e.target.value})}
+                                                      />
                                                   </div>
-                                                  <textarea 
-                                                      className="w-full border-2 p-2 rounded-xl text-sm outline-none focus:border-blue-500 resize-none h-24"
-                                                      placeholder="Descreva o produto..."
-                                                      value={newItemForm.description || ''}
-                                                      onChange={e => setNewItemForm({...newItemForm, description: e.target.value})}
-                                                  />
-                                              </div>
+                                              )}
                                           </div>
                                      )}
                                      {newItemForm.type === 'INGREDIENT' && (
@@ -278,28 +282,30 @@ export const InventoryNewItemView: React.FC = () => {
                                           <ImageUploader value={newItemForm.image || ''} onChange={(val) => setNewItemForm({...newItemForm, image: val})} maxSizeKB={200} />
                                       </div>
                                   )}
-                                  <div>
-                                      <div className="flex justify-between items-center mb-1">
-                                          <label className="text-xs font-bold text-slate-500 uppercase flex items-center gap-1">
-                                              <FileText size={14}/> Descrição do Cardápio
-                                          </label>
-                                          <button 
-                                              type="button"
-                                              onClick={handleGenerateDescription}
-                                              disabled={loadingAI}
-                                              className="text-[10px] bg-purple-100 text-purple-700 px-2 py-0.5 rounded font-bold flex items-center gap-1 hover:bg-purple-200 transition-colors disabled:opacity-50"
-                                          >
-                                              {loadingAI ? <Loader2 size={10} className="animate-spin"/> : <Sparkles size={10}/>}
-                                              Gerar com IA
-                                          </button>
+                                  {planLimits.allowProductDescription && (
+                                      <div>
+                                          <div className="flex justify-between items-center mb-1">
+                                              <label className="text-xs font-bold text-slate-500 uppercase flex items-center gap-1">
+                                                  <FileText size={14}/> Descrição do Cardápio
+                                              </label>
+                                              <button 
+                                                  type="button"
+                                                  onClick={handleGenerateDescription}
+                                                  disabled={loadingAI}
+                                                  className="text-[10px] bg-purple-100 text-purple-700 px-2 py-0.5 rounded font-bold flex items-center gap-1 hover:bg-purple-200 transition-colors disabled:opacity-50"
+                                              >
+                                                  {loadingAI ? <Loader2 size={10} className="animate-spin"/> : <Sparkles size={10}/>}
+                                                  Gerar com IA
+                                              </button>
+                                          </div>
+                                          <textarea 
+                                              className="w-full border-2 p-2 rounded-xl text-sm outline-none focus:border-blue-500 resize-none h-24"
+                                              placeholder="Descreva o produto..."
+                                              value={newItemForm.description || ''}
+                                              onChange={e => setNewItemForm({...newItemForm, description: e.target.value})}
+                                          />
                                       </div>
-                                      <textarea 
-                                          className="w-full border-2 p-2 rounded-xl text-sm outline-none focus:border-blue-500 resize-none h-24"
-                                          placeholder="Descreva o produto..."
-                                          value={newItemForm.description || ''}
-                                          onChange={e => setNewItemForm({...newItemForm, description: e.target.value})}
-                                      />
-                                  </div>
+                                  )}
                               </div>
                           )}
                       </div>

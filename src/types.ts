@@ -243,6 +243,10 @@ export interface PlanLimits {
     allowCustomization?: boolean;
     allowHR?: boolean;
     allowProductImages?: boolean;
+    allowProductExtras?: boolean;
+    allowProductDescription?: boolean;
+    allowRawMaterials?: boolean;
+    allowCompositeProducts?: boolean;
     allowedModules?: SystemModule[];
     allowedFeatures?: string[];
 }

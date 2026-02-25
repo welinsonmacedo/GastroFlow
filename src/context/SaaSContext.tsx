@@ -257,6 +257,10 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
                      allowTableMgmt: p.limits?.allowTableMgmt ?? true,
                      allowCustomization: p.limits?.allowCustomization ?? true,
                      allowProductImages: p.limits?.allowProductImages ?? true,
+                     allowProductExtras: p.limits?.allowProductExtras ?? true,
+                     allowProductDescription: p.limits?.allowProductDescription ?? true,
+                     allowRawMaterials: p.limits?.allowRawMaterials ?? true,
+                     allowCompositeProducts: p.limits?.allowCompositeProducts ?? true,
                      allowedModules: p.limits?.allowedModules || p.allowed_modules || [],
                      allowedFeatures: p.limits?.allowedFeatures || p.allowed_features || []
                  },

@@ -150,6 +150,10 @@ export const PlanManager: React.FC = () => {
                 allowCustomization: true,
                 allowHR: false,
                 allowProductImages: true,
+                allowProductExtras: true,
+                allowProductDescription: true,
+                allowRawMaterials: true,
+                allowCompositeProducts: true,
                 allowedModules: [],
                 allowedFeatures: []
             },
@@ -313,6 +317,10 @@ export const PlanManager: React.FC = () => {
                                     <div><span className="font-bold">Produtos:</span> {plan.limits?.maxProducts === -1 ? 'Infinito' : plan.limits?.maxProducts}</div>
                                     <div><span className="font-bold">Usuários:</span> {plan.limits?.maxStaff === -1 ? 'Infinito' : plan.limits?.maxStaff}</div>
                                     <div><span className="font-bold">Imagens:</span> {plan.limits?.allowProductImages ? 'Sim' : 'Não'}</div>
+                                    <div><span className="font-bold">Adicionais:</span> {plan.limits?.allowProductExtras ? 'Sim' : 'Não'}</div>
+                                    <div><span className="font-bold">Descrição:</span> {plan.limits?.allowProductDescription ? 'Sim' : 'Não'}</div>
+                                    <div><span className="font-bold">Matéria Prima:</span> {plan.limits?.allowRawMaterials ? 'Sim' : 'Não'}</div>
+                                    <div><span className="font-bold">Compostos:</span> {plan.limits?.allowCompositeProducts ? 'Sim' : 'Não'}</div>
                                 </div>
                             </div>
                         </div>
@@ -393,7 +401,7 @@ export const PlanManager: React.FC = () => {
                                     onChange={e => setEditingPlan({...editingPlan, limits: { ...editingPlan.limits!, maxStaff: parseInt(e.target.value) }})}
                                 />
                             </div>
-                            <div className="flex items-center pt-6">
+                            <div className="col-span-1 md:col-span-4 grid grid-cols-2 md:grid-cols-3 gap-4 pt-4 border-t">
                                 <label className="flex items-center gap-2 cursor-pointer">
                                     <input 
                                         type="checkbox"
@@ -401,7 +409,43 @@ export const PlanManager: React.FC = () => {
                                         checked={editingPlan.limits?.allowProductImages ?? true}
                                         onChange={e => setEditingPlan({...editingPlan, limits: { ...editingPlan.limits!, allowProductImages: e.target.checked }})}
                                     />
-                                    <span className="text-sm font-medium text-gray-700">Permitir Imagens nos Produtos</span>
+                                    <span className="text-sm font-medium text-gray-700">Imagens</span>
+                                </label>
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                    <input 
+                                        type="checkbox"
+                                        className="w-5 h-5 rounded text-blue-600"
+                                        checked={editingPlan.limits?.allowProductExtras ?? true}
+                                        onChange={e => setEditingPlan({...editingPlan, limits: { ...editingPlan.limits!, allowProductExtras: e.target.checked }})}
+                                    />
+                                    <span className="text-sm font-medium text-gray-700">Adicionais</span>
+                                </label>
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                    <input 
+                                        type="checkbox"
+                                        className="w-5 h-5 rounded text-blue-600"
+                                        checked={editingPlan.limits?.allowProductDescription ?? true}
+                                        onChange={e => setEditingPlan({...editingPlan, limits: { ...editingPlan.limits!, allowProductDescription: e.target.checked }})}
+                                    />
+                                    <span className="text-sm font-medium text-gray-700">Descrição</span>
+                                </label>
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                    <input 
+                                        type="checkbox"
+                                        className="w-5 h-5 rounded text-blue-600"
+                                        checked={editingPlan.limits?.allowRawMaterials ?? true}
+                                        onChange={e => setEditingPlan({...editingPlan, limits: { ...editingPlan.limits!, allowRawMaterials: e.target.checked }})}
+                                    />
+                                    <span className="text-sm font-medium text-gray-700">Matéria Prima</span>
+                                </label>
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                    <input 
+                                        type="checkbox"
+                                        className="w-5 h-5 rounded text-blue-600"
+                                        checked={editingPlan.limits?.allowCompositeProducts ?? true}
+                                        onChange={e => setEditingPlan({...editingPlan, limits: { ...editingPlan.limits!, allowCompositeProducts: e.target.checked }})}
+                                    />
+                                    <span className="text-sm font-medium text-gray-700">Produtos Compostos</span>
                                 </label>
                             </div>
                         </div>

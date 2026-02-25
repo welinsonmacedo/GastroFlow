@@ -142,9 +142,9 @@ export const InventoryItemModal: React.FC<InventoryItemModalProps> = ({ isOpen, 
                   <div>
                     <label className="block text-xs font-bold mb-1">Tipo de Item</label>
                     <select className="w-full border-2 p-3 rounded-xl bg-white" value={form.type} onChange={e => setForm({ ...form, type: e.target.value as InventoryType })}>
-                      <option value="INGREDIENT">Matéria Prima (Uso Interno)</option>
+                      {planLimits.allowRawMaterials && <option value="INGREDIENT">Matéria Prima (Uso Interno)</option>}
                       <option value="RESALE">Revenda (Venda Direta)</option>
-                      <option value="COMPOSITE">Produzido (Prato/Ficha)</option>
+                      {planLimits.allowCompositeProducts && <option value="COMPOSITE">Produzido (Prato/Ficha)</option>}
                     </select>
                   </div>
                   <div>
@@ -217,41 +217,43 @@ export const InventoryItemModal: React.FC<InventoryItemModalProps> = ({ isOpen, 
               </div>
             )}
 
-            <div className={`p-6 rounded-2xl border transition-all ${form.isExtra ? 'bg-orange-50 border-orange-200' : 'bg-gray-50 border-gray-100'}`}>
-              <div className="flex justify-between items-center mb-4">
-                  <div className="pr-4">
-                    <h4 className={`text-xs font-black uppercase tracking-widest mb-1 ${form.isExtra ? 'text-orange-700' : 'text-slate-500'}`}>Adicional de Venda</h4>
-                    <p className={`text-[10px] font-medium ${form.isExtra ? 'text-orange-600' : 'text-slate-400'}`}>Permite oferecer este item como opcional pago no cardápio.</p>
-                  </div>
-                  <button type="button" onClick={() => setForm({ ...form, isExtra: !form.isExtra })} className={`p-2 rounded-xl transition-all ${form.isExtra ? 'bg-orange-600 text-white shadow-lg' : 'bg-white border text-slate-200'}`}>
-                    {form.isExtra ? <CheckSquare size={24} /> : <Square size={24} />}
-                  </button>
-              </div>
-
-              {form.isExtra && (
-                  <div className="mt-4 pt-4 border-t border-orange-200">
-                      <label className="block text-xs font-bold text-orange-800 uppercase mb-2 flex items-center gap-2">
-                          <Tag size={12}/> Disponível nas Categorias:
-                      </label>
-                      <div className="max-h-40 overflow-y-auto space-y-1 bg-white/50 p-2 rounded-xl border border-orange-100">
-                          {defaultCategories.map(cat => (
-                              <label key={cat} className="flex items-center gap-2 p-1.5 hover:bg-orange-100 rounded cursor-pointer">
-                                  <div className={`w-4 h-4 border-2 rounded flex items-center justify-center ${form.targetCategories?.includes(cat) ? 'bg-orange-600 border-orange-600' : 'bg-white border-orange-300'}`}>
-                                      {form.targetCategories?.includes(cat) && <CheckSquare size={12} className="text-white"/>}
-                                  </div>
-                                  <input 
-                                      type="checkbox" 
-                                      className="hidden" 
-                                      checked={form.targetCategories?.includes(cat)} 
-                                      onChange={() => toggleTargetCategory(cat)} 
-                                  />
-                                  <span className="text-xs font-bold text-orange-900">{cat}</span>
-                              </label>
-                          ))}
+            {planLimits.allowProductExtras && (
+                <div className={`p-6 rounded-2xl border transition-all ${form.isExtra ? 'bg-orange-50 border-orange-200' : 'bg-gray-50 border-gray-100'}`}>
+                  <div className="flex justify-between items-center mb-4">
+                      <div className="pr-4">
+                        <h4 className={`text-xs font-black uppercase tracking-widest mb-1 ${form.isExtra ? 'text-orange-700' : 'text-slate-500'}`}>Adicional de Venda</h4>
+                        <p className={`text-[10px] font-medium ${form.isExtra ? 'text-orange-600' : 'text-slate-400'}`}>Permite oferecer este item como opcional pago no cardápio.</p>
                       </div>
+                      <button type="button" onClick={() => setForm({ ...form, isExtra: !form.isExtra })} className={`p-2 rounded-xl transition-all ${form.isExtra ? 'bg-orange-600 text-white shadow-lg' : 'bg-white border text-slate-200'}`}>
+                        {form.isExtra ? <CheckSquare size={24} /> : <Square size={24} />}
+                      </button>
                   </div>
-              )}
-            </div>
+
+                  {form.isExtra && (
+                      <div className="mt-4 pt-4 border-t border-orange-200">
+                          <label className="block text-xs font-bold text-orange-800 uppercase mb-2 flex items-center gap-2">
+                              <Tag size={12}/> Disponível nas Categorias:
+                          </label>
+                          <div className="max-h-40 overflow-y-auto space-y-1 bg-white/50 p-2 rounded-xl border border-orange-100">
+                              {defaultCategories.map(cat => (
+                                  <label key={cat} className="flex items-center gap-2 p-1.5 hover:bg-orange-100 rounded cursor-pointer">
+                                      <div className={`w-4 h-4 border-2 rounded flex items-center justify-center ${form.targetCategories?.includes(cat) ? 'bg-orange-600 border-orange-600' : 'bg-white border-orange-300'}`}>
+                                          {form.targetCategories?.includes(cat) && <CheckSquare size={12} className="text-white"/>}
+                                      </div>
+                                      <input 
+                                          type="checkbox" 
+                                          className="hidden" 
+                                          checked={form.targetCategories?.includes(cat)} 
+                                          onChange={() => toggleTargetCategory(cat)} 
+                                      />
+                                      <span className="text-xs font-bold text-orange-900">{cat}</span>
+                                  </label>
+                              ))}
+                          </div>
+                      </div>
+                  )}
+                </div>
+            )}
           </div>
 
           <div className="space-y-6">
@@ -292,28 +294,30 @@ export const InventoryItemModal: React.FC<InventoryItemModalProps> = ({ isOpen, 
                         <ImageUploader value={form.image || ''} onChange={(val) => setForm({ ...form, image: val })} maxSizeKB={250} />
                     )}
 
-                    <div>
-                        <div className="flex justify-between items-center mb-1">
-                            <label className="text-xs font-bold text-slate-500 uppercase flex items-center gap-1">
-                                <FileText size={14}/> Descrição do Cardápio
-                            </label>
-                            <button 
-                                type="button"
-                                onClick={handleGenerateDescription}
-                                disabled={loadingAI}
-                                className="text-[10px] bg-purple-100 text-purple-700 px-2 py-0.5 rounded font-bold flex items-center gap-1 hover:bg-purple-200 transition-colors disabled:opacity-50"
-                            >
-                                {loadingAI ? <Loader2 size={10} className="animate-spin"/> : <Sparkles size={10}/>}
-                                Gerar com IA
-                            </button>
+                    {planLimits.allowProductDescription && (
+                        <div>
+                            <div className="flex justify-between items-center mb-1">
+                                <label className="text-xs font-bold text-slate-500 uppercase flex items-center gap-1">
+                                    <FileText size={14}/> Descrição do Cardápio
+                                </label>
+                                <button 
+                                    type="button"
+                                    onClick={handleGenerateDescription}
+                                    disabled={loadingAI}
+                                    className="text-[10px] bg-purple-100 text-purple-700 px-2 py-0.5 rounded font-bold flex items-center gap-1 hover:bg-purple-200 transition-colors disabled:opacity-50"
+                                >
+                                    {loadingAI ? <Loader2 size={10} className="animate-spin"/> : <Sparkles size={10}/>}
+                                    Gerar com IA
+                                </button>
+                            </div>
+                            <textarea 
+                                className="w-full border-2 p-2 rounded-xl text-sm outline-none focus:border-blue-500 resize-none h-24"
+                                placeholder="Descreva o produto..."
+                                value={form.description || ''}
+                                onChange={e => setForm({...form, description: e.target.value})}
+                            />
                         </div>
-                        <textarea 
-                            className="w-full border-2 p-2 rounded-xl text-sm outline-none focus:border-blue-500 resize-none h-24"
-                            placeholder="Descreva o produto..."
-                            value={form.description || ''}
-                            onChange={e => setForm({...form, description: e.target.value})}
-                        />
-                    </div>
+                    )}
                 </div>
             )}
           </div>

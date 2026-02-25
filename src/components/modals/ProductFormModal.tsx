@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Modal } from '../Modal';
 import { useMenu } from '../../context/MenuContext';
+import { useRestaurant } from '../../context/RestaurantContext';
 
 import { useInventory } from '../../context/InventoryContext';
 import { useUI } from '../../context/UIContext';
@@ -18,6 +19,8 @@ interface ProductFormModalProps {
 export const ProductFormModal: React.FC<ProductFormModalProps> = ({ isOpen, onClose, productToEdit }) => {
   const { state: menuState, addProduct, updateProduct } = useMenu();
   const { state: invState } = useInventory();
+  const { state: restaurantState } = useRestaurant();
+  const { planLimits } = restaurantState;
   const { showAlert } = useUI();
 
   const [selectedStockId, setSelectedStockId] = useState('');
@@ -177,30 +180,32 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({ isOpen, onCl
                 </div>
             )}
 
-            <div>
-                <div className="flex justify-between items-center mb-2">
-                    <label className="block text-xs font-bold text-slate-500 uppercase flex items-center gap-2">
-                        <FileText size={16} className="text-blue-600"/> Descrição para o Cliente
-                    </label>
-                    <button 
-                        type="button"
-                        onClick={handleGenerateDescription}
-                        disabled={loadingAI || !selectedStockId}
-                        className="text-[10px] bg-purple-100 text-purple-700 px-2 py-0.5 rounded font-bold flex items-center gap-1 hover:bg-purple-200 transition-colors disabled:opacity-50"
-                    >
-                        {loadingAI ? <Loader2 size={10} className="animate-spin"/> : <Sparkles size={10}/>}
-                        Gerar com IA
-                    </button>
+            {planLimits.allowProductDescription && (
+                <div>
+                    <div className="flex justify-between items-center mb-2">
+                        <label className="block text-xs font-bold text-slate-500 uppercase flex items-center gap-2">
+                            <FileText size={16} className="text-blue-600"/> Descrição para o Cliente
+                        </label>
+                        <button 
+                            type="button"
+                            onClick={handleGenerateDescription}
+                            disabled={loadingAI || !selectedStockId}
+                            className="text-[10px] bg-purple-100 text-purple-700 px-2 py-0.5 rounded font-bold flex items-center gap-1 hover:bg-purple-200 transition-colors disabled:opacity-50"
+                        >
+                            {loadingAI ? <Loader2 size={10} className="animate-spin"/> : <Sparkles size={10}/>}
+                            Gerar com IA
+                        </button>
+                    </div>
+                    <textarea
+                        className="w-full border-2 p-3 rounded-xl text-sm bg-white focus:border-blue-500 outline-none shadow-sm transition-all resize-none"
+                        rows={4}
+                        placeholder="Descreva o prato de forma apetitosa para atrair clientes..."
+                        value={description}
+                        onChange={e => setDescription(e.target.value)}
+                    />
+                    <p className="text-[10px] text-gray-400 mt-1 text-right">{description.length}/200 caracteres</p>
                 </div>
-                <textarea
-                    className="w-full border-2 p-3 rounded-xl text-sm bg-white focus:border-blue-500 outline-none shadow-sm transition-all resize-none"
-                    rows={4}
-                    placeholder="Descreva o prato de forma apetitosa para atrair clientes..."
-                    value={description}
-                    onChange={e => setDescription(e.target.value)}
-                />
-                <p className="text-[10px] text-gray-400 mt-1 text-right">{description.length}/200 caracteres</p>
-            </div>
+            )}
         </div>
     </Modal>
   );

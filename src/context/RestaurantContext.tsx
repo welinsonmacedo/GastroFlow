@@ -41,7 +41,9 @@ const initialState: RestaurantState = {
       allowKds: true, allowCashier: true, allowReports: true, 
       allowInventory: true, allowPurchases: true, allowExpenses: true, 
       allowStaff: true, allowTableMgmt: true, allowCustomization: true,
-      allowHR: true, allowProductImages: true 
+      allowHR: true, allowProductImages: true,
+      allowProductExtras: true, allowProductDescription: true,
+      allowRawMaterials: true, allowCompositeProducts: true
   },
   allowedModules: ['RESTAURANT'],
   allowedFeatures: [], // Inicializa vazio
@@ -150,7 +152,7 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     if (tenant.plan) {
         const { data: planData } = await supabase.from('plans').select('limits').eq('key', tenant.plan).maybeSingle();
         if (planData && planData.limits) {
-            fetchedLimits = planData.limits;
+            fetchedLimits = { ...initialState.planLimits, ...planData.limits };
         }
     }
     
@@ -205,7 +207,7 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                       if (payload.new.plan && payload.new.plan !== payload.old.plan) {
                           const { data: planData } = await supabase.from('plans').select('limits').eq('key', payload.new.plan).maybeSingle();
                           if (planData && planData.limits) {
-                              localDispatch({ type: 'UPDATE_PLAN_LIMITS', limits: planData.limits });
+                              localDispatch({ type: 'UPDATE_PLAN_LIMITS', limits: { ...initialState.planLimits, ...planData.limits } });
                           }
                       }
                   }
