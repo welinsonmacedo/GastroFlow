@@ -6,9 +6,10 @@ import { useOrder } from '../../context/OrderContext';
 import { useUI } from '../../context/UIContext';
 import { DeliveryInfo, DeliveryMethodConfig, InventoryItem, OrderStatus } from '../../types';
 import { Button } from '../Button';
-import { Search, User, Trash2, Printer, CheckCircle, MapPin, Loader2 } from 'lucide-react';
+import { Search, User, Trash2, Printer, CheckCircle, MapPin, Loader2, Clock, Bike } from 'lucide-react';
 import { AddToCartModal } from '../modals/AddToCartModal';
 import { DispatchModal } from '../modals/DispatchModal';
+import { PaymentConferenceModal } from '../modals/PaymentConferenceModal';
 import { printHtml, getReceiptStyles } from '../../utils/printHelper';
 
 export const CashierDeliveryView: React.FC = () => {
@@ -32,7 +33,13 @@ export const CashierDeliveryView: React.FC = () => {
     const [dispatchModalOpen, setDispatchModalOpen] = useState(false);
     const [selectedOrderToDispatch, setSelectedOrderToDispatch] = useState<any>(null);
 
-    const activeDeliveryOrders = orderState.orders.filter(o => o.type === 'DELIVERY' && !o.isPaid && o.status !== 'CANCELLED');
+    // Modal de Conferência
+    const [conferenceModalOpen, setConferenceModalOpen] = useState(false);
+    const [selectedOrderToConference, setSelectedOrderToConference] = useState<any>(null);
+
+    const activeDeliveryOrders = orderState.orders.filter(o => o.type === 'DELIVERY' && !o.isPaid && o.status !== 'CANCELLED' && o.status !== 'DISPATCHED');
+    const dispatchedOrders = orderState.orders.filter(o => o.type === 'DELIVERY' && o.status === 'DISPATCHED' && !o.isPaid);
+    
     const deliveryMethods = restState.businessInfo?.deliverySettings?.filter(m => m.isActive) || [];
     const configuredPaymentMethods = restState.businessInfo?.paymentMethods?.filter(pm => pm.isActive) || [];
 
@@ -128,17 +135,56 @@ export const CashierDeliveryView: React.FC = () => {
         const order = selectedOrderToDispatch;
         const total = order.items.reduce((acc: number, i: any) => acc + (i.productPrice * i.quantity), 0) + (order.deliveryInfo?.deliveryFee || 0);
 
-        await orderDispatch({ 
-            type: 'PROCESS_PAYMENT', 
-            amount: total, 
-            method: order.deliveryInfo?.paymentMethod || 'CASH', 
-            orderId: order.id,
-            cashierName: 'Delivery',
-            courierInfo
-        });
-        showAlert({ title: "Despachado", message: `Pedido despachado por ${courierInfo.name}!`, type: 'SUCCESS' });
+        // Check if payment method is APP/ONLINE
+        const paymentMethodConfig = configuredPaymentMethods.find(pm => pm.name === order.deliveryInfo?.paymentMethod);
+        const isAppPayment = paymentMethodConfig?.type === 'APP';
+
+        if (isAppPayment) {
+             // Auto-finalize
+             await orderDispatch({ 
+                type: 'PROCESS_PAYMENT', 
+                amount: total, 
+                method: order.deliveryInfo?.paymentMethod || 'APP', 
+                orderId: order.id,
+                cashierName: 'Delivery',
+                courierInfo
+            });
+            showAlert({ title: "Finalizado", message: `Pedido App finalizado automaticamente!`, type: 'SUCCESS' });
+        } else {
+            // Mark as Dispatched
+            await orderDispatch({
+                type: 'DISPATCH_ORDER',
+                orderId: order.id,
+                courierInfo
+            });
+            showAlert({ title: "Despachado", message: `Pedido despachado por ${courierInfo.name}. Aguardando retorno.`, type: 'INFO' });
+        }
+        
         setDispatchModalOpen(false);
         setSelectedOrderToDispatch(null);
+    };
+
+    const handleConference = (orderId: string) => {
+        const order = dispatchedOrders.find(o => o.id === orderId);
+        if (!order) return;
+        setSelectedOrderToConference(order);
+        setConferenceModalOpen(true);
+    };
+
+    const confirmConference = async (amount: number, method: string) => {
+        if (!selectedOrderToConference) return;
+        
+        await orderDispatch({ 
+            type: 'PROCESS_PAYMENT', 
+            amount: amount, 
+            method: method, 
+            orderId: selectedOrderToConference.id,
+            cashierName: 'Delivery'
+        });
+        
+        showAlert({ title: "Conferido", message: "Pagamento confirmado e pedido finalizado.", type: 'SUCCESS' });
+        setConferenceModalOpen(false);
+        setSelectedOrderToConference(null);
     };
 
     const handlePrint = () => {
@@ -234,7 +280,7 @@ export const CashierDeliveryView: React.FC = () => {
     return (
         <div className="flex flex-col xl:flex-row gap-4 h-full overflow-hidden">
             {/* Coluna 1: Catálogo */}
-            <div className="xl:w-[30%] flex flex-col bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden h-full">
+            <div className="xl:w-[25%] flex flex-col bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden h-full">
                 <div className="p-4 border-b bg-gray-50/50">
                     <div className="relative group">
                         <Search className="absolute left-4 top-3 text-gray-400" size={18}/>
@@ -252,7 +298,7 @@ export const CashierDeliveryView: React.FC = () => {
             </div>
 
             {/* Coluna 2: Formulário e Carrinho */}
-            <div className="xl:w-[40%] flex flex-col gap-4 h-full overflow-hidden">
+            <div className="xl:w-[35%] flex flex-col gap-4 h-full overflow-hidden">
                 <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 shrink-0">
                     <h3 className="font-black text-slate-700 uppercase tracking-tight mb-3 flex items-center gap-2 text-xs"><User size={14}/> Cliente</h3>
                     <div className="space-y-2">
@@ -318,40 +364,75 @@ export const CashierDeliveryView: React.FC = () => {
                 </div>
             </div>
 
-            {/* Coluna 3: Monitor */}
-            <div className="xl:w-[30%] bg-slate-100 p-4 rounded-2xl border border-slate-200 overflow-hidden flex flex-col h-full">
-                <h3 className="font-black text-slate-700 uppercase tracking-tight mb-3 ml-1 text-xs">Em Andamento ({activeDeliveryOrders.length})</h3>
-                <div className="flex-1 overflow-y-auto space-y-2 custom-scrollbar pr-1">
-                    {activeDeliveryOrders.map(order => {
-                        const total = order.items.reduce((acc, i) => acc + (i.productPrice * i.quantity), 0);
-                        const kitchenItems = order.items.filter(i => i.productType === 'KITCHEN');
-                        const isReady = kitchenItems.length === 0 || kitchenItems.every(i => i.status === OrderStatus.READY);
+            {/* Coluna 3: Monitor (Dividido em Preparo e Despachados) */}
+            <div className="xl:w-[40%] flex flex-col gap-4 h-full overflow-hidden">
+                {/* Preparo */}
+                <div className="flex-1 bg-slate-100 p-4 rounded-2xl border border-slate-200 overflow-hidden flex flex-col">
+                    <h3 className="font-black text-slate-700 uppercase tracking-tight mb-3 ml-1 text-xs flex items-center gap-2"><Clock size={14}/> Em Preparo ({activeDeliveryOrders.length})</h3>
+                    <div className="flex-1 overflow-y-auto space-y-2 custom-scrollbar pr-1">
+                        {activeDeliveryOrders.map(order => {
+                            const total = order.items.reduce((acc, i) => acc + (i.productPrice * i.quantity), 0);
+                            const kitchenItems = order.items.filter(i => i.productType === 'KITCHEN');
+                            const isReady = kitchenItems.length === 0 || kitchenItems.every(i => i.status === OrderStatus.READY);
 
-                        return (
-                            <div key={order.id} className={`bg-white p-3 rounded-xl shadow-sm border-l-4 transition-all ${isReady ? 'border-l-emerald-500' : 'border-l-orange-400'}`}>
-                                <div className="flex justify-between items-start mb-1">
-                                    <div className="flex-1 min-w-0">
-                                        <h4 className="font-bold text-slate-800 text-sm truncate">{order.deliveryInfo?.customerName}</h4>
-                                        <div className="text-[10px] text-gray-500 font-bold uppercase flex items-center gap-1 mt-0.5">
-                                            <span className="bg-gray-100 px-1.5 py-0.5 rounded">{order.deliveryInfo?.platform}</span>
-                                            <span>#{order.id.slice(0,4)}</span>
+                            return (
+                                <div key={order.id} className={`bg-white p-3 rounded-xl shadow-sm border-l-4 transition-all ${isReady ? 'border-l-emerald-500' : 'border-l-orange-400'}`}>
+                                    <div className="flex justify-between items-start mb-1">
+                                        <div className="flex-1 min-w-0">
+                                            <h4 className="font-bold text-slate-800 text-sm truncate">{order.deliveryInfo?.customerName}</h4>
+                                            <div className="text-[10px] text-gray-500 font-bold uppercase flex items-center gap-1 mt-0.5">
+                                                <span className="bg-gray-100 px-1.5 py-0.5 rounded">{order.deliveryInfo?.platform}</span>
+                                                <span>#{order.id.slice(0,4)}</span>
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <div className="font-black text-slate-800 text-sm">R$ {total.toFixed(2)}</div>
+                                            <button onClick={() => handlePrintOrder(order)} className="text-gray-400 hover:text-blue-600 mt-1" title="Imprimir Cupom"><Printer size={14}/></button>
                                         </div>
                                     </div>
-                                    <div className="text-right">
-                                        <div className="font-black text-slate-800 text-sm">R$ {total.toFixed(2)}</div>
-                                        <button onClick={() => handlePrintOrder(order)} className="text-gray-400 hover:text-blue-600 mt-1" title="Imprimir Cupom"><Printer size={14}/></button>
-                                    </div>
+                                    <div className="text-[10px] text-gray-500 mb-2 truncate flex items-center gap-1"><MapPin size={10}/> {order.deliveryInfo?.address || 'Retirada'}</div>
+                                    {isReady ? (
+                                        <button onClick={() => handleDispatch(order.id)} className="w-full py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-bold text-[10px] uppercase shadow-sm flex items-center justify-center gap-1"><CheckCircle size={12}/> Despachar</button>
+                                    ) : (
+                                        <div className="w-full py-1.5 bg-orange-100 text-orange-700 rounded-lg font-bold text-[10px] uppercase text-center border border-orange-200">Preparando</div>
+                                    )}
                                 </div>
-                                <div className="text-[10px] text-gray-500 mb-2 truncate flex items-center gap-1"><MapPin size={10}/> {order.deliveryInfo?.address || 'Retirada'}</div>
-                                {isReady ? (
-                                    <button onClick={() => handleDispatch(order.id)} className="w-full py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-bold text-[10px] uppercase shadow-sm flex items-center justify-center gap-1"><CheckCircle size={12}/> Despachar</button>
-                                ) : (
-                                    <div className="w-full py-1.5 bg-orange-100 text-orange-700 rounded-lg font-bold text-[10px] uppercase text-center border border-orange-200">Preparando</div>
-                                )}
-                            </div>
-                        );
-                    })}
-                    {activeDeliveryOrders.length === 0 && <div className="text-center py-10 text-gray-400 text-xs font-bold uppercase">Sem pedidos ativos</div>}
+                            );
+                        })}
+                        {activeDeliveryOrders.length === 0 && <div className="text-center py-10 text-gray-400 text-xs font-bold uppercase">Sem pedidos ativos</div>}
+                    </div>
+                </div>
+
+                {/* Despachados */}
+                <div className="flex-1 bg-blue-50 p-4 rounded-2xl border border-blue-100 overflow-hidden flex flex-col">
+                    <h3 className="font-black text-blue-800 uppercase tracking-tight mb-3 ml-1 text-xs flex items-center gap-2"><Bike size={14}/> Despachados / Conferência ({dispatchedOrders.length})</h3>
+                    <div className="flex-1 overflow-y-auto space-y-2 custom-scrollbar pr-1">
+                        {dispatchedOrders.map(order => {
+                            const total = order.items.reduce((acc, i) => acc + (i.productPrice * i.quantity), 0);
+                            return (
+                                <div key={order.id} className="bg-white p-3 rounded-xl shadow-sm border-l-4 border-l-blue-500">
+                                    <div className="flex justify-between items-start mb-1">
+                                        <div className="flex-1 min-w-0">
+                                            <h4 className="font-bold text-slate-800 text-sm truncate">{order.deliveryInfo?.customerName}</h4>
+                                            <div className="text-[10px] text-gray-500 font-bold uppercase flex items-center gap-1 mt-0.5">
+                                                <span className="bg-gray-100 px-1.5 py-0.5 rounded">{order.deliveryInfo?.platform}</span>
+                                                <span>#{order.id.slice(0,4)}</span>
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <div className="font-black text-slate-800 text-sm">R$ {total.toFixed(2)}</div>
+                                            <div className="text-[10px] text-gray-400 mt-1">{order.deliveryInfo?.courierName}</div>
+                                        </div>
+                                    </div>
+                                    <div className="text-[10px] text-gray-500 mb-2 truncate flex items-center gap-1"><MapPin size={10}/> {order.deliveryInfo?.address || 'Retirada'}</div>
+                                    <button onClick={() => handleConference(order.id)} className="w-full py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-bold text-[10px] uppercase shadow-sm flex items-center justify-center gap-1">
+                                        <CheckCircle size={12}/> Conferir Entrega
+                                    </button>
+                                </div>
+                            );
+                        })}
+                        {dispatchedOrders.length === 0 && <div className="text-center py-10 text-blue-300 text-xs font-bold uppercase">Nenhum pedido despachado</div>}
+                    </div>
                 </div>
             </div>
 
@@ -367,6 +448,13 @@ export const CashierDeliveryView: React.FC = () => {
                 onClose={() => setDispatchModalOpen(false)}
                 order={selectedOrderToDispatch}
                 onConfirm={confirmDispatch}
+            />
+
+            <PaymentConferenceModal
+                isOpen={conferenceModalOpen}
+                onClose={() => setConferenceModalOpen(false)}
+                order={selectedOrderToConference}
+                onConfirm={confirmConference}
             />
         </div>
     );

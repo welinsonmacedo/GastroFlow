@@ -50,6 +50,7 @@ interface OrderContextType {
   dispatch: (action: any) => void;
   placeOrder: (params: PlaceOrderParams) => Promise<void>;
   processPosSale: (data: any) => Promise<void>;
+  dispatchOrder: (orderId: string, courierInfo: { id: string, name: string }) => Promise<void>;
   processPayment: (tableId: string | undefined, amount: number, method: string, cashierName?: string, orderId?: string, specificOrderIds?: string[], courierInfo?: { id: string, name: string }) => Promise<void>;
   updateItemStatus: (orderId: string, itemId: string, status: OrderStatus) => Promise<void>;
   cancelOrder: (orderId: string) => Promise<void>; 
@@ -218,42 +219,86 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       fetchData();
   };
 
+  const dispatchOrder = async (orderId: string, courierInfo: { id: string, name: string }) => {
+      if(!tenantId) return;
+      
+      const updatePayload: any = { status: 'DISPATCHED' };
+      const { data: currentOrder } = await supabase.from('orders').select('delivery_info').eq('id', orderId).single();
+      
+      if (currentOrder && currentOrder.delivery_info) {
+          updatePayload.delivery_info = {
+              ...currentOrder.delivery_info,
+              courierId: courierInfo.id,
+              courierName: courierInfo.name
+          };
+      }
+
+      await supabase.from('orders').update(updatePayload).eq('id', orderId);
+      await supabase.from('order_items').update({ status: 'DISPATCHED' }).eq('order_id', orderId);
+      fetchData();
+  };
+
   const processPayment = async (tableId: string | undefined, amount: number, method: string, cashierName: string = 'Caixa', orderId?: string, specificOrderIds?: string[], courierInfo?: { id: string, name: string }) => {
       if(!tenantId) return;
       
-      if (tableId) {
-          let query = supabase.from('orders').update({ is_paid: true, status: 'DELIVERED' }).eq('table_id', tableId).eq('is_paid', false).neq('status', 'CANCELLED');
-          if (specificOrderIds && specificOrderIds.length > 0) {
-              query = query.in('id', specificOrderIds);
-          }
-          await query;
-      } else if (orderId) {
-          const updatePayload: any = { is_paid: true, status: 'DELIVERED' };
+      // Se for pagamento de delivery com ID específico
+      if (orderId) {
+          const { data: currentOrder } = await supabase.from('orders').select('delivery_info').eq('id', orderId).single();
           
-          if (courierInfo) {
-             const { data: currentOrder } = await supabase.from('orders').select('delivery_info').eq('id', orderId).single();
-             if (currentOrder && currentOrder.delivery_info) {
-                 updatePayload.delivery_info = {
-                     ...currentOrder.delivery_info,
-                     courierId: courierInfo.id,
-                     courierName: courierInfo.name
-                 };
-             }
+          const updatePayload: any = { 
+              status: 'DELIVERED', // Finalizado
+              is_paid: true,
+              payment_method: method
+          };
+
+          if (currentOrder && currentOrder.delivery_info) {
+              updatePayload.delivery_info = {
+                  ...currentOrder.delivery_info,
+                  paymentMethod: method,
+                  paymentStatus: 'PAID',
+                  courierId: courierInfo?.id || currentOrder.delivery_info.courierId,
+                  courierName: courierInfo?.name || currentOrder.delivery_info.courierName
+              };
           }
 
           await supabase.from('orders').update(updatePayload).eq('id', orderId);
           await supabase.from('order_items').update({ status: 'DELIVERED' }).eq('order_id', orderId);
       }
+      // Se for pagamento de mesa
+      else if (tableId) {
+          if (specificOrderIds && specificOrderIds.length > 0) {
+              // Pagamento parcial de mesa (selecionando pedidos)
+              await supabase.from('orders').update({ is_paid: true, payment_method: method }).in('id', specificOrderIds);
+              
+              // Verificar se todos os pedidos da mesa foram pagos
+              const { data: pendingOrders } = await supabase.from('orders')
+                  .select('id')
+                  .eq('table_id', tableId)
+                  .eq('is_paid', false)
+                  .neq('status', 'CANCELLED');
+              
+              if (!pendingOrders || pendingOrders.length === 0) {
+                  await supabase.from('restaurant_tables').update({ status: 'AVAILABLE', customer_name: null }).eq('id', tableId);
+              }
+          } else {
+              // Pagamento total da mesa
+              await supabase.from('orders').update({ is_paid: true, payment_method: method }).eq('table_id', tableId).eq('is_paid', false);
+              await supabase.from('restaurant_tables').update({ status: 'AVAILABLE', customer_name: null }).eq('id', tableId);
+          }
+      }
 
-      await supabase.from('transactions').insert({ 
-          tenant_id: tenantId, 
-          table_id: tableId || null, 
-          order_id: orderId || (specificOrderIds && specificOrderIds.length === 1 ? specificOrderIds[0] : null),
-          amount, 
-          method, 
-          items_summary: specificOrderIds && specificOrderIds.length > 0 ? `Parcial Mesa (x${specificOrderIds.length})` : (tableId ? `Mesa Completa` : `Delivery/Pedido #${orderId?.slice(0,4)}`), 
-          cashier_name: cashierName 
+      // Registrar transação financeira
+      await supabase.from('transactions').insert({
+          tenant_id: tenantId,
+          description: orderId ? `Venda Delivery #${orderId.slice(0,4)}` : `Venda Mesa ${tableId ? 'Balcão/Mesa' : 'Avulsa'}`,
+          amount: amount,
+          type: 'INCOME',
+          category: 'Vendas',
+          payment_method: method,
+          date: new Date().toISOString(),
+          cashier_name: cashierName
       });
+
       fetchData();
   };
 
@@ -277,6 +322,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           case 'PLACE_ORDER': await placeOrder(action); break;
           case 'CANCEL_ORDER': await cancelOrder(action.orderId); break;
           case 'PROCESS_POS_SALE': await processPosSale(action.sale); break;
+          case 'DISPATCH_ORDER': await dispatchOrder(action.orderId, action.courierInfo); break;
           case 'PROCESS_PAYMENT': await processPayment(action.tableId, action.amount, action.method, action.cashierName, action.orderId, action.specificOrderIds, action.courierInfo); break;
           case 'UPDATE_ITEM_STATUS': await updateItemStatus(action.orderId, action.itemId, action.status); break;
           case 'ADD_TABLE': await addTable(); break;
@@ -299,7 +345,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   return (
     <OrderContext.Provider value={{ 
         state, dispatch,
-        placeOrder, cancelOrder, processPosSale, processPayment, updateItemStatus,
+        placeOrder, cancelOrder, processPosSale, processPayment, updateItemStatus, dispatchOrder,
         addTable: async () => dispatch({type: 'ADD_TABLE'}),
         deleteTable: async (id) => dispatch({type: 'DELETE_TABLE', tableId: id}),
         openTable: async (id, name, code) => dispatch({type: 'OPEN_TABLE', tableId: id, customerName: name, accessCode: code}),

@@ -24,6 +24,7 @@ export enum OrderStatus {
   PENDING = 'PENDING',
   PREPARING = 'PREPARING',
   READY = 'READY',
+  DISPATCHED = 'DISPATCHED',
   DELIVERED = 'DELIVERED',
   CANCELLED = 'CANCELLED'
 }
@@ -206,7 +207,7 @@ export interface DeliveryMethodConfig {
 export interface PaymentMethodConfig {
     id: string;
     name: string; 
-    type: 'CREDIT' | 'DEBIT' | 'PIX' | 'CASH' | 'MEAL_VOUCHER';
+    type: 'CREDIT' | 'DEBIT' | 'PIX' | 'CASH' | 'MEAL_VOUCHER' | 'APP';
     feePercentage: number; 
     isActive: boolean;
 }
