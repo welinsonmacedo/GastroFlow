@@ -247,8 +247,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           
           const updatePayload: any = { 
               status: 'DELIVERED', // Finalizado
-              is_paid: true,
-              payment_method: method
+              is_paid: true
           };
 
           if (currentOrder && currentOrder.delivery_info) {
@@ -268,7 +267,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       else if (tableId) {
           if (specificOrderIds && specificOrderIds.length > 0) {
               // Pagamento parcial de mesa (selecionando pedidos)
-              await supabase.from('orders').update({ is_paid: true, payment_method: method }).in('id', specificOrderIds);
+              await supabase.from('orders').update({ is_paid: true }).in('id', specificOrderIds);
               
               // Verificar se todos os pedidos da mesa foram pagos
               const { data: pendingOrders } = await supabase.from('orders')
@@ -282,21 +281,20 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               }
           } else {
               // Pagamento total da mesa
-              await supabase.from('orders').update({ is_paid: true, payment_method: method }).eq('table_id', tableId).eq('is_paid', false);
+              await supabase.from('orders').update({ is_paid: true }).eq('table_id', tableId).eq('is_paid', false);
               await supabase.from('restaurant_tables').update({ status: 'AVAILABLE', customer_name: null }).eq('id', tableId);
           }
       }
 
       // Registrar transação financeira
-      await supabase.from('transactions').insert({
-          tenant_id: tenantId,
-          description: orderId ? `Venda Delivery #${orderId.slice(0,4)}` : `Venda Mesa ${tableId ? 'Balcão/Mesa' : 'Avulsa'}`,
-          amount: amount,
-          type: 'INCOME',
-          category: 'Vendas',
-          payment_method: method,
-          date: new Date().toISOString(),
-          cashier_name: cashierName
+      await supabase.from('transactions').insert({ 
+          tenant_id: tenantId, 
+          table_id: tableId || null, 
+          order_id: orderId || (specificOrderIds && specificOrderIds.length === 1 ? specificOrderIds[0] : null),
+          amount, 
+          method, 
+          items_summary: specificOrderIds && specificOrderIds.length > 0 ? `Parcial Mesa (x${specificOrderIds.length})` : (tableId ? `Mesa Completa` : `Delivery/Pedido #${orderId?.slice(0,4)}`), 
+          cashier_name: cashierName 
       });
 
       fetchData();
