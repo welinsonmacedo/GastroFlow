@@ -67,13 +67,9 @@ export const KitchenDisplay: React.FC = () => {
 
   const playSound = async (force: any = false) => {
       const isForce = typeof force === 'object' || force === true;
-      if (!audioRef.current) return;
-      
-      // Se não estiver desbloqueado e não for forçado, não toca
-      if (!orderState.audioUnlocked && !isForce) return;
+      if (!audioRef.current || (!orderState.audioUnlocked && !isForce)) return;
       
       const now = Date.now();
-      // Debounce de 3 segundos para evitar sons repetidos
       if (isForce || now - (lastSoundTime.current || 0) > 3000) {
           try {
               audioRef.current.currentTime = 0; 
@@ -85,20 +81,16 @@ export const KitchenDisplay: React.FC = () => {
           } catch (e) {
               console.warn("Autoplay bloqueado. Interaja com a página.", e);
               setAudioBlocked(true);
-              if (isForce) {
-                  showAlert({ title: "Áudio Bloqueado", message: "Clique no botão 'ATIVAR SOM' para habilitar.", type: "WARNING" });
-              }
+              showAlert({ title: "Áudio Bloqueado", message: "Clique no botão 'ATIVAR SOM' para habilitar.", type: "WARNING" });
           }
       }
   };
 
   // Dispara o som se houver NOVOS itens
   useEffect(() => {
-      // Verifica se o áudio está desbloqueado E se houve aumento no número de pedidos pendentes
       if (orderState.audioUnlocked && currentPendingCount > prevPendingCount.current) {
           playSound();
       }
-      // Atualiza a referência para a próxima comparação
       prevPendingCount.current = currentPendingCount;
   }, [currentPendingCount, orderState.audioUnlocked]);
 

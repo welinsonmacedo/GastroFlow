@@ -56,9 +56,7 @@ export const WaiterApp: React.FC = () => {
       // Se for evento (click), considera como force = true
       const isForce = typeof force === 'object' || force === true;
       
-      if (!audioRef.current) return;
-      if (!orderState.audioUnlocked && !isForce) return;
-
+      if (!audioRef.current || (!orderState.audioUnlocked && !isForce)) return;
       try {
           audioRef.current.currentTime = 0; 
           await audioRef.current.play();
@@ -68,20 +66,16 @@ export const WaiterApp: React.FC = () => {
       } catch (e) {
           console.warn("Autoplay bloqueado. Interaja com a página.", e);
           setAudioBlocked(true);
-          if (isForce) {
-              showAlert({ title: "Áudio Bloqueado", message: "Clique no botão 'ATIVAR SOM' para habilitar.", type: "WARNING" });
-          }
+          showAlert({ title: "Áudio Bloqueado", message: "Clique no botão 'ATIVAR SOM' para habilitar.", type: "WARNING" });
       }
   };
 
   useEffect(() => {
-      // Se o áudio não foi desbloqueado pelo usuário, não tenta tocar automaticamente
       if (!orderState.audioUnlocked) return;
       
       const currentCallsCount = pendingCalls.length;
       const currentReadyCount = orderState.orders.reduce((acc, o) => acc + o.items.filter(i => i.status === 'READY').length, 0);
 
-      // Toca o som APENAS se houver NOVOS chamados ou NOVOS pratos prontos
       if (currentCallsCount > prevCallsCount.current || currentReadyCount > prevReadyCount.current) {
           playSound();
       }
