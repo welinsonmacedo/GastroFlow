@@ -52,14 +52,16 @@ export const playNotificationSound = async (type: 'kitchen' | 'waiter' = 'waiter
             oscillator.stop(ctx.currentTime + 1.5);
 
         } else {
-            // Som de Garçom: "Glass Ping" (Agudo e curto)
+            // Som de Garçom: "Ding Ding" (Agudo)
             oscillator.type = 'sine';
-            oscillator.frequency.setValueAtTime(1200, ctx.currentTime);
+            oscillator.frequency.setValueAtTime(880, ctx.currentTime); // A5
+            oscillator.frequency.setValueAtTime(1100, ctx.currentTime + 0.15); // C#6
             
-            // Envelope de volume (Ataque rápido, decay suave)
+            // Envelope
             gainNode.gain.setValueAtTime(0, ctx.currentTime);
-            gainNode.gain.linearRampToValueAtTime(0.3, ctx.currentTime + 0.02);
-            gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.0);
+            gainNode.gain.linearRampToValueAtTime(0.6, ctx.currentTime + 0.02);
+            gainNode.gain.setValueAtTime(0.6, ctx.currentTime + 0.15);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 1.0);
 
             oscillator.start(ctx.currentTime);
             oscillator.stop(ctx.currentTime + 1.0);
