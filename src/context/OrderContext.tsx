@@ -83,13 +83,28 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const yesterday = new Date(); yesterday.setHours(yesterday.getHours() - 24);
 
       try {
-          const [tablesRes, ordersRes, callsRes] = await Promise.all([
+          const [tablesRes, ordersRes, callsRes, staffRes] = await Promise.all([
               supabase.from('restaurant_tables').select('*').eq('tenant_id', tenantId).order('number'),
               supabase.from('orders').select(`*, items:order_items (*)`).eq('tenant_id', tenantId).gte('created_at', yesterday.toISOString()),
               supabase.from('service_calls').select('*').eq('tenant_id', tenantId).eq('status', 'PENDING'),
+              supabase.from('staff').select('id, allowed_routes').eq('tenant_id', tenantId)
           ]);
 
-          if (tablesRes.data) localDispatch({ type: 'SET_TABLES', tables: tablesRes.data.map(t => ({ id: t.id, number: t.number, status: t.status, customerName: t.customer_name, accessCode: t.access_code, openedBy: t.opened_by, assignedWaiterId: t.assigned_waiter_id })) });
+          const staffMap: Record<string, string> = {};
+          if (staffRes.data) {
+              staffRes.data.forEach((user: any) => {
+                  if (user.allowed_routes) {
+                      user.allowed_routes.forEach((route: string) => {
+                          if (route.startsWith('TABLE:')) {
+                              const tableId = route.split(':')[1];
+                              staffMap[tableId] = user.id;
+                          }
+                      });
+                  }
+              });
+          }
+
+          if (tablesRes.data) localDispatch({ type: 'SET_TABLES', tables: tablesRes.data.map(t => ({ id: t.id, number: t.number, status: t.status, customerName: t.customer_name, accessCode: t.access_code, openedBy: t.opened_by, assignedWaiterId: staffMap[t.id] || null })) });
           
           if (ordersRes.data) {
               const mappedOrders = ordersRes.data.map(o => ({
@@ -339,7 +354,27 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               fetchData(); 
               break;
           case 'RESOLVE_WAITER_CALL': await supabase.from('service_calls').update({ status: 'RESOLVED' }).eq('id', action.callId); fetchData(); break;
-          case 'ASSIGN_TABLE': await supabase.from('restaurant_tables').update({ assigned_waiter_id: action.waiterId }).eq('id', action.tableId); fetchData(); break;
+          case 'ASSIGN_TABLE': 
+              // 1. Remove from previous owner
+              const { data: currentOwners } = await supabase.from('staff').select('id, allowed_routes').eq('tenant_id', tenantId).contains('allowed_routes', [`TABLE:${action.tableId}`]);
+              if (currentOwners) {
+                  for (const owner of currentOwners) {
+                      const newRoutes = (owner.allowed_routes || []).filter((r: string) => r !== `TABLE:${action.tableId}`);
+                      await supabase.from('staff').update({ allowed_routes: newRoutes }).eq('id', owner.id);
+                  }
+              }
+              // 2. Add to new owner
+              if (action.waiterId) {
+                  const { data: waiter } = await supabase.from('staff').select('allowed_routes').eq('id', action.waiterId).single();
+                  if (waiter) {
+                      const currentRoutes = waiter.allowed_routes || [];
+                      if (!currentRoutes.includes(`TABLE:${action.tableId}`)) {
+                          await supabase.from('staff').update({ allowed_routes: [...currentRoutes, `TABLE:${action.tableId}`] }).eq('id', action.waiterId);
+                      }
+                  }
+              }
+              fetchData(); 
+              break;
           case 'UNLOCK_AUDIO': localDispatch({ type: 'UNLOCK_AUDIO' }); break;
       }
   };
