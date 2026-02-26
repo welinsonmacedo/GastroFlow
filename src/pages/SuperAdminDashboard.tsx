@@ -5,7 +5,7 @@ import { useUI } from '../context/UIContext';
 import { RestaurantTenant } from '../types';
 import { Button } from '../components/Button';
 import { SaaSTenantCreateModal, SaaSEditTenantModal, SaaSTenantLinksModal, ImageUploadField } from '../components/modals/SaaSModals';
-import { Building2, DollarSign, Activity, Settings, Search, LogOut, Plus, List, Edit, FileText, Printer, ChevronDown, Edit3, RotateCcw, ShieldAlert, MessageCircle, Box, ImageIcon, Link as LinkIcon, Lock } from 'lucide-react';
+import { Building2, DollarSign, Activity, Settings, Search, LogOut, Plus, List, Edit, FileText, Printer, ChevronDown, Edit3, RotateCcw, ShieldAlert, MessageCircle, Box, ImageIcon, Link as LinkIcon, Lock, Smartphone } from 'lucide-react';
 import { PERMISSIONS_SCHEMA } from '../constants';
 // @ts-ignore
 import { useNavigate } from 'react-router-dom';
@@ -458,9 +458,31 @@ export const SuperAdminDashboard: React.FC = () => {
                                 </div>
                             ) : (
                                 <div className="bg-white p-8 rounded-xl shadow-sm border">
-                                    <h2 className="text-2xl font-bold mb-2">Aparência Global</h2>
+                                    <h2 className="text-2xl font-bold mb-2">Configurações Globais</h2>
                                     <p className="text-sm text-slate-500 mb-8">Estas configurações serão usadas como padrão para todos os restaurantes que não tiverem customização própria.</p>
                                     
+                                    {/* PWA Toggle */}
+                                    <div className="mb-8 p-4 bg-slate-50 rounded-lg border flex items-center justify-between">
+                                        <div>
+                                            <h4 className="font-bold text-slate-800 flex items-center gap-2">
+                                                <Smartphone size={18} className="text-blue-600"/> 
+                                                Obrigatoriedade de PWA (App Instalado)
+                                            </h4>
+                                            <p className="text-xs text-slate-500 mt-1">
+                                                Se ativado, usuários móveis serão forçados a instalar o app para usar o sistema.
+                                            </p>
+                                        </div>
+                                        <label className="relative inline-flex items-center cursor-pointer">
+                                            <input 
+                                                type="checkbox" 
+                                                className="sr-only peer"
+                                                checked={globalThemeForm.pwaRequired !== false} // Default true if undefined
+                                                onChange={e => setGlobalThemeForm({...globalThemeForm, pwaRequired: e.target.checked})}
+                                            />
+                                            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                        </label>
+                                    </div>
+
                                     <div className="grid grid-cols-2 gap-8">
                                         <div className="space-y-6">
                                             <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">

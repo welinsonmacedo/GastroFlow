@@ -39,6 +39,8 @@ import { CookieConsent } from './components/CookieConsent';
 import { Lock } from 'lucide-react';
 import { Role } from './types';
 import { getTenantSlug } from './utils/tenant';
+import { useIpProtection } from './hooks/useIpProtection';
+import { AccessDenied } from './pages/AccessDenied';
 
 interface ProtectedRouteProps {
     allowedRoles?: Role[];
@@ -149,6 +151,15 @@ const TenantApp = () => {
 
 const App: React.FC = () => {
   const tenantSlug = getTenantSlug();
+  const { isBlocked, loading, ip, reason } = useIpProtection();
+
+  if (loading) {
+      return <div className="h-screen w-screen flex items-center justify-center bg-slate-900 text-white font-bold animate-pulse">Verificando segurança...</div>;
+  }
+
+  if (isBlocked) {
+      return <AccessDenied ip={ip} reason={reason} />;
+  }
 
   return (
     <SecurityGuard>

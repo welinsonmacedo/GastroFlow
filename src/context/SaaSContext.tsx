@@ -46,6 +46,7 @@ export interface GlobalSettings {
   loginBgUrl?: string;
   loginBoxColor?: string;
   moduleIcons?: Record<string, string>;
+  pwaRequired?: boolean;
 }
 
 export interface SaaSState {

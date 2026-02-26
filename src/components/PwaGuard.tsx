@@ -3,11 +3,21 @@ import React, { useEffect, useState } from 'react';
 // @ts-ignore
 import { useLocation } from 'react-router-dom';
 import { Download, Smartphone, Share, PlusSquare, Monitor } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 
 export const PwaGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();
-  const [isPWA, setIsPwa] = useState(true);
+  
+  // Initialize with real value to avoid flash
+  const [isPWA, setIsPwa] = useState(() => {
+      if (typeof window === 'undefined') return true;
+      return window.matchMedia('(display-mode: standalone)').matches || 
+      (window.navigator as any).standalone || 
+      document.referrer.includes('android-app://');
+  });
+
   const [os, setOS] = useState<'iOS' | 'Android' | 'Desktop'>('Desktop');
+  const [pwaRequired, setPwaRequired] = useState<boolean | null>(null); // null = loading
 
   useEffect(() => {
     // Detecta se está rodando em modo Standalone (PWA)
@@ -38,9 +48,57 @@ export const PwaGuard: React.FC<{ children: React.ReactNode }> = ({ children }) 
     location.pathname === '/privacy' || 
     location.pathname === '/terms';
 
+  // Fetch PWA Requirement Config
+  useEffect(() => {
+    const checkRequirement = async () => {
+        // Optimization: If already PWA or Public, no need to fetch
+        if (isPWA || isPublicRoute) return;
+
+        try {
+            // Check localStorage first
+            const localSettings = localStorage.getItem('flux_saas_global_settings');
+            if (localSettings) {
+                const settings = JSON.parse(localSettings);
+                if (settings.pwaRequired === false) {
+                    setPwaRequired(false);
+                    return;
+                }
+            }
+
+            // Fetch from DB
+            const { data } = await supabase
+                .from('saas_config')
+                .select('global_settings')
+                .eq('id', 1)
+                .maybeSingle();
+            
+            if (data?.global_settings?.pwaRequired === false) {
+                setPwaRequired(false);
+            } else {
+                setPwaRequired(true); // Default is required
+            }
+        } catch (e) {
+            console.warn("Error checking PWA requirement", e);
+            setPwaRequired(true); // Fail safe: require PWA
+        }
+    };
+
+    checkRequirement();
+  }, [isPWA, isPublicRoute]);
+
   // Se já for PWA ou estiver em rota pública, renderiza o app normalmente
   if (isPWA || isPublicRoute) {
     return <>{children}</>;
+  }
+
+  // Se a configuração permitir uso sem PWA
+  if (pwaRequired === false) {
+      return <>{children}</>;
+  }
+
+  // Loading state while checking requirement
+  if (pwaRequired === null) {
+      return <div className="fixed inset-0 bg-slate-900 flex items-center justify-center text-white">Verificando requisitos...</div>;
   }
 
   // Tela de Bloqueio / Instalação
