@@ -5,6 +5,7 @@ import { useMenu } from '../context/MenuContext';
 import { useOrder } from '../context/OrderContext';
 import { useInventory } from '../context/InventoryContext';
 import { useUI } from '../context/UIContext';
+import { useAuth } from '../context/AuthProvider';
 import { TableStatus, Product, OrderStatus, ProductType } from '../types';
 import { Button } from '../components/Button';
 import { WaiterProductModal, OpenTableModal, TableActionsModal } from '../components/modals/WaiterModals';
@@ -17,6 +18,7 @@ export const WaiterApp: React.FC = () => {
   const { state: menuState } = useMenu();
   const { state: orderState, dispatch: orderDispatch } = useOrder();
   const { state: invState } = useInventory();
+  const { state: authState } = useAuth();
   
   const [activeTab, setActiveTab] = useState<'TABLES' | 'ORDERS'>('TABLES');
   const [showHistory, setShowHistory] = useState(false);
@@ -40,7 +42,22 @@ export const WaiterApp: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>('Todos');
   const [productModal, setProductModal] = useState<Product | null>(null);
 
-  const pendingCalls = orderState.serviceCalls.filter(c => c.status === 'PENDING');
+  const notificationMode = restState.businessInfo?.waiterNotificationMode || 'ALL';
+
+  const pendingCalls = orderState.serviceCalls.filter(c => {
+      if (c.status !== 'PENDING') return false;
+      
+      // Filtra notificações baseado no modo configurado
+      if (notificationMode === 'OPENER') {
+          const table = orderState.tables.find(t => t.id === c.tableId);
+          // Se a mesa tem um responsável definido e não é o usuário atual, ignora
+          if (table?.openedBy && table.openedBy !== authState.currentUser?.id) {
+              return false;
+          }
+      }
+      return true;
+  });
+
   const graceMinutes = restState.businessInfo?.orderGracePeriodMinutes || 0;
 
   const prevCallsCount = useRef(0);
@@ -74,7 +91,15 @@ export const WaiterApp: React.FC = () => {
       if (!orderState.audioUnlocked) return;
       
       const currentCallsCount = pendingCalls.length;
-      const currentReadyCount = orderState.orders.reduce((acc, o) => acc + o.items.filter(i => i.status === 'READY').length, 0);
+      const currentReadyCount = orderState.orders.reduce((acc, o) => {
+          if (notificationMode === 'OPENER') {
+              const table = orderState.tables.find(t => t.id === o.tableId);
+              if (table?.openedBy && table.openedBy !== authState.currentUser?.id) {
+                  return acc;
+              }
+          }
+          return acc + o.items.filter(i => i.status === 'READY').length;
+      }, 0);
 
       // Toca o som APENAS se houver NOVOS chamados ou NOVOS pratos prontos
       if (currentCallsCount > prevCallsCount.current || currentReadyCount > prevReadyCount.current) {
@@ -83,7 +108,7 @@ export const WaiterApp: React.FC = () => {
       
       prevCallsCount.current = currentCallsCount;
       prevReadyCount.current = currentReadyCount;
-  }, [pendingCalls.length, orderState.orders, orderState.audioUnlocked]);
+  }, [pendingCalls.length, orderState.orders, orderState.audioUnlocked, notificationMode, authState.currentUser?.id]);
 
   const handleManualRefresh = () => {
       setIsRefreshing(true);

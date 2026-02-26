@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useRestaurant } from '../../context/RestaurantContext';
 import { useUI } from '../../context/UIContext';
 import { Button } from '../../components/Button';
-import { Building2, MapPin, Phone, Loader2, Share2, Clock, Lock, Save, ShieldCheck, Bike, Plus, Trash2, Edit, CreditCard, Tag, FileText } from 'lucide-react';
+import { Building2, MapPin, Phone, Loader2, Share2, Clock, Lock, Save, ShieldCheck, Bike, Plus, Trash2, Edit, CreditCard, Tag, FileText, Bell } from 'lucide-react';
 import { RestaurantBusinessInfo, DeliveryMethodConfig, PaymentMethodConfig, ExpenseCategory, TaxRegime } from '../../types';
 import { Modal } from '../../components/Modal';
 
@@ -348,22 +348,53 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ view = 'BUSINESS' 
 
             {/* --- RULES VIEW --- */}
             {view === 'RULES' && (
-                <div className="bg-white p-8 rounded-2xl shadow-sm border-2 border-blue-100 overflow-hidden relative">
-                    <div className="absolute top-0 right-0 bg-blue-600 text-white px-4 py-1 rounded-bl-xl text-[10px] font-black uppercase tracking-widest">Operacional</div>
-                    <div className="flex items-start gap-4 mb-6">
-                        <div className="bg-blue-50 p-3 rounded-2xl text-blue-600"><Clock size={32} /></div>
-                        <div>
-                            <h2 className="text-xl font-bold text-gray-800">Tempo de Arrependimento</h2>
-                            <p className="text-sm text-gray-500 leading-relaxed">Janela de tempo após o pedido em que o cliente pode cancelar de forma autônoma.</p>
+                <div className="space-y-6">
+                    <div className="bg-white p-8 rounded-2xl shadow-sm border-2 border-blue-100 overflow-hidden relative">
+                        <div className="absolute top-0 right-0 bg-blue-600 text-white px-4 py-1 rounded-bl-xl text-[10px] font-black uppercase tracking-widest">Operacional</div>
+                        <div className="flex items-start gap-4 mb-6">
+                            <div className="bg-blue-50 p-3 rounded-2xl text-blue-600"><Clock size={32} /></div>
+                            <div>
+                                <h2 className="text-xl font-bold text-gray-800">Tempo de Arrependimento</h2>
+                                <p className="text-sm text-gray-500 leading-relaxed">Janela de tempo após o pedido em que o cliente pode cancelar de forma autônoma.</p>
+                            </div>
+                        </div>
+                        <div className="bg-gray-50 p-6 rounded-2xl border border-gray-200">
+                            <div className="flex justify-between items-end mb-4">
+                                <label className="text-xs font-black text-gray-400 uppercase tracking-widest">Tempo de Carência (Minutos)</label>
+                                <span className="text-3xl font-black text-blue-600">{businessForm.orderGracePeriodMinutes || 0} min</span>
+                            </div>
+                            <input type="range" min="0" max="10" step="1" className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" value={businessForm.orderGracePeriodMinutes || 0} onChange={e => setBusinessForm({...businessForm, orderGracePeriodMinutes: parseInt(e.target.value)})} />
+                            <div className="flex justify-between mt-2 text-[10px] font-bold text-gray-400"><span>0 min (Instantâneo)</span><span>10 min (Seguro)</span></div>
                         </div>
                     </div>
-                    <div className="bg-gray-50 p-6 rounded-2xl border border-gray-200">
-                        <div className="flex justify-between items-end mb-4">
-                            <label className="text-xs font-black text-gray-400 uppercase tracking-widest">Tempo de Carência (Minutos)</label>
-                            <span className="text-3xl font-black text-blue-600">{businessForm.orderGracePeriodMinutes || 0} min</span>
+
+                    <div className="bg-white p-8 rounded-2xl shadow-sm border-2 border-orange-100 overflow-hidden relative">
+                        <div className="absolute top-0 right-0 bg-orange-500 text-white px-4 py-1 rounded-bl-xl text-[10px] font-black uppercase tracking-widest">Atendimento</div>
+                        <div className="flex items-start gap-4 mb-6">
+                            <div className="bg-orange-50 p-3 rounded-2xl text-orange-600"><Bell size={32} /></div>
+                            <div>
+                                <h2 className="text-xl font-bold text-gray-800">Notificações de Chamado</h2>
+                                <p className="text-sm text-gray-500 leading-relaxed">Defina quem recebe os chamados dos clientes nas mesas.</p>
+                            </div>
                         </div>
-                        <input type="range" min="0" max="10" step="1" className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" value={businessForm.orderGracePeriodMinutes || 0} onChange={e => setBusinessForm({...businessForm, orderGracePeriodMinutes: parseInt(e.target.value)})} />
-                        <div className="flex justify-between mt-2 text-[10px] font-bold text-gray-400"><span>0 min (Instantâneo)</span><span>10 min (Seguro)</span></div>
+                        
+                        <div className="bg-gray-50 p-6 rounded-2xl border border-gray-200">
+                            <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-2">Modo de Notificação</label>
+                            <select 
+                                className="w-full border-2 border-gray-200 p-3 rounded-xl focus:border-orange-500 outline-none font-bold text-gray-700 bg-white"
+                                value={businessForm.waiterNotificationMode || 'ALL'}
+                                onChange={e => setBusinessForm({...businessForm, waiterNotificationMode: e.target.value as any})}
+                            >
+                                <option value="ALL">Notificar Todos os Garçons</option>
+                                <option value="OPENER">Notificar Apenas Quem Abriu a Mesa</option>
+                                <option value="ASSIGNED">Atribuir Mesas a Garçons (Manual)</option>
+                            </select>
+                            <p className="text-[10px] text-gray-400 mt-2">
+                                {(!businessForm.waiterNotificationMode || businessForm.waiterNotificationMode === 'ALL') && "Todos os garçons logados receberão o alerta sonoro e visual."}
+                                {businessForm.waiterNotificationMode === 'OPENER' && "Apenas o garçom que iniciou o atendimento na mesa receberá o alerta."}
+                                {businessForm.waiterNotificationMode === 'ASSIGNED' && "Defina quais mesas cada garçom atende na tela de Equipe."}
+                            </p>
+                        </div>
                     </div>
                 </div>
             )}

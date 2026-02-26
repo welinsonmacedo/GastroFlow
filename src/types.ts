@@ -293,6 +293,8 @@ export interface TimeClockConfig {
     restaurantLocation?: { lat: number; lng: number };
 }
 
+export type WaiterNotificationMode = 'ALL' | 'OPENER' | 'ASSIGNED';
+
 export interface RestaurantBusinessInfo {
     restaurantName?: string;
     ownerName?: string;
@@ -317,6 +319,7 @@ export interface RestaurantBusinessInfo {
     paymentMethods?: PaymentMethodConfig[]; 
     expenseCategories?: ExpenseCategory[]; 
     timeClock?: TimeClockConfig;
+    waiterNotificationMode?: WaiterNotificationMode;
 }
 
 export interface RestaurantTenant {
@@ -498,6 +501,7 @@ export interface Table {
   activeOrderId?: string;
   customerName?: string; 
   accessCode?: string; 
+  openedBy?: string;
 }
 
 export interface ServiceCall {

@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase';
 import { useRestaurant } from './RestaurantContext';
 import { useMenu } from './MenuContext';
 import { useUI } from './UIContext';
+import { useAuth } from './AuthProvider';
 import { checkRateLimit, sanitizeObject } from '../utils/security'; // Importando segurança
 
 interface OrderState {
@@ -69,6 +70,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const { state: restState } = useRestaurant();
   const { tenantId, planLimits } = restState;
   const { state: menuState } = useMenu();
+  const { state: authState } = useAuth();
   const { showAlert } = useUI();
 
   const [state, localDispatch] = useReducer(orderReducer, {
@@ -86,7 +88,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               supabase.from('service_calls').select('*').eq('tenant_id', tenantId).eq('status', 'PENDING'),
           ]);
 
-          if (tablesRes.data) localDispatch({ type: 'SET_TABLES', tables: tablesRes.data.map(t => ({ id: t.id, number: t.number, status: t.status, customerName: t.customer_name, accessCode: t.access_code })) });
+          if (tablesRes.data) localDispatch({ type: 'SET_TABLES', tables: tablesRes.data.map(t => ({ id: t.id, number: t.number, status: t.status, customerName: t.customer_name, accessCode: t.access_code, openedBy: t.opened_by })) });
           
           if (ordersRes.data) {
               const mappedOrders = ordersRes.data.map(o => ({
@@ -325,8 +327,8 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           case 'UPDATE_ITEM_STATUS': await updateItemStatus(action.orderId, action.itemId, action.status); break;
           case 'ADD_TABLE': await addTable(); break;
           case 'DELETE_TABLE': await supabase.from('restaurant_tables').delete().eq('id', action.tableId); fetchData(); break;
-          case 'OPEN_TABLE': await supabase.from('restaurant_tables').update({ status: 'OCCUPIED', customer_name: sanitizeObject(action.customerName), access_code: action.accessCode }).eq('id', action.tableId); fetchData(); break;
-          case 'CLOSE_TABLE': await supabase.from('restaurant_tables').update({ status: 'AVAILABLE', customer_name: null, access_code: null }).eq('id', action.tableId); fetchData(); break;
+          case 'OPEN_TABLE': await supabase.from('restaurant_tables').update({ status: 'OCCUPIED', customer_name: sanitizeObject(action.customerName), access_code: action.accessCode, opened_by: authState.currentUser?.id }).eq('id', action.tableId); fetchData(); break;
+          case 'CLOSE_TABLE': await supabase.from('restaurant_tables').update({ status: 'AVAILABLE', customer_name: null, access_code: null, opened_by: null }).eq('id', action.tableId); fetchData(); break;
           case 'CALL_WAITER': 
               if(!checkRateLimit(`call_waiter_${action.tableId}`, 1, 30000)) { // 1 chamado a cada 30s
                   showAlert({title: "Já Chamado", message: "Garçom já notificado.", type: "INFO"});
