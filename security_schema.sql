@@ -19,23 +19,35 @@ CREATE TABLE IF NOT EXISTS system_settings (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Tabela para IPs bloqueados
+CREATE TABLE IF NOT EXISTS blocked_ips (
+    ip TEXT PRIMARY KEY,
+    reason TEXT,
+    blocked_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    blocked_by UUID -- SuperAdmin ID
+);
+
 -- Habilitar RLS
 ALTER TABLE security_incidents ENABLE ROW LEVEL SECURITY;
 ALTER TABLE system_settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE blocked_ips ENABLE ROW LEVEL SECURITY;
 
 -- Políticas para security_incidents
--- Apenas SuperAdmins (ou service_role) devem ler. 
--- Inserção deve ser permitida para qualquer um (para registrar ataques), mas com cautela.
 CREATE POLICY "Allow anonymous insert for security incidents" ON security_incidents FOR INSERT WITH CHECK (true);
-CREATE POLICY "Allow superadmins to read security incidents" ON security_incidents FOR SELECT USING (true); -- Ajustar conforme lógica de SuperAdmin
+CREATE POLICY "Allow superadmins to read security incidents" ON security_incidents FOR SELECT USING (true);
 
 -- Políticas para system_settings
 CREATE POLICY "Allow read system settings" ON system_settings FOR SELECT USING (true);
-CREATE POLICY "Allow superadmins to manage system settings" ON system_settings FOR ALL USING (true); -- Ajustar conforme lógica de SuperAdmin
+CREATE POLICY "Allow superadmins to manage system settings" ON system_settings FOR ALL USING (true);
+
+-- Políticas para blocked_ips
+CREATE POLICY "Allow read blocked ips" ON blocked_ips FOR SELECT USING (true);
+CREATE POLICY "Allow manage blocked ips" ON blocked_ips FOR ALL USING (true); -- Ajustar conforme lógica de SuperAdmin
 
 -- Adicionar ao Realtime
 ALTER PUBLICATION supabase_realtime ADD TABLE security_incidents;
 ALTER PUBLICATION supabase_realtime ADD TABLE system_settings;
+ALTER PUBLICATION supabase_realtime ADD TABLE blocked_ips;
 
 -- Inserir configuração inicial de segurança se não existir
 INSERT INTO system_settings (key, value) 

@@ -193,6 +193,7 @@ export const AdminSecurity: React.FC = () => {
                                 <th className="p-4 font-bold">Gravidade</th>
                                 <th className="p-4 font-bold">Detalhes</th>
                                 <th className="p-4 font-bold">IP (Origem)</th>
+                                <th className="p-4 font-bold text-right">Ações</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-50">
@@ -212,6 +213,29 @@ export const AdminSecurity: React.FC = () => {
                                     </td>
                                     <td className="p-4 text-slate-400 text-xs font-mono">
                                         {inc.ip_address || 'Oculto'}
+                                    </td>
+                                    <td className="p-4 text-right">
+                                        {inc.ip_address && inc.ip_address !== 'Oculto' && (
+                                            <Button 
+                                                variant="danger" 
+                                                size="sm" 
+                                                className="h-7 px-2 text-[10px]"
+                                                onClick={async () => {
+                                                    const { error } = await supabase.from('blocked_ips').insert({
+                                                        ip: inc.ip_address,
+                                                        reason: `Incidente: ${inc.type} - ${inc.details}`
+                                                    });
+                                                    if (error) {
+                                                        if (error.code === '23505') alert("Este IP já está bloqueado.");
+                                                        else alert("Erro ao bloquear IP: " + error.message);
+                                                    } else {
+                                                        alert("IP bloqueado com sucesso!");
+                                                    }
+                                                }}
+                                            >
+                                                Bloquear IP
+                                            </Button>
+                                        )}
                                     </td>
                                 </tr>
                             ))}

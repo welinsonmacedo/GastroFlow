@@ -5,16 +5,17 @@ import { useUI } from '../context/UIContext';
 import { RestaurantTenant } from '../types';
 import { Button } from '../components/Button';
 import { SaaSTenantCreateModal, SaaSEditTenantModal, SaaSTenantLinksModal, ImageUploadField } from '../components/modals/SaaSModals';
-import { Building2, DollarSign, Activity, Settings, Search, LogOut, Plus, List, Edit, FileText, Printer, ChevronDown, Edit3, RotateCcw, ShieldAlert, MessageCircle, Box, ImageIcon, Link as LinkIcon } from 'lucide-react';
+import { Building2, DollarSign, Activity, Settings, Search, LogOut, Plus, List, Edit, FileText, Printer, ChevronDown, Edit3, RotateCcw, ShieldAlert, MessageCircle, Box, ImageIcon, Link as LinkIcon, Lock } from 'lucide-react';
 import { PERMISSIONS_SCHEMA } from '../constants';
 // @ts-ignore
 import { useNavigate } from 'react-router-dom';
 import { PlanManager } from './admin/super/PlanManager';
 import { AdminSecurity } from './admin/AdminSecurity';
 import { AdminTickets } from './admin/super/AdminTickets';
+import { AdminBlockedIPs } from './admin/super/AdminBlockedIPs';
 import { logSecurityIncident } from '../utils/security';
 
-type ViewMode = 'RESTAURANTS' | 'FINANCIAL' | 'PLANS' | 'SETTINGS' | 'CONTRACTS' | 'SECURITY' | 'TICKETS';
+type ViewMode = 'RESTAURANTS' | 'FINANCIAL' | 'PLANS' | 'SETTINGS' | 'CONTRACTS' | 'SECURITY' | 'TICKETS' | 'BLOCKED_IPS';
 
 export const SuperAdminDashboard: React.FC = () => {
   const { state, dispatch } = useSaaS();
@@ -106,6 +107,7 @@ export const SuperAdminDashboard: React.FC = () => {
                 <button onClick={() => setActiveView('FINANCIAL')} className={`flex items-center gap-3 w-full p-3 rounded transition-colors ${activeView === 'FINANCIAL' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}><DollarSign size={20} /> Financeiro</button>
                 <button onClick={() => setActiveView('PLANS')} className={`flex items-center gap-3 w-full p-3 rounded transition-colors ${activeView === 'PLANS' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}><List size={20} /> Planos & Preços</button>
                 <button onClick={() => setActiveView('SECURITY')} className={`flex items-center gap-3 w-full p-3 rounded transition-colors ${activeView === 'SECURITY' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}><ShieldAlert size={20} /> Segurança</button>
+                <button onClick={() => setActiveView('BLOCKED_IPS')} className={`flex items-center gap-3 w-full p-3 rounded transition-colors ${activeView === 'BLOCKED_IPS' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}><Lock size={20} /> IPs Bloqueados</button>
                 <button onClick={() => setActiveView('TICKETS')} className={`flex items-center gap-3 w-full p-3 rounded transition-colors ${activeView === 'TICKETS' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}><MessageCircle size={20} /> Chamados</button>
                 <button onClick={() => setActiveView('SETTINGS')} className={`flex items-center gap-3 w-full p-3 rounded transition-colors ${activeView === 'SETTINGS' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800'}`}><Settings size={20} /> Configurações</button>
             </nav>
@@ -145,9 +147,10 @@ export const SuperAdminDashboard: React.FC = () => {
            )}
 
            {activeView === 'SECURITY' && <AdminSecurity />}
+           {activeView === 'BLOCKED_IPS' && <AdminBlockedIPs />}
            {activeView === 'TICKETS' && <AdminTickets />}
 
-           {activeView !== 'SECURITY' && activeView !== 'TICKETS' && (
+           {activeView !== 'SECURITY' && activeView !== 'TICKETS' && activeView !== 'BLOCKED_IPS' && (
                <div className="p-8 pt-0 overflow-y-auto h-[calc(100vh-120px)] print:p-0 print:h-auto print:overflow-visible">
                     {/* --- VIEW: CONTRACTS --- */}
                     {activeView === 'CONTRACTS' && (
