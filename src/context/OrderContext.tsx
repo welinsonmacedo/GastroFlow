@@ -356,8 +356,11 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           case 'RESOLVE_WAITER_CALL': await supabase.from('service_calls').update({ status: 'RESOLVED' }).eq('id', action.callId); fetchData(); break;
           case 'ASSIGN_TABLE': 
               // 1. Remove from previous owner
-              const { data: currentOwners } = await supabase.from('staff').select('id, allowed_routes').eq('tenant_id', tenantId).contains('allowed_routes', [`TABLE:${action.tableId}`]);
-              if (currentOwners) {
+              // Fetch all staff and filter in memory to avoid 400 error with .contains()
+              const { data: allStaff } = await supabase.from('staff').select('id, allowed_routes').eq('tenant_id', tenantId);
+              
+              if (allStaff) {
+                  const currentOwners = allStaff.filter((s: any) => s.allowed_routes && s.allowed_routes.includes(`TABLE:${action.tableId}`));
                   for (const owner of currentOwners) {
                       const newRoutes = (owner.allowed_routes || []).filter((r: string) => r !== `TABLE:${action.tableId}`);
                       await supabase.from('staff').update({ allowed_routes: newRoutes }).eq('id', owner.id);
