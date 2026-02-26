@@ -7,9 +7,7 @@ import { useUI } from '../context/UIContext';
 import { OrderStatus, ProductType, OrderItem } from '../types';
 import { Clock, ChefHat, CheckCircle, AlertTriangle, Volume2, Zap, Plus, Printer, RefreshCcw, Bike, ArrowRight } from 'lucide-react';
 import { printHtml, getReceiptStyles } from '../utils/printHelper';
-
-// Som de "Campainha Cozinha" (Ding Dong) em Base64
-const KITCHEN_SOUND = "data:audio/mp3;base64,SUQzBAAAAAABAFRYWFQAAAASAAADbWFqb3JfYnJhbmQAbXA0MgBUWFhQAAAAEQAAA21pbm9yX3ZlcnNpb24AMABUWFhQAAAAHAAAA2NvbXBhdGlibGVfYnJhbmRzAGlzb21tcDQyAFRTU0UAAAAPAAADTGF2ZjU3LjU2LjEwMAAAAAAAAAAAAAAA//NExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//NExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//NExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//NExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//NExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//NExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//NExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//NExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//NExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//NExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//NExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//NExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//NExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//NExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//NExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//NExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//NExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//NExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//NExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//NExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//NExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//NExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//NExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//NExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//NExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//NExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//NExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//NExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//NExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//NExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//NExAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq";
+import { playNotificationSound, unlockAudioContext } from '../utils/audio';
 
 export const KitchenDisplay: React.FC = () => {
   const { state: restState } = useRestaurant();
@@ -20,7 +18,6 @@ export const KitchenDisplay: React.FC = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [audioBlocked, setAudioBlocked] = useState(false);
   const [, setTick] = useState(0);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
   const prevPendingCount = useRef(0);
   const wakeLockRef = useRef<any>(null);
   const lastSoundTime = useRef<number>(0);
@@ -63,11 +60,8 @@ export const KitchenDisplay: React.FC = () => {
     } catch (err) { console.error('Erro Wake Lock:', err); }
   };
 
-
-
   const playSound = async (force: any = false) => {
       const isForce = typeof force === 'object' || force === true;
-      if (!audioRef.current) return;
       
       // Se não estiver desbloqueado e não for forçado, não toca
       if (!orderState.audioUnlocked && !isForce) return;
@@ -76,8 +70,7 @@ export const KitchenDisplay: React.FC = () => {
       // Debounce de 3 segundos para evitar sons repetidos
       if (isForce || now - (lastSoundTime.current || 0) > 3000) {
           try {
-              audioRef.current.currentTime = 0; 
-              await audioRef.current.play();
+              await playNotificationSound('kitchen');
               if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
               console.log("🔊 Som Cozinha Tocado");
               lastSoundTime.current = now;
@@ -102,19 +95,16 @@ export const KitchenDisplay: React.FC = () => {
       prevPendingCount.current = currentPendingCount;
   }, [currentPendingCount, orderState.audioUnlocked]);
 
-  const enableAudio = () => {
-      if (audioRef.current) {
-          audioRef.current.play().then(() => {
-              orderDispatch({ type: 'UNLOCK_AUDIO' });
-              requestWakeLock();
-          }).catch(e => {
-              console.error("Erro ao ativar áudio inicial:", e);
-              // Força o desbloqueio mesmo se falhar (para liberar a UI)
-              orderDispatch({ type: 'UNLOCK_AUDIO' });
-          });
-      } else {
+  const enableAudio = async () => {
+      try {
+          await unlockAudioContext();
+          await playNotificationSound('kitchen'); // Test sound
           orderDispatch({ type: 'UNLOCK_AUDIO' });
           requestWakeLock();
+      } catch (e) {
+          console.error("Erro ao ativar áudio inicial:", e);
+          // Força o desbloqueio mesmo se falhar (para liberar a UI)
+          orderDispatch({ type: 'UNLOCK_AUDIO' });
       }
   };
 
@@ -172,7 +162,6 @@ export const KitchenDisplay: React.FC = () => {
 
   return (
     <div className="h-full flex flex-col bg-slate-950 text-slate-100 p-4 overflow-hidden font-sans">
-      <audio ref={audioRef} src={KITCHEN_SOUND} preload="auto" />
       <div className="mb-4 flex justify-between items-center shrink-0">
          <div>
              <h2 className="text-xl font-black uppercase text-white tracking-tight">KDS Produção</h2>
