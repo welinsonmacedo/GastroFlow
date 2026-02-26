@@ -6,6 +6,7 @@ import { useUI } from '../../context/UIContext';
 import { Button } from '../../components/Button';
 import { StaffFormModal } from '../../components/modals/StaffFormModal';
 import { RoleFormModal } from '../../components/modals/RoleFormModal';
+import { TableAssignmentModal } from '../../components/modals/TableAssignmentModal';
 import { User, CustomRole } from '../../types';
 import { getTenantSlug } from '../../utils/tenant';
 import { Edit, Trash2, Check, Link as LinkIcon, CheckSquare, Users, Info, Shield, Plus } from 'lucide-react';
@@ -26,6 +27,9 @@ export const AdminStaff: React.FC = () => {
   const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
   const [editingRole, setEditingRole] = useState<CustomRole | null>(null);
   
+  const [isTableModalOpen, setIsTableModalOpen] = useState(false);
+  const [selectedWaiter, setSelectedWaiter] = useState<User | null>(null);
+
   const [copiedInviteId, setCopiedInviteId] = useState<string | null>(null);
 
   const copyInviteLink = (userEmail?: string, userId?: string) => {
@@ -125,6 +129,15 @@ export const AdminStaff: React.FC = () => {
                                         </td>
                                         <td className="p-4 text-right">
                                             <div className="flex items-center justify-end gap-2">
+                                                {user.role === 'WAITER' && (
+                                                    <button 
+                                                        onClick={() => { setSelectedWaiter(user); setIsTableModalOpen(true); }} 
+                                                        className="text-orange-600 hover:bg-orange-50 p-2 rounded transition-colors" 
+                                                        title="Atribuir Mesas"
+                                                    >
+                                                        <Users size={16}/>
+                                                    </button>
+                                                )}
                                                 <button onClick={() => handleEditAccess(user)} className="text-blue-600 hover:bg-blue-50 p-2 rounded transition-colors" title="Configurar Acesso"><Edit size={16}/></button>
                                                 <button onClick={() => showConfirm({ title: 'Remover Acesso', message: 'Isso revogará o acesso deste usuário ao sistema. Continuar?', onConfirm: () => deleteUser(user.id) })} className="text-red-600 hover:bg-red-50 p-2 rounded transition-colors" title="Revogar Acesso"><Trash2 size={16}/></button>
                                             </div>
@@ -172,6 +185,7 @@ export const AdminStaff: React.FC = () => {
 
         <StaffFormModal isOpen={isUserModalOpen} onClose={() => setIsUserModalOpen(false)} userToEdit={editingUser} variant="ACCESS" />
         <RoleFormModal isOpen={isRoleModalOpen} onClose={() => setIsRoleModalOpen(false)} roleToEdit={editingRole} />
+        <TableAssignmentModal isOpen={isTableModalOpen} onClose={() => setIsTableModalOpen(false)} waiter={selectedWaiter} />
     </div>
   );
 };

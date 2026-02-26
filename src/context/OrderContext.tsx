@@ -61,6 +61,7 @@ interface OrderContextType {
   closeTable: (tableId: string) => Promise<void>;
   callWaiter: (tableId: string, reason?: string) => Promise<void>;
   resolveCall: (callId: string) => Promise<void>;
+  assignTable: (tableId: string, waiterId: string | null) => Promise<void>;
   unlockAudio: () => void;
 }
 
@@ -88,7 +89,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               supabase.from('service_calls').select('*').eq('tenant_id', tenantId).eq('status', 'PENDING'),
           ]);
 
-          if (tablesRes.data) localDispatch({ type: 'SET_TABLES', tables: tablesRes.data.map(t => ({ id: t.id, number: t.number, status: t.status, customerName: t.customer_name, accessCode: t.access_code, openedBy: t.opened_by })) });
+          if (tablesRes.data) localDispatch({ type: 'SET_TABLES', tables: tablesRes.data.map(t => ({ id: t.id, number: t.number, status: t.status, customerName: t.customer_name, accessCode: t.access_code, openedBy: t.opened_by, assignedWaiterId: t.assigned_waiter_id })) });
           
           if (ordersRes.data) {
               const mappedOrders = ordersRes.data.map(o => ({
@@ -338,6 +339,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               fetchData(); 
               break;
           case 'RESOLVE_WAITER_CALL': await supabase.from('service_calls').update({ status: 'RESOLVED' }).eq('id', action.callId); fetchData(); break;
+          case 'ASSIGN_TABLE': await supabase.from('restaurant_tables').update({ assigned_waiter_id: action.waiterId }).eq('id', action.tableId); fetchData(); break;
           case 'UNLOCK_AUDIO': localDispatch({ type: 'UNLOCK_AUDIO' }); break;
       }
   };
@@ -352,6 +354,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         closeTable: async (id) => dispatch({type: 'CLOSE_TABLE', tableId: id}),
         callWaiter: async (id, reason) => dispatch({type: 'CALL_WAITER', tableId: id, reason}),
         resolveCall: async (id) => dispatch({type: 'RESOLVE_WAITER_CALL', callId: id}),
+        assignTable: async (id, waiterId) => dispatch({type: 'ASSIGN_TABLE', tableId: id, waiterId}),
         unlockAudio: () => localDispatch({ type: 'UNLOCK_AUDIO' })
     }}>
       {children}

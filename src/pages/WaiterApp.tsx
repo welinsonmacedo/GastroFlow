@@ -54,6 +54,16 @@ export const WaiterApp: React.FC = () => {
           if (table?.openedBy && table.openedBy !== authState.currentUser?.id) {
               return false;
           }
+      } else if (notificationMode === 'ASSIGNED') {
+          const table = orderState.tables.find(t => t.id === c.tableId);
+          // Se a mesa tem um garçom atribuído e não é o usuário atual, ignora
+          if (table?.assignedWaiterId && table.assignedWaiterId !== authState.currentUser?.id) {
+              return false;
+          }
+          // Se a mesa NÃO tem garçom atribuído, talvez todos devam receber? 
+          // Ou ninguém? Geralmente mesas sem dono vão para todos ou "pool".
+          // Vamos assumir que se não tem assignedWaiterId, vai para todos (fallback) ou apenas admins.
+          // Mas para simplificar, se não tem assignedWaiterId, mostra para todos.
       }
       return true;
   });
@@ -92,9 +102,14 @@ export const WaiterApp: React.FC = () => {
       
       const currentCallsCount = pendingCalls.length;
       const currentReadyCount = orderState.orders.reduce((acc, o) => {
+          const table = orderState.tables.find(t => t.id === o.tableId);
+          
           if (notificationMode === 'OPENER') {
-              const table = orderState.tables.find(t => t.id === o.tableId);
               if (table?.openedBy && table.openedBy !== authState.currentUser?.id) {
+                  return acc;
+              }
+          } else if (notificationMode === 'ASSIGNED') {
+              if (table?.assignedWaiterId && table.assignedWaiterId !== authState.currentUser?.id) {
                   return acc;
               }
           }
@@ -365,8 +380,12 @@ export const WaiterApp: React.FC = () => {
                         const tableOrders = orderState.orders.filter(o => o.tableId === table.id && !o.isPaid && o.status !== 'CANCELLED');
                         const hasBufferedOrder = tableOrders.some(o => (new Date().getTime() - new Date(o.timestamp).getTime()) / 60000 < graceMinutes);
 
+                        const isMyTable = (notificationMode === 'OPENER' && table.openedBy === authState.currentUser?.id) || 
+                                          (notificationMode === 'ASSIGNED' && table.assignedWaiterId === authState.currentUser?.id);
+
                         return (
-                            <div key={table.id} onClick={() => { if (hasCall) { setConfirmCallId(call!.id); setCallingTableNumber(table.number); setCallReason(call!.reason || null); } else if (table.status === TableStatus.AVAILABLE) { setSelectedTableForOpen(table.id); } else { setSelectedTableForAction(table.id); }}} className={`p-4 rounded-[2rem] shadow-sm border-4 flex flex-col items-center justify-between min-h-[140px] transition-all cursor-pointer relative active:scale-95 ${hasCall ? 'bg-red-500 border-red-600 text-black animate-pulse shadow-red-500/50' : (table.status === TableStatus.OCCUPIED ? 'bg-white border-blue-500 text-slate-800' : 'bg-gray-100 border-transparent text-slate-400 opacity-60')}`}>
+                            <div key={table.id} onClick={() => { if (hasCall) { setConfirmCallId(call!.id); setCallingTableNumber(table.number); setCallReason(call!.reason || null); } else if (table.status === TableStatus.AVAILABLE) { setSelectedTableForOpen(table.id); } else { setSelectedTableForAction(table.id); }}} className={`p-4 rounded-[2rem] shadow-sm border-4 flex flex-col items-center justify-between min-h-[140px] transition-all cursor-pointer relative active:scale-95 ${hasCall ? 'bg-red-500 border-red-600 text-black animate-pulse shadow-red-500/50' : (table.status === TableStatus.OCCUPIED ? 'bg-white border-blue-500 text-slate-800' : 'bg-gray-100 border-transparent text-slate-400 opacity-60')} ${isMyTable ? 'ring-4 ring-offset-2 ring-blue-400' : ''}`}>
+                                {isMyTable && <div className="absolute -top-3 -right-3 bg-blue-600 text-white p-1.5 rounded-full shadow-md z-10"><Check size={12} strokeWidth={4} /></div>}
                                 <div className="w-full flex justify-between items-start">
                                     <span className="text-[10px] font-black uppercase tracking-widest opacity-80">
                                         {hasCall ? (isBill ? 'PEDINDO CONTA' : 'CHAMANDO!') : (table.status === TableStatus.AVAILABLE ? 'LIVRE' : 'OCUPADA')}

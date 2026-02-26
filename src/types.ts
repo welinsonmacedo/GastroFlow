@@ -502,6 +502,7 @@ export interface Table {
   customerName?: string; 
   accessCode?: string; 
   openedBy?: string;
+  assignedWaiterId?: string;
 }
 
 export interface ServiceCall {
