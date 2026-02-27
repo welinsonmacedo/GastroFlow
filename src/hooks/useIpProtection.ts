@@ -52,11 +52,11 @@ export const useIpProtection = () => {
                     .from('blocked_ips')
                     .select('reason')
                     .eq('ip', clientIp)
-                    .single();
+                    .limit(1);
 
-                if (blockedData) {
+                if (blockedData && blockedData.length > 0) {
                     setIsBlocked(true);
-                    setReason(blockedData.reason);
+                    setReason(blockedData[0].reason);
                 }
             } catch (err) {
                 console.error("Error checking IP protection:", err);

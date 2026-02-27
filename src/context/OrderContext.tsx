@@ -91,6 +91,8 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           ]);
 
           const staffMap: Record<string, string> = {};
+          const openerMap: Record<string, string> = {};
+          
           if (staffRes.data) {
               staffRes.data.forEach((user: any) => {
                   if (user.allowed_routes) {
@@ -99,12 +101,16 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                               const tableId = route.split(':')[1];
                               staffMap[tableId] = user.id;
                           }
+                          if (route.startsWith('OPENER:')) {
+                              const tableId = route.split(':')[1];
+                              openerMap[tableId] = user.id;
+                          }
                       });
                   }
               });
           }
 
-          if (tablesRes.data) localDispatch({ type: 'SET_TABLES', tables: tablesRes.data.map(t => ({ id: t.id, number: t.number, status: t.status, customerName: t.customer_name, accessCode: t.access_code, openedBy: t.opened_by, assignedWaiterId: staffMap[t.id] || null })) });
+          if (tablesRes.data) localDispatch({ type: 'SET_TABLES', tables: tablesRes.data.map(t => ({ id: t.id, number: t.number, status: t.status, customerName: t.customer_name, accessCode: t.access_code, openedBy: openerMap[t.id] || null, assignedWaiterId: staffMap[t.id] || null })) });
           
           if (ordersRes.data) {
               const mappedOrders = ordersRes.data.map(o => ({
@@ -257,6 +263,21 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       fetchData();
   };
 
+  // Helper para fechar mesa e limpar rotas
+  const closeTableInternal = async (tableId: string) => {
+      await supabase.from('restaurant_tables').update({ status: 'AVAILABLE', customer_name: null, access_code: null }).eq('id', tableId);
+      
+      // Clear OPENER routes
+      const { data: allStaffOpener } = await supabase.from('staff').select('id, allowed_routes').eq('tenant_id', tenantId);
+      if (allStaffOpener) {
+          const openers = allStaffOpener.filter((s: any) => s.allowed_routes && s.allowed_routes.includes(`OPENER:${tableId}`));
+          for (const opener of openers) {
+              const newRoutes = (opener.allowed_routes || []).filter((r: string) => r !== `OPENER:${tableId}`);
+              await supabase.from('staff').update({ allowed_routes: newRoutes }).eq('id', opener.id);
+          }
+      }
+  };
+
   const processPayment = async (tableId: string | undefined, amount: number, method: string, cashierName: string = 'Caixa', orderId?: string, specificOrderIds?: string[], courierInfo?: { id: string, name: string }) => {
       if(!tenantId) return;
       
@@ -296,12 +317,12 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                   .neq('status', 'CANCELLED');
               
               if (!pendingOrders || pendingOrders.length === 0) {
-                  await supabase.from('restaurant_tables').update({ status: 'AVAILABLE', customer_name: null }).eq('id', tableId);
+                  await closeTableInternal(tableId);
               }
           } else {
               // Pagamento total da mesa
               await supabase.from('orders').update({ is_paid: true }).eq('table_id', tableId).eq('is_paid', false);
-              await supabase.from('restaurant_tables').update({ status: 'AVAILABLE', customer_name: null }).eq('id', tableId);
+              await closeTableInternal(tableId);
           }
       }
 
@@ -344,8 +365,23 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           case 'UPDATE_ITEM_STATUS': await updateItemStatus(action.orderId, action.itemId, action.status); break;
           case 'ADD_TABLE': await addTable(); break;
           case 'DELETE_TABLE': await supabase.from('restaurant_tables').delete().eq('id', action.tableId); fetchData(); break;
-          case 'OPEN_TABLE': await supabase.from('restaurant_tables').update({ status: 'OCCUPIED', customer_name: sanitizeObject(action.customerName), access_code: action.accessCode, opened_by: authState.currentUser?.id }).eq('id', action.tableId); fetchData(); break;
-          case 'CLOSE_TABLE': await supabase.from('restaurant_tables').update({ status: 'AVAILABLE', customer_name: null, access_code: null, opened_by: null }).eq('id', action.tableId); fetchData(); break;
+          case 'OPEN_TABLE': 
+              await supabase.from('restaurant_tables').update({ status: 'OCCUPIED', customer_name: sanitizeObject(action.customerName), access_code: action.accessCode }).eq('id', action.tableId);
+              if (authState.currentUser?.id) {
+                  const { data: user } = await supabase.from('staff').select('allowed_routes').eq('id', authState.currentUser.id).single();
+                  if (user) {
+                      const currentRoutes = user.allowed_routes || [];
+                      if (!currentRoutes.includes(`OPENER:${action.tableId}`)) {
+                          await supabase.from('staff').update({ allowed_routes: [...currentRoutes, `OPENER:${action.tableId}`] }).eq('id', authState.currentUser.id);
+                      }
+                  }
+              }
+              fetchData(); 
+              break;
+          case 'CLOSE_TABLE': 
+              await closeTableInternal(action.tableId);
+              fetchData(); 
+              break;
           case 'CALL_WAITER': 
               if(!checkRateLimit(`call_waiter_${action.tableId}`, 1, 30000)) { // 1 chamado a cada 30s
                   showAlert({title: "Já Chamado", message: "Garçom já notificado.", type: "INFO"});
