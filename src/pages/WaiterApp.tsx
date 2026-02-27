@@ -111,11 +111,14 @@ export const WaiterApp: React.FC = () => {
           const table = orderState.tables.find(t => t.id === o.tableId);
           
           if (notificationMode === 'OPENER') {
-              if (table?.openedBy && table.openedBy !== authState.currentUser?.id) {
+              if (table?.openedBy && table.openedBy !== currentUserId) {
                   return acc;
               }
           } else if (notificationMode === 'ASSIGNED') {
-              if (table?.assignedWaiterId && table.assignedWaiterId !== authState.currentUser?.id) {
+              if (table?.assignedWaiterId && table.assignedWaiterId !== currentUserId) {
+                  return acc;
+              }
+              if (!table?.assignedWaiterId && isStrict) {
                   return acc;
               }
           }

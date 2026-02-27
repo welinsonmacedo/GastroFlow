@@ -20,8 +20,11 @@
     display: flex;
     flex-direction: column;
     
-    /* Ajuste para Window Controls Overlay (Desktop PWA) */
-    padding-top: env(titlebar-area-height, 0px); 
+    /* Ajuste para Window Controls Overlay (Desktop PWA) e iOS Safe Area */
+    padding-top: max(env(safe-area-inset-top), env(titlebar-area-height, 0px)); 
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
   }
 }
 
