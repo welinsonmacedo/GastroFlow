@@ -320,6 +320,7 @@ export interface RestaurantBusinessInfo {
     expenseCategories?: ExpenseCategory[]; 
     timeClock?: TimeClockConfig;
     waiterNotificationMode?: WaiterNotificationMode;
+    strictWaiterNotification?: boolean;
 }
 
 export interface RestaurantTenant {

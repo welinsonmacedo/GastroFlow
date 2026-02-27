@@ -43,6 +43,8 @@ export const WaiterApp: React.FC = () => {
   const [productModal, setProductModal] = useState<Product | null>(null);
 
   const notificationMode = restState.businessInfo?.waiterNotificationMode || 'ALL';
+  const isStrict = restState.businessInfo?.strictWaiterNotification || false;
+  const currentUserId = authState.currentUser?.id;
 
   const pendingCalls = orderState.serviceCalls.filter(c => {
       if (c.status !== 'PENDING') return false;
@@ -53,15 +55,21 @@ export const WaiterApp: React.FC = () => {
       // Filtra notificações baseado no modo configurado
       if (notificationMode === 'OPENER') {
           // Se a mesa tem um responsável definido e não é o usuário atual, ignora
-          if (table.openedBy && table.openedBy !== authState.currentUser?.id) {
+          if (table.openedBy && table.openedBy !== currentUserId) {
               return false;
           }
       } else if (notificationMode === 'ASSIGNED') {
           // Se a mesa tem um garçom atribuído e não é o usuário atual, ignora
-          if (table.assignedWaiterId && table.assignedWaiterId !== authState.currentUser?.id) {
+          if (table.assignedWaiterId && table.assignedWaiterId !== currentUserId) {
               return false;
           }
-          // Se a mesa NÃO tem garçom atribuído, mostra para todos (fallback)
+          // Se a mesa NÃO tem garçom atribuído
+          if (!table.assignedWaiterId) {
+              // Se modo estrito estiver ATIVO, ignora mesas sem dono
+              if (isStrict) return false;
+              // Se modo estrito estiver INATIVO (padrão), mostra para todos (fallback)
+              return true;
+          }
       }
       return true;
   });

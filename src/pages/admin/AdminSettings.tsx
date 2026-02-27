@@ -389,10 +389,33 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ view = 'BUSINESS' 
                                 <option value="OPENER">Notificar Apenas Quem Abriu a Mesa</option>
                                 <option value="ASSIGNED">Atribuir Mesas a Garçons (Manual)</option>
                             </select>
+                            
+                            {businessForm.waiterNotificationMode === 'ASSIGNED' && (
+                                <div className="mt-4 flex items-center gap-3 bg-white p-3 rounded-lg border border-gray-200">
+                                    <input 
+                                        type="checkbox" 
+                                        id="strictMode"
+                                        className="w-5 h-5 accent-orange-500"
+                                        checked={businessForm.strictWaiterNotification || false}
+                                        onChange={e => setBusinessForm({...businessForm, strictWaiterNotification: e.target.checked})}
+                                    />
+                                    <label htmlFor="strictMode" className="text-sm font-bold text-gray-700 cursor-pointer select-none">
+                                        Modo Estrito (Ignorar Mesas Sem Garçom)
+                                    </label>
+                                </div>
+                            )}
+
                             <p className="text-[10px] text-gray-400 mt-2">
                                 {(!businessForm.waiterNotificationMode || businessForm.waiterNotificationMode === 'ALL') && "Todos os garçons logados receberão o alerta sonoro e visual."}
                                 {businessForm.waiterNotificationMode === 'OPENER' && "Apenas o garçom que iniciou o atendimento na mesa receberá o alerta."}
-                                {businessForm.waiterNotificationMode === 'ASSIGNED' && "Defina quais mesas cada garçom atende na tela de Equipe."}
+                                {businessForm.waiterNotificationMode === 'ASSIGNED' && (
+                                    <>
+                                        Defina quais mesas cada garçom atende na tela de Equipe.
+                                        {businessForm.strictWaiterNotification 
+                                            ? " Mesas sem garçom atribuído NÃO notificarão ninguém (exceto Admins)." 
+                                            : " Mesas sem garçom atribuído notificarão TODOS os garçons."}
+                                    </>
+                                )}
                             </p>
                         </div>
                     </div>
