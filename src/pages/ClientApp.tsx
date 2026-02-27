@@ -429,7 +429,7 @@ export const ClientApp: React.FC = () => {
                     <div className={`bg-white shadow-xl border border-gray-100 overflow-hidden animate-fade-in flex flex-col min-h-[50vh] ${radiusClass}`}>
                         <div className="bg-gray-50 p-6 border-b flex justify-between items-center">
                             <div>
-                                <h2 className="text-2xl font-black text-slate-800 uppercase tracking-tighter">Sua Cesta</h2>
+                                <h2 className="text-2xl font-black text-slate-800 uppercase tracking-tighter">Seu Pedido</h2>
                                 <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: theme.primaryColor }}>Confira antes de pedir</p>
                             </div>
                         </div>
