@@ -148,6 +148,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           .on('postgres_changes', { event: '*', schema: 'public', table: 'order_items', filter: `tenant_id=eq.${tenantId}` }, handleRealtimeUpdate)
           .on('postgres_changes', { event: '*', schema: 'public', table: 'service_calls', filter: `tenant_id=eq.${tenantId}` }, handleRealtimeUpdate)
           .on('postgres_changes', { event: '*', schema: 'public', table: 'restaurant_tables', filter: `tenant_id=eq.${tenantId}` }, handleRealtimeUpdate)
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'staff', filter: `tenant_id=eq.${tenantId}` }, handleRealtimeUpdate)
           .subscribe();
 
       return () => { supabase.removeChannel(channel); };

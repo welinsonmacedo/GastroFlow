@@ -345,7 +345,11 @@ export const WaiterApp: React.FC = () => {
         <div className="bg-white border-b px-4 py-3 flex justify-between items-center shrink-0">
              <div>
                 <h2 className="text-lg font-black text-slate-800 uppercase tracking-tight">Atendimento</h2>
-                <p className="text-xs text-slate-500">Gestão de salão em tempo real</p>
+                <p className="text-xs text-slate-500">
+                    {notificationMode === 'ALL' && 'Modo: Todos os Garçons'}
+                    {notificationMode === 'OPENER' && 'Modo: Quem Abriu a Mesa'}
+                    {notificationMode === 'ASSIGNED' && 'Modo: Mesas Atribuídas'}
+                </p>
              </div>
              <div className="flex items-center gap-2">
                  {audioBlocked && (
