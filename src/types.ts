@@ -503,6 +503,7 @@ export interface Table {
   accessCode?: string; 
   openedBy?: string;
   assignedWaiterId?: string;
+  assignedWaiterName?: string;
 }
 
 export interface ServiceCall {

@@ -47,23 +47,21 @@ export const WaiterApp: React.FC = () => {
   const pendingCalls = orderState.serviceCalls.filter(c => {
       if (c.status !== 'PENDING') return false;
       
+      const table = orderState.tables.find(t => t.id === c.tableId);
+      if (!table) return true;
+
       // Filtra notificações baseado no modo configurado
       if (notificationMode === 'OPENER') {
-          const table = orderState.tables.find(t => t.id === c.tableId);
           // Se a mesa tem um responsável definido e não é o usuário atual, ignora
-          if (table?.openedBy && table.openedBy !== authState.currentUser?.id) {
+          if (table.openedBy && table.openedBy !== authState.currentUser?.id) {
               return false;
           }
       } else if (notificationMode === 'ASSIGNED') {
-          const table = orderState.tables.find(t => t.id === c.tableId);
           // Se a mesa tem um garçom atribuído e não é o usuário atual, ignora
-          if (table?.assignedWaiterId && table.assignedWaiterId !== authState.currentUser?.id) {
+          if (table.assignedWaiterId && table.assignedWaiterId !== authState.currentUser?.id) {
               return false;
           }
-          // Se a mesa NÃO tem garçom atribuído, talvez todos devam receber? 
-          // Ou ninguém? Geralmente mesas sem dono vão para todos ou "pool".
-          // Vamos assumir que se não tem assignedWaiterId, vai para todos (fallback) ou apenas admins.
-          // Mas para simplificar, se não tem assignedWaiterId, mostra para todos.
+          // Se a mesa NÃO tem garçom atribuído, mostra para todos (fallback)
       }
       return true;
   });
@@ -403,7 +401,14 @@ export const WaiterApp: React.FC = () => {
                                     </div>
                                 )}
                                 {hasBufferedOrder && !hasCall && <div className="absolute top-4 right-4 text-blue-500 animate-spin"><Clock size={20} /></div>}
-                                <div className="w-full mt-2">{table.status === TableStatus.OCCUPIED && (<div className="bg-blue-50 px-3 py-1.5 rounded-xl text-[10px] font-black text-blue-600 border border-blue-100 truncate w-full text-center uppercase tracking-tight">{table.customerName || 'Cliente'}</div>)}</div>
+                                <div className="w-full mt-2 space-y-1">
+                                    {table.status === TableStatus.OCCUPIED && (<div className="bg-blue-50 px-3 py-1.5 rounded-xl text-[10px] font-black text-blue-600 border border-blue-100 truncate w-full text-center uppercase tracking-tight">{table.customerName || 'Cliente'}</div>)}
+                                    {table.assignedWaiterName && notificationMode === 'ASSIGNED' && (
+                                        <div className={`px-2 py-1 rounded-lg text-[9px] font-bold uppercase tracking-widest text-center border ${table.assignedWaiterId === authState.currentUser?.id ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-gray-100 text-gray-500 border-gray-200'}`}>
+                                            {table.assignedWaiterId === authState.currentUser?.id ? 'Meus Pedidos' : `Atend: ${table.assignedWaiterName.split(' ')[0]}`}
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         );
                     })}

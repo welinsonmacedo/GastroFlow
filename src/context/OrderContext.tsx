@@ -87,10 +87,10 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               supabase.from('restaurant_tables').select('*').eq('tenant_id', tenantId).order('number'),
               supabase.from('orders').select(`*, items:order_items (*)`).eq('tenant_id', tenantId).gte('created_at', yesterday.toISOString()),
               supabase.from('service_calls').select('*').eq('tenant_id', tenantId).eq('status', 'PENDING'),
-              supabase.from('staff').select('id, allowed_routes').eq('tenant_id', tenantId)
+              supabase.from('staff').select('id, name, allowed_routes').eq('tenant_id', tenantId)
           ]);
 
-          const staffMap: Record<string, string> = {};
+          const staffMap: Record<string, {id: string, name: string}> = {};
           const openerMap: Record<string, string> = {};
           
           if (staffRes.data) {
@@ -99,7 +99,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                       user.allowed_routes.forEach((route: string) => {
                           if (route.startsWith('TABLE:')) {
                               const tableId = route.split(':')[1];
-                              staffMap[tableId] = user.id;
+                              staffMap[tableId] = { id: user.id, name: user.name };
                           }
                           if (route.startsWith('OPENER:')) {
                               const tableId = route.split(':')[1];
@@ -110,7 +110,16 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               });
           }
 
-          if (tablesRes.data) localDispatch({ type: 'SET_TABLES', tables: tablesRes.data.map(t => ({ id: t.id, number: t.number, status: t.status, customerName: t.customer_name, accessCode: t.access_code, openedBy: openerMap[t.id] || null, assignedWaiterId: staffMap[t.id] || null })) });
+          if (tablesRes.data) localDispatch({ type: 'SET_TABLES', tables: tablesRes.data.map(t => ({ 
+              id: t.id, 
+              number: t.number, 
+              status: t.status, 
+              customerName: t.customer_name, 
+              accessCode: t.access_code, 
+              openedBy: openerMap[t.id] || null, 
+              assignedWaiterId: staffMap[t.id]?.id || null,
+              assignedWaiterName: staffMap[t.id]?.name || null
+          })) });
           
           if (ordersRes.data) {
               const mappedOrders = ordersRes.data.map(o => ({
