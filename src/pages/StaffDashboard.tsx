@@ -14,6 +14,7 @@ import { Role } from '../types';
 import { StaffList } from './admin/rh/StaffList';
 import { StaffSchedules } from './admin/rh/StaffSchedules';
 import { StaffPayroll } from './admin/rh/StaffPayroll';
+import { StaffRecurringEvents } from './admin/rh/StaffRecurringEvents';
 import { StaffAttendance } from './admin/rh/StaffAttendance';
 import { StaffSettings } from './admin/rh/StaffSettings'; // Nova Importação
 
@@ -50,6 +51,12 @@ export const StaffDashboard: React.FC = () => {
     { 
         path: '/rh/payroll', 
         label: 'PRÉ-FOLHA', 
+        icon: FileText, 
+        featureKeys: ['hr_payroll']
+    },
+    { 
+        path: '/rh/recurring', 
+        label: 'EVENTOS RECORRENTES', 
         icon: FileText, 
         featureKeys: ['hr_payroll']
     },
@@ -150,6 +157,7 @@ export const StaffDashboard: React.FC = () => {
                     <Route path="/attendance" element={<StaffAttendance />} />
                     <Route path="/schedules" element={<StaffSchedules />} />
                     <Route path="/payroll" element={<StaffPayroll />} />
+                    <Route path="/recurring" element={<StaffRecurringEvents />} />
                     <Route path="/settings" element={<StaffSettings />} />
                     <Route path="*" element={<Navigate to="" replace />} />
                 </Routes>

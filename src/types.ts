@@ -108,6 +108,15 @@ export interface PayrollEvent {
     value: number;
 }
 
+export interface RecurringEvent {
+    id: string;
+    staffId: string;
+    type: PayrollEventType;
+    description: string;
+    value: number;
+    isActive: boolean;
+}
+
 // Interfaces Novas para Cálculo Real
 export interface RhPayrollSetting {
     id: string;

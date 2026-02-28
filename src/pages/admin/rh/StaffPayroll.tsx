@@ -11,7 +11,7 @@ import { printHtml, getReportStyles } from '../../../utils/printHelper';
 import { Modal } from '../../../components/Modal';
 
 export const StaffPayroll: React.FC = () => {
-    const { getPayroll, closePayroll, reopenPayroll, addPayrollEvent, deletePayrollEvent, state: staffState } = useStaff();
+    const { getPayroll, closePayroll, reopenPayroll, addPayrollEvent, deletePayrollEvent, generateRecurringEventsForMonth, state: staffState } = useStaff();
     const { state: restState } = useRestaurant(); 
     const { showAlert, showConfirm } = useUI();
     const { addExpense } = useFinance();
@@ -266,6 +266,19 @@ export const StaffPayroll: React.FC = () => {
         }
     };
 
+    const handleGenerateRecurring = async () => {
+        try {
+            setLoading(true);
+            await generateRecurringEventsForMonth(month, year);
+            await loadData();
+            showAlert({ title: "Sucesso", message: "Eventos recorrentes gerados para este mês.", type: "SUCCESS" });
+        } catch (error: any) {
+            showAlert({ title: "Erro", message: error.message, type: "ERROR" });
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const handleExportCSV = () => {
         if (payrollData.length === 0) return;
         let csv = "Colaborador;Cargo;Salario Base;H.Extra 50%;H.Extra 100%;Adic. Noturno;Bonus;Bruto;INSS;IRRF;Outros Desc.;Liquido;Custo Empresa\n";
@@ -489,6 +502,9 @@ export const StaffPayroll: React.FC = () => {
                     
                     {!isClosed && (
                         <>
+                            <Button onClick={handleGenerateRecurring} disabled={loading} variant="secondary" className="border-blue-200 text-blue-700 hover:bg-blue-50">
+                                <RefreshCcw size={16} className="mr-2"/> Gerar Recorrentes
+                            </Button>
                             <Button onClick={() => { 
                                 setEventForm({ staffId: '', type: 'BONUS', value: 0, description: '' }); 
                                 setCalcMode('MANUAL');

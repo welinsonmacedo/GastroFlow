@@ -4,7 +4,7 @@ import {
     User, Shift, TimeEntry, PayrollPreview, CustomRole, 
     RHTax, RHBenefit, TaxRegime, TaxPayerType, TaxCalculationBasis,
     RhPayrollSetting, RhInssBracket, RhIrrfBracket, ClosedPayroll,
-    PayrollEvent, PayrollEventType, PayrollEntry, HrJobRole
+    PayrollEvent, PayrollEventType, PayrollEntry, HrJobRole, RecurringEvent
 } from '../types';
 import { supabase, logAudit } from '../lib/supabase';
 import { useRestaurant } from './RestaurantContext';
@@ -23,6 +23,7 @@ interface StaffState {
   inssBrackets: RhInssBracket[];
   irrfBrackets: RhIrrfBracket[];
   payrollEvents: PayrollEvent[];
+  recurringEvents: RecurringEvent[];
   payrollEntries: PayrollEntry[];
   isLoading: boolean;
 }
@@ -60,6 +61,11 @@ interface StaffContextType {
   deletePayrollEvent: (id: string) => Promise<void>;
   addPayrollEntry: (entry: Partial<PayrollEntry>) => Promise<void>;
 
+  addRecurringEvent: (event: Partial<RecurringEvent>) => Promise<void>;
+  updateRecurringEvent: (event: RecurringEvent) => Promise<void>;
+  deleteRecurringEvent: (id: string) => Promise<void>;
+  generateRecurringEventsForMonth: (month: number, year: number) => Promise<void>;
+
   getPayroll: (month: number, year: number) => Promise<{ payroll: PayrollPreview[], isClosed: boolean, closedInfo?: ClosedPayroll }>;
   closePayroll: (month: number, year: number) => Promise<void>;
   reopenPayroll: (month: number, year: number) => Promise<void>;
@@ -78,7 +84,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   
   const [state, setState] = useState<StaffState>({ 
     users: [], shifts: [], timeEntries: [], roles: [], hrJobRoles: [], taxes: [], benefits: [],
-    legalSettings: null, inssBrackets: [], irrfBrackets: [], payrollEvents: [], payrollEntries: [], isLoading: true 
+    legalSettings: null, inssBrackets: [], irrfBrackets: [], payrollEvents: [], recurringEvents: [], payrollEntries: [], isLoading: true 
   });
 
   const fetchData = useCallback(async () => {
@@ -98,6 +104,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           supabase.from('rh_inss_brackets').select('*').eq('tenant_id', tenantId).order('min_value', { ascending: true }),
           supabase.from('rh_irrf_brackets').select('*').eq('tenant_id', tenantId).order('min_value', { ascending: true }),
           supabase.from('rh_payroll_events').select('*').eq('tenant_id', tenantId),
+          supabase.from('rh_recurring_events').select('*').eq('tenant_id', tenantId),
           supabase.from('rh_job_roles').select('*').eq('tenant_id', tenantId)
       ]);
 
@@ -163,7 +170,12 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               type: e.type, description: e.description, value: Number(e.value)
           }));
 
-          const mappedHrRoles = (hrRolesRes.data || []).map((r: any) => ({
+          const mappedRecurringEvents = (res[10].data || []).map((e: any) => ({
+              id: e.id, staffId: e.staff_id, type: e.type, description: e.description, 
+              value: Number(e.value), isActive: e.is_active
+          }));
+
+          const mappedHrRoles = (res[11].data || []).map((r: any) => ({
               id: r.id, title: r.title, cboCode: r.cbo_code, description: r.description,
               baseSalary: Number(r.base_salary), customRoleId: r.custom_role_id, isActive: r.is_active
           }));
@@ -171,7 +183,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           setState({ 
             users: mappedUsers, shifts: mappedShifts, timeEntries: mappedTime, roles: mappedRoles, hrJobRoles: mappedHrRoles,
             taxes: mappedTaxes, benefits: mappedBenefits, legalSettings, inssBrackets, irrfBrackets, 
-            payrollEvents: mappedEvents, payrollEntries: [], isLoading: false 
+            payrollEvents: mappedEvents, recurringEvents: mappedRecurringEvents, payrollEntries: [], isLoading: false 
           });
       }
   }, [tenantId]);
@@ -419,6 +431,76 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const deletePayrollEvent = async (id: string) => {
       await supabase.from('rh_payroll_events').delete().eq('id', id);
       fetchData();
+  };
+
+  // --- EVENTOS RECORRENTES ---
+  const addRecurringEvent = async (event: Partial<RecurringEvent>) => {
+      if(!tenantId || !currentUser) return;
+      const { error } = await supabase.from('rh_recurring_events').insert({
+          tenant_id: tenantId, staff_id: event.staffId, type: event.type, 
+          description: event.description, value: event.value, is_active: event.isActive !== false
+      });
+      if(error) throw error;
+      fetchData();
+  };
+
+  const updateRecurringEvent = async (event: RecurringEvent) => {
+      if(!tenantId || !currentUser) return;
+      const { error } = await supabase.from('rh_recurring_events').update({
+          type: event.type, description: event.description, value: event.value, is_active: event.isActive
+      }).eq('id', event.id);
+      if(error) throw error;
+      fetchData();
+  };
+
+  const deleteRecurringEvent = async (id: string) => {
+      await supabase.from('rh_recurring_events').delete().eq('id', id);
+      fetchData();
+  };
+
+  const generateRecurringEventsForMonth = async (month: number, year: number) => {
+      if(!tenantId || !currentUser) return;
+      
+      // 1. Get active recurring events
+      const activeEvents = state.recurringEvents.filter(e => e.isActive);
+      if (activeEvents.length === 0) return;
+
+      // 2. Get existing events for this month to avoid duplicates
+      const { data: existingEvents } = await supabase.from('rh_payroll_events')
+          .select('staff_id, type, description')
+          .eq('tenant_id', tenantId)
+          .eq('month', month)
+          .eq('year', year);
+
+      const inserts = [];
+      for (const rec of activeEvents) {
+          // Check if this exact event was already generated
+          const alreadyExists = existingEvents?.some(e => 
+              e.staff_id === rec.staffId && 
+              e.type === rec.type && 
+              e.description === rec.description
+          );
+
+          if (!alreadyExists) {
+              inserts.push({
+                  tenant_id: tenantId,
+                  staff_id: rec.staffId,
+                  month,
+                  year,
+                  type: rec.type,
+                  description: rec.description,
+                  value: rec.value,
+                  created_by: currentUser.id
+              });
+          }
+      }
+
+      if (inserts.length > 0) {
+          const { error } = await supabase.from('rh_payroll_events').insert(inserts);
+          if (error) throw error;
+          await logAudit(tenantId, currentUser.id, currentUser.name, 'HR', 'Geração de Eventos Recorrentes', { count: inserts.length, month, year });
+          fetchData();
+      }
   };
 
   const addPayrollEntry = async (entry: Partial<PayrollEntry>) => {
@@ -730,7 +812,8 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         saveLegalSettings, saveInssBrackets, saveIrrfBrackets, applyLegalDefaults,
         addTax, deleteTax, applyRegimeDefaults,
         addBenefit, deleteBenefit,
-        addPayrollEvent, updatePayrollEvent, deletePayrollEvent, addPayrollEntry
+        addPayrollEvent, updatePayrollEvent, deletePayrollEvent, addPayrollEntry,
+        addRecurringEvent, updateRecurringEvent, deleteRecurringEvent, generateRecurringEventsForMonth
     }}>
       {children}
     </StaffContext.Provider>
