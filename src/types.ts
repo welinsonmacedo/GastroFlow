@@ -62,6 +62,7 @@ export interface EventType {
     name: string;
     operation: '+' | '-';
     isActive: boolean;
+    calculationType: 'FIXED' | 'PERCENTAGE';
 }
 
 export interface HrJobRole {

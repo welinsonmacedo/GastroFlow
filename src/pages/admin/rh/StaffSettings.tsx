@@ -25,7 +25,7 @@ export const StaffSettings: React.FC = () => {
 
     const [isEventTypeModalOpen, setIsEventTypeModalOpen] = useState(false);
     const [editingEventType, setEditingEventType] = useState<EventType | null>(null);
-    const [eventTypeForm, setEventTypeForm] = useState<Partial<EventType>>({ name: '', operation: '+', isActive: true });
+    const [eventTypeForm, setEventTypeForm] = useState<Partial<EventType>>({ name: '', operation: '+', isActive: true, calculationType: 'FIXED' });
 
     const handleOpenEventTypeModal = (evt?: EventType) => {
         if (evt) {
@@ -33,7 +33,7 @@ export const StaffSettings: React.FC = () => {
             setEventTypeForm(evt);
         } else {
             setEditingEventType(null);
-            setEventTypeForm({ name: '', operation: '+', isActive: true });
+            setEventTypeForm({ name: '', operation: '+', isActive: true, calculationType: 'FIXED' });
         }
         setIsEventTypeModalOpen(true);
     };
@@ -301,6 +301,7 @@ export const StaffSettings: React.FC = () => {
                                 <tr>
                                     <th className="p-4">Nome do Evento</th>
                                     <th className="p-4">Operação</th>
+                                    <th className="p-4">Cálculo</th>
                                     <th className="p-4">Status</th>
                                     <th className="p-4 text-right">Ações</th>
                                 </tr>
@@ -312,6 +313,11 @@ export const StaffSettings: React.FC = () => {
                                         <td className="p-4">
                                             <span className={`px-2 py-1 rounded text-xs font-bold ${evt.operation === '+' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                                                 {evt.operation === '+' ? 'Provento (+)' : 'Desconto (-)'}
+                                            </span>
+                                        </td>
+                                        <td className="p-4">
+                                            <span className="px-2 py-1 rounded text-xs font-bold bg-gray-100 text-gray-700">
+                                                {evt.calculationType === 'PERCENTAGE' ? '% do Salário' : 'Valor Fixo'}
                                             </span>
                                         </td>
                                         <td className="p-4">
@@ -360,6 +366,17 @@ export const StaffSettings: React.FC = () => {
                             onChange={e => setEventTypeForm({...eventTypeForm, name: e.target.value})}
                             placeholder="Ex: Vale Transporte, Bônus Meta..."
                         />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold mb-1 text-slate-600">Tipo de Cálculo *</label>
+                        <select 
+                            className="w-full border p-2.5 rounded-xl text-sm bg-white" 
+                            value={eventTypeForm.calculationType || 'FIXED'} 
+                            onChange={e => setEventTypeForm({...eventTypeForm, calculationType: e.target.value as 'FIXED' | 'PERCENTAGE'})}
+                        >
+                            <option value="FIXED">Valor Fixo (R$)</option>
+                            <option value="PERCENTAGE">Porcentagem do Salário (%)</option>
+                        </select>
                     </div>
                     <div>
                         <label className="block text-xs font-bold mb-1 text-slate-600">Operação *</label>

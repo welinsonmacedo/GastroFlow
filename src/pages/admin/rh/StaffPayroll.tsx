@@ -752,9 +752,13 @@ export const StaffPayroll: React.FC = () => {
 
                                     {/* RESULTADO FINAL (Big Input) */}
                                     <div className="mt-6 pt-6 border-t border-slate-200">
-                                        <label className="text-xs font-bold text-gray-500 uppercase block mb-2">Valor Final do Lançamento</label>
+                                        <label className="text-xs font-bold text-gray-500 uppercase block mb-2">
+                                            {staffState.eventTypes.find(t => t.id === eventForm.type)?.calculationType === 'PERCENTAGE' ? 'Porcentagem (%)' : 'Valor Final do Lançamento'}
+                                        </label>
                                         <div className="relative">
-                                            <span className="absolute left-4 top-4 text-gray-400 font-bold">R$</span>
+                                            <span className="absolute left-4 top-4 text-gray-400 font-bold">
+                                                {staffState.eventTypes.find(t => t.id === eventForm.type)?.calculationType === 'PERCENTAGE' ? '%' : 'R$'}
+                                            </span>
                                             <input 
                                                 type="number" 
                                                 step="0.01" 

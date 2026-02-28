@@ -174,14 +174,16 @@ export const StaffRecurringEvents: React.FC = () => {
                             </select>
                         </div>
                         <div>
-                            <label className="block text-xs font-bold mb-1 text-slate-600">Valor (R$) *</label>
+                            <label className="block text-xs font-bold mb-1 text-slate-600">
+                                {state.eventTypes.find(t => t.id === form.type)?.calculationType === 'PERCENTAGE' ? 'Porcentagem (%) *' : 'Valor (R$) *'}
+                            </label>
                             <input 
                                 type="number" 
                                 step="0.01"
                                 className="w-full border p-2.5 rounded-xl text-sm" 
                                 value={form.value || ''} 
                                 onChange={e => setForm({...form, value: parseFloat(e.target.value)})}
-                                placeholder="0.00"
+                                placeholder={state.eventTypes.find(t => t.id === form.type)?.calculationType === 'PERCENTAGE' ? "0.00 %" : "0.00"}
                             />
                         </div>
                     </div>

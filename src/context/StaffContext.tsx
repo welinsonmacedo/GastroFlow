@@ -187,7 +187,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           }));
 
           const mappedEventTypes = (eventTypesRes.data || []).map((e: any) => ({
-              id: e.id, name: e.name, operation: e.operation, isActive: e.is_active
+              id: e.id, name: e.name, operation: e.operation, isActive: e.is_active, calculationType: e.calculation_type || 'FIXED'
           }));
 
           setState({ 
@@ -297,7 +297,8 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           tenant_id: tenantId,
           name: eventType.name,
           operation: eventType.operation,
-          is_active: eventType.isActive
+          is_active: eventType.isActive,
+          calculation_type: eventType.calculationType || 'FIXED'
       });
       if (error) throw error;
       await fetchData();
@@ -307,7 +308,9 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const { error } = await supabase.from('rh_event_types').update({
           name: eventType.name,
           operation: eventType.operation,
-          is_active: eventType.isActive
+          is_active: eventType.isActive,
+          calculation_type: eventType.calculationType || 'FIXED',
+          updated_at: new Date()
       }).eq('id', eventType.id);
       if (error) throw error;
       await fetchData();
@@ -696,15 +699,35 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           const eventBreakdown: any[] = [];
           
           userEvents.forEach((ev: any) => {
-              if (['BONUS', 'COMMISSION', 'INSALUBRITY', 'DANGEROUSNESS', 'NIGHT_SHIFT'].includes(ev.type)) {
-                  eventAdditions += Number(ev.value);
-                  eventBreakdown.push({ name: ev.description || ev.type, value: Number(ev.value), type: 'CREDIT' });
-              } else if (['DEDUCTION', 'FOOD_VOUCHER'].includes(ev.type)) {
-                  eventDeductions += Number(ev.value);
-                  eventBreakdown.push({ name: ev.description || ev.type, value: Number(ev.value), type: 'DEBIT' });
-              } else if (ev.type === 'ADVANCE') {
-                  advances += Number(ev.value);
-                  eventBreakdown.push({ name: 'Adiantamento', value: Number(ev.value), type: 'DEBIT' });
+              const evtType = state.eventTypes.find(t => t.id === ev.type);
+              
+              // Se for um tipo customizado
+              if (evtType) {
+                  let val = Number(ev.value);
+                  // Se for porcentagem, calcula sobre o salário base
+                  if (evtType.calculationType === 'PERCENTAGE') {
+                      val = (baseSalary * (val / 100));
+                  }
+
+                  if (evtType.operation === '+') {
+                      eventAdditions += val;
+                      eventBreakdown.push({ name: ev.description || evtType.name, value: val, type: 'CREDIT' });
+                  } else {
+                      eventDeductions += val;
+                      eventBreakdown.push({ name: ev.description || evtType.name, value: val, type: 'DEBIT' });
+                  }
+              } else {
+                  // Fallback para tipos legados (hardcoded)
+                  if (['BONUS', 'COMMISSION', 'INSALUBRITY', 'DANGEROUSNESS', 'NIGHT_SHIFT'].includes(ev.type)) {
+                      eventAdditions += Number(ev.value);
+                      eventBreakdown.push({ name: ev.description || ev.type, value: Number(ev.value), type: 'CREDIT' });
+                  } else if (['DEDUCTION', 'FOOD_VOUCHER'].includes(ev.type)) {
+                      eventDeductions += Number(ev.value);
+                      eventBreakdown.push({ name: ev.description || ev.type, value: Number(ev.value), type: 'DEBIT' });
+                  } else if (ev.type === 'ADVANCE') {
+                      advances += Number(ev.value);
+                      eventBreakdown.push({ name: 'Adiantamento', value: Number(ev.value), type: 'DEBIT' });
+                  }
               }
           });
 
