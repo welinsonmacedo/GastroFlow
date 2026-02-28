@@ -65,24 +65,16 @@ export const StaffRecurringEvents: React.FC = () => {
         });
     };
 
-    const getTypeColor = (type: string) => {
-        if (['BONUS', 'COMMISSION', 'FOOD_VOUCHER'].includes(type)) return 'text-green-600 bg-green-50 border-green-200';
-        if (['DEDUCTION', 'ADVANCE'].includes(type)) return 'text-red-600 bg-red-50 border-red-200';
-        return 'text-blue-600 bg-blue-50 border-blue-200';
+    const getTypeColor = (typeId: string) => {
+        const evtType = state.eventTypes.find(t => t.id === typeId);
+        if (!evtType) return 'text-slate-600 bg-slate-50 border-slate-200';
+        if (evtType.operation === '+') return 'text-green-600 bg-green-50 border-green-200';
+        return 'text-red-600 bg-red-50 border-red-200';
     };
 
-    const getTypeLabel = (type: string) => {
-        const labels: Record<string, string> = {
-            'BONUS': 'Bônus/Prêmio',
-            'COMMISSION': 'Comissão',
-            'DEDUCTION': 'Desconto',
-            'ADVANCE': 'Adiantamento',
-            'NIGHT_SHIFT': 'Adic. Noturno',
-            'INSALUBRITY': 'Insalubridade',
-            'DANGEROUSNESS': 'Periculosidade',
-            'FOOD_VOUCHER': 'Vale Alimentação'
-        };
-        return labels[type] || type;
+    const getTypeLabel = (typeId: string) => {
+        const evtType = state.eventTypes.find(t => t.id === typeId);
+        return evtType ? evtType.name : typeId;
     };
 
     return (
@@ -175,13 +167,10 @@ export const StaffRecurringEvents: React.FC = () => {
                                 value={form.type} 
                                 onChange={e => setForm({...form, type: e.target.value as PayrollEventType})}
                             >
-                                <option value="BONUS">Bônus / Prêmio (+)</option>
-                                <option value="COMMISSION">Comissão (+)</option>
-                                <option value="INSALUBRITY">Insalubridade (+)</option>
-                                <option value="DANGEROUSNESS">Periculosidade (+)</option>
-                                <option value="FOOD_VOUCHER">Vale Alimentação (+)</option>
-                                <option value="DEDUCTION">Desconto Fixo (-)</option>
-                                <option value="ADVANCE">Adiantamento Fixo (-)</option>
+                                <option value="">Selecione...</option>
+                                {state.eventTypes.filter(t => t.isActive).map(t => (
+                                    <option key={t.id} value={t.id}>{t.name} ({t.operation})</option>
+                                ))}
                             </select>
                         </div>
                         <div>

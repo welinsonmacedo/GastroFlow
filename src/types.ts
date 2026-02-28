@@ -55,7 +55,14 @@ export type EmployeeStatus = 'ACTIVE' | 'ON_LEAVE' | 'TERMINATED' | 'VACATION';
 export type TaxRegime = 'SIMPLES_NACIONAL' | 'LUCRO_PRESUMIDO' | 'LUCRO_REAL' | 'MEI';
 export type TaxPayerType = 'EMPLOYEE' | 'EMPLOYER';
 export type TaxCalculationBasis = 'GROSS_TOTAL' | 'BASE_SALARY';
-export type PayrollEventType = 'BONUS' | 'COMMISSION' | 'DEDUCTION' | 'ADVANCE' | 'NIGHT_SHIFT' | 'INSALUBRITY' | 'DANGEROUSNESS' | 'FOOD_VOUCHER';
+export type PayrollEventType = string; // Now references rh_event_types ID
+
+export interface EventType {
+    id: string;
+    name: string;
+    operation: '+' | '-';
+    isActive: boolean;
+}
 
 export interface HrJobRole {
     id: string;

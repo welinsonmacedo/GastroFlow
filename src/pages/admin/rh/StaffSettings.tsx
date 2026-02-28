@@ -4,13 +4,14 @@ import { useStaff } from '../../../context/StaffContext';
 import { useRestaurant } from '../../../context/RestaurantContext';
 import { useUI } from '../../../context/UIContext';
 import { Button } from '../../../components/Button';
-import { HrJobRole, RHTax, RHBenefit, TaxPayerType, TaxCalculationBasis } from '../../../types';
-import { Plus, Trash2, Settings, Percent, DollarSign, RefreshCcw, Gift, FileText, Building2, Scale, Calculator, Edit3, Briefcase } from 'lucide-react';
+import { HrJobRole, RHTax, RHBenefit, TaxPayerType, TaxCalculationBasis, EventType } from '../../../types';
+import { Plus, Trash2, Settings, Percent, DollarSign, RefreshCcw, Gift, FileText, Building2, Scale, Calculator, Edit3, Briefcase, Tag } from 'lucide-react';
 import { LegalSettingsModal } from '../../../components/modals/LegalSettingsModal';
 import { HrJobRoleModal } from '../../../components/modals/HrJobRoleModal';
+import { Modal } from '../../../components/Modal';
 
 export const StaffSettings: React.FC = () => {
-    const { state, addTax, deleteTax, addBenefit, deleteBenefit, applyRegimeDefaults, applyLegalDefaults, deleteHrJobRole } = useStaff();
+    const { state, addTax, deleteTax, addBenefit, deleteBenefit, applyRegimeDefaults, applyLegalDefaults, deleteHrJobRole, addEventType, updateEventType, deleteEventType } = useStaff();
     const { state: restState } = useRestaurant();
     const { showAlert, showConfirm } = useUI();
 
@@ -21,6 +22,45 @@ export const StaffSettings: React.FC = () => {
     // Modal de Cargos RH
     const [isHrRoleModalOpen, setIsHrRoleModalOpen] = useState(false);
     const [editingHrRole, setEditingHrRole] = useState<HrJobRole | null>(null);
+
+    const [isEventTypeModalOpen, setIsEventTypeModalOpen] = useState(false);
+    const [editingEventType, setEditingEventType] = useState<EventType | null>(null);
+    const [eventTypeForm, setEventTypeForm] = useState<Partial<EventType>>({ name: '', operation: '+', isActive: true });
+
+    const handleOpenEventTypeModal = (evt?: EventType) => {
+        if (evt) {
+            setEditingEventType(evt);
+            setEventTypeForm(evt);
+        } else {
+            setEditingEventType(null);
+            setEventTypeForm({ name: '', operation: '+', isActive: true });
+        }
+        setIsEventTypeModalOpen(true);
+    };
+
+    const handleSaveEventType = async () => {
+        if (!eventTypeForm.name) return showAlert({ title: "Atenção", message: "Preencha o nome do evento.", type: "WARNING" });
+        try {
+            if (editingEventType) {
+                await updateEventType({ ...editingEventType, ...eventTypeForm } as EventType);
+                showAlert({ title: "Sucesso", message: "Tipo de evento atualizado.", type: "SUCCESS" });
+            } else {
+                await addEventType(eventTypeForm);
+                showAlert({ title: "Sucesso", message: "Tipo de evento criado.", type: "SUCCESS" });
+            }
+            setIsEventTypeModalOpen(false);
+        } catch (error: any) {
+            showAlert({ title: "Erro", message: error.message, type: "ERROR" });
+        }
+    };
+
+    const handleDeleteEventType = (id: string) => {
+        showConfirm({
+            title: "Excluir Tipo de Evento?",
+            message: "Tem certeza que deseja excluir este tipo de evento? Isso não afetará os eventos já lançados na folha.",
+            onConfirm: () => deleteEventType(id)
+        });
+    };
 
     // Estado para impostos customizados
     const [taxTab, setTaxTab] = useState<TaxPayerType>('EMPLOYEE');
@@ -103,6 +143,7 @@ export const StaffSettings: React.FC = () => {
                 <div className="flex gap-4 mt-6 border-b">
                     <button onClick={() => setActiveTab('LEGAL')} className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'LEGAL' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}>Tabelas Legais (INSS/IRRF)</button>
                     <button onClick={() => setActiveTab('ROLES')} className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'ROLES' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}>Cargos & CBO</button>
+                    <button onClick={() => setActiveTab('EVENT_TYPES')} className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'EVENT_TYPES' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}>Tipos de Eventos</button>
                 </div>
             </div>
 
@@ -242,6 +283,59 @@ export const StaffSettings: React.FC = () => {
                 </div>
             )}
 
+            {/* ABA 4: TIPOS DE EVENTOS */}
+            {activeTab === 'EVENT_TYPES' && (
+                <div className="space-y-6">
+                    <div className="flex justify-between items-center bg-blue-50 p-4 rounded-xl border border-blue-100">
+                        <div className="text-xs text-blue-800">
+                            <strong>Tipos de Eventos:</strong> Cadastre os tipos de eventos (bônus, descontos, vales) que poderão ser lançados na folha de pagamento ou como eventos fixos.
+                        </div>
+                        <Button onClick={() => handleOpenEventTypeModal()} className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm shrink-0">
+                            <Plus size={16} className="mr-2"/> Novo Tipo
+                        </Button>
+                    </div>
+
+                    <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+                        <table className="w-full text-left text-sm">
+                            <thead className="bg-gray-100 text-gray-600 uppercase text-xs border-b">
+                                <tr>
+                                    <th className="p-4">Nome do Evento</th>
+                                    <th className="p-4">Operação</th>
+                                    <th className="p-4">Status</th>
+                                    <th className="p-4 text-right">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y">
+                                {state.eventTypes.map(evt => (
+                                    <tr key={evt.id} className="hover:bg-gray-50">
+                                        <td className="p-4 font-bold text-gray-800">{evt.name}</td>
+                                        <td className="p-4">
+                                            <span className={`px-2 py-1 rounded text-xs font-bold ${evt.operation === '+' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                                {evt.operation === '+' ? 'Provento (+)' : 'Desconto (-)'}
+                                            </span>
+                                        </td>
+                                        <td className="p-4">
+                                            <span className={`px-2 py-1 rounded text-xs font-bold ${evt.isActive ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'}`}>
+                                                {evt.isActive ? 'Ativo' : 'Inativo'}
+                                            </span>
+                                        </td>
+                                        <td className="p-4 text-right">
+                                            <button onClick={() => handleOpenEventTypeModal(evt)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg mr-2"><Edit3 size={18}/></button>
+                                            <button onClick={() => handleDeleteEventType(evt.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg"><Trash2 size={18}/></button>
+                                        </td>
+                                    </tr>
+                                ))}
+                                {state.eventTypes.length === 0 && (
+                                    <tr>
+                                        <td colSpan={4} className="p-8 text-center text-gray-500 italic">Nenhum tipo de evento cadastrado.</td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+
             {/* Modal de Configuração Legal */}
             <LegalSettingsModal isOpen={isLegalModalOpen} onClose={() => setIsLegalModalOpen(false)} />
             
@@ -253,6 +347,43 @@ export const StaffSettings: React.FC = () => {
                     role={editingHrRole} 
                 />
             )}
+
+            {/* Modal de Tipo de Evento */}
+            <Modal isOpen={isEventTypeModalOpen} onClose={() => setIsEventTypeModalOpen(false)} title={editingEventType ? "Editar Tipo de Evento" : "Novo Tipo de Evento"} onSave={handleSaveEventType}>
+                <div className="space-y-4 pt-4">
+                    <div>
+                        <label className="block text-xs font-bold mb-1 text-slate-600">Nome do Evento *</label>
+                        <input 
+                            type="text" 
+                            className="w-full border p-2.5 rounded-xl text-sm" 
+                            value={eventTypeForm.name || ''} 
+                            onChange={e => setEventTypeForm({...eventTypeForm, name: e.target.value})}
+                            placeholder="Ex: Vale Transporte, Bônus Meta..."
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold mb-1 text-slate-600">Operação *</label>
+                        <select 
+                            className="w-full border p-2.5 rounded-xl text-sm bg-white" 
+                            value={eventTypeForm.operation} 
+                            onChange={e => setEventTypeForm({...eventTypeForm, operation: e.target.value as '+' | '-'})}
+                        >
+                            <option value="+">Provento (+) - Soma ao Salário</option>
+                            <option value="-">Desconto (-) - Subtrai do Salário</option>
+                        </select>
+                    </div>
+                    <div className="flex items-center gap-2 pt-2">
+                        <input 
+                            type="checkbox" 
+                            id="isActive" 
+                            checked={eventTypeForm.isActive} 
+                            onChange={e => setEventTypeForm({...eventTypeForm, isActive: e.target.checked})}
+                            className="w-4 h-4 text-blue-600 rounded border-gray-300"
+                        />
+                        <label htmlFor="isActive" className="text-sm font-bold text-slate-700">Ativo</label>
+                    </div>
+                </div>
+            </Modal>
         </div>
     );
 };

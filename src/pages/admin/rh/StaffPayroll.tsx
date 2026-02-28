@@ -28,7 +28,7 @@ export const StaffPayroll: React.FC = () => {
     
     // Modal Eventos
     const [isEventModalOpen, setIsEventModalOpen] = useState(false);
-    const [eventForm, setEventForm] = useState({ staffId: '', type: 'BONUS', value: 0, description: '' });
+    const [eventForm, setEventForm] = useState({ staffId: '', type: '', value: 0, description: '' });
 
     // Helper to get employee details for the selected slip
     const selectedEmployee = selectedSlip ? staffState.users.find(u => u.id === selectedSlip.staffId) : null;
@@ -75,13 +75,16 @@ export const StaffPayroll: React.FC = () => {
     useEffect(() => { loadData(); }, [month, year]);
 
     useEffect(() => {
-        if (eventForm.type === 'DEDUCTION') {
+        const selectedEventType = staffState.eventTypes.find(t => t.id === eventForm.type);
+        const isDeduction = selectedEventType?.operation === '-';
+
+        if (isDeduction) {
             setCalcMode('DAYS');
             setCalcQty(1);
         } else {
-            if (calcMode === 'DAYS' && eventForm.type !== 'DEDUCTION') setCalcMode('MANUAL');
+            if (calcMode === 'DAYS' && !isDeduction) setCalcMode('MANUAL');
         }
-    }, [eventForm.type]);
+    }, [eventForm.type, staffState.eventTypes]);
 
     useEffect(() => {
         if (calcMode === 'MANUAL' || !eventForm.staffId) return;
@@ -89,9 +92,12 @@ export const StaffPayroll: React.FC = () => {
         const user = staffState.users.find(u => u.id === eventForm.staffId);
         if (!user || !user.baseSalary) return;
 
+        const selectedEventType = staffState.eventTypes.find(t => t.id === eventForm.type);
+        const isDeduction = selectedEventType?.operation === '-';
+
         let finalValue = 0;
 
-        if (eventForm.type === 'DEDUCTION' && calcMode === 'DAYS') {
+        if (isDeduction && calcMode === 'DAYS') {
             if (isJustified) {
                 finalValue = 0; 
             } else {
@@ -111,7 +117,7 @@ export const StaffPayroll: React.FC = () => {
 
         setEventForm(prev => ({ ...prev, value: parseFloat(finalValue.toFixed(2)) }));
 
-    }, [calcQty, calcMode, eventForm.staffId, staffState.users, eventForm.type, isJustified, deductDSR]);
+    }, [calcQty, calcMode, eventForm.staffId, staffState.users, eventForm.type, isJustified, deductDSR, staffState.eventTypes]);
 
     const handleClosePayroll = async () => {
         try {
@@ -232,11 +238,14 @@ export const StaffPayroll: React.FC = () => {
     };
 
     const handleAddEvent = async () => {
-        if (!eventForm.staffId) return; 
+        if (!eventForm.staffId || !eventForm.type) return; 
         try {
+            const selectedEventType = staffState.eventTypes.find(t => t.id === eventForm.type);
+            const isDeduction = selectedEventType?.operation === '-';
+
             let finalDesc = eventForm.description;
             if (!finalDesc) {
-                if (eventForm.type === 'DEDUCTION' && calcMode === 'DAYS') {
+                if (isDeduction && calcMode === 'DAYS') {
                      const dateStr = new Date(absenceDate).toLocaleDateString('pt-BR');
                      if (isJustified) {
                          finalDesc = `Falta Justificada em ${dateStr}`;
@@ -246,7 +255,7 @@ export const StaffPayroll: React.FC = () => {
                      }
                 } else if (calcMode !== 'MANUAL') {
                     const label = calcMode === 'DAYS' ? 'dias' : 'horas';
-                    const typeLabel = eventForm.type === 'DEDUCTION' ? 'Falta/Desc' : 'Extra';
+                    const typeLabel = isDeduction ? 'Falta/Desc' : 'Extra';
                     finalDesc = `${typeLabel}: ${calcQty} ${label}`;
                 }
             }
@@ -506,7 +515,7 @@ export const StaffPayroll: React.FC = () => {
                                 <RefreshCcw size={16} className="mr-2"/> Gerar Recorrentes
                             </Button>
                             <Button onClick={() => { 
-                                setEventForm({ staffId: '', type: 'BONUS', value: 0, description: '' }); 
+                                setEventForm({ staffId: '', type: staffState.eventTypes.length > 0 ? staffState.eventTypes[0].id : '', value: 0, description: '' }); 
                                 setCalcMode('MANUAL');
                                 setCalcQty(0);
                                 setIsEventModalOpen(true); 
@@ -618,12 +627,10 @@ export const StaffPayroll: React.FC = () => {
                                     <div>
                                         <label className="text-xs font-bold text-gray-500 uppercase">Tipo de Evento</label>
                                         <select className="w-full border p-3 rounded-xl bg-white mt-1" value={eventForm.type} onChange={e => setEventForm({...eventForm, type: e.target.value})}>
-                                            <option value="BONUS">Bônus / Gratificação</option>
-                                            <option value="COMMISSION">Comissão</option>
-                                            <option value="DEDUCTION">Falta / Desconto</option>
-                                            <option value="ADVANCE">Adiantamento Salarial</option>
-                                            <option value="FOOD_VOUCHER">Vale Alimentação (Desc)</option>
-                                            <option value="NIGHT_SHIFT">Adicional Noturno (Manual)</option>
+                                            <option value="">Selecione...</option>
+                                            {staffState.eventTypes.filter(t => t.isActive).map(t => (
+                                                <option key={t.id} value={t.id}>{t.name} ({t.operation})</option>
+                                            ))}
                                         </select>
                                     </div>
                                     <div>
@@ -672,7 +679,7 @@ export const StaffPayroll: React.FC = () => {
                                         {/* PAINEL DINÂMICO DE CÁLCULO */}
                                         <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-inner">
                                             {/* MODO FALTA (DEDUCTION + DAYS) */}
-                                            {eventForm.type === 'DEDUCTION' && calcMode === 'DAYS' ? (
+                                            {staffState.eventTypes.find(t => t.id === eventForm.type)?.operation === '-' && calcMode === 'DAYS' ? (
                                                 <div className="space-y-4 animate-fade-in">
                                                     <div className="grid grid-cols-2 gap-4">
                                                         <div>
@@ -751,7 +758,7 @@ export const StaffPayroll: React.FC = () => {
                                             <input 
                                                 type="number" 
                                                 step="0.01" 
-                                                className={`w-full border-2 p-4 pl-12 rounded-2xl font-black text-3xl outline-none transition-all ${eventForm.type === 'DEDUCTION' ? 'text-red-600 border-red-100 focus:border-red-400' : 'text-green-600 border-green-100 focus:border-green-400'} ${calcMode !== 'MANUAL' ? 'bg-gray-50' : 'bg-white'}`} 
+                                                className={`w-full border-2 p-4 pl-12 rounded-2xl font-black text-3xl outline-none transition-all ${staffState.eventTypes.find(t => t.id === eventForm.type)?.operation === '-' ? 'text-red-600 border-red-100 focus:border-red-400' : 'text-green-600 border-green-100 focus:border-green-400'} ${calcMode !== 'MANUAL' ? 'bg-gray-50' : 'bg-white'}`} 
                                                 value={eventForm.value} 
                                                 onChange={e => setEventForm({...eventForm, value: parseFloat(e.target.value)})}
                                                 readOnly={calcMode !== 'MANUAL'} 
@@ -991,15 +998,18 @@ export const StaffPayroll: React.FC = () => {
 
                         return (
                             <div className="space-y-2">
-                                {staffEvents.map(ev => (
+                                {staffEvents.map(ev => {
+                                    const evtType = staffState.eventTypes.find(t => t.id === ev.type);
+                                    const isDeduction = evtType?.operation === '-';
+                                    return (
                                     <div key={ev.id} className="flex justify-between items-center p-3 bg-white border rounded-xl shadow-sm">
                                         <div>
-                                            <div className="font-bold text-slate-800 text-sm">{ev.description || ev.type}</div>
-                                            <div className="text-xs text-slate-500">{ev.type}</div>
+                                            <div className="font-bold text-slate-800 text-sm">{ev.description || evtType?.name || ev.type}</div>
+                                            <div className="text-xs text-slate-500">{evtType?.name || ev.type}</div>
                                         </div>
                                         <div className="flex items-center gap-4">
-                                            <div className={`font-black ${['DEDUCTION', 'FOOD_VOUCHER', 'ADVANCE'].includes(ev.type) ? 'text-red-600' : 'text-emerald-600'}`}>
-                                                {['DEDUCTION', 'FOOD_VOUCHER', 'ADVANCE'].includes(ev.type) ? '-' : '+'} R$ {ev.value.toFixed(2)}
+                                            <div className={`font-black ${isDeduction ? 'text-red-600' : 'text-emerald-600'}`}>
+                                                {isDeduction ? '-' : '+'} R$ {ev.value.toFixed(2)}
                                             </div>
                                             {!isClosed && (
                                                 <button onClick={() => handleDeleteEvent(ev.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors">
@@ -1008,7 +1018,7 @@ export const StaffPayroll: React.FC = () => {
                                             )}
                                         </div>
                                     </div>
-                                ))}
+                                )})}
                             </div>
                         );
                     })()}

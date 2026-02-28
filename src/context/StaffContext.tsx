@@ -4,7 +4,7 @@ import {
     User, Shift, TimeEntry, PayrollPreview, CustomRole, 
     RHTax, RHBenefit, TaxRegime, TaxPayerType, TaxCalculationBasis,
     RhPayrollSetting, RhInssBracket, RhIrrfBracket, ClosedPayroll,
-    PayrollEvent, PayrollEventType, PayrollEntry, HrJobRole, RecurringEvent
+    PayrollEvent, PayrollEventType, PayrollEntry, HrJobRole, RecurringEvent, EventType
 } from '../types';
 import { supabase, logAudit } from '../lib/supabase';
 import { useRestaurant } from './RestaurantContext';
@@ -24,6 +24,7 @@ interface StaffState {
   irrfBrackets: RhIrrfBracket[];
   payrollEvents: PayrollEvent[];
   recurringEvents: RecurringEvent[];
+  eventTypes: EventType[];
   payrollEntries: PayrollEntry[];
   isLoading: boolean;
 }
@@ -39,6 +40,10 @@ interface StaffContextType {
   addHrJobRole: (role: Partial<HrJobRole>) => Promise<void>;
   updateHrJobRole: (role: HrJobRole) => Promise<void>;
   deleteHrJobRole: (roleId: string) => Promise<void>;
+  
+  addEventType: (eventType: Partial<EventType>) => Promise<void>;
+  updateEventType: (eventType: EventType) => Promise<void>;
+  deleteEventType: (id: string) => Promise<void>;
   addShift: (shift: Partial<Shift>) => Promise<void>;
   deleteShift: (id: string) => Promise<void>;
   registerTime: (staffId: string, type: 'IN' | 'BREAK_START' | 'BREAK_END' | 'OUT', justification?: string) => Promise<void>;
@@ -84,7 +89,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   
   const [state, setState] = useState<StaffState>({ 
     users: [], shifts: [], timeEntries: [], roles: [], hrJobRoles: [], taxes: [], benefits: [],
-    legalSettings: null, inssBrackets: [], irrfBrackets: [], payrollEvents: [], recurringEvents: [], payrollEntries: [], isLoading: true 
+    legalSettings: null, inssBrackets: [], irrfBrackets: [], payrollEvents: [], recurringEvents: [], eventTypes: [], payrollEntries: [], isLoading: true 
   });
 
   const fetchData = useCallback(async () => {
@@ -92,7 +97,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       
       const [
           staffRes, shiftsRes, timeRes, rolesRes, taxesRes, benefitsRes,
-          settingsRes, inssRes, irrfRes, eventsRes, recurringEventsRes, hrRolesRes
+          settingsRes, inssRes, irrfRes, eventsRes, recurringEventsRes, hrRolesRes, eventTypesRes
       ] = await Promise.all([
           supabase.from('staff').select('*, custom_roles(name)').eq('tenant_id', tenantId).order('name'),
           supabase.from('rh_shifts').select('*').eq('tenant_id', tenantId),
@@ -105,7 +110,8 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           supabase.from('rh_irrf_brackets').select('*').eq('tenant_id', tenantId).order('min_value', { ascending: true }),
           supabase.from('rh_payroll_events').select('*').eq('tenant_id', tenantId),
           supabase.from('rh_recurring_events').select('*').eq('tenant_id', tenantId),
-          supabase.from('rh_job_roles').select('*').eq('tenant_id', tenantId)
+          supabase.from('rh_job_roles').select('*').eq('tenant_id', tenantId),
+          supabase.from('rh_event_types').select('*').eq('tenant_id', tenantId).order('name')
       ]);
 
       if (staffRes.data) {
@@ -180,10 +186,14 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               baseSalary: Number(r.base_salary), customRoleId: r.custom_role_id, isActive: r.is_active
           }));
 
+          const mappedEventTypes = (eventTypesRes.data || []).map((e: any) => ({
+              id: e.id, name: e.name, operation: e.operation, isActive: e.is_active
+          }));
+
           setState({ 
             users: mappedUsers, shifts: mappedShifts, timeEntries: mappedTime, roles: mappedRoles, hrJobRoles: mappedHrRoles,
             taxes: mappedTaxes, benefits: mappedBenefits, legalSettings, inssBrackets, irrfBrackets, 
-            payrollEvents: mappedEvents, recurringEvents: mappedRecurringEvents, payrollEntries: [], isLoading: false 
+            payrollEvents: mappedEvents, recurringEvents: mappedRecurringEvents, eventTypes: mappedEventTypes, payrollEntries: [], isLoading: false 
           });
       }
   }, [tenantId]);
@@ -279,6 +289,34 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const deleteHrJobRole = async (roleId: string) => { 
       const { error } = await supabase.from('rh_job_roles').delete().eq('id', roleId); 
       if (error) throw error; 
+  };
+
+  const addEventType = async (eventType: Partial<EventType>) => {
+      if (!tenantId) return;
+      const { error } = await supabase.from('rh_event_types').insert({
+          tenant_id: tenantId,
+          name: eventType.name,
+          operation: eventType.operation,
+          is_active: eventType.isActive
+      });
+      if (error) throw error;
+      await fetchData();
+  };
+
+  const updateEventType = async (eventType: EventType) => {
+      const { error } = await supabase.from('rh_event_types').update({
+          name: eventType.name,
+          operation: eventType.operation,
+          is_active: eventType.isActive
+      }).eq('id', eventType.id);
+      if (error) throw error;
+      await fetchData();
+  };
+
+  const deleteEventType = async (id: string) => {
+      const { error } = await supabase.from('rh_event_types').delete().eq('id', id);
+      if (error) throw error;
+      await fetchData();
   };
 
   const addShift = async (shift: Partial<Shift>) => { if(!tenantId) return; await supabase.from('rh_shifts').insert({ tenant_id: tenantId, name: shift.name, start_time: shift.startTime, end_time: shift.endTime, break_minutes: shift.breakMinutes, tolerance_minutes: shift.toleranceMinutes, night_shift: shift.nightShift }); };
@@ -807,6 +845,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         state, addUser, updateUser, deleteUser,
         addRole, updateRole, deleteRole,
         addHrJobRole, updateHrJobRole, deleteHrJobRole,
+        addEventType, updateEventType, deleteEventType,
         addShift, deleteShift, registerTime, getPayroll, closePayroll, reopenPayroll,
         addTimeEntry, updateTimeEntry, fetchData,
         saveLegalSettings, saveInssBrackets, saveIrrfBrackets, applyLegalDefaults,
