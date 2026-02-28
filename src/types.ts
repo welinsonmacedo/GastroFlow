@@ -57,6 +57,16 @@ export type TaxPayerType = 'EMPLOYEE' | 'EMPLOYER';
 export type TaxCalculationBasis = 'GROSS_TOTAL' | 'BASE_SALARY';
 export type PayrollEventType = 'BONUS' | 'COMMISSION' | 'DEDUCTION' | 'ADVANCE' | 'NIGHT_SHIFT' | 'INSALUBRITY' | 'DANGEROUSNESS' | 'FOOD_VOUCHER';
 
+export interface HrJobRole {
+    id: string;
+    title: string;
+    cboCode: string;
+    description?: string;
+    baseSalary?: number;
+    customRoleId?: string; // Link to Permission Role from Equipes e Acesso
+    isActive: boolean;
+}
+
 export interface Shift {
     id: string;
     name: string;
@@ -354,6 +364,7 @@ export interface User {
   
   // RH Fields
   department?: string;
+  hrJobRoleId?: string; // Link to HrJobRole
   hireDate?: Date;
   contractType?: ContractType;
   workModel?: WorkModel; // Novo campo

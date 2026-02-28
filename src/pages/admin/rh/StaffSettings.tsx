@@ -4,18 +4,23 @@ import { useStaff } from '../../../context/StaffContext';
 import { useRestaurant } from '../../../context/RestaurantContext';
 import { useUI } from '../../../context/UIContext';
 import { Button } from '../../../components/Button';
-import { RHTax, RHBenefit, TaxPayerType, TaxCalculationBasis } from '../../../types';
-import { Plus, Trash2, Settings, Percent, DollarSign, RefreshCcw, Gift, FileText, Building2, Scale, Calculator, Edit3 } from 'lucide-react';
+import { HrJobRole, RHTax, RHBenefit, TaxPayerType, TaxCalculationBasis } from '../../../types';
+import { Plus, Trash2, Settings, Percent, DollarSign, RefreshCcw, Gift, FileText, Building2, Scale, Calculator, Edit3, Briefcase } from 'lucide-react';
 import { LegalSettingsModal } from '../../../components/modals/LegalSettingsModal';
+import { HrJobRoleModal } from '../../../components/modals/HrJobRoleModal';
 
 export const StaffSettings: React.FC = () => {
-    const { state, addTax, deleteTax, addBenefit, deleteBenefit, applyRegimeDefaults, applyLegalDefaults } = useStaff();
+    const { state, addTax, deleteTax, addBenefit, deleteBenefit, applyRegimeDefaults, applyLegalDefaults, deleteHrJobRole } = useStaff();
     const { state: restState } = useRestaurant();
     const { showAlert, showConfirm } = useUI();
 
     // Abas de Configuração
-    const [activeTab, setActiveTab] = useState<'LEGAL' | 'CUSTOM'>('LEGAL');
+    const [activeTab, setActiveTab] = useState<'LEGAL' | 'CUSTOM' | 'ROLES'>('LEGAL');
     const [isLegalModalOpen, setIsLegalModalOpen] = useState(false);
+    
+    // Modal de Cargos RH
+    const [isHrRoleModalOpen, setIsHrRoleModalOpen] = useState(false);
+    const [editingHrRole, setEditingHrRole] = useState<HrJobRole | null>(null);
 
     // Estado para impostos customizados
     const [taxTab, setTaxTab] = useState<TaxPayerType>('EMPLOYEE');
@@ -76,6 +81,14 @@ export const StaffSettings: React.FC = () => {
         });
     };
 
+    const handleDeleteHrRole = (id: string) => {
+        const usersWithRole = state.users.filter(u => u.hrJobRoleId === id);
+        if (usersWithRole.length > 0) {
+            return showAlert({ title: "Impossível Excluir", message: `Existem ${usersWithRole.length} funcionários vinculados a este cargo. Remova-os primeiro.`, type: 'WARNING' });
+        }
+        showConfirm({ title: "Excluir Cargo", message: "Confirma a exclusão deste cargo de RH?", onConfirm: () => deleteHrJobRole(id) });
+    };
+
     // Filtra impostos pela aba custom
     const filteredTaxes = state.taxes.filter(t => (t.payerType || 'EMPLOYEE') === taxTab);
 
@@ -90,6 +103,7 @@ export const StaffSettings: React.FC = () => {
                 <div className="flex gap-4 mt-6 border-b">
                     <button onClick={() => setActiveTab('LEGAL')} className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'LEGAL' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}>Tabelas Legais (INSS/IRRF)</button>
                     <button onClick={() => setActiveTab('CUSTOM')} className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'CUSTOM' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}>Descontos & Extras</button>
+                    <button onClick={() => setActiveTab('ROLES')} className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'ROLES' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}>Cargos & CBO</button>
                 </div>
             </div>
 
@@ -264,8 +278,73 @@ export const StaffSettings: React.FC = () => {
                 </>
             )}
 
+            {/* ABA 3: CARGOS E CBO */}
+            {activeTab === 'ROLES' && (
+                <div className="space-y-6">
+                    <div className="flex justify-between items-center bg-blue-50 p-4 rounded-xl border border-blue-100">
+                        <div className="text-xs text-blue-800">
+                            <strong>Cargos de RH (CBO):</strong> Cadastre os cargos oficiais da empresa. Estes cargos poderão ser vinculados aos perfis de acesso do sistema.
+                        </div>
+                        <Button onClick={() => { setEditingHrRole(null); setIsHrRoleModalOpen(true); }} className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm shrink-0">
+                            <Plus size={16} className="mr-2"/> Novo Cargo
+                        </Button>
+                    </div>
+
+                    <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+                        <table className="w-full text-left text-sm">
+                            <thead className="bg-gray-100 text-gray-600 uppercase text-xs border-b">
+                                <tr>
+                                    <th className="p-4">Cargo</th>
+                                    <th className="p-4">CBO</th>
+                                    <th className="p-4">Salário Base</th>
+                                    <th className="p-4">Perfil de Acesso Vinculado</th>
+                                    <th className="p-4 text-right">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y">
+                                {state.hrJobRoles.map(role => {
+                                    const customRole = state.roles.find(r => r.id === role.customRoleId);
+                                    return (
+                                        <tr key={role.id} className="hover:bg-gray-50">
+                                            <td className="p-4 font-bold text-gray-800">{role.title}</td>
+                                            <td className="p-4 text-gray-600 font-mono">{role.cboCode}</td>
+                                            <td className="p-4 text-gray-600">R$ {role.baseSalary?.toFixed(2) || '0.00'}</td>
+                                            <td className="p-4">
+                                                {customRole ? (
+                                                    <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-md text-xs font-bold">{customRole.name}</span>
+                                                ) : (
+                                                    <span className="text-gray-400 text-xs italic">Nenhum</span>
+                                                )}
+                                            </td>
+                                            <td className="p-4 text-right">
+                                                <button onClick={() => { setEditingHrRole(role); setIsHrRoleModalOpen(true); }} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg mr-2"><Edit3 size={18}/></button>
+                                                <button onClick={() => handleDeleteHrRole(role.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg"><Trash2 size={18}/></button>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                                {state.hrJobRoles.length === 0 && (
+                                    <tr>
+                                        <td colSpan={5} className="p-8 text-center text-gray-500 italic">Nenhum cargo cadastrado.</td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+
             {/* Modal de Configuração Legal */}
             <LegalSettingsModal isOpen={isLegalModalOpen} onClose={() => setIsLegalModalOpen(false)} />
+            
+            {/* Modal de Cargo RH */}
+            {isHrRoleModalOpen && (
+                <HrJobRoleModal 
+                    isOpen={isHrRoleModalOpen} 
+                    onClose={() => { setIsHrRoleModalOpen(false); setEditingHrRole(null); }} 
+                    role={editingHrRole} 
+                />
+            )}
         </div>
     );
 };

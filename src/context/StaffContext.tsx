@@ -4,7 +4,7 @@ import {
     User, Shift, TimeEntry, PayrollPreview, CustomRole, 
     RHTax, RHBenefit, TaxRegime, TaxPayerType, TaxCalculationBasis,
     RhPayrollSetting, RhInssBracket, RhIrrfBracket, ClosedPayroll,
-    PayrollEvent, PayrollEventType, PayrollEntry
+    PayrollEvent, PayrollEventType, PayrollEntry, HrJobRole
 } from '../types';
 import { supabase, logAudit } from '../lib/supabase';
 import { useRestaurant } from './RestaurantContext';
@@ -16,6 +16,7 @@ interface StaffState {
   shifts: Shift[];
   timeEntries: TimeEntry[];
   roles: CustomRole[];
+  hrJobRoles: HrJobRole[];
   taxes: RHTax[]; 
   benefits: RHBenefit[]; 
   legalSettings: RhPayrollSetting | null;
@@ -34,6 +35,9 @@ interface StaffContextType {
   addRole: (role: Partial<CustomRole>) => Promise<void>;
   updateRole: (role: CustomRole) => Promise<void>;
   deleteRole: (roleId: string) => Promise<void>;
+  addHrJobRole: (role: Partial<HrJobRole>) => Promise<void>;
+  updateHrJobRole: (role: HrJobRole) => Promise<void>;
+  deleteHrJobRole: (roleId: string) => Promise<void>;
   addShift: (shift: Partial<Shift>) => Promise<void>;
   deleteShift: (id: string) => Promise<void>;
   registerTime: (staffId: string, type: 'IN' | 'BREAK_START' | 'BREAK_END' | 'OUT', justification?: string) => Promise<void>;
@@ -73,7 +77,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const currentUser = authState.currentUser;
   
   const [state, setState] = useState<StaffState>({ 
-    users: [], shifts: [], timeEntries: [], roles: [], taxes: [], benefits: [],
+    users: [], shifts: [], timeEntries: [], roles: [], hrJobRoles: [], taxes: [], benefits: [],
     legalSettings: null, inssBrackets: [], irrfBrackets: [], payrollEvents: [], payrollEntries: [], isLoading: true 
   });
 
@@ -82,7 +86,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       
       const [
           staffRes, shiftsRes, timeRes, rolesRes, taxesRes, benefitsRes,
-          settingsRes, inssRes, irrfRes, eventsRes
+          settingsRes, inssRes, irrfRes, eventsRes, hrRolesRes
       ] = await Promise.all([
           supabase.from('staff').select('*, custom_roles(name)').eq('tenant_id', tenantId).order('name'),
           supabase.from('rh_shifts').select('*').eq('tenant_id', tenantId),
@@ -93,14 +97,15 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           supabase.from('rh_payroll_settings').select('*').eq('tenant_id', tenantId).order('created_at', { ascending: false }).limit(1).maybeSingle(),
           supabase.from('rh_inss_brackets').select('*').eq('tenant_id', tenantId).order('min_value', { ascending: true }),
           supabase.from('rh_irrf_brackets').select('*').eq('tenant_id', tenantId).order('min_value', { ascending: true }),
-          supabase.from('rh_payroll_events').select('*').eq('tenant_id', tenantId)
+          supabase.from('rh_payroll_events').select('*').eq('tenant_id', tenantId),
+          supabase.from('rh_job_roles').select('*').eq('tenant_id', tenantId)
       ]);
 
       if (staffRes.data) {
           const mappedUsers = staffRes.data.map((u: any) => ({ 
               id: u.id, name: u.name, role: u.role, customRoleId: u.custom_role_id, customRoleName: u.custom_roles?.name,
               email: u.email, auth_user_id: u.auth_user_id, allowedRoutes: u.allowed_routes || [],
-              department: u.department, hireDate: u.hire_date ? new Date(u.hire_date) : undefined, contractType: u.contract_type,
+              department: u.department, hrJobRoleId: u.hr_job_role_id, hireDate: u.hire_date ? new Date(u.hire_date) : undefined, contractType: u.contract_type,
               workModel: u.work_model || '44H_WEEKLY',
               baseSalary: Number(u.base_salary) || 0, benefitsTotal: Number(u.benefits_total) || 0, status: u.status,
               shiftId: u.shift_id, phone: u.phone, documentCpf: u.document_cpf, dependentsCount: u.dependents_count || 0,
@@ -158,8 +163,13 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               type: e.type, description: e.description, value: Number(e.value)
           }));
 
+          const mappedHrRoles = (hrRolesRes.data || []).map((r: any) => ({
+              id: r.id, title: r.title, cboCode: r.cbo_code, description: r.description,
+              baseSalary: Number(r.base_salary), customRoleId: r.custom_role_id, isActive: r.is_active
+          }));
+
           setState({ 
-            users: mappedUsers, shifts: mappedShifts, timeEntries: mappedTime, roles: mappedRoles,
+            users: mappedUsers, shifts: mappedShifts, timeEntries: mappedTime, roles: mappedRoles, hrJobRoles: mappedHrRoles,
             taxes: mappedTaxes, benefits: mappedBenefits, legalSettings, inssBrackets, irrfBrackets, 
             payrollEvents: mappedEvents, payrollEntries: [], isLoading: false 
           });
@@ -193,6 +203,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const { error } = await supabase.from('staff').insert({ 
           tenant_id: tenantId, name: user.name, role: user.role, custom_role_id: user.customRoleId || null,
           pin: '0000', email: user.email, allowed_routes: user.allowedRoutes, department: user.department,
+          hr_job_role_id: user.hrJobRoleId || null,
           hire_date: user.hireDate?.toISOString().split('T')[0], contract_type: user.contractType,
           work_model: user.workModel,
           base_salary: user.baseSalary, benefits_total: user.benefitsTotal, status: user.status,
@@ -210,6 +221,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const { error } = await supabase.from('staff').update({ 
           name: user.name, role: user.role, custom_role_id: user.customRoleId || null,
           email: user.email, allowed_routes: user.allowedRoutes, department: user.department,
+          hr_job_role_id: user.hrJobRoleId || null,
           hire_date: user.hireDate ? new Date(user.hireDate).toISOString().split('T')[0] : null,
           contract_type: user.contractType, work_model: user.workModel,
           base_salary: user.baseSalary, benefits_total: user.benefitsTotal,
@@ -233,6 +245,30 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const addRole = async (role: Partial<CustomRole>) => { if(!tenantId) return; const { error } = await supabase.from('custom_roles').insert({ tenant_id: tenantId, name: role.name, description: role.description, permissions: role.permissions }); if (error) throw error; };
   const updateRole = async (role: CustomRole) => { if(!tenantId) return; const { error } = await supabase.from('custom_roles').update({ name: role.name, description: role.description, permissions: role.permissions }).eq('id', role.id); if (error) throw error; };
   const deleteRole = async (roleId: string) => { const { error } = await supabase.from('custom_roles').delete().eq('id', roleId); if (error) throw error; };
+
+  const addHrJobRole = async (role: Partial<HrJobRole>) => { 
+      if(!tenantId) return; 
+      const { error } = await supabase.from('rh_job_roles').insert({ 
+          tenant_id: tenantId, title: role.title, cbo_code: role.cboCode, 
+          description: role.description, base_salary: role.baseSalary, 
+          custom_role_id: role.customRoleId, is_active: role.isActive !== false 
+      }); 
+      if (error) throw error; 
+  };
+  const updateHrJobRole = async (role: HrJobRole) => { 
+      if(!tenantId) return; 
+      const { error } = await supabase.from('rh_job_roles').update({ 
+          title: role.title, cbo_code: role.cboCode, 
+          description: role.description, base_salary: role.baseSalary, 
+          custom_role_id: role.customRoleId, is_active: role.isActive 
+      }).eq('id', role.id); 
+      if (error) throw error; 
+  };
+  const deleteHrJobRole = async (roleId: string) => { 
+      const { error } = await supabase.from('rh_job_roles').delete().eq('id', roleId); 
+      if (error) throw error; 
+  };
+
   const addShift = async (shift: Partial<Shift>) => { if(!tenantId) return; await supabase.from('rh_shifts').insert({ tenant_id: tenantId, name: shift.name, start_time: shift.startTime, end_time: shift.endTime, break_minutes: shift.breakMinutes, tolerance_minutes: shift.toleranceMinutes, night_shift: shift.nightShift }); };
   const deleteShift = async (id: string) => { await supabase.from('rh_shifts').delete().eq('id', id); };
   
@@ -688,6 +724,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     <StaffContext.Provider value={{ 
         state, addUser, updateUser, deleteUser,
         addRole, updateRole, deleteRole,
+        addHrJobRole, updateHrJobRole, deleteHrJobRole,
         addShift, deleteShift, registerTime, getPayroll, closePayroll, reopenPayroll,
         addTimeEntry, updateTimeEntry, fetchData,
         saveLegalSettings, saveInssBrackets, saveIrrfBrackets, applyLegalDefaults,

@@ -279,6 +279,15 @@ export const StaffPayroll: React.FC = () => {
         const theme = restState.theme;
 
         const overtimeTotal = slip.overtime50 + slip.overtime100;
+        
+        const hrRole = staffState.hrJobRoles.find(r => r.id === employee?.hrJobRoleId);
+        const displayRole = hrRole ? hrRole.title : (employee?.role || 'FUNCIONÁRIO');
+
+        // Determine base hours based on work model
+        let baseHours = 220; // Default 44h weekly
+        if (employee?.workModel === '12X36') baseHours = 180;
+        else if (employee?.workModel === 'PART_TIME') baseHours = 125;
+        else if (employee?.workModel === 'HOURLY') baseHours = slip.hoursWorked;
 
         const html = `
             <!DOCTYPE html>
@@ -332,7 +341,7 @@ export const StaffPayroll: React.FC = () => {
                     <div class="subheader">
                         <div class="field"><label>Código</label><span>${slip.staffId.slice(0,4).toUpperCase()}</span></div>
                         <div class="field"><label>Nome do Funcionário</label><span>${slip.staffName}</span></div>
-                        <div class="field"><label>Cargo</label><span>${employee?.role || 'FUNCIONÁRIO'}</span></div>
+                        <div class="field"><label>Cargo</label><span>${displayRole.toUpperCase()}</span></div>
                         <div class="field"><label>Admissão</label><span>${employee?.hireDate ? new Date(employee.hireDate).toLocaleDateString() : '-'}</span></div>
                     </div>
 
@@ -350,7 +359,7 @@ export const StaffPayroll: React.FC = () => {
                         <div class="table-row">
                             <div class="col-code">001</div>
                             <div class="col-desc">SALÁRIO BASE</div>
-                            <div class="col-ref">30d</div>
+                            <div class="col-ref">${baseHours}h</div>
                             <div class="col-val">${slip.baseSalary.toFixed(2)}</div>
                             <div class="col-val"></div>
                         </div>

@@ -46,6 +46,7 @@ export const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose,
       const userToSave = { 
           ...form, 
           customRoleId: form.customRoleId || undefined,
+          hrJobRoleId: form.hrJobRoleId || undefined,
           shiftId: form.shiftId || undefined,
           baseSalary: Number(form.baseSalary) || 0,
           benefitsTotal: Number(form.benefitsTotal) || 0,
@@ -145,10 +146,35 @@ export const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose,
                                 <input className="w-full border p-2.5 rounded-xl text-sm" placeholder="000.000.000-00" value={form.documentCpf} onChange={e => setForm({...form, documentCpf: e.target.value})} />
                             </div>
                             <div>
-                                <label className="block text-xs font-bold mb-1 text-slate-600">Cargo / Função</label>
+                                <label className="block text-xs font-bold mb-1 text-slate-600">Cargo / Função (RH)</label>
                                 <select 
                                     className="w-full border p-2.5 rounded-xl text-sm bg-white focus:border-blue-500 outline-none" 
-                                    value={form.customRoleId || ''} 
+                                    value={form.hrJobRoleId || ''} 
+                                    onChange={e => {
+                                        const val = e.target.value;
+                                        const selectedRole = state.hrJobRoles.find(r => r.id === val);
+                                        
+                                        setForm({
+                                            ...form, 
+                                            hrJobRoleId: val,
+                                            // Auto-vincular perfil de acesso se o cargo tiver um
+                                            customRoleId: selectedRole?.customRoleId || form.customRoleId,
+                                            // Auto-preencher salário base se o cargo tiver um e o atual for 0
+                                            baseSalary: selectedRole?.baseSalary && !form.baseSalary ? selectedRole.baseSalary : form.baseSalary
+                                        });
+                                    }}
+                                >
+                                    <option value="">Selecione um Cargo...</option>
+                                    {state.hrJobRoles.map(role => (
+                                        <option key={role.id} value={role.id}>{role.title} ({role.cboCode})</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold mb-1 text-slate-600">Perfil de Acesso (Sistema)</label>
+                                <select 
+                                    className="w-full border p-2.5 rounded-xl text-sm bg-white focus:border-blue-500 outline-none" 
+                                    value={form.customRoleId || (form.role === Role.ADMIN ? 'ADMIN' : '')} 
                                     onChange={e => {
                                         const val = e.target.value;
                                         if (val === 'ADMIN') {
@@ -158,10 +184,10 @@ export const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose,
                                         }
                                     }}
                                 >
-                                    <option value="">Selecione um Cargo...</option>
+                                    <option value="">Sem Acesso / Básico</option>
                                     <option value="ADMIN">Administrador (Acesso Total)</option>
                                     {state.roles.length > 0 && (
-                                        <optgroup label="Cargos Cadastrados">
+                                        <optgroup label="Perfis Cadastrados">
                                             {state.roles.map(role => (
                                                 <option key={role.id} value={role.id}>{role.name}</option>
                                             ))}

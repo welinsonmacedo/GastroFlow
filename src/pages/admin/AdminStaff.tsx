@@ -92,7 +92,8 @@ export const AdminStaff: React.FC = () => {
                         <thead className="bg-gray-100 text-gray-600 uppercase text-xs border-b">
                             <tr>
                                 <th className="p-4">Nome</th>
-                                <th className="p-4">Cargo / Função</th>
+                                <th className="p-4">Cargo (RH)</th>
+                                <th className="p-4">Perfil de Acesso</th>
                                 <th className="p-4">Login (E-mail)</th>
                                 <th className="p-4 text-center">Status Acesso</th>
                                 <th className="p-4 text-right">Ações</th>
@@ -102,7 +103,8 @@ export const AdminStaff: React.FC = () => {
                             {staffState.users.map(user => {
                                 const isPending = !user.auth_user_id;
                                 const isSystemAdmin = user.role === 'ADMIN';
-                                const displayRole = user.customRoleName || (isSystemAdmin ? 'Administrador' : 'Cargo não definido');
+                                const displayRole = user.customRoleName || (isSystemAdmin ? 'Administrador' : 'Sem Acesso');
+                                const hrRole = staffState.hrJobRoles.find(r => r.id === user.hrJobRoleId);
                                 return (
                                     <tr key={user.id} className="hover:bg-gray-50 transition-colors">
                                         <td className="p-4 font-bold text-gray-800">
@@ -112,7 +114,12 @@ export const AdminStaff: React.FC = () => {
                                             </div>
                                         </td>
                                         <td className="p-4">
-                                            <span className={`px-2 py-1 rounded text-xs font-bold ${isSystemAdmin ? 'bg-purple-100 text-purple-700' : user.customRoleId ? 'bg-blue-100 text-blue-700' : 'bg-red-50 text-red-600 border border-red-100'}`}>
+                                            <span className="text-sm font-bold text-gray-700">
+                                                {hrRole ? hrRole.title : 'Não definido'}
+                                            </span>
+                                        </td>
+                                        <td className="p-4">
+                                            <span className={`px-2 py-1 rounded text-xs font-bold ${isSystemAdmin ? 'bg-purple-100 text-purple-700' : user.customRoleId ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'}`}>
                                                 {displayRole}
                                             </span>
                                         </td>
