@@ -29,6 +29,16 @@ export const StaffPayroll: React.FC = () => {
     // Modal Eventos
     const [isEventModalOpen, setIsEventModalOpen] = useState(false);
     const [eventForm, setEventForm] = useState({ staffId: '', type: 'BONUS', value: 0, description: '' });
+
+    // Helper to get employee details for the selected slip
+    const selectedEmployee = selectedSlip ? staffState.users.find(u => u.id === selectedSlip.staffId) : null;
+    const selectedHrRole = selectedEmployee ? staffState.hrJobRoles.find(r => r.id === selectedEmployee.hrJobRoleId) : null;
+    const selectedDisplayRole = selectedHrRole ? selectedHrRole.title : (selectedEmployee?.role || 'FUNCIONÁRIO');
+    
+    let selectedBaseHours = 220;
+    if (selectedEmployee?.workModel === '12X36') selectedBaseHours = 180;
+    else if (selectedEmployee?.workModel === 'PART_TIME') selectedBaseHours = 125;
+    else if (selectedEmployee?.workModel === 'HOURLY' && selectedSlip) selectedBaseHours = selectedSlip.hoursWorked;
     
     // Estados para Calculadora de Eventos
     const [calcMode, setCalcMode] = useState<'MANUAL' | 'DAYS' | 'HOURS'>('MANUAL');
@@ -776,15 +786,15 @@ export const StaffPayroll: React.FC = () => {
                                 </div>
                                 <div>
                                     <label className="block text-[10px] font-bold text-gray-500 uppercase">CBO / Função</label>
-                                    <span>{staffState.users.find(u => u.id === selectedSlip.staffId)?.role || 'FUNCIONÁRIO'}</span>
+                                    <span className="uppercase">{selectedDisplayRole}</span>
                                 </div>
                                 <div>
                                      <label className="block text-[10px] font-bold text-gray-500 uppercase">Departamento</label>
-                                     <span>{staffState.users.find(u => u.id === selectedSlip.staffId)?.department || 'GERAL'}</span>
+                                     <span className="uppercase">{selectedEmployee?.department || 'GERAL'}</span>
                                 </div>
                                 <div>
                                      <label className="block text-[10px] font-bold text-gray-500 uppercase">Admissão</label>
-                                     <span>{staffState.users.find(u => u.id === selectedSlip.staffId)?.hireDate ? new Date(staffState.users.find(u => u.id === selectedSlip.staffId)!.hireDate!).toLocaleDateString() : '-'}</span>
+                                     <span>{selectedEmployee?.hireDate ? new Date(selectedEmployee.hireDate).toLocaleDateString() : '-'}</span>
                                 </div>
                             </div>
 
@@ -804,7 +814,7 @@ export const StaffPayroll: React.FC = () => {
                                     <div className="grid grid-cols-12">
                                         <div className="col-span-1 text-center">001</div>
                                         <div className="col-span-5">SALÁRIO BASE</div>
-                                        <div className="col-span-2 text-center">30d</div>
+                                        <div className="col-span-2 text-center">{selectedBaseHours}h</div>
                                         <div className="col-span-2 text-right">{selectedSlip.baseSalary.toFixed(2)}</div>
                                         <div className="col-span-2 text-right"></div>
                                     </div>
