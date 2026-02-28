@@ -6,12 +6,12 @@ import { useUI } from '../../../context/UIContext';
 import { useFinance } from '../../../context/FinanceContext';
 import { Button } from '../../../components/Button';
 import { PayrollPreview, ClosedPayroll, PayrollEventType } from '../../../types';
-import { FileText, Printer, Calculator, RefreshCcw, Eye, X, Building2, Lock, Plus, Download, AlertTriangle, ArrowRight, Calendar, CheckSquare, Square } from 'lucide-react';
+import { FileText, Printer, Calculator, RefreshCcw, Eye, X, Building2, Lock, Plus, Download, AlertTriangle, ArrowRight, Calendar, CheckSquare, Square, List, Trash2, Unlock } from 'lucide-react';
 import { printHtml, getReportStyles } from '../../../utils/printHelper';
 import { Modal } from '../../../components/Modal';
 
 export const StaffPayroll: React.FC = () => {
-    const { getPayroll, closePayroll, addPayrollEvent, state: staffState } = useStaff();
+    const { getPayroll, closePayroll, reopenPayroll, addPayrollEvent, deletePayrollEvent, state: staffState } = useStaff();
     const { state: restState } = useRestaurant(); 
     const { showAlert, showConfirm } = useUI();
     const { addExpense } = useFinance();
@@ -43,6 +43,10 @@ export const StaffPayroll: React.FC = () => {
     const [isCloseModalOpen, setIsCloseModalOpen] = useState(false);
     const [sendToFinance, setSendToFinance] = useState(true);
     const [sendTaxesToFinance, setSendTaxesToFinance] = useState(true);
+
+    // Modal Listar Eventos
+    const [isEventsListModalOpen, setIsEventsListModalOpen] = useState(false);
+    const [selectedStaffForEvents, setSelectedStaffForEvents] = useState<PayrollPreview | null>(null);
 
     const loadData = async () => {
         setLoading(true);
@@ -175,6 +179,46 @@ export const StaffPayroll: React.FC = () => {
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleReopenPayroll = () => {
+        showConfirm({
+            title: "Reabrir Folha de Pagamento?",
+            message: "Isso excluirá o histórico fechado desta folha. Despesas enviadas ao financeiro NÃO serão excluídas automaticamente, você precisará cancelá-las manualmente lá. Deseja continuar?",
+            confirmText: "Reabrir Folha",
+            onConfirm: async () => {
+                try {
+                    setLoading(true);
+                    await reopenPayroll(month, year);
+                    await loadData();
+                    showAlert({ title: "Sucesso", message: "Folha reaberta com sucesso.", type: "SUCCESS" });
+                } catch (error: any) {
+                    showAlert({ title: "Erro", message: error.message, type: "ERROR" });
+                } finally {
+                    setLoading(false);
+                }
+            }
+        });
+    };
+
+    const handleDeleteEvent = async (id: string) => {
+        showConfirm({
+            title: "Excluir Evento?",
+            message: "Tem certeza que deseja excluir este evento da folha?",
+            confirmText: "Excluir",
+            onConfirm: async () => {
+                try {
+                    setLoading(true);
+                    await deletePayrollEvent(id);
+                    await loadData();
+                    showAlert({ title: "Sucesso", message: "Evento excluído.", type: "SUCCESS" });
+                } catch (error: any) {
+                    showAlert({ title: "Erro", message: error.message, type: "ERROR" });
+                } finally {
+                    setLoading(false);
+                }
+            }
+        });
     };
 
     const handleAddEvent = async () => {
@@ -443,6 +487,11 @@ export const StaffPayroll: React.FC = () => {
                             </Button>
                         </>
                     )}
+                    {isClosed && (
+                        <Button onClick={handleReopenPayroll} className="bg-orange-600 hover:bg-orange-700 text-white shadow-sm">
+                            <Unlock size={16} className="mr-2"/> Reabrir Folha
+                        </Button>
+                    )}
                     
                     <Button onClick={handleExportCSV} variant="secondary">
                         <Download size={16} className="mr-2"/> Contabilidade
@@ -473,7 +522,7 @@ export const StaffPayroll: React.FC = () => {
                                 <th className="p-4 text-right">Bruto</th>
                                 <th className="p-4 text-right text-red-600">Descontos</th>
                                 <th className="p-4 text-right bg-emerald-50 text-emerald-800">Líquido</th>
-                                <th className="p-4 text-center">Holerite</th>
+                                <th className="p-4 text-center">Ações</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y text-sm">
@@ -499,7 +548,10 @@ export const StaffPayroll: React.FC = () => {
                                     <td className="p-4 text-right text-red-500">- R$ {p.discounts.toFixed(2)}</td>
                                     <td className="p-4 text-right font-black text-emerald-600 bg-emerald-50">R$ {p.netTotal.toFixed(2)}</td>
                                     <td className="p-4 text-center">
-                                        <button onClick={() => setSelectedSlip(p)} className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg" title="Ver Holerite"><Eye size={18}/></button>
+                                        <div className="flex justify-center gap-1">
+                                            <button onClick={() => { setSelectedStaffForEvents(p); setIsEventsListModalOpen(true); }} className="p-2 text-slate-600 hover:bg-slate-100 rounded-lg" title="Ver Eventos Lançados"><List size={18}/></button>
+                                            <button onClick={() => setSelectedSlip(p)} className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg" title="Ver Holerite"><Eye size={18}/></button>
+                                        </div>
                                     </td>
                                 </tr>
                             ))}
@@ -887,6 +939,46 @@ export const StaffPayroll: React.FC = () => {
                         <Button onClick={handleClosePayroll} disabled={loading} className="flex-1 bg-red-600 hover:bg-red-700 text-white">
                             {loading ? 'Fechando...' : 'Congelar Folha'}
                         </Button>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* Modal Listar Eventos */}
+            <Modal isOpen={isEventsListModalOpen} onClose={() => setIsEventsListModalOpen(false)} title={`Eventos Lançados - ${selectedStaffForEvents?.staffName}`} variant="dialog">
+                <div className="space-y-4 pt-4">
+                    {(() => {
+                        if (!selectedStaffForEvents) return null;
+                        const staffEvents = staffState.payrollEvents.filter(e => e.staffId === selectedStaffForEvents.staffId && e.month === month && e.year === year);
+                        
+                        if (staffEvents.length === 0) {
+                            return <div className="text-center p-6 text-gray-500 italic bg-slate-50 rounded-xl">Nenhum evento variável lançado para este colaborador neste mês.</div>;
+                        }
+
+                        return (
+                            <div className="space-y-2">
+                                {staffEvents.map(ev => (
+                                    <div key={ev.id} className="flex justify-between items-center p-3 bg-white border rounded-xl shadow-sm">
+                                        <div>
+                                            <div className="font-bold text-slate-800 text-sm">{ev.description || ev.type}</div>
+                                            <div className="text-xs text-slate-500">{ev.type}</div>
+                                        </div>
+                                        <div className="flex items-center gap-4">
+                                            <div className={`font-black ${['DEDUCTION', 'FOOD_VOUCHER', 'ADVANCE'].includes(ev.type) ? 'text-red-600' : 'text-emerald-600'}`}>
+                                                {['DEDUCTION', 'FOOD_VOUCHER', 'ADVANCE'].includes(ev.type) ? '-' : '+'} R$ {ev.value.toFixed(2)}
+                                            </div>
+                                            {!isClosed && (
+                                                <button onClick={() => handleDeleteEvent(ev.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+                                                    <Trash2 size={16}/>
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        );
+                    })()}
+                    <div className="pt-4 flex justify-end">
+                        <Button variant="secondary" onClick={() => setIsEventsListModalOpen(false)}>Fechar</Button>
                     </div>
                 </div>
             </Modal>

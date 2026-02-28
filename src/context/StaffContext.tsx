@@ -52,11 +52,13 @@ interface StaffContextType {
   deleteBenefit: (id: string) => Promise<void>;
 
   addPayrollEvent: (event: Partial<PayrollEvent>) => Promise<void>;
+  updatePayrollEvent: (event: PayrollEvent) => Promise<void>;
   deletePayrollEvent: (id: string) => Promise<void>;
   addPayrollEntry: (entry: Partial<PayrollEntry>) => Promise<void>;
 
   getPayroll: (month: number, year: number) => Promise<{ payroll: PayrollPreview[], isClosed: boolean, closedInfo?: ClosedPayroll }>;
   closePayroll: (month: number, year: number) => Promise<void>;
+  reopenPayroll: (month: number, year: number) => Promise<void>;
   fetchData: () => Promise<void>;
 }
 
@@ -80,7 +82,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       
       const [
           staffRes, shiftsRes, timeRes, rolesRes, taxesRes, benefitsRes,
-          settingsRes, inssRes, irrfRes
+          settingsRes, inssRes, irrfRes, eventsRes
       ] = await Promise.all([
           supabase.from('staff').select('*, custom_roles(name)').eq('tenant_id', tenantId).order('name'),
           supabase.from('rh_shifts').select('*').eq('tenant_id', tenantId),
@@ -90,7 +92,8 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           supabase.from('rh_benefits').select('*').eq('tenant_id', tenantId),
           supabase.from('rh_payroll_settings').select('*').eq('tenant_id', tenantId).order('created_at', { ascending: false }).limit(1).maybeSingle(),
           supabase.from('rh_inss_brackets').select('*').eq('tenant_id', tenantId).order('min_value', { ascending: true }),
-          supabase.from('rh_irrf_brackets').select('*').eq('tenant_id', tenantId).order('min_value', { ascending: true })
+          supabase.from('rh_irrf_brackets').select('*').eq('tenant_id', tenantId).order('min_value', { ascending: true }),
+          supabase.from('rh_payroll_events').select('*').eq('tenant_id', tenantId)
       ]);
 
       if (staffRes.data) {
@@ -150,10 +153,15 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               permissions: r.permissions || { allowed_modules: [], allowed_features: [] }
           }));
 
+          const mappedEvents = (eventsRes.data || []).map((e: any) => ({
+              id: e.id, staffId: e.staff_id, month: e.month, year: e.year,
+              type: e.type, description: e.description, value: Number(e.value)
+          }));
+
           setState({ 
             users: mappedUsers, shifts: mappedShifts, timeEntries: mappedTime, roles: mappedRoles,
             taxes: mappedTaxes, benefits: mappedBenefits, legalSettings, inssBrackets, irrfBrackets, 
-            payrollEvents: [], payrollEntries: [], isLoading: false 
+            payrollEvents: mappedEvents, payrollEntries: [], isLoading: false 
           });
       }
   }, [tenantId]);
@@ -357,10 +365,24 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if(error) throw error;
 
       await logAudit(tenantId, currentUser.id, currentUser.name, 'HR', 'Lançamento de Evento', { eventType: event.type, staffId: event.staffId, value: event.value });
+      fetchData();
+  };
+
+  const updatePayrollEvent = async (event: PayrollEvent) => {
+      if(!tenantId || !currentUser) return;
+
+      const { error } = await supabase.from('rh_payroll_events').update({
+          type: event.type, description: event.description, value: event.value
+      }).eq('id', event.id);
+      if(error) throw error;
+
+      await logAudit(tenantId, currentUser.id, currentUser.name, 'HR', 'Edição de Evento', { eventType: event.type, staffId: event.staffId, value: event.value });
+      fetchData();
   };
   
   const deletePayrollEvent = async (id: string) => {
       await supabase.from('rh_payroll_events').delete().eq('id', id);
+      fetchData();
   };
 
   const addPayrollEntry = async (entry: Partial<PayrollEntry>) => {
@@ -644,16 +666,34 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       // Se quiser acumular, precisaria de lógica de "Compensar vs Pagar".
   };
 
+  const reopenPayroll = async (month: number, year: number) => {
+      if (!tenantId) return;
+      const { data: closedPayroll } = await supabase.from('rh_closed_payrolls')
+        .select('id')
+        .eq('tenant_id', tenantId)
+        .eq('month', month)
+        .eq('year', year)
+        .maybeSingle();
+
+      if (!closedPayroll) throw new Error("Esta folha não está fechada.");
+
+      // Excluir os itens e o cabeçalho
+      await supabase.from('rh_closed_payroll_items').delete().eq('payroll_id', closedPayroll.id);
+      await supabase.from('rh_closed_payrolls').delete().eq('id', closedPayroll.id);
+      
+      await logAudit(tenantId, currentUser?.id || '', currentUser?.name || '', 'HR', 'Reabertura de Folha', { month, year });
+  };
+
   return (
     <StaffContext.Provider value={{ 
         state, addUser, updateUser, deleteUser,
         addRole, updateRole, deleteRole,
-        addShift, deleteShift, registerTime, getPayroll, closePayroll,
+        addShift, deleteShift, registerTime, getPayroll, closePayroll, reopenPayroll,
         addTimeEntry, updateTimeEntry, fetchData,
         saveLegalSettings, saveInssBrackets, saveIrrfBrackets, applyLegalDefaults,
         addTax, deleteTax, applyRegimeDefaults,
         addBenefit, deleteBenefit,
-        addPayrollEvent, deletePayrollEvent, addPayrollEntry
+        addPayrollEvent, updatePayrollEvent, deletePayrollEvent, addPayrollEntry
     }}>
       {children}
     </StaffContext.Provider>
