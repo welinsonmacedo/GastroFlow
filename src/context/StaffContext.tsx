@@ -626,8 +626,8 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       // Buscar Eventos Variáveis
       const { data: events } = await supabase.from('rh_payroll_events').select('*').eq('tenant_id', tenantId).eq('month', month).eq('year', year);
 
-      const activeTaxes = state.taxes.filter(t => t.isActive);
-      const activeBenefits = state.benefits.filter(b => b.isActive);
+      const activeTaxes = []; // state.taxes.filter(t => t.isActive); // REMOVIDO POR SOLICITAÇÃO
+      const activeBenefits = []; // state.benefits.filter(b => b.isActive); // REMOVIDO POR SOLICITAÇÃO
       const fgtsRate = state.legalSettings?.fgtsRate || 8;
       
       // Mapeia dias úteis e DSR se necessário, mas vamos simplificar com carga mensal
@@ -731,14 +731,14 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               }
           });
 
-          // Benefícios Fixos (Recorrentes)
-          let benefitsValue = user.benefitsTotal || 0;
+          // Benefícios Fixos (Recorrentes) - REMOVIDO
+          let benefitsValue = 0; // user.benefitsTotal || 0;
           const benefitBreakdown: { name: string, value: number }[] = [];
-          activeBenefits.forEach(ben => {
-               let val = ben.type === 'PERCENTAGE' ? (baseSalary * (ben.value / 100)) : ben.value;
-               benefitsValue += val;
-               benefitBreakdown.push({ name: ben.name, value: val });
-          });
+          // activeBenefits.forEach(ben => {
+          //      let val = ben.type === 'PERCENTAGE' ? (baseSalary * (ben.value / 100)) : ben.value;
+          //      benefitsValue += val;
+          //      benefitBreakdown.push({ name: ben.name, value: val });
+          // });
 
           // Total Bruto
           const gross = baseSalary + overtime50Val + overtime100Val + nightShiftAdd + benefitsValue + eventAdditions;
@@ -754,17 +754,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           if (inssValue > 0) taxBreakdown.push({ name: 'INSS', value: inssValue, type: 'EMPLOYEE' });
           if (irrfValue > 0) taxBreakdown.push({ name: 'IRRF', value: irrfValue, type: 'EMPLOYEE' });
 
-          activeTaxes.forEach(tax => {
-              let val = 0;
-              const basisAmount = tax.calculationBasis === 'BASE_SALARY' ? baseSalary : gross;
-              if (tax.type === 'PERCENTAGE') val = (basisAmount * (tax.value / 100));
-              else val = tax.value;
-              
-              if (tax.payerType === 'EMPLOYER') otherEmployerCharges += val;
-              else otherDeductions += val;
-              
-              taxBreakdown.push({ name: tax.name, value: val, type: tax.payerType });
-          });
+          // activeTaxes.forEach(tax => { ... }); // REMOVIDO
 
           const totalEmployeeDeductions = inssValue + irrfValue + otherDeductions;
           const net = gross - totalEmployeeDeductions;
