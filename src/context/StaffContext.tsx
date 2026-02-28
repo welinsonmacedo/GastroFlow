@@ -92,7 +92,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       
       const [
           staffRes, shiftsRes, timeRes, rolesRes, taxesRes, benefitsRes,
-          settingsRes, inssRes, irrfRes, eventsRes, hrRolesRes
+          settingsRes, inssRes, irrfRes, eventsRes, recurringEventsRes, hrRolesRes
       ] = await Promise.all([
           supabase.from('staff').select('*, custom_roles(name)').eq('tenant_id', tenantId).order('name'),
           supabase.from('rh_shifts').select('*').eq('tenant_id', tenantId),
@@ -170,12 +170,12 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               type: e.type, description: e.description, value: Number(e.value)
           }));
 
-          const mappedRecurringEvents = (res[10].data || []).map((e: any) => ({
+          const mappedRecurringEvents = (recurringEventsRes.data || []).map((e: any) => ({
               id: e.id, staffId: e.staff_id, type: e.type, description: e.description, 
               value: Number(e.value), isActive: e.is_active
           }));
 
-          const mappedHrRoles = (res[11].data || []).map((r: any) => ({
+          const mappedHrRoles = (hrRolesRes.data || []).map((r: any) => ({
               id: r.id, title: r.title, cboCode: r.cbo_code, description: r.description,
               baseSalary: Number(r.base_salary), customRoleId: r.custom_role_id, isActive: r.is_active
           }));
