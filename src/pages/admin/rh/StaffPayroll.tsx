@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useStaff } from '../../../context/StaffContext';
 import { useRestaurant } from '../../../context/RestaurantContext'; 
 import { useUI } from '../../../context/UIContext';
+import { useFinance } from '../../../context/FinanceContext';
 import { Button } from '../../../components/Button';
 import { PayrollPreview, ClosedPayroll, PayrollEventType } from '../../../types';
 import { FileText, Printer, Calculator, RefreshCcw, Eye, X, Building2, Lock, Plus, Download, AlertTriangle, ArrowRight, Calendar, CheckSquare, Square } from 'lucide-react';
@@ -13,6 +14,7 @@ export const StaffPayroll: React.FC = () => {
     const { getPayroll, closePayroll, addPayrollEvent, state: staffState } = useStaff();
     const { state: restState } = useRestaurant(); 
     const { showAlert, showConfirm } = useUI();
+    const { addExpense } = useFinance();
     
     const [month, setMonth] = useState(new Date().getMonth());
     const [year, setYear] = useState(new Date().getFullYear());
@@ -36,6 +38,10 @@ export const StaffPayroll: React.FC = () => {
     const [absenceDate, setAbsenceDate] = useState(new Date().toISOString().split('T')[0]);
     const [isJustified, setIsJustified] = useState(false);
     const [deductDSR, setDeductDSR] = useState(false);
+
+    // Modal Fechar Folha
+    const [isCloseModalOpen, setIsCloseModalOpen] = useState(false);
+    const [sendToFinance, setSendToFinance] = useState(true);
 
     const loadData = async () => {
         setLoading(true);
@@ -92,24 +98,37 @@ export const StaffPayroll: React.FC = () => {
 
     }, [calcQty, calcMode, eventForm.staffId, staffState.users, eventForm.type, isJustified, deductDSR]);
 
-    const handleClosePayroll = () => {
-        showConfirm({
-            title: "Fechar Folha de Pagamento?",
-            message: "Isso criará um histórico imutável. Certifique-se de ter lançado todos os eventos variáveis.",
-            confirmText: "Congelar Folha",
-            onConfirm: async () => {
-                try {
-                    setLoading(true);
-                    await closePayroll(month, year);
-                    await loadData();
-                    showAlert({ title: "Sucesso", message: "Folha fechada e arquivada.", type: "SUCCESS" });
-                } catch (error: any) {
-                    showAlert({ title: "Erro", message: error.message, type: "ERROR" });
-                } finally {
-                    setLoading(false);
+    const handleClosePayroll = async () => {
+        try {
+            setLoading(true);
+            await closePayroll(month, year);
+            
+            if (sendToFinance) {
+                for (const p of payrollData) {
+                    if (p.netTotal > 0) {
+                        // O vencimento será o 5º dia útil do mês seguinte, simplificando para dia 5
+                        const dueDate = new Date(year, month + 1, 5);
+                        await addExpense({
+                            id: Math.random().toString(36).substr(2, 9),
+                            description: `Salário ${p.staffName} - Ref: ${String(month + 1).padStart(2, '0')}/${year}`,
+                            amount: p.netTotal,
+                            category: 'Folha de Pagamento',
+                            dueDate: dueDate.toISOString().split('T')[0],
+                            isPaid: false,
+                            isRecurring: false
+                        });
+                    }
                 }
             }
-        });
+
+            await loadData();
+            setIsCloseModalOpen(false);
+            showAlert({ title: "Sucesso", message: `Folha fechada e arquivada.${sendToFinance ? ' Despesas enviadas ao financeiro.' : ''}`, type: "SUCCESS" });
+        } catch (error: any) {
+            showAlert({ title: "Erro", message: error.message, type: "ERROR" });
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleAddEvent = async () => {
@@ -373,7 +392,7 @@ export const StaffPayroll: React.FC = () => {
                             }} className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm">
                                 <Plus size={16} className="mr-2"/> Lançar Evento
                             </Button>
-                            <Button onClick={handleClosePayroll} className="bg-red-600 hover:bg-red-700 text-white shadow-sm">
+                            <Button onClick={() => setIsCloseModalOpen(true)} className="bg-red-600 hover:bg-red-700 text-white shadow-sm">
                                 <Lock size={16} className="mr-2"/> Fechar
                             </Button>
                         </>
@@ -774,6 +793,41 @@ export const StaffPayroll: React.FC = () => {
                         </div>
                     </div>
                 )}
+            </Modal>
+            <Modal isOpen={isCloseModalOpen} onClose={() => setIsCloseModalOpen(false)} title="Fechar Folha de Pagamento" variant="dialog">
+                <div className="space-y-6 pt-4">
+                    <div className="bg-amber-50 border border-amber-200 p-4 rounded-xl flex gap-3">
+                        <AlertTriangle className="text-amber-600 flex-shrink-0" size={24} />
+                        <div>
+                            <h4 className="font-bold text-amber-800">Atenção</h4>
+                            <p className="text-sm text-amber-700 mt-1">
+                                Fechar a folha criará um histórico imutável para este mês. Certifique-se de ter lançado todos os eventos variáveis (bônus, faltas, etc).
+                            </p>
+                        </div>
+                    </div>
+
+                    <label className={`flex items-start gap-3 cursor-pointer p-4 rounded-xl border-2 transition-all ${sendToFinance ? 'bg-blue-50 border-blue-500' : 'bg-gray-50 border-gray-200'}`}>
+                        <div className="mt-0.5">
+                            <input type="checkbox" className="hidden" checked={sendToFinance} onChange={e => setSendToFinance(e.target.checked)} />
+                            <div className={`w-5 h-5 border-2 rounded flex items-center justify-center transition-colors ${sendToFinance ? 'bg-blue-600 border-blue-600' : 'bg-white border-gray-300'}`}>
+                                {sendToFinance && <CheckSquare size={14} className="text-white"/>}
+                            </div>
+                        </div>
+                        <div>
+                            <div className="font-bold text-slate-800">Enviar para o Financeiro</div>
+                            <div className="text-xs text-slate-500 mt-1">
+                                Cria automaticamente uma conta a pagar (Despesa) para cada funcionário com o valor líquido do salário. O vencimento será no dia 5 do mês seguinte.
+                            </div>
+                        </div>
+                    </label>
+
+                    <div className="flex gap-3 pt-4">
+                        <Button variant="secondary" onClick={() => setIsCloseModalOpen(false)} className="flex-1">Cancelar</Button>
+                        <Button onClick={handleClosePayroll} disabled={loading} className="flex-1 bg-red-600 hover:bg-red-700 text-white">
+                            {loading ? 'Fechando...' : 'Congelar Folha'}
+                        </Button>
+                    </div>
+                </div>
             </Modal>
         </div>
     );
