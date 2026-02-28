@@ -251,7 +251,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const { error } = await supabase.from('rh_job_roles').insert({ 
           tenant_id: tenantId, title: role.title, cbo_code: role.cboCode, 
           description: role.description, base_salary: role.baseSalary, 
-          custom_role_id: role.customRoleId, is_active: role.isActive !== false 
+          custom_role_id: role.customRoleId || null, is_active: role.isActive !== false 
       }); 
       if (error) throw error; 
   };
@@ -260,7 +260,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const { error } = await supabase.from('rh_job_roles').update({ 
           title: role.title, cbo_code: role.cboCode, 
           description: role.description, base_salary: role.baseSalary, 
-          custom_role_id: role.customRoleId, is_active: role.isActive 
+          custom_role_id: role.customRoleId || null, is_active: role.isActive 
       }).eq('id', role.id); 
       if (error) throw error; 
   };
