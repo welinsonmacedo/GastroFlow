@@ -42,6 +42,7 @@ export const StaffPayroll: React.FC = () => {
     // Modal Fechar Folha
     const [isCloseModalOpen, setIsCloseModalOpen] = useState(false);
     const [sendToFinance, setSendToFinance] = useState(true);
+    const [sendTaxesToFinance, setSendTaxesToFinance] = useState(true);
 
     const loadData = async () => {
         setLoading(true);
@@ -121,9 +122,54 @@ export const StaffPayroll: React.FC = () => {
                 }
             }
 
+            if (sendTaxesToFinance) {
+                const totalINSS = payrollData.reduce((acc, p) => acc + p.inssValue, 0);
+                const totalIRRF = payrollData.reduce((acc, p) => acc + p.irrfValue, 0);
+                const totalFGTS = payrollData.reduce((acc, p) => acc + p.fgtsValue, 0);
+
+                if (totalINSS > 0) {
+                    const dueDateINSS = new Date(year, month + 1, 20);
+                    await addExpense({
+                        id: Math.random().toString(36).substr(2, 9),
+                        description: `Guia INSS - Ref: ${String(month + 1).padStart(2, '0')}/${year}`,
+                        amount: totalINSS,
+                        category: 'Impostos Folha',
+                        dueDate: dueDateINSS.toISOString().split('T')[0],
+                        isPaid: false,
+                        isRecurring: false
+                    });
+                }
+
+                if (totalIRRF > 0) {
+                    const dueDateIRRF = new Date(year, month + 1, 20);
+                    await addExpense({
+                        id: Math.random().toString(36).substr(2, 9),
+                        description: `Guia IRRF - Ref: ${String(month + 1).padStart(2, '0')}/${year}`,
+                        amount: totalIRRF,
+                        category: 'Impostos Folha',
+                        dueDate: dueDateIRRF.toISOString().split('T')[0],
+                        isPaid: false,
+                        isRecurring: false
+                    });
+                }
+
+                if (totalFGTS > 0) {
+                    const dueDateFGTS = new Date(year, month + 1, 7);
+                    await addExpense({
+                        id: Math.random().toString(36).substr(2, 9),
+                        description: `Guia FGTS - Ref: ${String(month + 1).padStart(2, '0')}/${year}`,
+                        amount: totalFGTS,
+                        category: 'Impostos Folha',
+                        dueDate: dueDateFGTS.toISOString().split('T')[0],
+                        isPaid: false,
+                        isRecurring: false
+                    });
+                }
+            }
+
             await loadData();
             setIsCloseModalOpen(false);
-            showAlert({ title: "Sucesso", message: `Folha fechada e arquivada.${sendToFinance ? ' Despesas enviadas ao financeiro.' : ''}`, type: "SUCCESS" });
+            showAlert({ title: "Sucesso", message: `Folha fechada e arquivada.${sendToFinance || sendTaxesToFinance ? ' Despesas enviadas ao financeiro.' : ''}`, type: "SUCCESS" });
         } catch (error: any) {
             showAlert({ title: "Erro", message: error.message, type: "ERROR" });
         } finally {
@@ -814,9 +860,24 @@ export const StaffPayroll: React.FC = () => {
                             </div>
                         </div>
                         <div>
-                            <div className="font-bold text-slate-800">Enviar para o Financeiro</div>
+                            <div className="font-bold text-slate-800">Enviar Salários para o Financeiro</div>
                             <div className="text-xs text-slate-500 mt-1">
                                 Cria automaticamente uma conta a pagar (Despesa) para cada funcionário com o valor líquido do salário. O vencimento será no dia 5 do mês seguinte.
+                            </div>
+                        </div>
+                    </label>
+
+                    <label className={`flex items-start gap-3 cursor-pointer p-4 rounded-xl border-2 transition-all ${sendTaxesToFinance ? 'bg-blue-50 border-blue-500' : 'bg-gray-50 border-gray-200'}`}>
+                        <div className="mt-0.5">
+                            <input type="checkbox" className="hidden" checked={sendTaxesToFinance} onChange={e => setSendTaxesToFinance(e.target.checked)} />
+                            <div className={`w-5 h-5 border-2 rounded flex items-center justify-center transition-colors ${sendTaxesToFinance ? 'bg-blue-600 border-blue-600' : 'bg-white border-gray-300'}`}>
+                                {sendTaxesToFinance && <CheckSquare size={14} className="text-white"/>}
+                            </div>
+                        </div>
+                        <div>
+                            <div className="font-bold text-slate-800">Enviar Guias de Impostos para o Financeiro</div>
+                            <div className="text-xs text-slate-500 mt-1">
+                                Cria automaticamente contas a pagar para as guias consolidadas de INSS, IRRF e FGTS de todos os funcionários, com seus respectivos vencimentos.
                             </div>
                         </div>
                     </label>
