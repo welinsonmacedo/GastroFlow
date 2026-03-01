@@ -192,7 +192,11 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               noticePeriodDaysPerYear: Number(settingsRes.data.notice_period_days_per_year || 3),
               noticePeriodMaxDays: Number(settingsRes.data.notice_period_max_days || 90),
               fgtsFinePercent: Number(settingsRes.data.fgts_fine_percent || 40),
-              standardMonthlyHours: Number(settingsRes.data.standard_monthly_hours || 220)
+              standardMonthlyHours: Number(settingsRes.data.standard_monthly_hours || 220),
+              // Time Tracking
+              timeTrackingMethod: settingsRes.data.time_tracking_method || 'PHYSICAL',
+              overtimePolicy: settingsRes.data.overtime_policy || 'PAID_OVERTIME',
+              absenceLogic: settingsRes.data.absence_logic || { justified: { deduction: false, disciplinaryAction: false }, unjustified: { deduction: true, disciplinaryAction: true } }
           } : null;
 
           const inssBrackets = (inssRes.data || []).map((i: any) => ({
@@ -847,7 +851,11 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           notice_period_days_per_year: settings.noticePeriodDaysPerYear,
           notice_period_max_days: settings.noticePeriodMaxDays,
           fgts_fine_percent: settings.fgtsFinePercent,
-          standard_monthly_hours: settings.standardMonthlyHours
+          standard_monthly_hours: settings.standardMonthlyHours,
+          // Time Tracking
+          time_tracking_method: settings.timeTrackingMethod,
+          overtime_policy: settings.overtimePolicy,
+          absence_logic: settings.absenceLogic
       };
       await supabase.from('rh_payroll_settings').delete().eq('tenant_id', tenantId);
       await supabase.from('rh_payroll_settings').insert(payload);

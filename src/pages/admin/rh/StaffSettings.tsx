@@ -11,7 +11,7 @@ import { useUI } from '../../../context/UIContext';
 import { useRestaurant } from '../../../context/RestaurantContext';
 import { Button } from '../../../components/Button';
 import { HrJobRole, EventType, ContractTemplate, ContractTemplateType } from '../../../types';
-import { Plus, Trash2, Settings, DollarSign, RefreshCcw, FileText, Scale, Calculator, Edit3, Calendar, Bold, Italic, Underline, AlignCenter, Type, Eye, Printer } from 'lucide-react';
+import { Plus, Trash2, Settings, DollarSign, RefreshCcw, FileText, Scale, Calculator, Edit3, Calendar, Bold, Italic, Underline, AlignCenter, Type, Eye, Printer, Clock } from 'lucide-react';
 import { LegalSettingsModal } from '../../../components/modals/LegalSettingsModal';
 import { HrJobRoleModal } from '../../../components/modals/HrJobRoleModal';
 import { Modal } from '../../../components/Modal';
@@ -24,7 +24,7 @@ export const StaffSettings: React.FC = () => {
     const { showAlert, showConfirm } = useUI();
 
     // Abas de Configuração
-    const [activeTab, setActiveTab] = useState<'LEGAL' | 'CUSTOM' | 'ROLES' | 'EVENT_TYPES' | 'CONTRACTS' | 'CALC_PARAMS' | 'SCHEDULES' | 'RECURRING'>('LEGAL');
+    const [activeTab, setActiveTab] = useState<'LEGAL' | 'CUSTOM' | 'ROLES' | 'EVENT_TYPES' | 'CONTRACTS' | 'CALC_PARAMS' | 'SCHEDULES' | 'RECURRING' | 'TIME_TRACKING'>('LEGAL');
     const [isLegalModalOpen, setIsLegalModalOpen] = useState(false);
     
     // Estado para Parâmetros de Cálculo
@@ -39,6 +39,15 @@ export const StaffSettings: React.FC = () => {
         standardMonthlyHours: 220
     });
 
+    const [timeTrackingForm, setTimeTrackingForm] = useState({
+        timeTrackingMethod: 'PHYSICAL',
+        overtimePolicy: 'PAID_OVERTIME',
+        absenceLogic: {
+            justified: { deduction: false, disciplinaryAction: false },
+            unjustified: { deduction: true, disciplinaryAction: true }
+        }
+    });
+
     React.useEffect(() => {
         if (state.legalSettings) {
             setCalcParamsForm({
@@ -51,8 +60,29 @@ export const StaffSettings: React.FC = () => {
                 fgtsFinePercent: state.legalSettings.fgtsFinePercent || 40,
                 standardMonthlyHours: state.legalSettings.standardMonthlyHours || 220
             });
+            setTimeTrackingForm({
+                timeTrackingMethod: state.legalSettings.timeTrackingMethod || 'PHYSICAL',
+                overtimePolicy: state.legalSettings.overtimePolicy || 'PAID_OVERTIME',
+                absenceLogic: state.legalSettings.absenceLogic || {
+                    justified: { deduction: false, disciplinaryAction: false },
+                    unjustified: { deduction: true, disciplinaryAction: true }
+                }
+            });
         }
     }, [state.legalSettings]);
+
+    const handleSaveTimeTracking = async () => {
+        if (!state.legalSettings) return showAlert({ title: "Erro", message: "Configure as tabelas legais primeiro.", type: "ERROR" });
+        try {
+            await useStaff().saveLegalSettings({
+                ...state.legalSettings,
+                ...timeTrackingForm
+            });
+            showAlert({ title: "Sucesso", message: "Configurações de ponto atualizadas.", type: "SUCCESS" });
+        } catch (error: any) {
+            showAlert({ title: "Erro", message: error.message, type: "ERROR" });
+        }
+    };
 
     const handleSaveCalcParams = async () => {
         if (!state.legalSettings) return showAlert({ title: "Erro", message: "Configure as tabelas legais primeiro.", type: "ERROR" });
@@ -250,6 +280,7 @@ export const StaffSettings: React.FC = () => {
                     <button onClick={() => setActiveTab('CONTRACTS')} className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'CONTRACTS' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}>Modelos de Contrato</button>
                     <button onClick={() => setActiveTab('RECURRING')} className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'RECURRING' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}>Eventos Recorrentes</button>
                     <button onClick={() => setActiveTab('SCHEDULES')} className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'SCHEDULES' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}>Escalas & Turnos</button>
+                    <button onClick={() => setActiveTab('TIME_TRACKING')} className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'TIME_TRACKING' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}>Configurações de Ponto</button>
                     <button onClick={() => setActiveTab('CALC_PARAMS')} className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'CALC_PARAMS' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}>Parâmetros de Cálculos</button>
                 </div>
             </div>
@@ -617,6 +648,173 @@ export const StaffSettings: React.FC = () => {
             {/* ABA 8: EVENTOS RECORRENTES */}
             {activeTab === 'RECURRING' && (
                 <StaffRecurringEvents />
+            )}
+
+            {/* ABA 9: CONFIGURAÇÕES DE PONTO */}
+            {activeTab === 'TIME_TRACKING' && (
+                <div className="space-y-6">
+                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                        <h3 className="font-bold text-slate-700 mb-6 flex items-center gap-2"><Clock size={18}/> Configurações de Ponto</h3>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            {/* Método de Registro */}
+                            <div className="space-y-4">
+                                <h4 className="text-sm font-bold text-slate-800 border-b pb-2">Método de Registro</h4>
+                                <div className="space-y-3">
+                                    <label className="flex items-center p-3 border rounded-xl cursor-pointer hover:bg-slate-50 transition-colors">
+                                        <input 
+                                            type="radio" 
+                                            name="timeTrackingMethod" 
+                                            value="PHYSICAL"
+                                            checked={timeTrackingForm.timeTrackingMethod === 'PHYSICAL'}
+                                            onChange={() => setTimeTrackingForm({...timeTrackingForm, timeTrackingMethod: 'PHYSICAL'})}
+                                            className="w-4 h-4 text-blue-600"
+                                        />
+                                        <div className="ml-3">
+                                            <span className="block text-sm font-bold text-slate-700">Ponto Físico / Manual</span>
+                                            <span className="block text-xs text-slate-500">Cartão de ponto, livro ou relógio biométrico externo.</span>
+                                        </div>
+                                    </label>
+                                    <label className="flex items-center p-3 border rounded-xl cursor-pointer hover:bg-slate-50 transition-colors">
+                                        <input 
+                                            type="radio" 
+                                            name="timeTrackingMethod" 
+                                            value="DIGITAL"
+                                            checked={timeTrackingForm.timeTrackingMethod === 'DIGITAL'}
+                                            onChange={() => setTimeTrackingForm({...timeTrackingForm, timeTrackingMethod: 'DIGITAL'})}
+                                            className="w-4 h-4 text-blue-600"
+                                        />
+                                        <div className="ml-3">
+                                            <span className="block text-sm font-bold text-slate-700">Ponto Digital (App)</span>
+                                            <span className="block text-xs text-slate-500">Registro via celular/tablet com geolocalização.</span>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+
+                            {/* Política de Horas Extras */}
+                            <div className="space-y-4">
+                                <h4 className="text-sm font-bold text-slate-800 border-b pb-2">Política de Horas Extras</h4>
+                                <div className="space-y-3">
+                                    <label className="flex items-center p-3 border rounded-xl cursor-pointer hover:bg-slate-50 transition-colors">
+                                        <input 
+                                            type="radio" 
+                                            name="overtimePolicy" 
+                                            value="PAID_OVERTIME"
+                                            checked={timeTrackingForm.overtimePolicy === 'PAID_OVERTIME'}
+                                            onChange={() => setTimeTrackingForm({...timeTrackingForm, overtimePolicy: 'PAID_OVERTIME'})}
+                                            className="w-4 h-4 text-blue-600"
+                                        />
+                                        <div className="ml-3">
+                                            <span className="block text-sm font-bold text-slate-700">Pagamento de Horas Extras</span>
+                                            <span className="block text-xs text-slate-500">Horas excedentes são pagas na folha (50% / 100%).</span>
+                                        </div>
+                                    </label>
+                                    <label className="flex items-center p-3 border rounded-xl cursor-pointer hover:bg-slate-50 transition-colors">
+                                        <input 
+                                            type="radio" 
+                                            name="overtimePolicy" 
+                                            value="BANK_OF_HOURS"
+                                            checked={timeTrackingForm.overtimePolicy === 'BANK_OF_HOURS'}
+                                            onChange={() => setTimeTrackingForm({...timeTrackingForm, overtimePolicy: 'BANK_OF_HOURS'})}
+                                            className="w-4 h-4 text-blue-600"
+                                        />
+                                        <div className="ml-3">
+                                            <span className="block text-sm font-bold text-slate-700">Banco de Horas</span>
+                                            <span className="block text-xs text-slate-500">Horas acumulam para compensação futura.</span>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+
+                            {/* Lógica de Faltas */}
+                            <div className="md:col-span-2 space-y-4 pt-4">
+                                <h4 className="text-sm font-bold text-slate-800 border-b pb-2">Consequências de Faltas</h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    {/* Faltas Justificadas */}
+                                    <div className="bg-green-50 p-4 rounded-xl border border-green-100">
+                                        <h5 className="text-xs font-black text-green-800 uppercase mb-3">Faltas Justificadas (Atestado)</h5>
+                                        <div className="space-y-2">
+                                            <label className="flex items-center gap-2">
+                                                <input 
+                                                    type="checkbox" 
+                                                    checked={timeTrackingForm.absenceLogic.justified.deduction}
+                                                    onChange={e => setTimeTrackingForm({
+                                                        ...timeTrackingForm, 
+                                                        absenceLogic: { 
+                                                            ...timeTrackingForm.absenceLogic, 
+                                                            justified: { ...timeTrackingForm.absenceLogic.justified, deduction: e.target.checked } 
+                                                        }
+                                                    })}
+                                                    className="rounded text-green-600"
+                                                />
+                                                <span className="text-sm text-slate-700">Descontar do Salário/Banco</span>
+                                            </label>
+                                            <label className="flex items-center gap-2">
+                                                <input 
+                                                    type="checkbox" 
+                                                    checked={timeTrackingForm.absenceLogic.justified.disciplinaryAction}
+                                                    onChange={e => setTimeTrackingForm({
+                                                        ...timeTrackingForm, 
+                                                        absenceLogic: { 
+                                                            ...timeTrackingForm.absenceLogic, 
+                                                            justified: { ...timeTrackingForm.absenceLogic.justified, disciplinaryAction: e.target.checked } 
+                                                        }
+                                                    })}
+                                                    className="rounded text-green-600"
+                                                />
+                                                <span className="text-sm text-slate-700">Gerar Advertência Automática</span>
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    {/* Faltas Injustificadas */}
+                                    <div className="bg-red-50 p-4 rounded-xl border border-red-100">
+                                        <h5 className="text-xs font-black text-red-800 uppercase mb-3">Faltas Injustificadas</h5>
+                                        <div className="space-y-2">
+                                            <label className="flex items-center gap-2">
+                                                <input 
+                                                    type="checkbox" 
+                                                    checked={timeTrackingForm.absenceLogic.unjustified.deduction}
+                                                    onChange={e => setTimeTrackingForm({
+                                                        ...timeTrackingForm, 
+                                                        absenceLogic: { 
+                                                            ...timeTrackingForm.absenceLogic, 
+                                                            unjustified: { ...timeTrackingForm.absenceLogic.unjustified, deduction: e.target.checked } 
+                                                        }
+                                                    })}
+                                                    className="rounded text-red-600"
+                                                />
+                                                <span className="text-sm text-slate-700">Descontar do Salário/Banco</span>
+                                            </label>
+                                            <label className="flex items-center gap-2">
+                                                <input 
+                                                    type="checkbox" 
+                                                    checked={timeTrackingForm.absenceLogic.unjustified.disciplinaryAction}
+                                                    onChange={e => setTimeTrackingForm({
+                                                        ...timeTrackingForm, 
+                                                        absenceLogic: { 
+                                                            ...timeTrackingForm.absenceLogic, 
+                                                            unjustified: { ...timeTrackingForm.absenceLogic.unjustified, disciplinaryAction: e.target.checked } 
+                                                        }
+                                                    })}
+                                                    className="rounded text-red-600"
+                                                />
+                                                <span className="text-sm text-slate-700">Sugerir Advertência</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="mt-8 flex justify-end">
+                            <Button onClick={handleSaveTimeTracking} className="bg-blue-600 text-white shadow-lg hover:bg-blue-700">
+                                <Settings size={18} className="mr-2"/> Salvar Configurações de Ponto
+                            </Button>
+                        </div>
+                    </div>
+                </div>
             )}
 
             {/* Modal de Configuração Legal */}

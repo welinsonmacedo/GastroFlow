@@ -143,6 +143,13 @@ export interface RhPayrollSetting {
     noticePeriodMaxDays?: number;
     fgtsFinePercent?: number;
     standardMonthlyHours?: number;
+    // Time Tracking
+    timeTrackingMethod?: 'DIGITAL' | 'PHYSICAL';
+    overtimePolicy?: 'BANK_OF_HOURS' | 'PAID_OVERTIME';
+    absenceLogic?: {
+        justified: { deduction: boolean, disciplinaryAction: boolean };
+        unjustified: { deduction: boolean, disciplinaryAction: boolean };
+    };
 }
 
 export interface RhInssBracket {
