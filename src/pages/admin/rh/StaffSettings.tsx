@@ -1026,6 +1026,31 @@ export const StaffSettings: React.FC = () => {
                                             ))}
                                         </div>
                                     </div>
+
+                                    <div>
+                                        <div className="text-[10px] font-black text-slate-400 mb-2 uppercase">Data e Hora (Automático)</div>
+                                        <div className="space-y-1.5">
+                                            {[
+                                                { label: 'Data Atual (DD/MM/AAAA)', code: '{{data_atual_abreviada}}' },
+                                                { label: 'Data Atual (Extenso)', code: '{{data_atual_extenso}}' },
+                                                { label: 'Hora Atual (HH:MM)', code: '{{hora_atual}}' },
+                                                { label: 'Dia Atual', code: '{{dia_atual}}' },
+                                                { label: 'Mês Atual', code: '{{mes_atual}}' },
+                                                { label: 'Ano Atual', code: '{{ano_atual}}' },
+                                            ].map(v => (
+                                                <div 
+                                                    key={v.code} 
+                                                    draggable 
+                                                    onDragStart={(e) => e.dataTransfer.setData('text/plain', v.code)}
+                                                    className="bg-white p-2 rounded border border-slate-200 cursor-move hover:bg-blue-50 transition-colors group" 
+                                                    onClick={() => insertAtCursor(v.code)}
+                                                >
+                                                    <div className="text-[9px] text-slate-400 font-bold">{v.label}</div>
+                                                    <code className="text-[11px] font-bold text-blue-600">{v.code}</code>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
