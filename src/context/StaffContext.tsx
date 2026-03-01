@@ -376,16 +376,20 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const user = state.users.find(u => u.id === staffId);
       if (!user) throw new Error("Colaborador não encontrado");
       
-      // Lógica simplificada: considera salário base atual
       const baseSalary = user.baseSalary || 0;
       
       // Calcular avos trabalhados no ano
       const hireDate = user.hireDate ? new Date(user.hireDate) : new Date();
       let monthsWorked = 12;
+      
       if (hireDate.getFullYear() === year) {
           monthsWorked = 12 - hireDate.getMonth();
-          if (hireDate.getDate() > 15) monthsWorked -= 1; // Se admitido após dia 15, não conta o mês
+          // Se admitido após dia 15, não conta o mês de admissão
+          if (hireDate.getDate() > 15) monthsWorked -= 1;
+      } else if (hireDate.getFullYear() > year) {
+          monthsWorked = 0;
       }
+      
       monthsWorked = Math.max(0, Math.min(12, monthsWorked));
 
       let value = (baseSalary / 12) * monthsWorked;
@@ -509,6 +513,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       
       const baseSalary = user.baseSalary || 0;
       const dailyRate = baseSalary / 30;
+      const hireDate = user.hireDate ? new Date(user.hireDate) : new Date();
       
       // Saldo de Salário (dias trabalhados no mês)
       const daysWorkedInMonth = date.getDate();
@@ -516,21 +521,64 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       
       // Aviso Prévio
       let noticeValue = 0;
-      let noticeDays = 30; // Simplificado. Deveria ser 30 + 3 por ano.
+      // Lei 12.506/2011: 30 dias + 3 dias por ano completo de serviço (até max 90 dias)
+      const yearsOfService = Math.floor((date.getTime() - hireDate.getTime()) / (1000 * 60 * 60 * 24 * 365));
+      let noticeDays = 30 + (yearsOfService * 3);
+      if (noticeDays > 90) noticeDays = 90;
+
       if (noticeType === 'INDEMNIFIED') {
           noticeValue = dailyRate * noticeDays;
       }
       
-      // Férias Proporcionais (Simplificado: 1/12 por mês trabalhado no ano se < 1 ano, ou desde o último período)
-      // Vamos assumir 6/12 avos como exemplo fixo para MVP, idealmente calcularia datas
-      const vacationProportionalValue = (baseSalary / 12) * 6 + ((baseSalary / 12) * 6 / 3);
-      const vacationExpiredValue = 0; // Teria que checar períodos vencidos
+      // Férias Proporcionais
+      // Calcular meses trabalhados desde o último aniversário de admissão até a data de desligamento
+      // Se aviso prévio indenizado, projeta mais 1 mês (ou o tempo do aviso)
+      const terminationDateWithNotice = new Date(date);
+      if (noticeType === 'INDEMNIFIED') {
+          terminationDateWithNotice.setDate(terminationDateWithNotice.getDate() + noticeDays);
+      }
+
+      // Calcular avos de férias (meses trabalhados no período aquisitivo atual)
+      // Simplificação: Diferença de meses entre hireDate (mês/dia) e terminationDateWithNotice
+      // Precisaria de lógica mais robusta para períodos aquisitivos exatos
+      let vacationAvos = 0;
+      let currentPeriodStart = new Date(hireDate);
+      currentPeriodStart.setFullYear(terminationDateWithNotice.getFullYear());
+      if (currentPeriodStart > terminationDateWithNotice) {
+          currentPeriodStart.setFullYear(terminationDateWithNotice.getFullYear() - 1);
+      }
+      
+      // Diferença em meses
+      vacationAvos = (terminationDateWithNotice.getFullYear() - currentPeriodStart.getFullYear()) * 12 + (terminationDateWithNotice.getMonth() - currentPeriodStart.getMonth());
+      if (terminationDateWithNotice.getDate() >= 15) vacationAvos += 1;
+      if (vacationAvos > 12) vacationAvos = 12; // Cap em 12
+      if (vacationAvos < 0) vacationAvos = 0;
+
+      const vacationProportionalValue = (baseSalary / 12) * vacationAvos + ((baseSalary / 12) * vacationAvos / 3);
+      
+      // Férias Vencidas (verificar se tem período completo não gozado)
+      // Simplificação: 0 por enquanto, idealmente buscaria na tabela rh_vacations
+      const vacationExpiredValue = 0; 
       
       // 13º Proporcional
-      const thirteenthProportionalValue = (baseSalary / 12) * 6;
+      // Meses trabalhados no ano corrente
+      let thirteenthAvos = terminationDateWithNotice.getMonth(); // Jan = 0, mas se trabalhou >= 15 dias conta
+      if (terminationDateWithNotice.getDate() >= 15) thirteenthAvos += 1;
+      
+      // Se admissão foi neste ano, desconta os meses anteriores
+      if (hireDate.getFullYear() === terminationDateWithNotice.getFullYear()) {
+          thirteenthAvos -= hireDate.getMonth();
+          if (hireDate.getDate() > 15) thirteenthAvos -= 1;
+      }
+      thirteenthAvos = Math.max(0, Math.min(12, thirteenthAvos));
+
+      const thirteenthProportionalValue = (baseSalary / 12) * thirteenthAvos;
       
       // Multa FGTS
-      const fgtsFineValue = reason.includes('DISMISSAL_NO_CAUSE') ? (baseSalary * 12 * 0.08 * 0.40) : 0; // Estimativa baseada em 1 ano de trabalho
+      // Saldo FGTS precisaria ser informado ou estimado. Vamos estimar 8% do salário * meses totais trabalhados
+      const totalMonthsWorked = (date.getFullYear() - hireDate.getFullYear()) * 12 + (date.getMonth() - hireDate.getMonth());
+      const estimatedFgtsBalance = baseSalary * 0.08 * totalMonthsWorked;
+      const fgtsFineValue = reason.includes('DISMISSAL_NO_CAUSE') ? (estimatedFgtsBalance * 0.40) : 0; 
       
       const totalValue = balanceSalary + noticeValue + vacationProportionalValue + vacationExpiredValue + thirteenthProportionalValue + fgtsFineValue;
 
@@ -557,10 +605,24 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const finalizeTermination = async (id: string) => {
       if (!tenantId) return;
+      
+      // Buscar a rescisão para pegar o staff_id
+      const { data: termination, error: fetchError } = await supabase
+          .from('rh_terminations')
+          .select('*')
+          .eq('id', id)
+          .single();
+          
+      if (fetchError) throw fetchError;
+      if (!termination) throw new Error("Rescisão não encontrada");
+
       const { error } = await supabase.from('rh_terminations').update({ status: 'FINALIZED' }).eq('id', id);
       if (error) throw error;
-      // Também deveria inativar o funcionário
-      // await supabase.from('staff').update({ status: 'TERMINATED' }).eq('id', staffId);
+      
+      // Inativar o funcionário
+      const { error: staffError } = await supabase.from('staff').update({ status: 'TERMINATED' }).eq('id', termination.staff_id);
+      if (staffError) throw staffError;
+      
       await fetchData();
   };
 

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useStaff } from '../../../context/StaffContext';
 import { 
-    Calendar, Search, Plus, Trash2, CheckCircle, AlertTriangle 
+    Calendar, Search, Plus, Trash2, CheckCircle, AlertTriangle, History 
 } from 'lucide-react';
 import { VacationSchedule } from '../../../types';
 
@@ -9,6 +9,8 @@ export const StaffVacation: React.FC = () => {
     const { state, calculateVacation, saveVacationSchedule, deleteVacationSchedule } = useStaff();
     const [searchTerm, setSearchTerm] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+    const [selectedStaffHistory, setSelectedStaffHistory] = useState<string | null>(null);
     const [selectedStaffId, setSelectedStaffId] = useState('');
     const [startDate, setStartDate] = useState('');
     const [daysCount, setDaysCount] = useState(30);
@@ -51,6 +53,11 @@ export const StaffVacation: React.FC = () => {
         }
     };
 
+    const openHistory = (staffId: string) => {
+        setSelectedStaffHistory(staffId);
+        setIsHistoryModalOpen(true);
+    };
+
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
@@ -86,24 +93,41 @@ export const StaffVacation: React.FC = () => {
                         <thead>
                             <tr className="bg-gray-50 text-gray-600 text-xs uppercase tracking-wider">
                                 <th className="p-4 font-semibold">Colaborador</th>
-                                <th className="p-4 font-semibold">Período Aquisitivo</th>
-                                <th className="p-4 font-semibold">Dias Vencidos</th>
-                                <th className="p-4 font-semibold">Agendamentos</th>
+                                <th className="p-4 font-semibold">Admissão</th>
+                                <th className="p-4 font-semibold">Período Aquisitivo Atual</th>
+                                <th className="p-4 font-semibold">Concessivo Até</th>
+                                <th className="p-4 font-semibold">Últimas Férias</th>
                                 <th className="p-4 font-semibold text-right">Ações</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
                             {filteredUsers.map(user => {
-                                // Lógica simplificada de período aquisitivo
                                 const hireDate = user.hireDate ? new Date(user.hireDate) : new Date();
                                 const today = new Date();
-                                const yearsWorked = today.getFullYear() - hireDate.getFullYear();
-                                const currentPeriodStart = new Date(hireDate);
-                                currentPeriodStart.setFullYear(today.getFullYear() - 1);
+                                
+                                // Calcular Período Aquisitivo Atual
+                                // Ex: Admissão 01/02/2020. Hoje 28/02/2026.
+                                // Periodos: 2020-2021, 2021-2022, ..., 2025-2026.
+                                // O atual iniciou em 01/02/2025 e termina em 31/01/2026 (já venceu) ou 2026-2027.
+                                
+                                let currentPeriodStart = new Date(hireDate);
+                                currentPeriodStart.setFullYear(today.getFullYear());
+                                if (currentPeriodStart > today) {
+                                    currentPeriodStart.setFullYear(today.getFullYear() - 1);
+                                }
                                 const currentPeriodEnd = new Date(currentPeriodStart);
                                 currentPeriodEnd.setFullYear(currentPeriodStart.getFullYear() + 1);
+                                currentPeriodEnd.setDate(currentPeriodEnd.getDate() - 1);
+
+                                // Limite Concessivo: 12 meses após o fim do período aquisitivo
+                                const concessiveLimit = new Date(currentPeriodEnd);
+                                concessiveLimit.setFullYear(concessiveLimit.getFullYear() + 1);
+
+                                const schedules = state.vacationSchedules
+                                    .filter(s => s.staffId === user.id)
+                                    .sort((a, b) => new Date(b.endDate).getTime() - new Date(a.endDate).getTime());
                                 
-                                const schedules = state.vacationSchedules.filter(s => s.staffId === user.id);
+                                const lastVacation = schedules.length > 0 ? schedules[0] : null;
 
                                 return (
                                     <tr key={user.id} className="hover:bg-gray-50 transition-colors">
@@ -112,33 +136,41 @@ export const StaffVacation: React.FC = () => {
                                             <div className="text-xs text-gray-500">{user.role}</div>
                                         </td>
                                         <td className="p-4 text-sm text-gray-600">
-                                            {currentPeriodStart.toLocaleDateString()} - {currentPeriodEnd.toLocaleDateString()}
+                                            {hireDate.toLocaleDateString()}
                                         </td>
-                                        <td className="p-4 text-center">
-                                            <span className="px-2 py-1 bg-green-100 text-green-700 rounded text-xs font-bold">
-                                                30 Dias
+                                        <td className="p-4 text-sm text-gray-600">
+                                            <div className="flex flex-col">
+                                                <span>{currentPeriodStart.toLocaleDateString()} - {currentPeriodEnd.toLocaleDateString()}</span>
+                                                {today > currentPeriodEnd && (
+                                                    <span className="text-xs text-orange-600 font-bold flex items-center gap-1">
+                                                        <AlertTriangle size={10} /> Vencido
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </td>
+                                        <td className="p-4 text-sm text-gray-600">
+                                            <span className={today > concessiveLimit ? 'text-red-600 font-bold' : ''}>
+                                                {concessiveLimit.toLocaleDateString()}
                                             </span>
                                         </td>
-                                        <td className="p-4">
-                                            {schedules.length > 0 ? (
-                                                <div className="space-y-1">
-                                                    {schedules.map(s => (
-                                                        <div key={s.id} className="flex items-center justify-between text-xs bg-gray-50 p-1 rounded border border-gray-200">
-                                                            <span>
-                                                                {new Date(s.startDate).toLocaleDateString()} - {new Date(s.endDate).toLocaleDateString()} ({s.daysCount}d)
-                                                            </span>
-                                                            <button onClick={() => handleDelete(s.id)} className="text-red-500 hover:text-red-700 ml-2">
-                                                                <Trash2 size={12} />
-                                                            </button>
-                                                        </div>
-                                                    ))}
+                                        <td className="p-4 text-sm text-gray-600">
+                                            {lastVacation ? (
+                                                <div className="flex flex-col">
+                                                    <span>{new Date(lastVacation.startDate).toLocaleDateString()} - {new Date(lastVacation.endDate).toLocaleDateString()}</span>
+                                                    <span className="text-xs text-gray-400">{lastVacation.daysCount} dias</span>
                                                 </div>
                                             ) : (
-                                                <span className="text-xs text-gray-400 italic">Nenhum agendamento</span>
+                                                <span className="text-gray-400 italic">-</span>
                                             )}
                                         </td>
                                         <td className="p-4 text-right">
-                                            {/* Actions */}
+                                            <button 
+                                                onClick={() => openHistory(user.id)}
+                                                className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                                title="Histórico de Férias"
+                                            >
+                                                <History size={18} />
+                                            </button>
                                         </td>
                                     </tr>
                                 );
@@ -253,6 +285,57 @@ export const StaffVacation: React.FC = () => {
                             >
                                 Confirmar Agendamento
                             </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal de Histórico */}
+            {isHistoryModalOpen && selectedStaffHistory && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden">
+                        <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                            <h3 className="text-lg font-bold text-gray-800">Histórico de Férias</h3>
+                            <button onClick={() => setIsHistoryModalOpen(false)} className="text-gray-400 hover:text-gray-600">✕</button>
+                        </div>
+                        <div className="p-6">
+                            <table className="w-full text-left text-sm">
+                                <thead className="bg-gray-50 text-gray-500 font-bold border-b">
+                                    <tr>
+                                        <th className="p-3">Início</th>
+                                        <th className="p-3">Fim</th>
+                                        <th className="p-3">Dias</th>
+                                        <th className="p-3">Abono</th>
+                                        <th className="p-3 text-right">Valor Líquido</th>
+                                        <th className="p-3 text-right">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100">
+                                    {state.vacationSchedules
+                                        .filter(s => s.staffId === selectedStaffHistory)
+                                        .sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime())
+                                        .map(vacation => (
+                                            <tr key={vacation.id}>
+                                                <td className="p-3">{new Date(vacation.startDate).toLocaleDateString()}</td>
+                                                <td className="p-3">{new Date(vacation.endDate).toLocaleDateString()}</td>
+                                                <td className="p-3">{vacation.daysCount}</td>
+                                                <td className="p-3">{vacation.soldDays > 0 ? `${vacation.soldDays} dias` : '-'}</td>
+                                                <td className="p-3 text-right font-bold">R$ {vacation.totalNet.toFixed(2)}</td>
+                                                <td className="p-3 text-right">
+                                                    <button onClick={() => handleDelete(vacation.id)} className="text-red-500 hover:text-red-700">
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    }
+                                    {state.vacationSchedules.filter(s => s.staffId === selectedStaffHistory).length === 0 && (
+                                        <tr>
+                                            <td colSpan={6} className="p-6 text-center text-gray-400 italic">Nenhum histórico encontrado.</td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>

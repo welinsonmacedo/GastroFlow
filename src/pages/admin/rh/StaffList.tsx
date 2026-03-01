@@ -12,6 +12,7 @@ export const StaffList: React.FC = () => {
     const { showConfirm } = useUI();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingUser, setEditingUser] = useState<User | null>(null);
+    const [activeTab, setActiveTab] = useState<'ACTIVE' | 'INACTIVE'>('ACTIVE');
 
     const getStatusColor = (status?: EmployeeStatus) => {
         switch(status) {
@@ -23,6 +24,14 @@ export const StaffList: React.FC = () => {
         }
     };
 
+    const filteredUsers = staffState.users.filter(user => {
+        if (activeTab === 'ACTIVE') {
+            return user.status !== 'TERMINATED';
+        } else {
+            return user.status === 'TERMINATED';
+        }
+    });
+
     return (
         <div className="space-y-6 animate-fade-in">
             <div className="flex justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
@@ -30,9 +39,25 @@ export const StaffList: React.FC = () => {
                     <h2 className="text-2xl font-black text-slate-800 flex items-center gap-2">Diretório de Colaboradores</h2>
                     <p className="text-sm text-gray-500">Gestão completa do quadro de funcionários.</p>
                 </div>
-                <Button onClick={() => { setEditingUser(null); setIsModalOpen(true); }} className="bg-pink-600 hover:bg-pink-700 text-white border-transparent">
-                    <UserPlus size={18}/> Novo Colaborador
-                </Button>
+                <div className="flex items-center gap-4">
+                    <div className="flex bg-gray-100 p-1 rounded-lg">
+                        <button 
+                            onClick={() => setActiveTab('ACTIVE')}
+                            className={`px-4 py-2 text-sm font-bold rounded-md transition-all ${activeTab === 'ACTIVE' ? 'bg-white text-pink-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                        >
+                            Ativos
+                        </button>
+                        <button 
+                            onClick={() => setActiveTab('INACTIVE')}
+                            className={`px-4 py-2 text-sm font-bold rounded-md transition-all ${activeTab === 'INACTIVE' ? 'bg-white text-pink-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                        >
+                            Inativos
+                        </button>
+                    </div>
+                    <Button onClick={() => { setEditingUser(null); setIsModalOpen(true); }} className="bg-pink-600 hover:bg-pink-700 text-white border-transparent">
+                        <UserPlus size={18}/> Novo Colaborador
+                    </Button>
+                </div>
             </div>
 
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
@@ -50,7 +75,7 @@ export const StaffList: React.FC = () => {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
-                            {staffState.users.map(user => (
+                            {filteredUsers.map(user => (
                                 <tr key={user.id} className="hover:bg-slate-50 transition-colors group">
                                     <td className="p-4">
                                         <div className="flex items-center gap-3">
