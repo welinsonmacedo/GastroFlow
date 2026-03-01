@@ -40,13 +40,17 @@ export const replaceContractVariables = (templateContent: string, user: User, co
 
     // Remove HTML tags inside the curly braces to prevent rich text formatting from breaking the variables
     content = content.replace(/\{\{([^}]+)\}\}/g, (match) => match.replace(/<[^>]+>/g, ''));
+    
+    // Also remove invisible characters like zero-width spaces that Quill might insert
+    content = content.replace(/[\u200B-\u200D\uFEFF]/g, '');
 
     const addressString = company.address?.street ? `${company.address.street}, ${company.address.number || 'S/N'}` : '';
 
-    // Replace variables
+    // Replace variables (using \s* to handle spaces inside braces)
     content = content.replace(/\{\{\s*empresa_nome\s*\}\}/g, company.restaurantName || '____________________');
     content = content.replace(/\{\{\s*empresa_cnpj\s*\}\}/g, company.cnpj || '____________________');
     content = content.replace(/\{\{\s*empresa_endereco\s*\}\}/g, addressString || '____________________');
+    content = content.replace(/\{\{\s*empresa_endereço\s*\}\}/g, addressString || '____________________');
     content = content.replace(/\{\{\s*empresa_cidade\s*\}\}/g, company.address?.city || '____________________');
     content = content.replace(/\{\{\s*empresa_estado\s*\}\}/g, company.address?.state || '____________________');
     content = content.replace(/\{\{\s*empresa_telefone\s*\}\}/g, company.phone || '____________________');
