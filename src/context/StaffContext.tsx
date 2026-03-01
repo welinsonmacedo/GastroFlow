@@ -4,7 +4,7 @@ import {
     User, Shift, TimeEntry, PayrollPreview, CustomRole, 
     RHTax, RHBenefit, TaxRegime, TaxPayerType, TaxCalculationBasis,
     RhPayrollSetting, RhInssBracket, RhIrrfBracket, ClosedPayroll,
-    PayrollEvent, PayrollEventType, PayrollEntry, HrJobRole, RecurringEvent, EventType, ContractTemplate,
+    PayrollEvent, PayrollEntry, HrJobRole, RecurringEvent, EventType, ContractTemplate,
     ThirteenthPayment, VacationPeriod, VacationSchedule, Termination, StaffWarning
 } from '../types';
 import { supabase, logAudit } from '../lib/supabase';
@@ -137,7 +137,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       ] = await Promise.all([
           supabase.from('staff').select('*, custom_roles(name)').eq('tenant_id', tenantId).order('name'),
           supabase.from('rh_shifts').select('*').eq('tenant_id', tenantId),
-          supabase.from('rh_time_entries').select('*').eq('tenant_id', tenantId).gte('entry_date', new Date(new Date().setDate(1)).toISOString().split('T')[0]).order('entry_date', { ascending: false }),
+          supabase.from('rh_time_entries').select('*').eq('tenant_id', tenantId).gte('entry_date', new Date(new Date().setDate(new Date().getDate() - 90)).toISOString().split('T')[0]).order('entry_date', { ascending: false }),
           supabase.from('custom_roles').select('*').eq('tenant_id', tenantId),
           supabase.from('rh_taxes').select('*').eq('tenant_id', tenantId),
           supabase.from('rh_benefits').select('*').eq('tenant_id', tenantId),
@@ -856,6 +856,45 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }; 
       const { error } = await supabase.from('rh_time_entries').insert(payload); 
       if(error) throw error; 
+
+      // Lógica Automática de Eventos de Folha para Faltas
+      if ((entry.status as any) === 'ABSENT' || (entry.status as any) === 'JUSTIFIED_ABSENCE') {
+          const user = state.users.find(u => u.id === entry.staffId);
+          const settings = state.legalSettings;
+          
+          if (user && settings) {
+              const isJustified = entry.status === 'JUSTIFIED_ABSENCE';
+              const logic = isJustified ? settings.absenceLogic?.justified : settings.absenceLogic?.unjustified;
+              
+              if (logic?.deduction) {
+                  const baseSalary = user.baseSalary || 0;
+                  const dailyValue = baseSalary / 30;
+                  
+                  // Gerar evento de desconto
+                  await addPayrollEvent({
+                      staffId: user.id,
+                      month: new Date(entry.entryDate!).getMonth(),
+                      year: new Date(entry.entryDate!).getFullYear(),
+                      type: 'DEDUCTION',
+                      description: `Falta ${isJustified ? 'Justificada' : 'Injustificada'} - ${new Date(entry.entryDate!).toLocaleDateString()}`,
+                      value: dailyValue
+                  });
+
+                  // Se for injustificada e tiver desconto de DSR
+                  if (!isJustified && (settings.absenceLogic?.unjustified as any)?.dsrDeduction) {
+                      await addPayrollEvent({
+                          staffId: user.id,
+                          month: new Date(entry.entryDate!).getMonth(),
+                          year: new Date(entry.entryDate!).getFullYear(),
+                          type: 'DEDUCTION',
+                          description: `Desconto DSR (Falta Injustificada) - Ref: ${new Date(entry.entryDate!).toLocaleDateString()}`,
+                          value: dailyValue // Geralmente desconta um dia inteiro de DSR
+                      });
+                  }
+              }
+          }
+      }
+
       await fetchData(); 
   };
 
@@ -871,6 +910,46 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       
       const { error } = await supabase.from('rh_time_entries').update(payload).eq('id', id); 
       if(error) throw error; 
+
+      // Lógica Automática de Eventos de Folha para Faltas na Atualização
+      if ((updates.status as any) === 'ABSENT' || (updates.status as any) === 'JUSTIFIED_ABSENCE') {
+          const existingEntry = state.timeEntries.find(e => e.id === id);
+          if (existingEntry) {
+              const user = state.users.find(u => u.id === existingEntry.staffId);
+              const settings = state.legalSettings;
+              
+              if (user && settings) {
+                  const isJustified = updates.status === 'JUSTIFIED_ABSENCE';
+                  const logic = isJustified ? settings.absenceLogic?.justified : settings.absenceLogic?.unjustified;
+                  
+                  if (logic?.deduction) {
+                      const baseSalary = user.baseSalary || 0;
+                      const dailyValue = baseSalary / 30;
+                      
+                      await addPayrollEvent({
+                          staffId: user.id,
+                          month: new Date(existingEntry.entryDate).getMonth(),
+                          year: new Date(existingEntry.entryDate).getFullYear(),
+                          type: 'DEDUCTION',
+                          description: `Falta ${isJustified ? 'Justificada' : 'Injustificada'} - ${new Date(existingEntry.entryDate).toLocaleDateString()}`,
+                          value: dailyValue
+                      });
+
+                      if (!isJustified && (settings.absenceLogic?.unjustified as any)?.dsrDeduction) {
+                          await addPayrollEvent({
+                              staffId: user.id,
+                              month: new Date(existingEntry.entryDate).getMonth(),
+                              year: new Date(existingEntry.entryDate).getFullYear(),
+                              type: 'DEDUCTION',
+                              description: `Desconto DSR (Falta Injustificada) - Ref: ${new Date(existingEntry.entryDate).toLocaleDateString()}`,
+                              value: dailyValue
+                          });
+                      }
+                  }
+              }
+          }
+      }
+
       await fetchData(); 
   };
 

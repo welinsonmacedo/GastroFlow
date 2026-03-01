@@ -258,7 +258,7 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           throw error;
       }
       await supabase.from('products').delete().eq('linked_inventory_item_id', itemId).eq('is_extra', true);
-      if (currentUser) {
+      if (currentUser && tenantId) {
           await logAudit(tenantId, currentUser.id, currentUser.name, 'INVENTORY', 'Exclusão de Item', { itemId });
       }
   };

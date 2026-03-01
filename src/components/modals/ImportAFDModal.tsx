@@ -154,7 +154,7 @@ export const ImportAFDModal: React.FC<ImportAFDModalProps> = ({ isOpen, onClose 
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title="Importar Arquivo de Ponto (AFD)" maxWidth="max-w-4xl">
+        <Modal isOpen={isOpen} onClose={onClose} title="Importar Arquivo de Ponto (AFD)" maxWidth="4xl">
             <div className="space-y-6 pt-4">
                 {step === 'UPLOAD' ? (
                     <div className="flex flex-col items-center justify-center border-2 border-dashed border-slate-300 rounded-2xl p-12 bg-slate-50">

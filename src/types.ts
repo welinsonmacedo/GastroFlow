@@ -94,7 +94,7 @@ export interface TimeEntry {
     breakEnd?: Date;
     clockOut?: Date;
     justification?: string;
-    status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'CORRECTED';
+    status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'CORRECTED' | 'ABSENT' | 'JUSTIFIED_ABSENCE';
     originalEntryId?: string;
     correctionReason?: string;
 }
@@ -150,7 +150,7 @@ export interface RhPayrollSetting {
     overtimePolicy?: 'BANK_OF_HOURS' | 'PAID_OVERTIME';
     absenceLogic?: {
         justified: { deduction: boolean, disciplinaryAction: boolean };
-        unjustified: { deduction: boolean, disciplinaryAction: boolean };
+        unjustified: { deduction: boolean, disciplinaryAction: boolean, dsrDeduction: boolean };
     };
 }
 

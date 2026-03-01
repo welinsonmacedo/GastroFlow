@@ -44,7 +44,7 @@ export const StaffSettings: React.FC = () => {
         overtimePolicy: 'PAID_OVERTIME',
         absenceLogic: {
             justified: { deduction: false, disciplinaryAction: false },
-            unjustified: { deduction: true, disciplinaryAction: true }
+            unjustified: { deduction: true, disciplinaryAction: true, dsrDeduction: true }
         }
     });
 
@@ -65,7 +65,10 @@ export const StaffSettings: React.FC = () => {
                 overtimePolicy: state.legalSettings.overtimePolicy || 'PAID_OVERTIME',
                 absenceLogic: {
                     justified: state.legalSettings.absenceLogic?.justified || { deduction: false, disciplinaryAction: false },
-                    unjustified: state.legalSettings.absenceLogic?.unjustified || { deduction: true, disciplinaryAction: true }
+                    unjustified: state.legalSettings.absenceLogic?.unjustified ? { 
+                        ...state.legalSettings.absenceLogic.unjustified, 
+                        dsrDeduction: state.legalSettings.absenceLogic.unjustified.dsrDeduction ?? true 
+                    } : { deduction: true, disciplinaryAction: true, dsrDeduction: true }
                 }
             });
         }
@@ -892,6 +895,21 @@ export const StaffSettings: React.FC = () => {
                                                     className="rounded text-red-600"
                                                 />
                                                 <span className="text-sm text-slate-700">Sugerir Advertência</span>
+                                            </label>
+                                            <label className="flex items-center gap-2">
+                                                <input 
+                                                    type="checkbox" 
+                                                    checked={timeTrackingForm.absenceLogic.unjustified.dsrDeduction}
+                                                    onChange={e => setTimeTrackingForm({
+                                                        ...timeTrackingForm, 
+                                                        absenceLogic: { 
+                                                            ...timeTrackingForm.absenceLogic, 
+                                                            unjustified: { ...timeTrackingForm.absenceLogic.unjustified, dsrDeduction: e.target.checked } 
+                                                        }
+                                                    })}
+                                                    className="rounded text-red-600"
+                                                />
+                                                <span className="text-sm text-slate-700 italic">Descontar DSR da Semana</span>
                                             </label>
                                         </div>
                                     </div>

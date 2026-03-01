@@ -24,6 +24,7 @@ export const TimeEntryModal: React.FC<TimeEntryModalProps> = ({ isOpen, onClose,
   const [timeBreakStart, setTimeBreakStart] = useState('');
   const [timeBreakEnd, setTimeBreakEnd] = useState('');
   const [timeOut, setTimeOut] = useState('');
+  const [status, setStatus] = useState<'APPROVED' | 'PENDING' | 'REJECTED' | 'ABSENT' | 'JUSTIFIED_ABSENCE' | 'CORRECTED'>('APPROVED');
   const [justification, setJustification] = useState('');
 
   useEffect(() => {
@@ -35,6 +36,7 @@ export const TimeEntryModal: React.FC<TimeEntryModalProps> = ({ isOpen, onClose,
         setTimeBreakStart(entryToEdit.breakStart ? entryToEdit.breakStart.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', hour12: false}) : '');
         setTimeBreakEnd(entryToEdit.breakEnd ? entryToEdit.breakEnd.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', hour12: false}) : '');
         setTimeOut(entryToEdit.clockOut ? entryToEdit.clockOut.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', hour12: false}) : '');
+        setStatus(entryToEdit.status || 'APPROVED');
         setJustification(entryToEdit.justification || '');
       } else {
         setSelectedStaff(initialStaffId || (staffState.users.length > 0 ? staffState.users[0].id : ''));
@@ -43,6 +45,7 @@ export const TimeEntryModal: React.FC<TimeEntryModalProps> = ({ isOpen, onClose,
         setTimeBreakStart('');
         setTimeBreakEnd('');
         setTimeOut('');
+        setStatus('APPROVED');
         setJustification('');
       }
     }
@@ -65,12 +68,13 @@ export const TimeEntryModal: React.FC<TimeEntryModalProps> = ({ isOpen, onClose,
       try {
           const entryData: Partial<TimeEntry> = {
               entryDate: new Date(dateStr + 'T12:00:00'),
-              clockIn: combineDateAndTime(dateStr, timeIn),
-              breakStart: combineDateAndTime(dateStr, timeBreakStart),
-              breakEnd: combineDateAndTime(dateStr, timeBreakEnd),
-              clockOut: combineDateAndTime(dateStr, timeOut),
+              clockIn: status === 'ABSENT' || status === 'JUSTIFIED_ABSENCE' ? undefined : combineDateAndTime(dateStr, timeIn),
+              breakStart: status === 'ABSENT' || status === 'JUSTIFIED_ABSENCE' ? undefined : combineDateAndTime(dateStr, timeBreakStart),
+              breakEnd: status === 'ABSENT' || status === 'JUSTIFIED_ABSENCE' ? undefined : combineDateAndTime(dateStr, timeBreakEnd),
+              clockOut: status === 'ABSENT' || status === 'JUSTIFIED_ABSENCE' ? undefined : combineDateAndTime(dateStr, timeOut),
               justification: justification,
-              staffId: selectedStaff
+              staffId: selectedStaff,
+              status: status
           };
 
           if (entryToEdit) {
@@ -128,24 +132,40 @@ export const TimeEntryModal: React.FC<TimeEntryModalProps> = ({ isOpen, onClose,
                 </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-                <div>
-                    <label className="block text-xs font-bold text-green-600 uppercase mb-1">Entrada</label>
-                    <input type="time" className="w-full border p-2.5 rounded-xl text-sm font-mono" value={timeIn} onChange={e => setTimeIn(e.target.value)} />
-                </div>
-                <div>
-                    <label className="block text-xs font-bold text-red-600 uppercase mb-1">Saída</label>
-                    <input type="time" className="w-full border p-2.5 rounded-xl text-sm font-mono" value={timeOut} onChange={e => setTimeOut(e.target.value)} />
-                </div>
-                <div>
-                    <label className="block text-xs font-bold text-orange-600 uppercase mb-1">Início Intervalo</label>
-                    <input type="time" className="w-full border p-2.5 rounded-xl text-sm font-mono" value={timeBreakStart} onChange={e => setTimeBreakStart(e.target.value)} />
-                </div>
-                <div>
-                    <label className="block text-xs font-bold text-blue-600 uppercase mb-1">Fim Intervalo</label>
-                    <input type="time" className="w-full border p-2.5 rounded-xl text-sm font-mono" value={timeBreakEnd} onChange={e => setTimeBreakEnd(e.target.value)} />
-                </div>
+            <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Status / Tipo de Registro</label>
+                <select 
+                    className="w-full border p-2.5 rounded-xl text-sm bg-white"
+                    value={status}
+                    onChange={e => setStatus(e.target.value as any)}
+                >
+                    <option value="APPROVED">Presente (Normal)</option>
+                    <option value="ABSENT">Falta Injustificada</option>
+                    <option value="JUSTIFIED_ABSENCE">Falta Justificada (Atestado)</option>
+                    <option value="PENDING">Pendente de Aprovação</option>
+                </select>
             </div>
+
+            {(status !== 'ABSENT' && status !== 'JUSTIFIED_ABSENCE') && (
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-xs font-bold text-green-600 uppercase mb-1">Entrada</label>
+                        <input type="time" className="w-full border p-2.5 rounded-xl text-sm font-mono" value={timeIn} onChange={e => setTimeIn(e.target.value)} />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold text-red-600 uppercase mb-1">Saída</label>
+                        <input type="time" className="w-full border p-2.5 rounded-xl text-sm font-mono" value={timeOut} onChange={e => setTimeOut(e.target.value)} />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold text-orange-600 uppercase mb-1">Início Intervalo</label>
+                        <input type="time" className="w-full border p-2.5 rounded-xl text-sm font-mono" value={timeBreakStart} onChange={e => setTimeBreakStart(e.target.value)} />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold text-blue-600 uppercase mb-1">Fim Intervalo</label>
+                        <input type="time" className="w-full border p-2.5 rounded-xl text-sm font-mono" value={timeBreakEnd} onChange={e => setTimeBreakEnd(e.target.value)} />
+                    </div>
+                </div>
+            )}
 
             <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Justificativa / Observação</label>

@@ -5,7 +5,8 @@ import { supabase, logAudit } from '../lib/supabase';
 
 export const usePurchaseOrders = () => {
     const { state: invState, fetchData } = useInventory();
-    const { state: restState, isLoading: isRestLoading } = useRestaurant();
+    const { state: restState } = useRestaurant();
+    const isRestLoading = restState.isLoading;
     const { state: authState } = useAuth();
     const { tenantId } = restState;
     const currentUser = authState.currentUser;

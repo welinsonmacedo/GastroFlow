@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useStaff } from '../../../context/StaffContext';
 import { useUI } from '../../../context/UIContext';
 import { Button } from '../../../components/Button';
 import { TimeEntry } from '../../../types';
-import { Search, Calendar, Edit, Plus, Upload, ChevronDown, ChevronUp, FileText } from 'lucide-react';
+import { Search, Calendar, Edit, Plus, Upload, ChevronDown, ChevronUp } from 'lucide-react';
 import { TimeEntryModal } from '../../../components/modals/TimeEntryModal';
 import { SummaryModal } from '../../../components/modals/SummaryModal';
 import { ImportAFDModal } from '../../../components/modals/ImportAFDModal';
@@ -173,12 +173,17 @@ export const DailyLogTab: React.FC = () => {
                                                         <td className="p-3 font-bold text-slate-700">{hours}h</td>
                                                         <td className="p-3 text-center">
                                                             <span className={`text-[9px] font-black px-2 py-1 rounded-full uppercase border ${
-                                                                entry.status === 'APPROVED' ? 'bg-green-100 text-green-700 border-green-200' : 
-                                                                entry.status === 'REJECTED' ? 'bg-red-100 text-red-700 border-red-200' :
-                                                                entry.status === 'CORRECTED' ? 'bg-gray-100 text-gray-500 border-gray-200 line-through' : 
+                                                                (entry.status as any) === 'APPROVED' ? 'bg-green-100 text-green-700 border-green-200' : 
+                                                                (entry.status as any) === 'REJECTED' ? 'bg-red-100 text-red-700 border-red-200' :
+                                                                (entry.status as any) === 'ABSENT' ? 'bg-red-500 text-white border-red-600' :
+                                                                (entry.status as any) === 'JUSTIFIED_ABSENCE' ? 'bg-blue-100 text-blue-700 border-blue-200' :
+                                                                (entry.status as any) === 'CORRECTED' ? 'bg-gray-100 text-gray-500 border-gray-200 line-through' : 
                                                                 'bg-yellow-100 text-yellow-700 border-yellow-200'
                                                             }`}>
-                                                                {entry.status === 'CORRECTED' ? 'Corrigido' : entry.status}
+                                                                {(entry.status as any) === 'CORRECTED' ? 'Corrigido' : 
+                                                                (entry.status as any) === 'ABSENT' ? 'Falta' :
+                                                                (entry.status as any) === 'JUSTIFIED_ABSENCE' ? 'Justificada' :
+                                                                entry.status}
                                                             </span>
                                                         </td>
                                                         <td className="p-3 text-right">
