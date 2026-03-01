@@ -7,7 +7,7 @@ import { useAuth } from '../context/AuthProvider';
 import { 
     Users, Calendar, FileText, 
     LogOut, Grid, Timer, Settings,
-    DollarSign, UserMinus
+    DollarSign, UserMinus, AlertTriangle
 } from 'lucide-react';
 import { Role } from '../types';
 
@@ -19,6 +19,7 @@ import { StaffSettings } from './admin/rh/StaffSettings';
 import { StaffThirteenth } from './admin/rh/StaffThirteenth';
 import { StaffVacation } from './admin/rh/StaffVacation';
 import { StaffTermination } from './admin/rh/StaffTermination';
+import { StaffWarnings } from './admin/rh/StaffWarnings';
 
 export const StaffDashboard: React.FC = () => {
   const { state: restState } = useRestaurant();
@@ -66,6 +67,12 @@ export const StaffDashboard: React.FC = () => {
         path: '/rh/termination', 
         label: 'RESCISÃO', 
         icon: UserMinus, 
+        featureKeys: ['hr_payroll']
+    },
+    { 
+        path: '/rh/warnings', 
+        label: 'ADVERTÊNCIAS', 
+        icon: AlertTriangle, 
         featureKeys: ['hr_payroll']
     },
     { 
@@ -167,6 +174,7 @@ export const StaffDashboard: React.FC = () => {
                     <Route path="/thirteenth" element={<StaffThirteenth />} />
                     <Route path="/vacation" element={<StaffVacation />} />
                     <Route path="/termination" element={<StaffTermination />} />
+                    <Route path="/warnings" element={<StaffWarnings />} />
                     <Route path="/settings" element={<StaffSettings />} />
                     <Route path="*" element={<Navigate to="" replace />} />
                 </Routes>

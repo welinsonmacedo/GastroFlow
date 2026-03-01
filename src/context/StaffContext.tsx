@@ -369,7 +369,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           type: template.type,
           content: template.content,
           is_active: template.isActive,
-          updated_at: new Date()
+          updated_at: new Date().toISOString()
       }).eq('id', template.id);
       if (error) throw error;
       await fetchData();
@@ -762,7 +762,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           operation: eventType.operation,
           is_active: eventType.isActive,
           calculation_type: eventType.calculationType || 'FIXED',
-          updated_at: new Date()
+          updated_at: new Date().toISOString()
       }).eq('id', eventType.id);
       if (error) throw error;
       await fetchData();

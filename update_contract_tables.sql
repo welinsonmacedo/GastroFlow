@@ -3,6 +3,7 @@ CREATE TABLE IF NOT EXISTS public.rh_contract_templates (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     tenant_id UUID NOT NULL,
     name TEXT NOT NULL,
+    type TEXT DEFAULT 'CONTRACT',
     content TEXT NOT NULL, -- HTML or Markdown content
     is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
