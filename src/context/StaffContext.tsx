@@ -1000,7 +1000,6 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const applyLegalDefaults = async (year: '2024' | '2026' = '2026') => {
       if (!tenantId) return;
-      const today = new Date().toISOString().split('T')[0];
 
       let settings, inssBrackets, irrfBrackets;
 
@@ -1136,7 +1135,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const inserts = [];
       for (const rec of activeEvents) {
           // Check if this exact event was already generated
-          const alreadyExists = existingEvents?.some(e => 
+          const alreadyExists = existingEvents?.some((e: any) => 
               e.staff_id === rec.staffId && 
               e.type === rec.type && 
               e.description === rec.description
@@ -1246,8 +1245,6 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       // Buscar Eventos Variáveis
       const { data: events } = await supabase.from('rh_payroll_events').select('*').eq('tenant_id', tenantId).eq('month', month).eq('year', year);
 
-      const activeTaxes = []; // state.taxes.filter(t => t.isActive); // REMOVIDO POR SOLICITAÇÃO
-      const activeBenefits = []; // state.benefits.filter(b => b.isActive); // REMOVIDO POR SOLICITAÇÃO
       const fgtsRate = state.legalSettings?.fgtsRate || 8;
       
       // Mapeia dias úteis e DSR se necessário, mas vamos simplificar com carga mensal
@@ -1261,7 +1258,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
       const livePayroll = state.users.map(user => {
           // 1. Horas Trabalhadas
-          const userEntries = (entries || []).filter(e => e.staff_id === user.id);
+          const userEntries = (entries || []).filter((e: any) => e.staff_id === user.id);
           let totalMins = 0;
           let nightMins = 0; // Adicional noturno
           

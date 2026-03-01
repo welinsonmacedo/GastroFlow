@@ -3,7 +3,7 @@ import { Modal } from '../Modal';
 import { useStaff } from '../../context/StaffContext';
 import { useUI } from '../../context/UIContext';
 import { Button } from '../Button';
-import { Upload, FileText, CheckCircle, AlertTriangle, X } from 'lucide-react';
+import { FileText, CheckCircle, AlertTriangle, X } from 'lucide-react';
 import { TimeEntry } from '../../types';
 
 export interface ImportAFDModalProps {

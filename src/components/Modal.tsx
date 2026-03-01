@@ -41,12 +41,24 @@ export const Modal: React.FC<ModalProps> = ({
   if (!isOpen || !mounted) return null;
 
   // Renderiza o conteúdo como uma JANELA DE SISTEMA
+  const maxWidthClasses = {
+    sm: 'max-w-sm',
+    md: 'max-w-md',
+    lg: 'max-w-lg',
+    xl: 'max-w-xl',
+    '2xl': 'max-w-2xl',
+    '3xl': 'max-w-3xl',
+    '4xl': 'max-w-4xl',
+    '5xl': 'max-w-5xl',
+    full: 'max-w-full'
+  };
+
   const content = (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fade-in overflow-hidden">
       <div 
         className={`
           flex flex-col bg-slate-50 shadow-2xl overflow-hidden relative
-          ${variant === 'page' ? 'w-full h-full rounded-none' : 'w-[98vw] h-[95vh] rounded-xl border border-slate-600/50'}
+          ${variant === 'page' ? 'w-full h-full rounded-none' : `w-[98vw] h-[95vh] rounded-xl border border-slate-600/50 ${maxWidthClasses[maxWidth] || 'max-w-4xl'}`}
         `}
         role="dialog"
         aria-modal="true"

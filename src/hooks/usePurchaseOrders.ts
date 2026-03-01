@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthProvider';
 import { supabase, logAudit } from '../lib/supabase';
 
 export const usePurchaseOrders = () => {
-    const { state: invState, fetchData } = useInventory();
+    const { fetchData } = useInventory();
     const { state: restState } = useRestaurant();
     const isRestLoading = restState.isLoading;
     const { state: authState } = useAuth();
