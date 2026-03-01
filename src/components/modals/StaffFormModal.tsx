@@ -39,14 +39,16 @@ export const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose,
               const company = restState.businessInfo;
               const role = state.hrJobRoles.find(r => r.id === userData.hrJobRoleId);
               const roleName = role ? role.title : (userData.customRoleName || '');
+              const shift = state.shifts.find(s => s.id === userData.shiftId);
+              const shiftName = shift ? shift.name : '';
               
-              const replacedContent = replaceContractVariables(template.content, userData, company, roleName);
+              const replacedContent = replaceContractVariables(template.content, userData, company, roleName, shiftName);
               setContractContent(replacedContent);
           }
       } else {
           setContractContent('');
       }
-  }, [selectedTemplateId, userToEdit, form, state.contractTemplates, state.hrJobRoles, restState.businessInfo]);
+  }, [selectedTemplateId, userToEdit, form, state.contractTemplates, state.hrJobRoles, state.shifts, restState.businessInfo]);
 
   const handleGenerateContract = () => {
       if (!contractContent) return showAlert({ title: "Erro", message: "Selecione um modelo e aguarde o carregamento.", type: "WARNING" });

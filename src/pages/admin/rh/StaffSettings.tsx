@@ -211,6 +211,7 @@ export const StaffSettings: React.FC = () => {
             .replace(/{{salario}}/g, 'R$ 2.000,00')
             .replace(/{{data_admissao}}/g, '01/01/2026')
             .replace(/{{jornada}}/g, '44h semanais')
+            .replace(/{{turno}}/g, 'Turno Teste')
             .replace(/{{ctps}}/g, '1234567 Série 001/UF')
             .replace(/{{pis}}/g, '123.45678.90-1');
 
@@ -794,6 +795,7 @@ export const StaffSettings: React.FC = () => {
                                                 { label: 'Salário Base', code: '{{salario}}' },
                                                 { label: 'Data Admissão', code: '{{data_admissao}}' },
                                                 { label: 'Jornada', code: '{{jornada}}' },
+                                                { label: 'Turno', code: '{{turno}}' },
                                                 { label: 'CTPS', code: '{{ctps}}' },
                                                 { label: 'PIS', code: '{{pis}}' },
                                             ].map(v => (

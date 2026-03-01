@@ -1,7 +1,7 @@
 
 import { User, BusinessInfo } from '../types';
 
-export const replaceContractVariables = (templateContent: string, user: User, company: BusinessInfo, roleName: string): string => {
+export const replaceContractVariables = (templateContent: string, user: User, company: BusinessInfo, roleName: string, shiftName: string = ''): string => {
     const formatDate = (date?: Date | string) => {
         if (!date) return '__________';
         return new Date(date).toLocaleDateString('pt-BR');
@@ -9,6 +9,31 @@ export const replaceContractVariables = (templateContent: string, user: User, co
 
     const formatCurrency = (val?: number) => {
         return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val || 0);
+    };
+
+    const getWorkModel = (model?: string) => {
+        switch(model) {
+            case '44H_WEEKLY': return '44 horas semanais';
+            case '12X36': return '12x36';
+            case 'PART_TIME': return 'Tempo Parcial';
+            case 'INTERMITTENT': return 'Intermitente';
+            case 'ROTATING': return 'Revezamento';
+            default: return '____________________';
+        }
+    };
+
+    const formatRg = () => {
+        if (!user.rgNumber) return '____________________';
+        const issuer = user.rgIssuer ? ` ${user.rgIssuer}` : '';
+        const state = user.rgState ? `/${user.rgState}` : '';
+        return `${user.rgNumber}${issuer}${state}`.trim();
+    };
+
+    const formatCtps = () => {
+        if (!user.ctpsNumber) return '____________________';
+        const series = user.ctpsSeries ? ` Série ${user.ctpsSeries}` : '';
+        const state = user.ctpsState ? `/${user.ctpsState}` : '';
+        return `${user.ctpsNumber}${series}${state}`.trim();
     };
 
     let content = templateContent;
@@ -29,17 +54,19 @@ export const replaceContractVariables = (templateContent: string, user: User, co
 
     content = content.replace(/\{\{\s*nome\s*\}\}/g, user.name || '____________________');
     content = content.replace(/\{\{\s*cpf\s*\}\}/g, user.documentCpf || '____________________');
-    content = content.replace(/\{\{\s*rg\s*\}\}/g, user.rgNumber ? `${user.rgNumber} ${user.rgIssuer}/${user.rgState}` : '____________________');
-    content = content.replace(/\{\{\s*endereco\s*\}\}/g, user.addressStreet ? `${user.addressStreet}, ${user.addressNumber} ${user.addressComplement || ''} - ${user.addressNeighborhood}` : '____________________');
-    content = content.replace(/\{\{\s*cidade_uf\s*\}\}/g, user.addressCity ? `${user.addressCity}/${user.addressState}` : '____________________');
+    content = content.replace(/\{\{\s*rg\s*\}\}/g, formatRg());
+    content = content.replace(/\{\{\s*endereco\s*\}\}/g, user.addressStreet ? `${user.addressStreet}, ${user.addressNumber || 'S/N'} ${user.addressComplement || ''} - ${user.addressNeighborhood || ''}`.trim() : '____________________');
+    content = content.replace(/\{\{\s*endereço\s*\}\}/g, user.addressStreet ? `${user.addressStreet}, ${user.addressNumber || 'S/N'} ${user.addressComplement || ''} - ${user.addressNeighborhood || ''}`.trim() : '____________________');
+    content = content.replace(/\{\{\s*cidade_uf\s*\}\}/g, user.addressCity ? `${user.addressCity}/${user.addressState || ''}`.trim() : '____________________');
     content = content.replace(/\{\{\s*nacionalidade\s*\}\}/g, 'Brasileiro(a)'); // Default for now
     content = content.replace(/\{\{\s*estado_civil\s*\}\}/g, user.maritalStatus || '____________________');
     content = content.replace(/\{\{\s*cargo\s*\}\}/g, roleName || '____________________');
     content = content.replace(/\{\{\s*setor\s*\}\}/g, user.department || '____________________');
+    content = content.replace(/\{\{\s*turno\s*\}\}/g, shiftName || '____________________');
     content = content.replace(/\{\{\s*salario\s*\}\}/g, formatCurrency(user.baseSalary));
     content = content.replace(/\{\{\s*data_admissao\s*\}\}/g, formatDate(user.hireDate));
-    content = content.replace(/\{\{\s*jornada\s*\}\}/g, user.workModel || '____________________');
-    content = content.replace(/\{\{\s*ctps\s*\}\}/g, user.ctpsNumber ? `${user.ctpsNumber} Série ${user.ctpsSeries}/${user.ctpsState}` : '____________________');
+    content = content.replace(/\{\{\s*jornada\s*\}\}/g, getWorkModel(user.workModel));
+    content = content.replace(/\{\{\s*ctps\s*\}\}/g, formatCtps());
     content = content.replace(/\{\{\s*pis\s*\}\}/g, user.pisPasep || '____________________');
 
     return content;
@@ -77,7 +104,7 @@ export const printContractHtml = (content: string, userName: string) => {
     printWindow.document.close();
 };
 
-export const printContract = (templateContent: string, user: User, company: BusinessInfo, roleName: string) => {
-    const content = replaceContractVariables(templateContent, user, company, roleName);
+export const printContract = (templateContent: string, user: User, company: BusinessInfo, roleName: string, shiftName: string = '') => {
+    const content = replaceContractVariables(templateContent, user, company, roleName, shiftName);
     printContractHtml(content, user.name || 'Colaborador');
 };

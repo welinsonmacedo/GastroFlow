@@ -9,6 +9,7 @@ const AlignStyle = Quill.import('attributors/style/align');
 Quill.register(AlignStyle, true);
 import { useUI } from '../../../context/UIContext';
 import { useRestaurant } from '../../../context/RestaurantContext';
+import { replaceContractVariables } from '../../../utils/printContract';
 import { Button } from '../../../components/Button';
 import { AlertTriangle, User as LucideUser, Printer, Edit3, Eye, History, Trash2 } from 'lucide-react';
 
@@ -60,21 +61,11 @@ export const StaffWarnings: React.FC = () => {
             const company = restState.businessInfo;
             const role = state.hrJobRoles.find(r => r.id === selectedStaff?.hrJobRoleId);
             const roleName = role ? role.title : (selectedStaff?.customRoleName || '');
-            const department = selectedStaff?.department || '';
-            const addressString = company.address?.street ? `${company.address.street}, ${company.address.number || 'S/N'}` : '';
+            const shift = state.shifts.find(s => s.id === selectedStaff?.shiftId);
+            const shiftName = shift ? shift.name : '';
             
-            // Replace variables
-            let rendered = content
-                .replace(/\{\{([^}]+)\}\}/g, (match) => match.replace(/<[^>]+>/g, ''))
-                .replace(/\{\{\s*empresa_nome\s*\}\}/g, company.restaurantName || '')
-                .replace(/\{\{\s*empresa_cnpj\s*\}\}/g, company.cnpj || '')
-                .replace(/\{\{\s*empresa_endereco\s*\}\}/g, addressString)
-                .replace(/\{\{\s*empresa_cidade\s*\}\}/g, company.address?.city || '')
-                .replace(/\{\{\s*empresa_estado\s*\}\}/g, company.address?.state || '')
-                .replace(/\{\{\s*nome\s*\}\}/g, selectedStaff?.name || '')
-                .replace(/\{\{\s*cpf\s*\}\}/g, selectedStaff?.documentCpf || '')
-                .replace(/\{\{\s*cargo\s*\}\}/g, roleName)
-                .replace(/\{\{\s*setor\s*\}\}/g, department)
+            // Replace variables using the shared utility
+            let rendered = replaceContractVariables(content, selectedStaff as any, company, roleName, shiftName)
                 .replace(/\{\{\s*data\s*\}\}/g, new Date().toLocaleDateString('pt-BR'))
                 .replace(/\{\{\s*tipo_advertencia\s*\}\}/g, warningType === 'VERBAL' ? 'VERBAL' : 'ESCRITA/FORMAL');
 
@@ -150,20 +141,10 @@ export const StaffWarnings: React.FC = () => {
         const company = restState.businessInfo;
         const role = state.hrJobRoles.find(r => r.id === staff?.hrJobRoleId);
         const roleName = role ? role.title : (staff?.customRoleName || '');
-        const department = staff?.department || '';
-        const addressString = company.address?.street ? `${company.address.street}, ${company.address.number || 'S/N'}` : '';
+        const shift = state.shifts.find(s => s.id === staff?.shiftId);
+        const shiftName = shift ? shift.name : '';
         
-        let rendered = warning.content
-            .replace(/\{\{([^}]+)\}\}/g, (match: string) => match.replace(/<[^>]+>/g, ''))
-            .replace(/\{\{\s*empresa_nome\s*\}\}/g, company.restaurantName || '')
-            .replace(/\{\{\s*empresa_cnpj\s*\}\}/g, company.cnpj || '')
-            .replace(/\{\{\s*empresa_endereco\s*\}\}/g, addressString)
-            .replace(/\{\{\s*empresa_cidade\s*\}\}/g, company.address?.city || '')
-            .replace(/\{\{\s*empresa_estado\s*\}\}/g, company.address?.state || '')
-            .replace(/\{\{\s*nome\s*\}\}/g, staff?.name || '')
-            .replace(/\{\{\s*cpf\s*\}\}/g, staff?.documentCpf || '')
-            .replace(/\{\{\s*cargo\s*\}\}/g, roleName)
-            .replace(/\{\{\s*setor\s*\}\}/g, department)
+        let rendered = replaceContractVariables(warning.content, staff as any, company, roleName, shiftName)
             .replace(/\{\{\s*data\s*\}\}/g, new Date(warning.createdAt).toLocaleDateString('pt-BR'))
             .replace(/\{\{\s*tipo_advertencia\s*\}\}/g, warning.type === 'VERBAL' ? 'VERBAL' : 'ESCRITA/FORMAL');
 
@@ -347,6 +328,7 @@ export const StaffWarnings: React.FC = () => {
                                     { label: 'CPF', code: '{{cpf}}' },
                                     { label: 'Cargo', code: '{{cargo}}' },
                                     { label: 'Data', code: '{{data}}' },
+                                    { label: 'Turno', code: '{{turno}}' },
                                 ].map(v => (
                                     <button 
                                         key={v.code}
