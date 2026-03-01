@@ -1,10 +1,11 @@
 
 import React, { useState } from 'react';
-import { Timer, FileSignature, AlertCircle } from 'lucide-react';
+import { Timer, FileSignature, AlertCircle, CheckCircle } from 'lucide-react';
 import { DailyLogTab } from './DailyLogTab';
 import { PointCorrectionTab } from './PointCorrectionTab';
+import { SendToPayrollTab } from './SendToPayrollTab';
 
-type Tab = 'daily' | 'correction';
+type Tab = 'daily' | 'correction' | 'closing';
 
 export const StaffAttendance: React.FC = () => {
     const [activeTab, setActiveTab] = useState<Tab>('daily');
@@ -34,6 +35,12 @@ export const StaffAttendance: React.FC = () => {
                                 >
                                     <AlertCircle size={16}/> Correção de Ponto
                                 </button>
+                                <button 
+                                    onClick={() => setActiveTab('closing')} 
+                                    className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${activeTab === 'closing' ? 'bg-pink-50 text-pink-700' : 'text-slate-600 hover:bg-slate-50'}`}
+                                >
+                                    <CheckCircle size={16}/> Fechamento de Ponto
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -44,6 +51,7 @@ export const StaffAttendance: React.FC = () => {
             <div className="flex-1 pb-10 space-y-6">
                 {activeTab === 'daily' && <DailyLogTab />}
                 {activeTab === 'correction' && <PointCorrectionTab />}
+                {activeTab === 'closing' && <SendToPayrollTab />}
             </div>
         </div>
     );

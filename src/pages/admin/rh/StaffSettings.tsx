@@ -11,7 +11,7 @@ import { useUI } from '../../../context/UIContext';
 import { useRestaurant } from '../../../context/RestaurantContext';
 import { Button } from '../../../components/Button';
 import { HrJobRole, EventType, ContractTemplate, ContractTemplateType } from '../../../types';
-import { Plus, Trash2, Settings, DollarSign, RefreshCcw, FileText, Scale, Calculator, Edit3, Calendar, Bold, Italic, Underline, AlignCenter, Type, Eye, Printer, Clock, UserCheck, ListChecks, RefreshCw, FileSignature } from 'lucide-react';
+import { Plus, Trash2, Settings, RefreshCcw, FileText, Scale, Calculator, Edit3, Calendar, Eye, Printer, Clock, UserCheck, ListChecks, RefreshCw, FileSignature } from 'lucide-react';
 import { LegalSettingsModal } from '../../../components/modals/LegalSettingsModal';
 import { HrJobRoleModal } from '../../../components/modals/HrJobRoleModal';
 import { Modal } from '../../../components/Modal';
@@ -587,36 +587,48 @@ export const StaffSettings: React.FC = () => {
                         </Button>
                     </div>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {state.contractTemplates.map(template => (
-                            <div key={template.id} className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col justify-between h-40">
-                                <div>
-                                    <div className="flex justify-between items-start mb-2">
-                                        <div>
-                                            <h3 className="font-bold text-slate-800">{template.name}</h3>
+                    <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+                        <table className="w-full text-left text-sm">
+                            <thead className="bg-gray-100 text-gray-600 uppercase text-xs border-b">
+                                <tr>
+                                    <th className="p-4">Nome do Modelo</th>
+                                    <th className="p-4">Tipo</th>
+                                    <th className="p-4">Status</th>
+                                    <th className="p-4 text-right">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y">
+                                {state.contractTemplates.map(template => (
+                                    <tr key={template.id} className="hover:bg-gray-50">
+                                        <td className="p-4">
+                                            <div className="font-bold text-gray-800">{template.name}</div>
+                                            <div className="text-[10px] text-gray-400 line-clamp-1">{template.content.substring(0, 100)}...</div>
+                                        </td>
+                                        <td className="p-4">
                                             <span className="text-[10px] font-bold text-blue-600 uppercase">
                                                 {template.type === 'CONTRACT' ? 'Contrato' : 
                                                  template.type === 'NOTICE' ? 'Aviso' : 
                                                  template.type === 'WARNING' ? 'Advertência' : 'Outro'}
                                             </span>
-                                        </div>
-                                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${template.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
-                                            {template.isActive ? 'ATIVO' : 'INATIVO'}
-                                        </span>
-                                    </div>
-                                    <p className="text-xs text-slate-500 line-clamp-3">{template.content}</p>
-                                </div>
-                                <div className="flex justify-end gap-2 mt-4 pt-4 border-t border-slate-100">
-                                    <button onClick={() => handleOpenContractModal(template)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"><Edit3 size={16}/></button>
-                                    <button onClick={() => handleDeleteContract(template.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg"><Trash2 size={16}/></button>
-                                </div>
-                            </div>
-                        ))}
-                        {state.contractTemplates.length === 0 && (
-                            <div className="col-span-full p-8 text-center text-gray-500 italic bg-white rounded-xl border border-dashed border-gray-300">
-                                Nenhum modelo de contrato cadastrado.
-                            </div>
-                        )}
+                                        </td>
+                                        <td className="p-4">
+                                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${template.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
+                                                {template.isActive ? 'ATIVO' : 'INATIVO'}
+                                            </span>
+                                        </td>
+                                        <td className="p-4 text-right">
+                                            <button onClick={() => handleOpenContractModal(template)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg mr-2"><Edit3 size={18}/></button>
+                                            <button onClick={() => handleDeleteContract(template.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg"><Trash2 size={18}/></button>
+                                        </td>
+                                    </tr>
+                                ))}
+                                {state.contractTemplates.length === 0 && (
+                                    <tr>
+                                        <td colSpan={4} className="p-8 text-center text-gray-500 italic">Nenhum modelo cadastrado.</td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             )}
@@ -633,106 +645,74 @@ export const StaffSettings: React.FC = () => {
                         </Button>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* Férias */}
-                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                            <h3 className="font-bold text-slate-700 mb-4 flex items-center gap-2"><Calendar size={18}/> Férias</h3>
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="block text-xs font-bold mb-1 text-slate-600">Dias de Direito (por ano)</label>
-                                    <input 
-                                        type="number" 
-                                        className="w-full border p-2.5 rounded-xl text-sm" 
-                                        value={calcParamsForm.vacationDaysEntitlement} 
-                                        onChange={e => setCalcParamsForm({...calcParamsForm, vacationDaysEntitlement: Number(e.target.value)})}
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-bold mb-1 text-slate-600">Limite de Dias Vendidos (Abono)</label>
-                                    <input 
-                                        type="number" 
-                                        className="w-full border p-2.5 rounded-xl text-sm" 
-                                        value={calcParamsForm.vacationSoldDaysLimit} 
-                                        onChange={e => setCalcParamsForm({...calcParamsForm, vacationSoldDaysLimit: Number(e.target.value)})}
-                                    />
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* 13º Salário */}
-                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                            <h3 className="font-bold text-slate-700 mb-4 flex items-center gap-2"><DollarSign size={18}/> 13º Salário</h3>
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="block text-xs font-bold mb-1 text-slate-600">Meses Mínimos Trabalhados (para direito)</label>
-                                    <input 
-                                        type="number" 
-                                        className="w-full border p-2.5 rounded-xl text-sm" 
-                                        value={calcParamsForm.thirteenthMinMonthsWorked} 
-                                        onChange={e => setCalcParamsForm({...calcParamsForm, thirteenthMinMonthsWorked: Number(e.target.value)})}
-                                    />
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Rescisão */}
-                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                            <h3 className="font-bold text-slate-700 mb-4 flex items-center gap-2"><FileText size={18}/> Rescisão</h3>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-xs font-bold mb-1 text-slate-600">Aviso Prévio (Dias Base)</label>
-                                    <input 
-                                        type="number" 
-                                        className="w-full border p-2.5 rounded-xl text-sm" 
-                                        value={calcParamsForm.noticePeriodDays} 
-                                        onChange={e => setCalcParamsForm({...calcParamsForm, noticePeriodDays: Number(e.target.value)})}
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-bold mb-1 text-slate-600">Dias por Ano Trabalhado</label>
-                                    <input 
-                                        type="number" 
-                                        className="w-full border p-2.5 rounded-xl text-sm" 
-                                        value={calcParamsForm.noticePeriodDaysPerYear} 
-                                        onChange={e => setCalcParamsForm({...calcParamsForm, noticePeriodDaysPerYear: Number(e.target.value)})}
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-bold mb-1 text-slate-600">Aviso Prévio (Máximo Dias)</label>
-                                    <input 
-                                        type="number" 
-                                        className="w-full border p-2.5 rounded-xl text-sm" 
-                                        value={calcParamsForm.noticePeriodMaxDays} 
-                                        onChange={e => setCalcParamsForm({...calcParamsForm, noticePeriodMaxDays: Number(e.target.value)})}
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-bold mb-1 text-slate-600">Multa FGTS (%)</label>
-                                    <input 
-                                        type="number" 
-                                        className="w-full border p-2.5 rounded-xl text-sm" 
-                                        value={calcParamsForm.fgtsFinePercent} 
-                                        onChange={e => setCalcParamsForm({...calcParamsForm, fgtsFinePercent: Number(e.target.value)})}
-                                    />
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Geral */}
-                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                            <h3 className="font-bold text-slate-700 mb-4 flex items-center gap-2"><Settings size={18}/> Geral</h3>
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="block text-xs font-bold mb-1 text-slate-600">Horas Mensais Padrão</label>
-                                    <input 
-                                        type="number" 
-                                        className="w-full border p-2.5 rounded-xl text-sm" 
-                                        value={calcParamsForm.standardMonthlyHours} 
-                                        onChange={e => setCalcParamsForm({...calcParamsForm, standardMonthlyHours: Number(e.target.value)})}
-                                    />
-                                </div>
-                            </div>
-                        </div>
+                    <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+                        <table className="w-full text-left text-sm">
+                            <thead className="bg-gray-100 text-gray-600 uppercase text-xs border-b">
+                                <tr>
+                                    <th className="p-4">Categoria</th>
+                                    <th className="p-4">Parâmetro</th>
+                                    <th className="p-4 w-48">Valor</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y">
+                                {/* Férias */}
+                                <tr className="bg-gray-50/50">
+                                    <td className="p-4 font-bold text-gray-400 text-[10px] uppercase tracking-wider" rowSpan={2}>Férias</td>
+                                    <td className="p-4 text-gray-700 font-medium">Dias de Direito (por ano)</td>
+                                    <td className="p-4">
+                                        <input type="number" className="w-full border p-2 rounded-lg text-sm" value={calcParamsForm.vacationDaysEntitlement} onChange={e => setCalcParamsForm({...calcParamsForm, vacationDaysEntitlement: Number(e.target.value)})} />
+                                    </td>
+                                </tr>
+                                <tr className="bg-gray-50/50">
+                                    <td className="p-4 text-gray-700 font-medium">Limite de Dias Vendidos (Abono)</td>
+                                    <td className="p-4">
+                                        <input type="number" className="w-full border p-2 rounded-lg text-sm" value={calcParamsForm.vacationSoldDaysLimit} onChange={e => setCalcParamsForm({...calcParamsForm, vacationSoldDaysLimit: Number(e.target.value)})} />
+                                    </td>
+                                </tr>
+                                {/* 13º */}
+                                <tr>
+                                    <td className="p-4 font-bold text-gray-400 text-[10px] uppercase tracking-wider">13º Salário</td>
+                                    <td className="p-4 text-gray-700 font-medium">Meses Mínimos Trabalhados (para direito)</td>
+                                    <td className="p-4">
+                                        <input type="number" className="w-full border p-2 rounded-lg text-sm" value={calcParamsForm.thirteenthMinMonthsWorked} onChange={e => setCalcParamsForm({...calcParamsForm, thirteenthMinMonthsWorked: Number(e.target.value)})} />
+                                    </td>
+                                </tr>
+                                {/* Rescisão */}
+                                <tr className="bg-gray-50/50">
+                                    <td className="p-4 font-bold text-gray-400 text-[10px] uppercase tracking-wider" rowSpan={4}>Rescisão</td>
+                                    <td className="p-4 text-gray-700 font-medium">Aviso Prévio (Dias Base)</td>
+                                    <td className="p-4">
+                                        <input type="number" className="w-full border p-2 rounded-lg text-sm" value={calcParamsForm.noticePeriodDays} onChange={e => setCalcParamsForm({...calcParamsForm, noticePeriodDays: Number(e.target.value)})} />
+                                    </td>
+                                </tr>
+                                <tr className="bg-gray-50/50">
+                                    <td className="p-4 text-gray-700 font-medium">Dias por Ano Trabalhado</td>
+                                    <td className="p-4">
+                                        <input type="number" className="w-full border p-2 rounded-lg text-sm" value={calcParamsForm.noticePeriodDaysPerYear} onChange={e => setCalcParamsForm({...calcParamsForm, noticePeriodDaysPerYear: Number(e.target.value)})} />
+                                    </td>
+                                </tr>
+                                <tr className="bg-gray-50/50">
+                                    <td className="p-4 text-gray-700 font-medium">Aviso Prévio (Máximo Dias)</td>
+                                    <td className="p-4">
+                                        <input type="number" className="w-full border p-2 rounded-lg text-sm" value={calcParamsForm.noticePeriodMaxDays} onChange={e => setCalcParamsForm({...calcParamsForm, noticePeriodMaxDays: Number(e.target.value)})} />
+                                    </td>
+                                </tr>
+                                <tr className="bg-gray-50/50">
+                                    <td className="p-4 text-gray-700 font-medium">Multa FGTS (%)</td>
+                                    <td className="p-4">
+                                        <input type="number" className="w-full border p-2 rounded-lg text-sm" value={calcParamsForm.fgtsFinePercent} onChange={e => setCalcParamsForm({...calcParamsForm, fgtsFinePercent: Number(e.target.value)})} />
+                                    </td>
+                                </tr>
+                                {/* Geral */}
+                                <tr>
+                                    <td className="p-4 font-bold text-gray-400 text-[10px] uppercase tracking-wider">Geral</td>
+                                    <td className="p-4 text-gray-700 font-medium">Horas Mensais Padrão</td>
+                                    <td className="p-4">
+                                        <input type="number" className="w-full border p-2 rounded-lg text-sm" value={calcParamsForm.standardMonthlyHours} onChange={e => setCalcParamsForm({...calcParamsForm, standardMonthlyHours: Number(e.target.value)})} />
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             )}

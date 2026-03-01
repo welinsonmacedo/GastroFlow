@@ -5,9 +5,8 @@ import { Routes, Route, Navigate, Link, useLocation, useNavigate } from 'react-r
 import { useRestaurant } from '../context/RestaurantContext';
 import { useAuth } from '../context/AuthProvider';
 import { 
-    Users, Calendar, FileText, 
-    LogOut, Grid, Timer, Settings,
-    DollarSign, UserMinus, AlertTriangle
+    Users, FileText, 
+    LogOut, Grid, Timer, Settings
 } from 'lucide-react';
 import { Role } from '../types';
 
