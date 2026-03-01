@@ -1,16 +1,16 @@
 import React, { useState } from 'react';
 import { useStaff } from '../../../context/StaffContext';
-import { useUI } from '../../../context/UIContext';
+import { useRestaurant } from '../../../context/RestaurantContext';
 import { Button } from '../../../components/Button';
 import { TimeEntry } from '../../../types';
-import { Search, Calendar, Edit, Plus, Upload, ChevronDown, ChevronUp } from 'lucide-react';
+import { Search, Calendar, Plus, Upload, ChevronDown, ChevronUp, Printer } from 'lucide-react';
 import { TimeEntryModal } from '../../../components/modals/TimeEntryModal';
 import { SummaryModal } from '../../../components/modals/SummaryModal';
 import { ImportAFDModal } from '../../../components/modals/ImportAFDModal';
 
 export const DailyLogTab: React.FC = () => {
     const { state: staffState } = useStaff();
-    const { showAlert } = useUI();
+    const { state: restState } = useRestaurant();
     
     const [filterMonth, setFilterMonth] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM
     const [searchTerm, setSearchTerm] = useState('');
@@ -23,8 +23,6 @@ export const DailyLogTab: React.FC = () => {
     const [summary, setSummary] = useState({ overtime: 0, missingHours: 0, bankHours: 0 });
     
     const [expandedStaffId, setExpandedStaffId] = useState<string | null>(null);
-
-    const getStaffName = (id: string) => staffState.users.find(u => u.id === id)?.name || 'Desconhecido';
     
     // Filter entries by month
     const monthlyEntries = staffState.timeEntries.filter(entry => {
@@ -48,12 +46,18 @@ export const DailyLogTab: React.FC = () => {
             const dailyTarget = shift ? (new Date(`1970-01-01T${shift.endTime}`).getTime() - new Date(`1970-01-01T${shift.startTime}`).getTime()) / 3600000 - (shift.breakMinutes / 60) : 8;
 
             userEntries.forEach(entry => {
+                // A fins somatórios vale o ponto corrigido (ignora os que foram marcados como CORRECTED)
+                if ((entry.status as any) === 'CORRECTED') return;
+
                 if (entry.clockIn && entry.clockOut) {
                     const worked = (new Date(entry.clockOut).getTime() - new Date(entry.clockIn).getTime()) / 3600000;
                     totalHours += worked;
                     const diff = worked - dailyTarget;
                     if (diff > 0) overtime += diff;
                     else missing += Math.abs(diff);
+                } else if ((entry.status as any) === 'ABSENT') {
+                    // Falta injustificada conta como o dia todo perdido
+                    missing += dailyTarget;
                 }
             });
 
@@ -67,9 +71,96 @@ export const DailyLogTab: React.FC = () => {
             };
         });
 
-    const handleEditEntry = (entry: TimeEntry) => {
-        setEntryToEdit(entry);
-        setIsEntryModalOpen(true);
+    const handlePrintEspelho = (staffId: string, month: string) => {
+        const staff = staffState.users.find(u => u.id === staffId);
+        if (!staff) return;
+
+        const entries = staffState.timeEntries
+            .filter(e => e.staffId === staffId && e.entryDate.toISOString().slice(0, 7) === month)
+            .sort((a, b) => new Date(a.entryDate).getTime() - new Date(b.entryDate).getTime());
+
+        const printWindow = window.open('', '_blank');
+        if (!printWindow) return;
+
+        const formatDate = (d: Date) => new Date(d).toLocaleDateString('pt-BR');
+        const formatTime = (d?: Date) => d ? new Date(d).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '--:--';
+
+        const html = `
+            <html>
+                <head>
+                    <title>Espelho de Ponto - ${staff.name}</title>
+                    <style>
+                        body { font-family: sans-serif; padding: 40px; color: #333; }
+                        h1 { font-size: 24px; margin-bottom: 5px; }
+                        .header { margin-bottom: 30px; border-bottom: 2px solid #eee; padding-bottom: 20px; }
+                        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+                        table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
+                        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; font-size: 12px; }
+                        th { background: #f5f5f5; font-weight: bold; }
+                        .corrected { color: #999; text-decoration: line-through; }
+                        .footer { margin-top: 50px; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
+                        .signature { border-top: 1px solid #000; padding-top: 10px; text-align: center; font-size: 12px; }
+                        .manual { color: #d97706; font-weight: bold; }
+                        .absence { color: #dc2626; font-weight: bold; }
+                    </style>
+                </head>
+                <body>
+                    <div class="header">
+                        <h1>Espelho de Ponto Individual</h1>
+                        <p>Referência: ${month}</p>
+                    </div>
+                    <div class="info-grid">
+                        <div><strong>Colaborador:</strong> ${staff.name}</div>
+                        <div><strong>CPF:</strong> ${staff.documentCpf || '-'}</div>
+                        <div><strong>Cargo:</strong> ${staff.department || '-'}</div>
+                        <div><strong>Empresa:</strong> ${restState.businessInfo?.restaurantName || 'Minha Empresa'}</div>
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Data</th>
+                                <th>Entrada</th>
+                                <th>Início Int.</th>
+                                <th>Fim Int.</th>
+                                <th>Saída</th>
+                                <th>Tipo/Status</th>
+                                <th>Justificativa</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${entries.map(e => `
+                                <tr class="${e.status === 'CORRECTED' ? 'corrected' : ''}">
+                                    <td>${formatDate(e.entryDate)}</td>
+                                    <td>${formatTime(e.clockIn)}</td>
+                                    <td>${formatTime(e.breakStart)}</td>
+                                    <td>${formatTime(e.breakEnd)}</td>
+                                    <td>${formatTime(e.clockOut)}</td>
+                                    <td>
+                                        ${e.status === 'ABSENT' ? '<span class="absence">FALTA</span>' : 
+                                          e.status === 'JUSTIFIED_ABSENCE' ? 'FALTA JUST.' : 
+                                          e.entryType === 'MANUAL' ? '<span class="manual">MANUAL</span>' : 
+                                          e.status === 'CORRECTED' ? 'CORRIGIDO' : 'NORMAL'}
+                                    </td>
+                                    <td>${e.justification || '-'}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                    <div class="footer">
+                        <div class="signature">
+                            Assinatura do Colaborador
+                        </div>
+                        <div class="signature">
+                            Assinatura do Empregador
+                        </div>
+                    </div>
+                    <script>window.print();</script>
+                </body>
+            </html>
+        `;
+
+        printWindow.document.write(html);
+        printWindow.document.close();
     };
 
     const handleNewEntry = () => {
@@ -131,6 +222,16 @@ export const DailyLogTab: React.FC = () => {
                                     <p className="text-[10px] uppercase font-bold text-blue-500">Banco</p>
                                     <p className="font-mono font-bold text-blue-600">{bankBalance.toFixed(1)}h</p>
                                 </div>
+                                <button 
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        handlePrintEspelho(user.id, filterMonth);
+                                    }}
+                                    className="p-2 text-slate-500 hover:bg-slate-200 rounded-lg transition-all"
+                                    title="Imprimir Espelho"
+                                >
+                                    <Printer size={20}/>
+                                </button>
                                 {expandedStaffId === user.id ? <ChevronUp size={20} className="text-slate-400"/> : <ChevronDown size={20} className="text-slate-400"/>}
                             </div>
                         </div>
@@ -172,25 +273,31 @@ export const DailyLogTab: React.FC = () => {
                                                         <td className="p-3 font-mono text-slate-600">{entry.clockOut ? new Date(entry.clockOut).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '--:--'}</td>
                                                         <td className="p-3 font-bold text-slate-700">{hours}h</td>
                                                         <td className="p-3 text-center">
-                                                            <span className={`text-[9px] font-black px-2 py-1 rounded-full uppercase border ${
-                                                                (entry.status as any) === 'APPROVED' ? 'bg-green-100 text-green-700 border-green-200' : 
-                                                                (entry.status as any) === 'REJECTED' ? 'bg-red-100 text-red-700 border-red-200' :
-                                                                (entry.status as any) === 'ABSENT' ? 'bg-red-500 text-white border-red-600' :
-                                                                (entry.status as any) === 'JUSTIFIED_ABSENCE' ? 'bg-blue-100 text-blue-700 border-blue-200' :
-                                                                (entry.status as any) === 'CORRECTED' ? 'bg-gray-100 text-gray-500 border-gray-200 line-through' : 
-                                                                'bg-yellow-100 text-yellow-700 border-yellow-200'
-                                                            }`}>
-                                                                {(entry.status as any) === 'CORRECTED' ? 'Corrigido' : 
-                                                                (entry.status as any) === 'ABSENT' ? 'Falta' :
-                                                                (entry.status as any) === 'JUSTIFIED_ABSENCE' ? 'Justificada' :
-                                                                entry.status}
-                                                            </span>
+                                                            <div className="flex flex-col items-center gap-1">
+                                                                <span className={`text-[9px] font-black px-2 py-1 rounded-full uppercase border ${
+                                                                    (entry.status as any) === 'APPROVED' ? 'bg-green-100 text-green-700 border-green-200' : 
+                                                                    (entry.status as any) === 'REJECTED' ? 'bg-red-100 text-red-700 border-red-200' :
+                                                                    (entry.status as any) === 'ABSENT' ? 'bg-red-500 text-white border-red-600' :
+                                                                    (entry.status as any) === 'JUSTIFIED_ABSENCE' ? 'bg-blue-100 text-blue-700 border-blue-200' :
+                                                                    (entry.status as any) === 'CORRECTED' ? 'bg-gray-100 text-gray-500 border-gray-200 line-through' : 
+                                                                    'bg-yellow-100 text-yellow-700 border-yellow-200'
+                                                                }`}>
+                                                                    {(entry.status as any) === 'CORRECTED' ? 'Corrigido' : 
+                                                                    (entry.status as any) === 'ABSENT' ? 'Falta' :
+                                                                    (entry.status as any) === 'JUSTIFIED_ABSENCE' ? 'Justificada' :
+                                                                    entry.status}
+                                                                </span>
+                                                                {entry.entryType === 'MANUAL' && (
+                                                                    <span className="text-[8px] font-bold text-amber-600 uppercase">Manual</span>
+                                                                )}
+                                                            </div>
                                                         </td>
                                                         <td className="p-3 text-right">
-                                                            {entry.status !== 'CORRECTED' && (
-                                                                <button onClick={() => handleEditEntry(entry)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-all" title="Editar">
-                                                                    <Edit size={16}/>
-                                                                </button>
+                                                            {entry.status === 'CORRECTED' && (
+                                                                <span className="text-[10px] text-slate-400 italic">Antigo</span>
+                                                            )}
+                                                            {entry.originalEntryId && (
+                                                                <span className="text-[10px] text-blue-500 font-bold">Corrigido</span>
                                                             )}
                                                         </td>
                                                     </tr>

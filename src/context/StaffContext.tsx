@@ -235,6 +235,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               breakEnd: t.break_end ? new Date(t.break_end) : undefined,
               clockOut: t.clock_out ? new Date(t.clock_out) : undefined,
               justification: t.justification, status: t.status,
+              entryType: t.entry_type,
               originalEntryId: t.original_entry_id,
               correctionReason: t.correction_reason
           }));

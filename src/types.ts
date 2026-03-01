@@ -95,6 +95,7 @@ export interface TimeEntry {
     clockOut?: Date;
     justification?: string;
     status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'CORRECTED' | 'ABSENT' | 'JUSTIFIED_ABSENCE';
+    entryType?: 'MANUAL' | 'DIGITAL' | 'REP';
     originalEntryId?: string;
     correctionReason?: string;
 }

@@ -74,7 +74,8 @@ export const TimeEntryModal: React.FC<TimeEntryModalProps> = ({ isOpen, onClose,
               clockOut: status === 'ABSENT' || status === 'JUSTIFIED_ABSENCE' ? undefined : combineDateAndTime(dateStr, timeOut),
               justification: justification,
               staffId: selectedStaff,
-              status: status
+              status: status,
+              entryType: 'MANUAL'
           };
 
           if (entryToEdit) {
