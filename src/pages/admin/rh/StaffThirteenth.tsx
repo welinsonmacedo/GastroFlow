@@ -12,6 +12,7 @@ export const StaffThirteenth: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [previewPayment, setPreviewPayment] = useState<ThirteenthPayment | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [calculating, setCalculating] = useState(false);
 
     const filteredUsers = state.users.filter(user => 
         user.status === 'ACTIVE' && 
