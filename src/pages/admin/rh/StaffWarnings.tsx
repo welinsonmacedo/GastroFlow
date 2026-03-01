@@ -44,6 +44,13 @@ export const StaffWarnings: React.FC = () => {
             return showAlert({ title: "Campos Obrigatórios", message: "Selecione um colaborador e preencha o conteúdo.", type: "WARNING" });
         }
 
+        // Open window synchronously to avoid popup blocker
+        const printWindow = window.open('', '_blank');
+        if (!printWindow) {
+            showAlert({ title: "Erro", message: "O bloqueador de pop-ups impediu a abertura da janela de impressão.", type: "ERROR" });
+            return;
+        }
+
         try {
             setIsSaving(true);
             
@@ -55,9 +62,6 @@ export const StaffWarnings: React.FC = () => {
             });
 
             // 2. Print
-            const printWindow = window.open('', '_blank');
-            if (!printWindow) return;
-
             const company = restState.businessInfo;
             const role = state.hrJobRoles.find(r => r.id === selectedStaff?.hrJobRoleId);
             const roleName = role ? role.title : (selectedStaff?.customRoleName || '');
@@ -112,6 +116,7 @@ export const StaffWarnings: React.FC = () => {
             setContent('');
         } catch (error) {
             console.error(error);
+            printWindow.close();
             showAlert({ title: "Erro", message: "Não foi possível salvar a advertência.", type: "ERROR" });
         } finally {
             setIsSaving(false);
