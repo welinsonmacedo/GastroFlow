@@ -6,7 +6,7 @@ import { Button } from '../Button';
 import { Upload, FileText, CheckCircle, AlertTriangle, X } from 'lucide-react';
 import { TimeEntry } from '../../types';
 
-interface ImportAFDModalProps {
+export interface ImportAFDModalProps {
     isOpen: boolean;
     onClose: () => void;
 }
