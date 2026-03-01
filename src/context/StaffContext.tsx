@@ -196,6 +196,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               // Time Tracking
               timeTrackingMethod: settingsRes.data.time_tracking_method || 'PHYSICAL',
               overtimePolicy: settingsRes.data.overtime_policy || 'PAID_OVERTIME',
+              deductDelaysFromOvertime: settingsRes.data.deduct_delays_from_overtime || false,
               absenceLogic: {
                   justified: settingsRes.data.absence_logic?.justified || { deduction: false, disciplinaryAction: false },
                   unjustified: settingsRes.data.absence_logic?.unjustified || { deduction: true, disciplinaryAction: true }
@@ -973,6 +974,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           // Time Tracking
           time_tracking_method: settings.timeTrackingMethod,
           overtime_policy: settings.overtimePolicy,
+          deduct_delays_from_overtime: settings.deductDelaysFromOvertime,
           absence_logic: settings.absenceLogic
       };
       await supabase.from('rh_payroll_settings').delete().eq('tenant_id', tenantId);

@@ -149,6 +149,7 @@ export interface RhPayrollSetting {
     // Time Tracking
     timeTrackingMethod?: 'DIGITAL' | 'PHYSICAL' | 'REP_IMPORT';
     overtimePolicy?: 'BANK_OF_HOURS' | 'PAID_OVERTIME';
+    deductDelaysFromOvertime?: boolean;
     absenceLogic?: {
         justified: { deduction: boolean, disciplinaryAction: boolean };
         unjustified: { deduction: boolean, disciplinaryAction: boolean, dsrDeduction: boolean };

@@ -42,6 +42,7 @@ export const StaffSettings: React.FC = () => {
     const [timeTrackingForm, setTimeTrackingForm] = useState({
         timeTrackingMethod: 'PHYSICAL',
         overtimePolicy: 'PAID_OVERTIME',
+        deductDelaysFromOvertime: false,
         absenceLogic: {
             justified: { deduction: false, disciplinaryAction: false },
             unjustified: { deduction: true, disciplinaryAction: true, dsrDeduction: true }
@@ -63,6 +64,7 @@ export const StaffSettings: React.FC = () => {
             setTimeTrackingForm({
                 timeTrackingMethod: state.legalSettings.timeTrackingMethod || 'PHYSICAL',
                 overtimePolicy: state.legalSettings.overtimePolicy || 'PAID_OVERTIME',
+                deductDelaysFromOvertime: state.legalSettings.deductDelaysFromOvertime || false,
                 absenceLogic: {
                     justified: state.legalSettings.absenceLogic?.justified || { deduction: false, disciplinaryAction: false },
                     unjustified: state.legalSettings.absenceLogic?.unjustified ? { 
@@ -81,6 +83,7 @@ export const StaffSettings: React.FC = () => {
                 ...state.legalSettings,
                 timeTrackingMethod: timeTrackingForm.timeTrackingMethod as any,
                 overtimePolicy: timeTrackingForm.overtimePolicy as any,
+                deductDelaysFromOvertime: timeTrackingForm.deductDelaysFromOvertime,
                 absenceLogic: timeTrackingForm.absenceLogic
             });
             showAlert({ title: "Sucesso", message: "Configurações de ponto atualizadas.", type: "SUCCESS" });
@@ -818,6 +821,18 @@ export const StaffSettings: React.FC = () => {
                                             <span className="block text-xs text-slate-500">Horas acumulam para compensação futura.</span>
                                         </div>
                                     </label>
+                                </div>
+                                <div className="mt-4 bg-blue-50 p-4 rounded-xl border border-blue-100">
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                        <input 
+                                            type="checkbox" 
+                                            checked={timeTrackingForm.deductDelaysFromOvertime}
+                                            onChange={e => setTimeTrackingForm({...timeTrackingForm, deductDelaysFromOvertime: e.target.checked})}
+                                            className="rounded text-blue-600"
+                                        />
+                                        <span className="text-sm font-bold text-slate-700">Descontar atrasos de horas extras</span>
+                                    </label>
+                                    <p className="text-xs text-slate-500 ml-6">Se habilitado, atrasos no dia serão subtraídos do saldo de horas extras do mesmo dia.</p>
                                 </div>
                             </div>
 

@@ -85,6 +85,40 @@ export const DailyLogTab: React.FC = () => {
         const formatDate = (d: Date) => new Date(d).toLocaleDateString('pt-BR');
         const formatTime = (d?: Date) => d ? new Date(d).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '--:--';
 
+        // Calculate totals for the printout
+        let totalWorked = 0;
+        let totalOvertime = 0;
+        let totalMissing = 0;
+        const shift = staffState.shifts.find(s => s.id === staff.shiftId);
+        const dailyTarget = shift ? (new Date(`1970-01-01T${shift.endTime}`).getTime() - new Date(`1970-01-01T${shift.startTime}`).getTime()) / 3600000 - (shift.breakMinutes / 60) : 8;
+
+        entries.forEach(entry => {
+            if ((entry.status as any) === 'CORRECTED') return;
+
+            if (entry.clockIn && entry.clockOut) {
+                const worked = (new Date(entry.clockOut).getTime() - new Date(entry.clockIn).getTime()) / 3600000;
+                totalWorked += worked;
+                const diff = worked - dailyTarget;
+                
+                if (diff > 0) {
+                    totalOvertime += diff;
+                } else if (diff < 0) {
+                    totalMissing += Math.abs(diff);
+                }
+            } else if ((entry.status as any) === 'ABSENT') {
+                totalMissing += dailyTarget;
+            }
+        });
+
+        // If deductDelaysFromOvertime is enabled, we adjust the totals
+        let finalOvertime = totalOvertime;
+        let finalMissing = totalMissing;
+        if (staffState.legalSettings?.deductDelaysFromOvertime) {
+            const deduction = Math.min(finalOvertime, finalMissing);
+            finalOvertime -= deduction;
+            finalMissing -= deduction;
+        }
+
         const html = `
             <html>
                 <head>
@@ -98,6 +132,10 @@ export const DailyLogTab: React.FC = () => {
                         th, td { border: 1px solid #ddd; padding: 8px; text-align: left; font-size: 12px; }
                         th { background: #f5f5f5; font-weight: bold; }
                         .corrected { color: #999; text-decoration: line-through; }
+                        .summary { background: #f9f9f9; padding: 20px; border-radius: 8px; margin-bottom: 40px; border: 1px solid #eee; }
+                        .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 20px; }
+                        .summary-item { font-size: 14px; }
+                        .summary-item strong { display: block; font-size: 10px; text-transform: uppercase; color: #666; margin-bottom: 4px; }
                         .footer { margin-top: 50px; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
                         .signature { border-top: 1px solid #000; padding-top: 10px; text-align: center; font-size: 12px; }
                         .manual { color: #d97706; font-weight: bold; }
@@ -146,6 +184,34 @@ export const DailyLogTab: React.FC = () => {
                             `).join('')}
                         </tbody>
                     </table>
+
+                    <div class="summary">
+                        <div class="summary-grid">
+                            <div class="summary-item">
+                                <strong>Total Horas Mensal</strong>
+                                ${totalWorked.toFixed(2)}h
+                            </div>
+                            <div class="summary-item">
+                                <strong>Total Horas Extras</strong>
+                                ${finalOvertime.toFixed(2)}h
+                            </div>
+                            <div class="summary-item">
+                                <strong>Total Faltas/Atrasos</strong>
+                                ${finalMissing.toFixed(2)}h
+                            </div>
+                            ${staffState.legalSettings?.overtimePolicy === 'BANK_OF_HOURS' ? `
+                                <div class="summary-item">
+                                    <strong>Saldo Banco (Mês)</strong>
+                                    ${(finalOvertime - finalMissing).toFixed(2)}h
+                                </div>
+                                <div class="summary-item">
+                                    <strong>Saldo Acumulado</strong>
+                                    ${(staff.bankHoursBalance || 0).toFixed(2)}h
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+
                     <div class="footer">
                         <div class="signature">
                             Assinatura do Colaborador
