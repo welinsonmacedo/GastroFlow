@@ -144,7 +144,7 @@ export interface RhPayrollSetting {
     fgtsFinePercent?: number;
     standardMonthlyHours?: number;
     // Time Tracking
-    timeTrackingMethod?: 'DIGITAL' | 'PHYSICAL';
+    timeTrackingMethod?: 'DIGITAL' | 'PHYSICAL' | 'REP_IMPORT';
     overtimePolicy?: 'BANK_OF_HOURS' | 'PAID_OVERTIME';
     absenceLogic?: {
         justified: { deduction: boolean, disciplinaryAction: boolean };

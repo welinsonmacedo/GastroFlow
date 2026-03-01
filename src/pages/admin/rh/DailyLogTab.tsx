@@ -3,9 +3,10 @@ import { useStaff } from '../../../context/StaffContext';
 import { useUI } from '../../../context/UIContext';
 import { Button } from '../../../components/Button';
 import { TimeEntry } from '../../../types';
-import { Search, Calendar, Edit, Plus } from 'lucide-react';
+import { Search, Calendar, Edit, Plus, Upload } from 'lucide-react';
 import { TimeEntryModal } from '../../../components/modals/TimeEntryModal';
 import { SummaryModal } from '../../../components/modals/SummaryModal';
+import { ImportAFDModal } from '../../../components/modals/ImportAFDModal';
 
 export const DailyLogTab: React.FC = () => {
     const { state: staffState } = useStaff();
@@ -18,6 +19,7 @@ export const DailyLogTab: React.FC = () => {
     const [entryToEdit, setEntryToEdit] = useState<TimeEntry | null>(null);
     const [selectedStaffId, setSelectedStaffId] = useState<string>('');
     const [isSummaryModalOpen, setIsSummaryModalOpen] = useState(false);
+    const [isImportModalOpen, setIsImportModalOpen] = useState(false);
     const [summary, setSummary] = useState({ overtime: 0, missingHours: 0, bankHours: 0 });
 
     const getStaffName = (id: string) => staffState.users.find(u => u.id === id)?.name || 'Desconhecido';
@@ -100,6 +102,9 @@ export const DailyLogTab: React.FC = () => {
                     </div>
                     <Button onClick={handleNewEntry} className="bg-pink-600 hover:bg-pink-700 text-white border-transparent shadow-pink-200">
                         <Plus size={18}/> <span className="hidden sm:inline">Lançar Manual</span>
+                    </Button>
+                    <Button onClick={() => setIsImportModalOpen(true)} variant="secondary" className="bg-white text-slate-600 border-slate-200 hover:bg-slate-50">
+                        <Upload size={18} className="mr-2"/> Importar AFD
                     </Button>
                 </div>
             </div>
@@ -212,6 +217,11 @@ export const DailyLogTab: React.FC = () => {
                 onClose={() => setIsSummaryModalOpen(false)} 
                 summary={summary}
                 onSave={(newSummary) => setSummary(newSummary)}
+            />
+
+            <ImportAFDModal 
+                isOpen={isImportModalOpen} 
+                onClose={() => setIsImportModalOpen(false)} 
             />
         </div>
     );

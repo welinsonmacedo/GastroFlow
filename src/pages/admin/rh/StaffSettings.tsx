@@ -689,6 +689,20 @@ export const StaffSettings: React.FC = () => {
                                             <span className="block text-xs text-slate-500">Registro via celular/tablet com geolocalização.</span>
                                         </div>
                                     </label>
+                                    <label className="flex items-center p-3 border rounded-xl cursor-pointer hover:bg-slate-50 transition-colors">
+                                        <input 
+                                            type="radio" 
+                                            name="timeTrackingMethod" 
+                                            value="REP_IMPORT"
+                                            checked={timeTrackingForm.timeTrackingMethod === 'REP_IMPORT'}
+                                            onChange={() => setTimeTrackingForm({...timeTrackingForm, timeTrackingMethod: 'REP_IMPORT'})}
+                                            className="w-4 h-4 text-blue-600"
+                                        />
+                                        <div className="ml-3">
+                                            <span className="block text-sm font-bold text-slate-700">Relógio de Ponto (REP)</span>
+                                            <span className="block text-xs text-slate-500">Importação de arquivo AFD/AFDT de relógio eletrônico.</span>
+                                        </div>
+                                    </label>
                                 </div>
                             </div>
 
