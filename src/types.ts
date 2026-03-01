@@ -520,9 +520,12 @@ export interface User {
   signedContractUrl?: string;
 }
 
+export type ContractTemplateType = 'CONTRACT' | 'NOTICE' | 'WARNING' | 'OTHER';
+
 export interface ContractTemplate {
     id: string;
     name: string;
+    type: ContractTemplateType;
     content: string;
     isActive: boolean;
 }

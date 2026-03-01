@@ -250,7 +250,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           }));
 
           const mappedContractTemplates = (contractTemplatesRes.data || []).map((t: any) => ({
-              id: t.id, name: t.name, content: t.content, isActive: t.is_active
+              id: t.id, name: t.name, type: t.type || 'CONTRACT', content: t.content, isActive: t.is_active
           }));
 
           const mappedThirteenth = (thirteenthRes.data || []).map((t: any) => ({
@@ -354,6 +354,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const { error } = await supabase.from('rh_contract_templates').insert({
           tenant_id: tenantId,
           name: template.name,
+          type: template.type || 'CONTRACT',
           content: template.content,
           is_active: template.isActive
       });
@@ -365,6 +366,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (!tenantId) return;
       const { error } = await supabase.from('rh_contract_templates').update({
           name: template.name,
+          type: template.type,
           content: template.content,
           is_active: template.isActive,
           updated_at: new Date()

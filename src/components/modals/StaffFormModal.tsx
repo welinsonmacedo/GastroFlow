@@ -543,7 +543,7 @@ export const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose,
                                                     onChange={e => setSelectedTemplateId(e.target.value)}
                                                 >
                                                     <option value="">Selecione um modelo...</option>
-                                                    {state.contractTemplates.filter(t => t.isActive).map(t => (
+                                                    {state.contractTemplates.filter(t => t.isActive && t.type === 'CONTRACT').map(t => (
                                                         <option key={t.id} value={t.id}>{t.name}</option>
                                                     ))}
                                                 </select>

@@ -1,10 +1,11 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useStaff } from '../../../context/StaffContext';
 import { useUI } from '../../../context/UIContext';
+import { useRestaurant } from '../../../context/RestaurantContext';
 import { Button } from '../../../components/Button';
-import { HrJobRole, EventType, ContractTemplate } from '../../../types';
-import { Plus, Trash2, Settings, DollarSign, RefreshCcw, FileText, Scale, Calculator, Edit3, Calendar } from 'lucide-react';
+import { HrJobRole, EventType, ContractTemplate, ContractTemplateType } from '../../../types';
+import { Plus, Trash2, Settings, DollarSign, RefreshCcw, FileText, Scale, Calculator, Edit3, Calendar, Bold, Italic, Underline, AlignCenter, Type, Eye, Printer } from 'lucide-react';
 import { LegalSettingsModal } from '../../../components/modals/LegalSettingsModal';
 import { HrJobRoleModal } from '../../../components/modals/HrJobRoleModal';
 import { Modal } from '../../../components/Modal';
@@ -13,6 +14,7 @@ import { StaffRecurringEvents } from './StaffRecurringEvents';
 
 export const StaffSettings: React.FC = () => {
     const { state, applyLegalDefaults, deleteHrJobRole, addEventType, updateEventType, deleteEventType, addContractTemplate, updateContractTemplate, deleteContractTemplate } = useStaff();
+    const { state: restState } = useRestaurant();
     const { showAlert, showConfirm } = useUI();
 
     // Abas de Configuração
@@ -68,15 +70,18 @@ export const StaffSettings: React.FC = () => {
 
     const [isContractModalOpen, setIsContractModalOpen] = useState(false);
     const [editingContract, setEditingContract] = useState<ContractTemplate | null>(null);
-    const [contractForm, setContractForm] = useState<Partial<ContractTemplate>>({ name: '', content: '', isActive: true });
+    const [contractForm, setContractForm] = useState<Partial<ContractTemplate>>({ name: '', content: '', type: 'CONTRACT', isActive: true });
+    const [contractPreviewMode, setContractPreviewMode] = useState(false);
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
 
     const handleOpenContractModal = (template?: ContractTemplate) => {
+        setContractPreviewMode(false);
         if (template) {
             setEditingContract(template);
             setContractForm(template);
         } else {
             setEditingContract(null);
-            setContractForm({ name: '', content: '', isActive: true });
+            setContractForm({ name: '', content: '', type: 'CONTRACT', isActive: true });
         }
         setIsContractModalOpen(true);
     };
@@ -157,6 +162,60 @@ export const StaffSettings: React.FC = () => {
             return showAlert({ title: "Impossível Excluir", message: `Existem ${usersWithRole.length} funcionários vinculados a este cargo. Remova-os primeiro.`, type: 'WARNING' });
         }
         showConfirm({ title: "Excluir Cargo", message: "Confirma a exclusão deste cargo de RH?", onConfirm: () => deleteHrJobRole(id) });
+    };
+
+    const insertAtCursor = (text: string) => {
+        if (!textareaRef.current) return;
+        const start = textareaRef.current.selectionStart;
+        const end = textareaRef.current.selectionEnd;
+        const content = contractForm.content || '';
+        const newContent = content.substring(0, start) + text + content.substring(end);
+        setContractForm({ ...contractForm, content: newContent });
+        
+        // Reset focus and cursor
+        setTimeout(() => {
+            if (textareaRef.current) {
+                textareaRef.current.focus();
+                textareaRef.current.setSelectionRange(start + text.length, start + text.length);
+            }
+        }, 0);
+    };
+
+    const handlePrintContract = () => {
+        const printWindow = window.open('', '_blank');
+        if (!printWindow) return;
+        
+        const content = contractForm.content || '';
+        const company = restState.businessInfo;
+        
+        // Basic replacement for preview
+        let rendered = content
+            .replace(/{{empresa_nome}}/g, company.restaurantName || 'Empresa Teste')
+            .replace(/{{empresa_cnpj}}/g, company.cnpj || '00.000.000/0001-00')
+            .replace(/{{empresa_endereco}}/g, `${company.address?.street || ''}, ${company.address?.number || ''}`)
+            .replace(/{{empresa_cidade}}/g, company.address?.city || '')
+            .replace(/{{empresa_estado}}/g, company.address?.state || '')
+            .replace(/{{empresa_telefone}}/g, company.phone || '')
+            .replace(/{{empresa_email}}/g, company.email || '');
+
+        printWindow.document.write(`
+            <html>
+                <head>
+                    <title>Impressão de Documento</title>
+                    <style>
+                        body { font-family: 'Inter', sans-serif; padding: 40px; line-height: 1.6; color: #333; }
+                        @media print { body { padding: 0; } }
+                        h1, h2, h3 { color: #000; }
+                        p { margin-bottom: 1em; }
+                    </style>
+                </head>
+                <body>
+                    ${rendered}
+                    <script>window.print(); window.close();</script>
+                </body>
+            </html>
+        `);
+        printWindow.document.close();
     };
 
     return (
@@ -388,7 +447,14 @@ export const StaffSettings: React.FC = () => {
                             <div key={template.id} className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col justify-between h-40">
                                 <div>
                                     <div className="flex justify-between items-start mb-2">
-                                        <h3 className="font-bold text-slate-800">{template.name}</h3>
+                                        <div>
+                                            <h3 className="font-bold text-slate-800">{template.name}</h3>
+                                            <span className="text-[10px] font-bold text-blue-600 uppercase">
+                                                {template.type === 'CONTRACT' ? 'Contrato' : 
+                                                 template.type === 'NOTICE' ? 'Aviso' : 
+                                                 template.type === 'WARNING' ? 'Advertência' : 'Outro'}
+                                            </span>
+                                        </div>
                                         <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${template.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
                                             {template.isActive ? 'ATIVO' : 'INATIVO'}
                                         </span>
@@ -596,57 +662,163 @@ export const StaffSettings: React.FC = () => {
                 </div>
             </Modal>
 
-            {/* Modal de Contrato */}
-            <Modal isOpen={isContractModalOpen} onClose={() => setIsContractModalOpen(false)} title={editingContract ? "Editar Modelo de Contrato" : "Novo Modelo de Contrato"} onSave={handleSaveContract} maxWidth="4xl">
+            <Modal isOpen={isContractModalOpen} onClose={() => setIsContractModalOpen(false)} title={editingContract ? "Editar Modelo" : "Novo Modelo"} onSave={handleSaveContract} maxWidth="5xl">
                 <div className="space-y-4 pt-4">
-                    <div>
-                        <label className="block text-xs font-bold mb-1 text-slate-600">Nome do Modelo *</label>
-                        <input 
-                            type="text" 
-                            className="w-full border p-2.5 rounded-xl text-sm" 
-                            value={contractForm.name || ''} 
-                            onChange={e => setContractForm({...contractForm, name: e.target.value})}
-                            placeholder="Ex: Contrato CLT Padrão"
-                        />
-                    </div>
-                    <div className="flex gap-4 h-[500px]">
-                         <div className="flex-1 flex flex-col">
-                            <label className="block text-xs font-bold mb-1 text-slate-600">Conteúdo do Contrato (HTML/Texto) *</label>
-                            <textarea 
-                                className="w-full flex-1 border p-4 rounded-xl text-sm font-mono leading-relaxed resize-none focus:ring-2 focus:ring-blue-500 outline-none" 
-                                value={contractForm.content || ''} 
-                                onChange={e => setContractForm({...contractForm, content: e.target.value})}
-                                placeholder="Digite o contrato aqui..."
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-xs font-bold mb-1 text-slate-600">Nome do Modelo *</label>
+                            <input 
+                                type="text" 
+                                className="w-full border p-2.5 rounded-xl text-sm" 
+                                value={contractForm.name || ''} 
+                                onChange={e => setContractForm({...contractForm, name: e.target.value})}
+                                placeholder="Ex: Contrato CLT Padrão"
                             />
-                         </div>
-                         <div className="w-64 bg-slate-50 p-4 rounded-xl border border-slate-200 overflow-y-auto">
-                            <h4 className="text-xs font-bold text-slate-700 mb-3 uppercase">Variáveis Disponíveis</h4>
-                            <div className="space-y-2">
-                                {[
-                                    { label: 'Nome Completo', code: '{{nome}}' },
-                                    { label: 'CPF', code: '{{cpf}}' },
-                                    { label: 'RG', code: '{{rg}}' },
-                                    { label: 'Endereço Completo', code: '{{endereco}}' },
-                                    { label: 'Cidade/UF', code: '{{cidade_uf}}' },
-                                    { label: 'Nacionalidade', code: '{{nacionalidade}}' },
-                                    { label: 'Estado Civil', code: '{{estado_civil}}' },
-                                    { label: 'Cargo', code: '{{cargo}}' },
-                                    { label: 'Salário Base', code: '{{salario}}' },
-                                    { label: 'Data Admissão', code: '{{data_admissao}}' },
-                                    { label: 'Jornada', code: '{{jornada}}' },
-                                    { label: 'CTPS', code: '{{ctps}}' },
-                                    { label: 'PIS', code: '{{pis}}' },
-                                ].map(v => (
-                                    <div key={v.code} className="bg-white p-2 rounded border border-slate-200 cursor-pointer hover:bg-blue-50 transition-colors group" onClick={() => {
-                                        setContractForm(prev => ({ ...prev, content: (prev.content || '') + v.code }));
-                                    }}>
-                                        <div className="text-[10px] text-slate-500">{v.label}</div>
-                                        <code className="text-xs font-bold text-blue-600 group-hover:text-blue-800">{v.code}</code>
-                                    </div>
-                                ))}
-                            </div>
-                         </div>
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold mb-1 text-slate-600">Tipo de Documento *</label>
+                            <select 
+                                className="w-full border p-2.5 rounded-xl text-sm bg-white" 
+                                value={contractForm.type || 'CONTRACT'} 
+                                onChange={e => setContractForm({...contractForm, type: e.target.value as ContractTemplateType})}
+                            >
+                                <option value="CONTRACT">Contrato</option>
+                                <option value="NOTICE">Aviso</option>
+                                <option value="WARNING">Advertência</option>
+                                <option value="OTHER">Outros</option>
+                            </select>
+                        </div>
                     </div>
+
+                    <div className="flex border-b">
+                        <button 
+                            onClick={() => setContractPreviewMode(false)}
+                            className={`px-4 py-2 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 ${!contractPreviewMode ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}
+                        >
+                            <Edit3 size={14}/> Editor
+                        </button>
+                        <button 
+                            onClick={() => setContractPreviewMode(true)}
+                            className={`px-4 py-2 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 ${contractPreviewMode ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}
+                        >
+                            <Eye size={14}/> Visualização
+                        </button>
+                        <div className="flex-1"></div>
+                        <button 
+                            onClick={handlePrintContract}
+                            className="px-4 py-2 text-sm font-bold text-slate-600 hover:text-blue-600 flex items-center gap-2"
+                        >
+                            <Printer size={14}/> Imprimir Teste
+                        </button>
+                    </div>
+
+                    {!contractPreviewMode ? (
+                        <div className="flex gap-4 h-[500px]">
+                            <div className="flex-1 flex flex-col">
+                                <div className="flex gap-1 mb-2 bg-slate-100 p-1 rounded-lg">
+                                    <button onClick={() => insertAtCursor('<b></b>')} className="p-1.5 hover:bg-white rounded text-slate-600" title="Negrito"><Bold size={14}/></button>
+                                    <button onClick={() => insertAtCursor('<i></i>')} className="p-1.5 hover:bg-white rounded text-slate-600" title="Itálico"><Italic size={14}/></button>
+                                    <button onClick={() => insertAtCursor('<u></u>')} className="p-1.5 hover:bg-white rounded text-slate-600" title="Sublinhado"><Underline size={14}/></button>
+                                    <div className="w-px h-4 bg-slate-300 mx-1 self-center"></div>
+                                    <button onClick={() => insertAtCursor('<p style="text-align: center;"></p>')} className="p-1.5 hover:bg-white rounded text-slate-600" title="Centralizar"><AlignCenter size={14}/></button>
+                                    <button onClick={() => insertAtCursor('<p></p>')} className="p-1.5 hover:bg-white rounded text-slate-600" title="Parágrafo"><Type size={14}/></button>
+                                    <button onClick={() => insertAtCursor('<br/>')} className="p-1.5 hover:bg-white rounded text-slate-600" title="Quebra de Linha"><Plus size={14}/></button>
+                                    <div className="w-px h-4 bg-slate-300 mx-1 self-center"></div>
+                                    <button onClick={() => insertAtCursor('<h1></h1>')} className="p-1.5 hover:bg-white rounded text-slate-600 font-bold text-xs">H1</button>
+                                    <button onClick={() => insertAtCursor('<h2></h2>')} className="p-1.5 hover:bg-white rounded text-slate-600 font-bold text-xs">H2</button>
+                                </div>
+                                <textarea 
+                                    ref={textareaRef}
+                                    className="w-full flex-1 border p-4 rounded-xl text-sm font-mono leading-relaxed resize-none focus:ring-2 focus:ring-blue-500 outline-none" 
+                                    value={contractForm.content || ''} 
+                                    onChange={e => setContractForm({...contractForm, content: e.target.value})}
+                                    onDragOver={(e) => e.preventDefault()}
+                                    onDrop={(e) => {
+                                        e.preventDefault();
+                                        const data = e.dataTransfer.getData('text/plain');
+                                        insertAtCursor(data);
+                                    }}
+                                    placeholder="Digite o contrato aqui (suporta HTML)..."
+                                />
+                            </div>
+                            <div className="w-72 bg-slate-50 p-4 rounded-xl border border-slate-200 overflow-y-auto">
+                                <h4 className="text-[10px] font-bold text-slate-500 mb-3 uppercase tracking-wider">Variáveis (Arraste ou Clique)</h4>
+                                
+                                <div className="space-y-4">
+                                    <div>
+                                        <div className="text-[10px] font-black text-slate-400 mb-2 uppercase">Empresa</div>
+                                        <div className="space-y-1.5">
+                                            {[
+                                                { label: 'Nome Fantasia', code: '{{empresa_nome}}' },
+                                                { label: 'CNPJ', code: '{{empresa_cnpj}}' },
+                                                { label: 'Endereço', code: '{{empresa_endereco}}' },
+                                                { label: 'Cidade', code: '{{empresa_cidade}}' },
+                                                { label: 'Estado', code: '{{empresa_estado}}' },
+                                                { label: 'Telefone', code: '{{empresa_telefone}}' },
+                                                { label: 'E-mail', code: '{{empresa_email}}' },
+                                            ].map(v => (
+                                                <div 
+                                                    key={v.code} 
+                                                    draggable 
+                                                    onDragStart={(e) => e.dataTransfer.setData('text/plain', v.code)}
+                                                    className="bg-white p-2 rounded border border-slate-200 cursor-move hover:bg-blue-50 transition-colors group" 
+                                                    onClick={() => insertAtCursor(v.code)}
+                                                >
+                                                    <div className="text-[9px] text-slate-400 font-bold">{v.label}</div>
+                                                    <code className="text-[11px] font-bold text-blue-600">{v.code}</code>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <div className="text-[10px] font-black text-slate-400 mb-2 uppercase">Colaborador</div>
+                                        <div className="space-y-1.5">
+                                            {[
+                                                { label: 'Nome Completo', code: '{{nome}}' },
+                                                { label: 'CPF', code: '{{cpf}}' },
+                                                { label: 'RG', code: '{{rg}}' },
+                                                { label: 'Endereço', code: '{{endereco}}' },
+                                                { label: 'Cidade/UF', code: '{{cidade_uf}}' },
+                                                { label: 'Nacionalidade', code: '{{nacionalidade}}' },
+                                                { label: 'Estado Civil', code: '{{estado_civil}}' },
+                                                { label: 'Cargo', code: '{{cargo}}' },
+                                                { label: 'Salário Base', code: '{{salario}}' },
+                                                { label: 'Data Admissão', code: '{{data_admissao}}' },
+                                                { label: 'Jornada', code: '{{jornada}}' },
+                                                { label: 'CTPS', code: '{{ctps}}' },
+                                                { label: 'PIS', code: '{{pis}}' },
+                                            ].map(v => (
+                                                <div 
+                                                    key={v.code} 
+                                                    draggable 
+                                                    onDragStart={(e) => e.dataTransfer.setData('text/plain', v.code)}
+                                                    className="bg-white p-2 rounded border border-slate-200 cursor-move hover:bg-blue-50 transition-colors group" 
+                                                    onClick={() => insertAtCursor(v.code)}
+                                                >
+                                                    <div className="text-[9px] text-slate-400 font-bold">{v.label}</div>
+                                                    <code className="text-[11px] font-bold text-blue-600">{v.code}</code>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="h-[500px] border rounded-xl p-8 overflow-y-auto bg-white shadow-inner">
+                            <div 
+                                className="prose prose-slate max-w-none"
+                                dangerouslySetInnerHTML={{ 
+                                    __html: (contractForm.content || '')
+                                        .replace(/{{empresa_nome}}/g, restState.businessInfo.restaurantName || 'Empresa Teste')
+                                        .replace(/{{empresa_cnpj}}/g, restState.businessInfo.cnpj || '00.000.000/0001-00')
+                                        .replace(/{{nome}}/g, 'João da Silva')
+                                        .replace(/{{cpf}}/g, '123.456.789-00')
+                                }} 
+                            />
+                        </div>
+                    )}
                     <div className="flex items-center gap-2 pt-2">
                         <input 
                             type="checkbox" 
