@@ -1,10 +1,7 @@
 
 import { User, BusinessInfo } from '../types';
 
-export const printContract = (templateContent: string, user: User, company: BusinessInfo, roleName: string) => {
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) return;
-
+export const replaceContractVariables = (templateContent: string, user: User, company: BusinessInfo, roleName: string): string => {
     const formatDate = (date?: Date | string) => {
         if (!date) return '__________';
         return new Date(date).toLocaleDateString('pt-BR');
@@ -45,12 +42,19 @@ export const printContract = (templateContent: string, user: User, company: Busi
     content = content.replace(/\{\{\s*ctps\s*\}\}/g, user.ctpsNumber ? `${user.ctpsNumber} Série ${user.ctpsSeries}/${user.ctpsState}` : '____________________');
     content = content.replace(/\{\{\s*pis\s*\}\}/g, user.pisPasep || '____________________');
 
+    return content;
+};
+
+export const printContractHtml = (content: string, userName: string) => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
     const htmlContent = `
         <!DOCTYPE html>
         <html lang="pt-BR">
         <head>
             <meta charset="UTF-8">
-            <title>Contrato de Trabalho - ${user.name}</title>
+            <title>Contrato de Trabalho - ${userName}</title>
             <style>
                 @page { size: A4; margin: 20mm; }
                 body { font-family: 'Times New Roman', serif; font-size: 12pt; color: #000; line-height: 1.5; text-align: justify; }
@@ -71,4 +75,9 @@ export const printContract = (templateContent: string, user: User, company: Busi
 
     printWindow.document.write(htmlContent);
     printWindow.document.close();
+};
+
+export const printContract = (templateContent: string, user: User, company: BusinessInfo, roleName: string) => {
+    const content = replaceContractVariables(templateContent, user, company, roleName);
+    printContractHtml(content, user.name || 'Colaborador');
 };

@@ -7,7 +7,9 @@ import { useRestaurant } from '../../context/RestaurantContext';
 import { User, Role, ContractType, WorkModel } from '../../types';
 import { Shield, Mail, User as UserIcon, Briefcase, Clock, MapPin, DollarSign, HeartPulse, FileText, Printer, FileSignature, RefreshCcw } from 'lucide-react';
 import { printStaffSheet } from '../../utils/printStaffSheet';
-import { printContract } from '../../utils/printContract';
+import { printContractHtml, replaceContractVariables } from '../../utils/printContract';
+import ReactQuill from 'react-quill';
+import 'react-quill/dist/quill.snow.css';
 
 interface StaffFormModalProps {
   isOpen: boolean;
@@ -26,19 +28,31 @@ export const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose,
   const [form, setForm] = useState<Partial<User>>({});
   const [activeTab, setActiveTab] = useState<Tab>('GENERAL');
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
+  const [contractContent, setContractContent] = useState<string>('');
   const [isUploading, setIsUploading] = useState(false);
 
+  useEffect(() => {
+      if (selectedTemplateId) {
+          const template = state.contractTemplates.find(t => t.id === selectedTemplateId);
+          if (template) {
+              const userData = { ...userToEdit, ...form } as User;
+              const company = restState.businessInfo;
+              const role = state.hrJobRoles.find(r => r.id === userData.hrJobRoleId);
+              const roleName = role ? role.title : (userData.customRoleName || '');
+              
+              const replacedContent = replaceContractVariables(template.content, userData, company, roleName);
+              setContractContent(replacedContent);
+          }
+      } else {
+          setContractContent('');
+      }
+  }, [selectedTemplateId, userToEdit, form, state.contractTemplates, state.hrJobRoles, restState.businessInfo]);
+
   const handleGenerateContract = () => {
-      const template = state.contractTemplates.find(t => t.id === selectedTemplateId);
-      if (!template) return showAlert({ title: "Erro", message: "Selecione um modelo.", type: "WARNING" });
+      if (!contractContent) return showAlert({ title: "Erro", message: "Selecione um modelo e aguarde o carregamento.", type: "WARNING" });
       
-      // Merge form data with userToEdit to ensure latest changes are used
       const userData = { ...userToEdit, ...form } as User;
-      const company = restState.businessInfo;
-      const role = state.hrJobRoles.find(r => r.id === userData.hrJobRoleId);
-      const roleName = role ? role.title : (userData.customRoleName || '');
-      
-      printContract(template.content, userData, company, roleName);
+      printContractHtml(contractContent, userData.name || 'Colaborador');
   };
 
   const handleUploadContract = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -538,7 +552,7 @@ export const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose,
                                 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     {/* Gerar Contrato */}
-                                    <div className="bg-slate-50 p-6 rounded-xl border border-slate-200">
+                                    <div className="bg-slate-50 p-6 rounded-xl border border-slate-200 md:col-span-2">
                                         <h5 className="font-bold text-slate-700 mb-4 flex items-center gap-2"><Printer size={16}/> Gerar Minuta</h5>
                                         <div className="space-y-4">
                                             <div>
@@ -554,10 +568,34 @@ export const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose,
                                                     ))}
                                                 </select>
                                             </div>
+                                            
+                                            {selectedTemplateId && (
+                                                <div className="mt-4">
+                                                    <label className="block text-xs font-bold mb-2 text-slate-600">Revisar e Editar Contrato</label>
+                                                    <div className="bg-white rounded-xl overflow-hidden border">
+                                                        <ReactQuill 
+                                                            theme="snow"
+                                                            value={contractContent}
+                                                            onChange={setContractContent}
+                                                            className="h-[300px]"
+                                                            modules={{
+                                                                toolbar: [
+                                                                    [{ 'header': [1, 2, 3, false] }],
+                                                                    ['bold', 'italic', 'underline', 'strike'],
+                                                                    [{ 'align': [] }],
+                                                                    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                                                                    ['clean']
+                                                                ]
+                                                            }}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            )}
+
                                             <button 
                                                 onClick={handleGenerateContract}
-                                                disabled={!selectedTemplateId}
-                                                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                                disabled={!selectedTemplateId || !contractContent}
+                                                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-colors mt-12"
                                             >
                                                 Gerar e Imprimir
                                             </button>
@@ -565,7 +603,7 @@ export const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose,
                                     </div>
 
                                     {/* Upload Contrato Assinado */}
-                                    <div className="bg-slate-50 p-6 rounded-xl border border-slate-200">
+                                    <div className="bg-slate-50 p-6 rounded-xl border border-slate-200 md:col-span-2">
                                         <h5 className="font-bold text-slate-700 mb-4 flex items-center gap-2"><FileSignature size={16}/> Contrato Assinado</h5>
                                         
                                         {userToEdit?.signedContractUrl ? (
