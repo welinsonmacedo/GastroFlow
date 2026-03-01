@@ -4,7 +4,7 @@ import {
     User, Shift, TimeEntry, PayrollPreview, CustomRole, 
     RHTax, RHBenefit, TaxRegime, TaxPayerType, TaxCalculationBasis,
     RhPayrollSetting, RhInssBracket, RhIrrfBracket, ClosedPayroll,
-    PayrollEvent, PayrollEventType, PayrollEntry, HrJobRole, RecurringEvent, EventType
+    PayrollEvent, PayrollEventType, PayrollEntry, HrJobRole, RecurringEvent, EventType, ContractTemplate
 } from '../types';
 import { supabase, logAudit } from '../lib/supabase';
 import { useRestaurant } from './RestaurantContext';
@@ -25,6 +25,7 @@ interface StaffState {
   payrollEvents: PayrollEvent[];
   recurringEvents: RecurringEvent[];
   eventTypes: EventType[];
+  contractTemplates: ContractTemplate[];
   payrollEntries: PayrollEntry[];
   isLoading: boolean;
 }
@@ -34,9 +35,16 @@ interface StaffContextType {
   addUser: (user: Partial<User>) => Promise<void>;
   updateUser: (user: User) => Promise<void>;
   deleteUser: (userId: string) => Promise<void>;
+  uploadSignedContract: (userId: string, file: File) => Promise<string>;
+
   addRole: (role: Partial<CustomRole>) => Promise<void>;
   updateRole: (role: CustomRole) => Promise<void>;
   deleteRole: (roleId: string) => Promise<void>;
+
+  addContractTemplate: (template: Partial<ContractTemplate>) => Promise<void>;
+  updateContractTemplate: (template: ContractTemplate) => Promise<void>;
+  deleteContractTemplate: (id: string) => Promise<void>;
+
   addHrJobRole: (role: Partial<HrJobRole>) => Promise<void>;
   updateHrJobRole: (role: HrJobRole) => Promise<void>;
   deleteHrJobRole: (roleId: string) => Promise<void>;
@@ -89,7 +97,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   
   const [state, setState] = useState<StaffState>({ 
     users: [], shifts: [], timeEntries: [], roles: [], hrJobRoles: [], taxes: [], benefits: [],
-    legalSettings: null, inssBrackets: [], irrfBrackets: [], payrollEvents: [], recurringEvents: [], eventTypes: [], payrollEntries: [], isLoading: true 
+    legalSettings: null, inssBrackets: [], irrfBrackets: [], payrollEvents: [], recurringEvents: [], eventTypes: [], contractTemplates: [], payrollEntries: [], isLoading: true 
   });
 
   const fetchData = useCallback(async () => {
@@ -97,7 +105,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       
       const [
           staffRes, shiftsRes, timeRes, rolesRes, taxesRes, benefitsRes,
-          settingsRes, inssRes, irrfRes, eventsRes, recurringEventsRes, hrRolesRes, eventTypesRes
+          settingsRes, inssRes, irrfRes, eventsRes, recurringEventsRes, hrRolesRes, eventTypesRes, contractTemplatesRes
       ] = await Promise.all([
           supabase.from('staff').select('*, custom_roles(name)').eq('tenant_id', tenantId).order('name'),
           supabase.from('rh_shifts').select('*').eq('tenant_id', tenantId),
@@ -111,7 +119,8 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           supabase.from('rh_payroll_events').select('*').eq('tenant_id', tenantId),
           supabase.from('rh_recurring_events').select('*').eq('tenant_id', tenantId),
           supabase.from('rh_job_roles').select('*').eq('tenant_id', tenantId),
-          supabase.from('rh_event_types').select('*').eq('tenant_id', tenantId).order('name')
+          supabase.from('rh_event_types').select('*').eq('tenant_id', tenantId).order('name'),
+          supabase.from('rh_contract_templates').select('*').eq('tenant_id', tenantId).order('name')
       ]);
 
       if (staffRes.data) {
@@ -129,12 +138,13 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               addressZip: u.address_zip, addressStreet: u.address_street, addressNumber: u.address_number,
               addressComplement: u.address_complement, addressNeighborhood: u.address_neighborhood,
               addressCity: u.address_city, addressState: u.address_state,
-              pisPasep: u.pis_pasep, ctpsNumber: u.ctps_number, ctpsSeries: u.ctps_series, ctpsState: u.ctps_state,
+              pisPasep: u.pis_pasep, ctpsNumber: u.ctps_number, ctpsSeries: u.ctps_series, ctps_state: u.ctps_state,
               maritalStatus: u.marital_status, emergencyContactName: u.emergency_contact_name, emergencyContactPhone: u.emergency_contact_phone,
               fathersName: u.fathers_name, mothersName: u.mothers_name, educationLevel: u.education_level, voterRegistration: u.voter_registration,
               bankName: u.bank_name, bankAgency: u.bank_agency, bankAccount: u.bank_account, bankAccountType: u.bank_account_type, pixKey: u.pix_key,
               healthPlanInfo: u.health_plan_info, pensionInfo: u.pension_info, transportVoucherInfo: u.transport_voucher_info, mealVoucherInfo: u.meal_voucher_info,
-              sstInfo: u.sst_info
+              sstInfo: u.sst_info,
+              signedContractUrl: u.signed_contract_url
           }));
 
           const legalSettings: RhPayrollSetting | null = settingsRes.data ? {
@@ -202,10 +212,14 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               id: e.id, name: e.name, operation: e.operation, isActive: e.is_active, calculationType: e.calculation_type || 'FIXED'
           }));
 
+          const mappedContractTemplates = (contractTemplatesRes.data || []).map((t: any) => ({
+              id: t.id, name: t.name, content: t.content, isActive: t.is_active
+          }));
+
           setState({ 
             users: mappedUsers, shifts: mappedShifts, timeEntries: mappedTime, roles: mappedRoles, hrJobRoles: mappedHrRoles,
             taxes: mappedTaxes, benefits: mappedBenefits, legalSettings, inssBrackets, irrfBrackets, 
-            payrollEvents: mappedEvents, recurringEvents: mappedRecurringEvents, eventTypes: mappedEventTypes, payrollEntries: [], isLoading: false 
+            payrollEvents: mappedEvents, recurringEvents: mappedRecurringEvents, eventTypes: mappedEventTypes, contractTemplates: mappedContractTemplates, payrollEntries: [], isLoading: false 
           });
       }
   }, [tenantId]);
@@ -222,10 +236,71 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               .on('postgres_changes', { event: '*', schema: 'public', table: 'rh_payroll_settings', filter: `tenant_id=eq.${tenantId}` }, fetchData)
               .on('postgres_changes', { event: '*', schema: 'public', table: 'rh_inss_brackets', filter: `tenant_id=eq.${tenantId}` }, fetchData)
               .on('postgres_changes', { event: '*', schema: 'public', table: 'rh_irrf_brackets', filter: `tenant_id=eq.${tenantId}` }, fetchData)
+              .on('postgres_changes', { event: '*', schema: 'public', table: 'rh_contract_templates', filter: `tenant_id=eq.${tenantId}` }, fetchData)
               .subscribe();
           return () => { supabase.removeChannel(channel); };
       }
   }, [tenantId, fetchData]);
+
+  const uploadSignedContract = async (userId: string, file: File) => {
+      if (!tenantId) return '';
+      
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${tenantId}/${userId}/contract_${Date.now()}.${fileExt}`;
+      const filePath = `${fileName}`;
+
+      // Upload to 'documents' bucket
+      const { error: uploadError } = await supabase.storage
+          .from('documents')
+          .upload(filePath, file);
+
+      if (uploadError) throw new Error(uploadError.message);
+
+      // Get public URL
+      const { data } = supabase.storage.from('documents').getPublicUrl(filePath);
+      const publicUrl = data.publicUrl;
+
+      // Update user record
+      const { error: updateError } = await supabase.from('staff').update({
+          signed_contract_url: publicUrl
+      }).eq('id', userId);
+
+      if (updateError) throw new Error(updateError.message);
+
+      await fetchData();
+      return publicUrl;
+  };
+
+  const addContractTemplate = async (template: Partial<ContractTemplate>) => {
+      if (!tenantId) return;
+      const { error } = await supabase.from('rh_contract_templates').insert({
+          tenant_id: tenantId,
+          name: template.name,
+          content: template.content,
+          is_active: template.isActive
+      });
+      if (error) throw error;
+      await fetchData();
+  };
+
+  const updateContractTemplate = async (template: ContractTemplate) => {
+      if (!tenantId) return;
+      const { error } = await supabase.from('rh_contract_templates').update({
+          name: template.name,
+          content: template.content,
+          is_active: template.isActive,
+          updated_at: new Date()
+      }).eq('id', template.id);
+      if (error) throw error;
+      await fetchData();
+  };
+
+  const deleteContractTemplate = async (id: string) => {
+      if (!tenantId) return;
+      const { error } = await supabase.from('rh_contract_templates').delete().eq('id', id);
+      if (error) throw error;
+      await fetchData();
+  };
 
   const addUser = async (user: Partial<User>) => {
       if(!tenantId) return;
@@ -901,7 +976,8 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         addTax, deleteTax, applyRegimeDefaults,
         addBenefit, deleteBenefit,
         addPayrollEvent, updatePayrollEvent, deletePayrollEvent, addPayrollEntry,
-        addRecurringEvent, updateRecurringEvent, deleteRecurringEvent, generateRecurringEventsForMonth
+        addRecurringEvent, updateRecurringEvent, deleteRecurringEvent, generateRecurringEventsForMonth,
+        addContractTemplate, updateContractTemplate, deleteContractTemplate, uploadSignedContract
     }}>
       {children}
     </StaffContext.Provider>

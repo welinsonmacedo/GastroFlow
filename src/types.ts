@@ -428,7 +428,16 @@ export interface User {
   transportVoucherInfo?: string;
   mealVoucherInfo?: string;
   sstInfo?: string;
+  signedContractUrl?: string;
 }
+
+export interface ContractTemplate {
+    id: string;
+    name: string;
+    content: string;
+    isActive: boolean;
+}
+
 
 export interface SystemAccessLog {
     id: string;

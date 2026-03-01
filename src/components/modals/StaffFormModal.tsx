@@ -4,8 +4,9 @@ import { Modal } from '../Modal';
 import { useStaff } from '../../context/StaffContext';
 import { useUI } from '../../context/UIContext';
 import { User, Role, ContractType, WorkModel } from '../../types';
-import { Shield, Mail, User as UserIcon, Briefcase, Clock, MapPin, DollarSign, HeartPulse, FileText, Printer } from 'lucide-react';
+import { Shield, Mail, User as UserIcon, Briefcase, Clock, MapPin, DollarSign, HeartPulse, FileText, Printer, FileSignature, RefreshCcw } from 'lucide-react';
 import { printStaffSheet } from '../../utils/printStaffSheet';
+import { printContract } from '../../utils/printContract';
 
 interface StaffFormModalProps {
   isOpen: boolean;
@@ -14,14 +15,41 @@ interface StaffFormModalProps {
   variant?: 'ACCESS' | 'RH';
 }
 
-type Tab = 'GENERAL' | 'PERSONAL' | 'ADDRESS' | 'CONTRACT' | 'FINANCIAL' | 'SST';
+type Tab = 'GENERAL' | 'PERSONAL' | 'ADDRESS' | 'CONTRACT' | 'FINANCIAL' | 'SST' | 'CONTRACT_DOCS';
 
 export const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose, userToEdit, variant = 'ACCESS' }) => {
-  const { addUser, updateUser, state } = useStaff(); 
+  const { addUser, updateUser, state, uploadSignedContract } = useStaff(); 
   const { showAlert } = useUI();
 
   const [form, setForm] = useState<Partial<User>>({});
   const [activeTab, setActiveTab] = useState<Tab>('GENERAL');
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
+  const [isUploading, setIsUploading] = useState(false);
+
+  const handleGenerateContract = () => {
+      const template = state.contractTemplates.find(t => t.id === selectedTemplateId);
+      if (!template) return showAlert({ title: "Erro", message: "Selecione um modelo.", type: "WARNING" });
+      
+      // Merge form data with userToEdit to ensure latest changes are used
+      const userData = { ...userToEdit, ...form } as User;
+      printContract(template.content, userData);
+  };
+
+  const handleUploadContract = async (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (!e.target.files || e.target.files.length === 0) return;
+      if (!userToEdit) return showAlert({ title: "Erro", message: "Salve o colaborador antes de enviar o contrato.", type: "WARNING" });
+
+      const file = e.target.files[0];
+      setIsUploading(true);
+      try {
+          await uploadSignedContract(userToEdit.id, file);
+          showAlert({ title: "Sucesso", message: "Contrato enviado com sucesso.", type: "SUCCESS" });
+      } catch (error: any) {
+          showAlert({ title: "Erro", message: "Falha ao enviar contrato: " + error.message, type: "ERROR" });
+      } finally {
+          setIsUploading(false);
+      }
+  };
 
   useEffect(() => {
     if (isOpen) {
@@ -151,6 +179,7 @@ export const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose,
                         {renderTabButton('CONTRACT', 'Contrato & Jornada', <Briefcase size={16}/>)}
                         {renderTabButton('FINANCIAL', 'Financeiro & Benefícios', <DollarSign size={16}/>)}
                         {renderTabButton('SST', 'Saúde & Segurança', <HeartPulse size={16}/>)}
+                        {renderTabButton('CONTRACT_DOCS', 'Contrato', <FileSignature size={16}/>)}
                         
                         {userToEdit && (
                             <button 
@@ -492,6 +521,86 @@ export const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose,
                                             value={form.sstInfo || ''} 
                                             onChange={e => setForm({...form, sstInfo: e.target.value})} 
                                         />
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {activeTab === 'CONTRACT_DOCS' && (
+                            <div className="space-y-6 animate-fade-in">
+                                <h4 className="text-sm font-black text-slate-800 uppercase border-b pb-2 mb-4">Gerar e Gerenciar Contrato</h4>
+                                
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    {/* Gerar Contrato */}
+                                    <div className="bg-slate-50 p-6 rounded-xl border border-slate-200">
+                                        <h5 className="font-bold text-slate-700 mb-4 flex items-center gap-2"><Printer size={16}/> Gerar Minuta</h5>
+                                        <div className="space-y-4">
+                                            <div>
+                                                <label className="block text-xs font-bold mb-1 text-slate-600">Modelo de Contrato</label>
+                                                <select 
+                                                    className="w-full border p-2.5 rounded-xl text-sm bg-white"
+                                                    value={selectedTemplateId}
+                                                    onChange={e => setSelectedTemplateId(e.target.value)}
+                                                >
+                                                    <option value="">Selecione um modelo...</option>
+                                                    {state.contractTemplates.filter(t => t.isActive).map(t => (
+                                                        <option key={t.id} value={t.id}>{t.name}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                            <button 
+                                                onClick={handleGenerateContract}
+                                                disabled={!selectedTemplateId}
+                                                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                            >
+                                                Gerar e Imprimir
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* Upload Contrato Assinado */}
+                                    <div className="bg-slate-50 p-6 rounded-xl border border-slate-200">
+                                        <h5 className="font-bold text-slate-700 mb-4 flex items-center gap-2"><FileSignature size={16}/> Contrato Assinado</h5>
+                                        
+                                        {userToEdit?.signedContractUrl ? (
+                                            <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-xl flex items-center justify-between">
+                                                <div className="flex items-center gap-2 text-green-800 font-bold text-sm">
+                                                    <Shield size={16}/> Contrato Arquivado
+                                                </div>
+                                                <a 
+                                                    href={userToEdit.signedContractUrl} 
+                                                    target="_blank" 
+                                                    rel="noopener noreferrer"
+                                                    className="text-xs bg-green-600 text-white px-3 py-1.5 rounded-lg hover:bg-green-700 transition-colors"
+                                                >
+                                                    Visualizar
+                                                </a>
+                                            </div>
+                                        ) : (
+                                            <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-xl text-xs text-yellow-800">
+                                                Nenhum contrato assinado foi enviado ainda.
+                                            </div>
+                                        )}
+
+                                        <div className="space-y-2">
+                                            <label className="block text-xs font-bold mb-1 text-slate-600">Enviar Arquivo (PDF/Img)</label>
+                                            <div className="relative">
+                                                <input 
+                                                    type="file" 
+                                                    accept=".pdf,.jpg,.jpeg,.png"
+                                                    onChange={handleUploadContract}
+                                                    disabled={isUploading}
+                                                    className="w-full text-sm text-slate-500
+                                                        file:mr-4 file:py-2.5 file:px-4
+                                                        file:rounded-xl file:border-0
+                                                        file:text-sm file:font-bold
+                                                        file:bg-blue-50 file:text-blue-700
+                                                        hover:file:bg-blue-100
+                                                    "
+                                                />
+                                                {isUploading && <div className="absolute right-2 top-2"><RefreshCcw className="animate-spin text-blue-600" size={16}/></div>}
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

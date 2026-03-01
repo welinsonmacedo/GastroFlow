@@ -4,19 +4,19 @@ import { useStaff } from '../../../context/StaffContext';
 import { useRestaurant } from '../../../context/RestaurantContext';
 import { useUI } from '../../../context/UIContext';
 import { Button } from '../../../components/Button';
-import { HrJobRole, RHTax, RHBenefit, TaxPayerType, TaxCalculationBasis, EventType } from '../../../types';
-import { Plus, Trash2, Settings, Percent, DollarSign, RefreshCcw, Gift, FileText, Building2, Scale, Calculator, Edit3, Briefcase, Tag } from 'lucide-react';
+import { HrJobRole, RHTax, RHBenefit, TaxPayerType, TaxCalculationBasis, EventType, ContractTemplate } from '../../../types';
+import { Plus, Trash2, Settings, Percent, DollarSign, RefreshCcw, Gift, FileText, Building2, Scale, Calculator, Edit3, Briefcase, Tag, FileSignature } from 'lucide-react';
 import { LegalSettingsModal } from '../../../components/modals/LegalSettingsModal';
 import { HrJobRoleModal } from '../../../components/modals/HrJobRoleModal';
 import { Modal } from '../../../components/Modal';
 
 export const StaffSettings: React.FC = () => {
-    const { state, addTax, deleteTax, addBenefit, deleteBenefit, applyRegimeDefaults, applyLegalDefaults, deleteHrJobRole, addEventType, updateEventType, deleteEventType } = useStaff();
+    const { state, addTax, deleteTax, addBenefit, deleteBenefit, applyRegimeDefaults, applyLegalDefaults, deleteHrJobRole, addEventType, updateEventType, deleteEventType, addContractTemplate, updateContractTemplate, deleteContractTemplate } = useStaff();
     const { state: restState } = useRestaurant();
     const { showAlert, showConfirm } = useUI();
 
     // Abas de Configuração
-    const [activeTab, setActiveTab] = useState<'LEGAL' | 'CUSTOM' | 'ROLES'>('LEGAL');
+    const [activeTab, setActiveTab] = useState<'LEGAL' | 'CUSTOM' | 'ROLES' | 'EVENT_TYPES' | 'CONTRACTS'>('LEGAL');
     const [isLegalModalOpen, setIsLegalModalOpen] = useState(false);
     
     // Modal de Cargos RH
@@ -26,6 +26,45 @@ export const StaffSettings: React.FC = () => {
     const [isEventTypeModalOpen, setIsEventTypeModalOpen] = useState(false);
     const [editingEventType, setEditingEventType] = useState<EventType | null>(null);
     const [eventTypeForm, setEventTypeForm] = useState<Partial<EventType>>({ name: '', operation: '+', isActive: true, calculationType: 'FIXED' });
+
+    const [isContractModalOpen, setIsContractModalOpen] = useState(false);
+    const [editingContract, setEditingContract] = useState<ContractTemplate | null>(null);
+    const [contractForm, setContractForm] = useState<Partial<ContractTemplate>>({ name: '', content: '', isActive: true });
+
+    const handleOpenContractModal = (template?: ContractTemplate) => {
+        if (template) {
+            setEditingContract(template);
+            setContractForm(template);
+        } else {
+            setEditingContract(null);
+            setContractForm({ name: '', content: '', isActive: true });
+        }
+        setIsContractModalOpen(true);
+    };
+
+    const handleSaveContract = async () => {
+        if (!contractForm.name || !contractForm.content) return showAlert({ title: "Atenção", message: "Preencha o nome e o conteúdo do contrato.", type: "WARNING" });
+        try {
+            if (editingContract) {
+                await updateContractTemplate({ ...editingContract, ...contractForm } as ContractTemplate);
+                showAlert({ title: "Sucesso", message: "Modelo atualizado.", type: "SUCCESS" });
+            } else {
+                await addContractTemplate(contractForm);
+                showAlert({ title: "Sucesso", message: "Modelo criado.", type: "SUCCESS" });
+            }
+            setIsContractModalOpen(false);
+        } catch (error: any) {
+            showAlert({ title: "Erro", message: error.message, type: "ERROR" });
+        }
+    };
+
+    const handleDeleteContract = (id: string) => {
+        showConfirm({
+            title: "Excluir Modelo?",
+            message: "Tem certeza que deseja excluir este modelo de contrato?",
+            onConfirm: () => deleteContractTemplate(id)
+        });
+    };
 
     const handleOpenEventTypeModal = (evt?: EventType) => {
         if (evt) {
@@ -144,6 +183,7 @@ export const StaffSettings: React.FC = () => {
                     <button onClick={() => setActiveTab('LEGAL')} className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'LEGAL' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}>Tabelas Legais (INSS/IRRF)</button>
                     <button onClick={() => setActiveTab('ROLES')} className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'ROLES' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}>Cargos & CBO</button>
                     <button onClick={() => setActiveTab('EVENT_TYPES')} className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'EVENT_TYPES' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}>Tipos de Eventos</button>
+                    <button onClick={() => setActiveTab('CONTRACTS')} className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'CONTRACTS' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}>Modelos de Contrato</button>
                 </div>
             </div>
 
@@ -342,6 +382,45 @@ export const StaffSettings: React.FC = () => {
                 </div>
             )}
 
+            {/* ABA 5: CONTRATOS */}
+            {activeTab === 'CONTRACTS' && (
+                <div className="space-y-6">
+                    <div className="flex justify-between items-center bg-blue-50 p-4 rounded-xl border border-blue-100">
+                        <div className="text-xs text-blue-800">
+                            <strong>Modelos de Contrato:</strong> Crie modelos de contrato de trabalho para gerar automaticamente para seus colaboradores.
+                        </div>
+                        <Button onClick={() => handleOpenContractModal()} className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm shrink-0">
+                            <Plus size={16} className="mr-2"/> Novo Modelo
+                        </Button>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {state.contractTemplates.map(template => (
+                            <div key={template.id} className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col justify-between h-40">
+                                <div>
+                                    <div className="flex justify-between items-start mb-2">
+                                        <h3 className="font-bold text-slate-800">{template.name}</h3>
+                                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${template.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
+                                            {template.isActive ? 'ATIVO' : 'INATIVO'}
+                                        </span>
+                                    </div>
+                                    <p className="text-xs text-slate-500 line-clamp-3">{template.content}</p>
+                                </div>
+                                <div className="flex justify-end gap-2 mt-4 pt-4 border-t border-slate-100">
+                                    <button onClick={() => handleOpenContractModal(template)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"><Edit3 size={16}/></button>
+                                    <button onClick={() => handleDeleteContract(template.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg"><Trash2 size={16}/></button>
+                                </div>
+                            </div>
+                        ))}
+                        {state.contractTemplates.length === 0 && (
+                            <div className="col-span-full p-8 text-center text-gray-500 italic bg-white rounded-xl border border-dashed border-gray-300">
+                                Nenhum modelo de contrato cadastrado.
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
             {/* Modal de Configuração Legal */}
             <LegalSettingsModal isOpen={isLegalModalOpen} onClose={() => setIsLegalModalOpen(false)} />
             
@@ -398,6 +477,70 @@ export const StaffSettings: React.FC = () => {
                             className="w-4 h-4 text-blue-600 rounded border-gray-300"
                         />
                         <label htmlFor="isActive" className="text-sm font-bold text-slate-700">Ativo</label>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* Modal de Contrato */}
+            <Modal isOpen={isContractModalOpen} onClose={() => setIsContractModalOpen(false)} title={editingContract ? "Editar Modelo de Contrato" : "Novo Modelo de Contrato"} onSave={handleSaveContract} maxWidth="4xl">
+                <div className="space-y-4 pt-4">
+                    <div>
+                        <label className="block text-xs font-bold mb-1 text-slate-600">Nome do Modelo *</label>
+                        <input 
+                            type="text" 
+                            className="w-full border p-2.5 rounded-xl text-sm" 
+                            value={contractForm.name || ''} 
+                            onChange={e => setContractForm({...contractForm, name: e.target.value})}
+                            placeholder="Ex: Contrato CLT Padrão"
+                        />
+                    </div>
+                    <div className="flex gap-4 h-[500px]">
+                         <div className="flex-1 flex flex-col">
+                            <label className="block text-xs font-bold mb-1 text-slate-600">Conteúdo do Contrato (HTML/Texto) *</label>
+                            <textarea 
+                                className="w-full flex-1 border p-4 rounded-xl text-sm font-mono leading-relaxed resize-none focus:ring-2 focus:ring-blue-500 outline-none" 
+                                value={contractForm.content || ''} 
+                                onChange={e => setContractForm({...contractForm, content: e.target.value})}
+                                placeholder="Digite o contrato aqui..."
+                            />
+                         </div>
+                         <div className="w-64 bg-slate-50 p-4 rounded-xl border border-slate-200 overflow-y-auto">
+                            <h4 className="text-xs font-bold text-slate-700 mb-3 uppercase">Variáveis Disponíveis</h4>
+                            <div className="space-y-2">
+                                {[
+                                    { label: 'Nome Completo', code: '{{nome}}' },
+                                    { label: 'CPF', code: '{{cpf}}' },
+                                    { label: 'RG', code: '{{rg}}' },
+                                    { label: 'Endereço Completo', code: '{{endereco}}' },
+                                    { label: 'Cidade/UF', code: '{{cidade_uf}}' },
+                                    { label: 'Nacionalidade', code: '{{nacionalidade}}' },
+                                    { label: 'Estado Civil', code: '{{estado_civil}}' },
+                                    { label: 'Cargo', code: '{{cargo}}' },
+                                    { label: 'Salário Base', code: '{{salario}}' },
+                                    { label: 'Data Admissão', code: '{{data_admissao}}' },
+                                    { label: 'Jornada', code: '{{jornada}}' },
+                                    { label: 'CTPS', code: '{{ctps}}' },
+                                    { label: 'PIS', code: '{{pis}}' },
+                                ].map(v => (
+                                    <div key={v.code} className="bg-white p-2 rounded border border-slate-200 cursor-pointer hover:bg-blue-50 transition-colors group" onClick={() => {
+                                        setContractForm(prev => ({ ...prev, content: (prev.content || '') + v.code }));
+                                    }}>
+                                        <div className="text-[10px] text-slate-500">{v.label}</div>
+                                        <code className="text-xs font-bold text-blue-600 group-hover:text-blue-800">{v.code}</code>
+                                    </div>
+                                ))}
+                            </div>
+                         </div>
+                    </div>
+                    <div className="flex items-center gap-2 pt-2">
+                        <input 
+                            type="checkbox" 
+                            id="isContractActive" 
+                            checked={contractForm.isActive} 
+                            onChange={e => setContractForm({...contractForm, isActive: e.target.checked})}
+                            className="w-4 h-4 text-blue-600 rounded border-gray-300"
+                        />
+                        <label htmlFor="isContractActive" className="text-sm font-bold text-slate-700">Modelo Ativo</label>
                     </div>
                 </div>
             </Modal>
