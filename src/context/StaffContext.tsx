@@ -196,7 +196,10 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               // Time Tracking
               timeTrackingMethod: settingsRes.data.time_tracking_method || 'PHYSICAL',
               overtimePolicy: settingsRes.data.overtime_policy || 'PAID_OVERTIME',
-              absenceLogic: settingsRes.data.absence_logic || { justified: { deduction: false, disciplinaryAction: false }, unjustified: { deduction: true, disciplinaryAction: true } }
+              absenceLogic: {
+                  justified: settingsRes.data.absence_logic?.justified || { deduction: false, disciplinaryAction: false },
+                  unjustified: settingsRes.data.absence_logic?.unjustified || { deduction: true, disciplinaryAction: true }
+              }
           } : null;
 
           const inssBrackets = (inssRes.data || []).map((i: any) => ({

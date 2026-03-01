@@ -63,9 +63,9 @@ export const StaffSettings: React.FC = () => {
             setTimeTrackingForm({
                 timeTrackingMethod: state.legalSettings.timeTrackingMethod || 'PHYSICAL',
                 overtimePolicy: state.legalSettings.overtimePolicy || 'PAID_OVERTIME',
-                absenceLogic: state.legalSettings.absenceLogic || {
-                    justified: { deduction: false, disciplinaryAction: false },
-                    unjustified: { deduction: true, disciplinaryAction: true }
+                absenceLogic: {
+                    justified: state.legalSettings.absenceLogic?.justified || { deduction: false, disciplinaryAction: false },
+                    unjustified: state.legalSettings.absenceLogic?.unjustified || { deduction: true, disciplinaryAction: true }
                 }
             });
         }
