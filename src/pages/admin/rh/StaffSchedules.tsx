@@ -4,7 +4,7 @@ import { useStaff } from '../../../context/StaffContext';
 import { useUI } from '../../../context/UIContext';
 import { Button } from '../../../components/Button';
 import { Shift } from '../../../types';
-import { Plus, Clock, Trash2, Calendar, Edit, Users, ArrowRight } from 'lucide-react';
+import { Plus, Trash2, Users, ArrowRight } from 'lucide-react';
 import { Modal } from '../../../components/Modal';
 
 export const StaffSchedules: React.FC = () => {
@@ -26,14 +26,13 @@ export const StaffSchedules: React.FC = () => {
 
     return (
         <div className="space-y-6 animate-fade-in">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-200 gap-4">
-                <div>
-                    <h2 className="text-2xl font-black text-slate-800 flex items-center gap-2"><Calendar className="text-pink-600"/> Gestão de Escalas</h2>
-                    <p className="text-sm text-gray-500">Definição de turnos e alocação de equipe.</p>
+            <div className="flex justify-between items-center bg-blue-50 p-4 rounded-xl border border-blue-100">
+                <div className="text-xs text-blue-800">
+                    <strong>Gestão de Escalas:</strong> Defina os modelos de turnos e atribua-os aos colaboradores.
                 </div>
                 <div className="flex gap-2">
-                    <button onClick={() => setActiveView('SHIFTS')} className={`px-4 py-2 rounded-lg text-xs font-bold transition-all border ${activeView === 'SHIFTS' ? 'bg-pink-600 text-white border-pink-600' : 'bg-white text-gray-500 border-gray-200'}`}>Modelos de Turno</button>
-                    <button onClick={() => setActiveView('ASSIGNMENT')} className={`px-4 py-2 rounded-lg text-xs font-bold transition-all border ${activeView === 'ASSIGNMENT' ? 'bg-pink-600 text-white border-pink-600' : 'bg-white text-gray-500 border-gray-200'}`}>Atribuição (Lista)</button>
+                    <button onClick={() => setActiveView('SHIFTS')} className={`px-4 py-2 rounded-lg text-xs font-bold transition-all border ${activeView === 'SHIFTS' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-500 border-gray-200'}`}>Modelos de Turno</button>
+                    <button onClick={() => setActiveView('ASSIGNMENT')} className={`px-4 py-2 rounded-lg text-xs font-bold transition-all border ${activeView === 'ASSIGNMENT' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-500 border-gray-200'}`}>Atribuição (Lista)</button>
                 </div>
             </div>
 
@@ -46,7 +45,7 @@ export const StaffSchedules: React.FC = () => {
 
                     <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                         <table className="w-full text-left text-sm">
-                            <thead className="bg-pink-50 text-pink-800 font-bold uppercase text-xs">
+                            <thead className="bg-blue-50 text-blue-800 font-bold uppercase text-xs">
                                 <tr>
                                     <th className="p-4">Nome do Turno</th>
                                     <th className="p-4">Horário</th>
@@ -55,7 +54,7 @@ export const StaffSchedules: React.FC = () => {
                                     <th className="p-4 text-right">Ações</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-pink-50">
+                            <tbody className="divide-y divide-blue-50">
                                 {staffState.shifts.map(shift => (
                                     <tr key={shift.id} className="hover:bg-slate-50 transition-colors">
                                         <td className="p-4 font-bold text-slate-700">{shift.name}</td>
@@ -134,7 +133,7 @@ export const StaffSchedules: React.FC = () => {
                     </div>
                     <div><label className="text-xs font-bold text-gray-500 uppercase">Intervalo (Minutos)</label><input type="number" className="w-full border p-2.5 rounded-xl mt-1" value={shiftForm.breakMinutes} onChange={e => setShiftForm({...shiftForm, breakMinutes: parseInt(e.target.value)})} /></div>
                     <label className="flex items-center gap-3 bg-gray-50 p-3 rounded-xl cursor-pointer">
-                        <input type="checkbox" checked={shiftForm.nightShift} onChange={e => setShiftForm({...shiftForm, nightShift: e.target.checked})} className="w-4 h-4 text-pink-600 rounded"/>
+                        <input type="checkbox" checked={shiftForm.nightShift} onChange={e => setShiftForm({...shiftForm, nightShift: e.target.checked})} className="w-4 h-4 text-blue-600 rounded"/>
                         <span className="text-sm font-bold text-gray-700">Turno Noturno (Vira o dia)</span>
                     </label>
                     <Button onClick={handleAddShift} className="w-full py-4 text-lg font-bold">Salvar Turno</Button>

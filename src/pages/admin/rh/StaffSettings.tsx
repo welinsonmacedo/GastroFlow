@@ -1,7 +1,6 @@
 
 import React, { useState } from 'react';
 import { useStaff } from '../../../context/StaffContext';
-import { useRestaurant } from '../../../context/RestaurantContext';
 import { useUI } from '../../../context/UIContext';
 import { Button } from '../../../components/Button';
 import { HrJobRole, EventType, ContractTemplate } from '../../../types';
@@ -9,14 +8,14 @@ import { Plus, Trash2, Settings, DollarSign, RefreshCcw, FileText, Scale, Calcul
 import { LegalSettingsModal } from '../../../components/modals/LegalSettingsModal';
 import { HrJobRoleModal } from '../../../components/modals/HrJobRoleModal';
 import { Modal } from '../../../components/Modal';
+import { StaffSchedules } from './StaffSchedules';
 
 export const StaffSettings: React.FC = () => {
     const { state, applyLegalDefaults, deleteHrJobRole, addEventType, updateEventType, deleteEventType, addContractTemplate, updateContractTemplate, deleteContractTemplate } = useStaff();
-    const { state: restState } = useRestaurant();
     const { showAlert, showConfirm } = useUI();
 
     // Abas de Configuração
-    const [activeTab, setActiveTab] = useState<'LEGAL' | 'CUSTOM' | 'ROLES' | 'EVENT_TYPES' | 'CONTRACTS' | 'CALC_PARAMS'>('LEGAL');
+    const [activeTab, setActiveTab] = useState<'LEGAL' | 'CUSTOM' | 'ROLES' | 'EVENT_TYPES' | 'CONTRACTS' | 'CALC_PARAMS' | 'SCHEDULES'>('LEGAL');
     const [isLegalModalOpen, setIsLegalModalOpen] = useState(false);
     
     // Estado para Parâmetros de Cálculo
@@ -172,6 +171,7 @@ export const StaffSettings: React.FC = () => {
                     <button onClick={() => setActiveTab('ROLES')} className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'ROLES' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}>Cargos & CBO</button>
                     <button onClick={() => setActiveTab('EVENT_TYPES')} className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'EVENT_TYPES' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}>Tipos de Eventos</button>
                     <button onClick={() => setActiveTab('CONTRACTS')} className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'CONTRACTS' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}>Modelos de Contrato</button>
+                    <button onClick={() => setActiveTab('SCHEDULES')} className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'SCHEDULES' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}>Escalas & Turnos</button>
                     <button onClick={() => setActiveTab('CALC_PARAMS')} className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'CALC_PARAMS' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}>Parâmetros de Cálculos</button>
                 </div>
             </div>
@@ -522,6 +522,11 @@ export const StaffSettings: React.FC = () => {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* ABA 7: ESCALAS & TURNOS */}
+            {activeTab === 'SCHEDULES' && (
+                <StaffSchedules />
             )}
 
             {/* Modal de Configuração Legal */}

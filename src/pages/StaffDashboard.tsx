@@ -1,19 +1,18 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 // @ts-ignore
 import { Routes, Route, Navigate, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useRestaurant } from '../context/RestaurantContext';
 import { useAuth } from '../context/AuthProvider';
 import { 
-    Users, Clock, Calendar, FileText, BarChart3, 
-    LogOut, Grid, ChefHat, UserPlus, Timer, Settings, Download,
+    Users, Calendar, FileText, 
+    LogOut, Grid, Timer, Settings,
     DollarSign, UserMinus
 } from 'lucide-react';
 import { Role } from '../types';
 
 // Sub-páginas RH
 import { StaffList } from './admin/rh/StaffList';
-import { StaffSchedules } from './admin/rh/StaffSchedules';
 import { StaffPayroll } from './admin/rh/StaffPayroll';
 import { StaffRecurringEvents } from './admin/rh/StaffRecurringEvents';
 import { StaffAttendance } from './admin/rh/StaffAttendance';
@@ -45,12 +44,6 @@ export const StaffDashboard: React.FC = () => {
         label: 'CONTROLE DE PONTO', 
         icon: Timer, 
         featureKeys: ['hr_timeclock']
-    },
-    { 
-        path: '/rh/schedules', 
-        label: 'ESCALAS & TURNOS', 
-        icon: Calendar, 
-        featureKeys: ['hr_schedule']
     },
     { 
         path: '/rh/payroll', 
@@ -177,7 +170,6 @@ export const StaffDashboard: React.FC = () => {
                 <Routes>
                     <Route path="/" element={<StaffList />} />
                     <Route path="/attendance" element={<StaffAttendance />} />
-                    <Route path="/schedules" element={<StaffSchedules />} />
                     <Route path="/payroll" element={<StaffPayroll />} />
                     <Route path="/thirteenth" element={<StaffThirteenth />} />
                     <Route path="/vacation" element={<StaffVacation />} />
