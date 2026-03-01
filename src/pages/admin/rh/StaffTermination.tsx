@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useStaff } from '../../../context/StaffContext';
 import { 
-    UserMinus, Search, AlertTriangle, FileText, CheckCircle, XCircle 
+    UserMinus, Search, AlertTriangle, FileText, CheckCircle, XCircle, Trash2, AlertCircle 
 } from 'lucide-react';
 import { Termination, TerminationReason, NoticePeriodType } from '../../../types';
 
@@ -43,6 +43,27 @@ export const StaffTermination: React.FC = () => {
         } catch (error: any) {
             alert(error.message);
         }
+    };
+
+    const updatePreviewValue = (field: keyof Termination, value: number) => {
+        if (!preview) return;
+        
+        const updated = { ...preview, [field]: value };
+        
+        // Recalcular total
+        const totalValue = 
+            updated.balanceSalary + 
+            updated.noticeValue + 
+            updated.vacationProportionalValue + 
+            updated.vacationExpiredValue + 
+            updated.thirteenthProportionalValue + 
+            updated.fgtsFineValue - 
+            updated.discountsValue;
+
+        setPreview({
+            ...updated,
+            totalValue
+        });
     };
 
     const handleFinalize = async (id: string) => {
@@ -244,28 +265,82 @@ export const StaffTermination: React.FC = () => {
 
                             {preview && (
                                 <div className="mt-4 p-4 bg-red-50 rounded-lg border border-red-100 text-sm space-y-2">
-                                    <div className="flex justify-between">
-                                        <span className="text-gray-600">Saldo de Salário:</span>
-                                        <span className="font-bold">R$ {preview.balanceSalary.toFixed(2)}</span>
+                                    <div className="bg-white p-3 rounded border border-red-100 mb-3">
+                                        <p className="font-bold text-red-800 flex items-center gap-2 mb-2">
+                                            <AlertCircle size={14}/> Memória de Cálculo
+                                        </p>
+                                        <ul className="list-disc pl-4 text-xs text-red-700 space-y-1">
+                                            <li>Saldo de Salário: Dias trabalhados no mês do desligamento.</li>
+                                            <li>Aviso Prévio: {preview.noticeDays} dias {noticeType === 'INDEMNIFIED' ? 'indenizados' : 'trabalhados'}.</li>
+                                            <li>Férias Prop.: Proporcional aos meses trabalhados no período aquisitivo atual + 1/3.</li>
+                                            <li>13º Prop.: Proporcional aos meses trabalhados no ano corrente.</li>
+                                            <li>Multa FGTS: 40% sobre o saldo (estimado).</li>
+                                        </ul>
                                     </div>
-                                    <div className="flex justify-between">
-                                        <span className="text-gray-600">Aviso Prévio:</span>
-                                        <span className="font-bold">R$ {preview.noticeValue.toFixed(2)}</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                        <span className="text-gray-600">Férias Prop. + 1/3:</span>
-                                        <span className="font-bold">R$ {preview.vacationProportionalValue.toFixed(2)}</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                        <span className="text-gray-600">13º Proporcional:</span>
-                                        <span className="font-bold">R$ {preview.thirteenthProportionalValue.toFixed(2)}</span>
-                                    </div>
-                                    {preview.fgtsFineValue > 0 && (
-                                        <div className="flex justify-between text-blue-600">
-                                            <span>Multa FGTS (40%):</span>
-                                            <span className="font-bold">R$ {preview.fgtsFineValue.toFixed(2)}</span>
+
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label className="block text-xs font-medium text-gray-600">Saldo Salário (Editável)</label>
+                                            <input 
+                                                type="number" 
+                                                value={preview.balanceSalary}
+                                                onChange={(e) => updatePreviewValue('balanceSalary', Number(e.target.value))}
+                                                className="w-full text-sm border-gray-300 rounded focus:ring-red-500 focus:border-red-500"
+                                            />
                                         </div>
-                                    )}
+                                        <div>
+                                            <label className="block text-xs font-medium text-gray-600">Aviso Prévio (Editável)</label>
+                                            <input 
+                                                type="number" 
+                                                value={preview.noticeValue}
+                                                onChange={(e) => updatePreviewValue('noticeValue', Number(e.target.value))}
+                                                className="w-full text-sm border-gray-300 rounded focus:ring-red-500 focus:border-red-500"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label className="block text-xs font-medium text-gray-600">Férias Prop. + 1/3</label>
+                                            <input 
+                                                type="number" 
+                                                value={preview.vacationProportionalValue}
+                                                onChange={(e) => updatePreviewValue('vacationProportionalValue', Number(e.target.value))}
+                                                className="w-full text-sm border-gray-300 rounded focus:ring-red-500 focus:border-red-500"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-medium text-gray-600">13º Proporcional</label>
+                                            <input 
+                                                type="number" 
+                                                value={preview.thirteenthProportionalValue}
+                                                onChange={(e) => updatePreviewValue('thirteenthProportionalValue', Number(e.target.value))}
+                                                className="w-full text-sm border-gray-300 rounded focus:ring-red-500 focus:border-red-500"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label className="block text-xs font-medium text-gray-600">Multa FGTS</label>
+                                            <input 
+                                                type="number" 
+                                                value={preview.fgtsFineValue}
+                                                onChange={(e) => updatePreviewValue('fgtsFineValue', Number(e.target.value))}
+                                                className="w-full text-sm border-gray-300 rounded focus:ring-red-500 focus:border-red-500"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-medium text-gray-600">Descontos</label>
+                                            <input 
+                                                type="number" 
+                                                value={preview.discountsValue}
+                                                onChange={(e) => updatePreviewValue('discountsValue', Number(e.target.value))}
+                                                className="w-full text-sm border-gray-300 rounded focus:ring-red-500 focus:border-red-500"
+                                            />
+                                        </div>
+                                    </div>
+
                                     <div className="border-t border-red-200 my-2 pt-2 flex justify-between text-lg font-bold text-red-800">
                                         <span>Total Rescisório:</span>
                                         <span>R$ {preview.totalValue.toFixed(2)}</span>

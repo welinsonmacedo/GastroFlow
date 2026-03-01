@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useStaff } from '../../../context/StaffContext';
 import { 
-    Calendar, Search, Plus, Trash2, CheckCircle, AlertTriangle, History 
+    Calendar, Search, Plus, Trash2, CheckCircle, AlertTriangle, History, AlertCircle 
 } from 'lucide-react';
 import { VacationSchedule } from '../../../types';
 
@@ -24,6 +24,25 @@ export const StaffVacation: React.FC = () => {
 
     const handleCalculate = async () => {
         if (!selectedStaffId || !startDate || daysCount <= 0) return;
+
+        // Validação de 1 ano de casa (Período Aquisitivo)
+        const user = state.users.find(u => u.id === selectedStaffId);
+        if (user && user.hireDate) {
+            const hireDate = new Date(user.hireDate);
+            const vacationStart = new Date(startDate);
+            const oneYearAfterHire = new Date(hireDate);
+            oneYearAfterHire.setFullYear(hireDate.getFullYear() + 1);
+            
+            // Zera as horas para comparar apenas as datas
+            oneYearAfterHire.setHours(0,0,0,0);
+            vacationStart.setHours(0,0,0,0);
+
+            if (vacationStart < oneYearAfterHire) {
+                alert('O colaborador ainda não completou 1 ano de casa (período aquisitivo incompleto). A legislação exige 12 meses de trabalho para o primeiro gozo de férias.');
+                return;
+            }
+        }
+
         try {
             const result = await calculateVacation(selectedStaffId, new Date(startDate), daysCount, soldDays);
             setPreview(result);
@@ -45,6 +64,25 @@ export const StaffVacation: React.FC = () => {
         } catch (error: any) {
             alert(error.message);
         }
+    };
+
+    const updatePreviewValue = (field: keyof VacationSchedule, value: number) => {
+        if (!preview) return;
+        
+        const updated = { ...preview, [field]: value };
+        
+        // Recalcular totais se necessário
+        // Total Bruto = base + 1/3 + abono + 1/3 abono
+        const totalGross = updated.baseValue + updated.oneThirdValue + updated.soldValue + updated.soldOneThirdValue;
+        
+        // Total Líquido = Bruto - INSS - IRRF
+        const totalNet = totalGross - updated.inssValue - updated.irrfValue;
+
+        setPreview({
+            ...updated,
+            totalGross,
+            totalNet
+        });
     };
 
     const handleDelete = async (id: string) => {
@@ -249,20 +287,85 @@ export const StaffVacation: React.FC = () => {
 
                             {preview && (
                                 <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-100 text-sm space-y-2">
-                                    <div className="flex justify-between">
-                                        <span className="text-gray-600">Valor Férias:</span>
-                                        <span className="font-bold">R$ {preview.baseValue.toFixed(2)}</span>
+                                    <div className="bg-white p-3 rounded border border-blue-100 mb-3">
+                                        <p className="font-bold text-blue-800 flex items-center gap-2 mb-2">
+                                            <AlertCircle size={14}/> Memória de Cálculo
+                                        </p>
+                                        <ul className="list-disc pl-4 text-xs text-blue-700 space-y-1">
+                                            <li>Salário Base: R$ {preview.baseValue.toFixed(2)}</li>
+                                            <li>1/3 Constitucional: R$ {preview.oneThirdValue.toFixed(2)} (33.33% do valor)</li>
+                                            {preview.soldValue > 0 && (
+                                                <li>Abono Pecuniário: R$ {preview.soldValue.toFixed(2)} (Venda de {soldDays} dias)</li>
+                                            )}
+                                            <li>INSS/IRRF: Calculados sobre o total bruto.</li>
+                                        </ul>
                                     </div>
-                                    <div className="flex justify-between">
-                                        <span className="text-gray-600">1/3 Constitucional:</span>
-                                        <span className="font-bold">R$ {preview.oneThirdValue.toFixed(2)}</span>
+
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label className="block text-xs font-medium text-gray-600">Valor Férias (Editável)</label>
+                                            <input 
+                                                type="number" 
+                                                value={preview.baseValue}
+                                                onChange={(e) => updatePreviewValue('baseValue', Number(e.target.value))}
+                                                className="w-full text-sm border-gray-300 rounded focus:ring-pink-500 focus:border-pink-500"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-medium text-gray-600">1/3 Constitucional (Editável)</label>
+                                            <input 
+                                                type="number" 
+                                                value={preview.oneThirdValue}
+                                                onChange={(e) => updatePreviewValue('oneThirdValue', Number(e.target.value))}
+                                                className="w-full text-sm border-gray-300 rounded focus:ring-pink-500 focus:border-pink-500"
+                                            />
+                                        </div>
                                     </div>
+
                                     {preview.soldValue > 0 && (
-                                        <div className="flex justify-between text-green-600">
-                                            <span>Abono Pecuniário:</span>
-                                            <span className="font-bold">R$ {preview.soldValue.toFixed(2)}</span>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div>
+                                                <label className="block text-xs font-medium text-gray-600">Abono Pecuniário</label>
+                                                <input 
+                                                    type="number" 
+                                                    value={preview.soldValue}
+                                                    onChange={(e) => updatePreviewValue('soldValue', Number(e.target.value))}
+                                                    className="w-full text-sm border-gray-300 rounded focus:ring-pink-500 focus:border-pink-500"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-medium text-gray-600">1/3 Abono</label>
+                                                <input 
+                                                    type="number" 
+                                                    value={preview.soldOneThirdValue}
+                                                    onChange={(e) => updatePreviewValue('soldOneThirdValue', Number(e.target.value))}
+                                                    className="w-full text-sm border-gray-300 rounded focus:ring-pink-500 focus:border-pink-500"
+                                                />
+                                            </div>
                                         </div>
                                     )}
+
+                                    <div className="grid grid-cols-2 gap-3 pt-2 border-t border-blue-100">
+                                        <div>
+                                            <label className="block text-xs font-medium text-gray-600">INSS</label>
+                                            <input 
+                                                type="number" 
+                                                value={preview.inssValue}
+                                                onChange={(e) => updatePreviewValue('inssValue', Number(e.target.value))}
+                                                className="w-full text-sm border-gray-300 rounded focus:ring-pink-500 focus:border-pink-500"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-medium text-gray-600">IRRF</label>
+                                            <input 
+                                                type="number" 
+                                                value={preview.irrfValue}
+                                                onChange={(e) => updatePreviewValue('irrfValue', Number(e.target.value))}
+                                                className="w-full text-sm border-gray-300 rounded focus:ring-pink-500 focus:border-pink-500"
+                                            />
+                                        </div>
+                                    </div>
+
                                     <div className="border-t border-blue-200 my-2 pt-2 flex justify-between text-lg font-bold text-blue-800">
                                         <span>Total Líquido Estimado:</span>
                                         <span>R$ {preview.totalNet.toFixed(2)}</span>
