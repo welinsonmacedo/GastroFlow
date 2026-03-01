@@ -531,6 +531,15 @@ export interface ContractTemplate {
 }
 
 
+export interface StaffWarning {
+    id: string;
+    staffId: string;
+    type: 'VERBAL' | 'FORMAL';
+    content: string;
+    createdAt: string;
+    createdBy?: string;
+}
+
 export interface SystemAccessLog {
     id: string;
     staff_id: string;

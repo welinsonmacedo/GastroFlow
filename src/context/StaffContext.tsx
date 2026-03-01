@@ -5,7 +5,7 @@ import {
     RHTax, RHBenefit, TaxRegime, TaxPayerType, TaxCalculationBasis,
     RhPayrollSetting, RhInssBracket, RhIrrfBracket, ClosedPayroll,
     PayrollEvent, PayrollEventType, PayrollEntry, HrJobRole, RecurringEvent, EventType, ContractTemplate,
-    ThirteenthPayment, VacationPeriod, VacationSchedule, Termination
+    ThirteenthPayment, VacationPeriod, VacationSchedule, Termination, StaffWarning
 } from '../types';
 import { supabase, logAudit } from '../lib/supabase';
 import { useRestaurant } from './RestaurantContext';
@@ -32,6 +32,7 @@ interface StaffState {
   vacationPeriods: VacationPeriod[];
   vacationSchedules: VacationSchedule[];
   terminations: Termination[];
+  warnings: StaffWarning[];
   isLoading: boolean;
 }
 
@@ -66,6 +67,9 @@ interface StaffContextType {
   saveTermination: (termination: Partial<Termination>) => Promise<void>;
   finalizeTermination: (id: string) => Promise<void>;
   deleteTermination: (id: string) => Promise<void>;
+
+  addStaffWarning: (warning: Partial<StaffWarning>) => Promise<void>;
+  deleteStaffWarning: (id: string) => Promise<void>;
 
   addHrJobRole: (role: Partial<HrJobRole>) => Promise<void>;
   updateHrJobRole: (role: HrJobRole) => Promise<void>;
@@ -120,7 +124,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [state, setState] = useState<StaffState>({ 
     users: [], shifts: [], timeEntries: [], roles: [], hrJobRoles: [], taxes: [], benefits: [],
     legalSettings: null, inssBrackets: [], irrfBrackets: [], payrollEvents: [], recurringEvents: [], eventTypes: [], contractTemplates: [], payrollEntries: [],
-    thirteenthPayments: [], vacationPeriods: [], vacationSchedules: [], terminations: [], isLoading: true 
+    thirteenthPayments: [], vacationPeriods: [], vacationSchedules: [], terminations: [], warnings: [], isLoading: true 
   });
 
   const fetchData = useCallback(async () => {
@@ -129,7 +133,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const [
           staffRes, shiftsRes, timeRes, rolesRes, taxesRes, benefitsRes,
           settingsRes, inssRes, irrfRes, eventsRes, recurringEventsRes, hrRolesRes, eventTypesRes, contractTemplatesRes,
-          thirteenthRes, vacationsRes, vacationSchedulesRes, terminationsRes
+          thirteenthRes, vacationsRes, vacationSchedulesRes, terminationsRes, warningsRes
       ] = await Promise.all([
           supabase.from('staff').select('*, custom_roles(name)').eq('tenant_id', tenantId).order('name'),
           supabase.from('rh_shifts').select('*').eq('tenant_id', tenantId),
@@ -148,7 +152,8 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           supabase.from('rh_thirteenth_payments').select('*').eq('tenant_id', tenantId),
           supabase.from('rh_vacations').select('*').eq('tenant_id', tenantId),
           supabase.from('rh_vacation_schedules').select('*').eq('tenant_id', tenantId),
-          supabase.from('rh_terminations').select('*').eq('tenant_id', tenantId)
+          supabase.from('rh_terminations').select('*').eq('tenant_id', tenantId),
+          supabase.from('rh_staff_warnings').select('*').eq('tenant_id', tenantId).order('created_at', { ascending: false })
       ]);
 
       if (staffRes.data) {
@@ -288,11 +293,17 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               discountsValue: Number(t.discounts_value), totalValue: Number(t.total_value), status: t.status
           }));
 
+          const mappedWarnings = (warningsRes.data || []).map((w: any) => ({
+              id: w.id, staffId: w.staff_id, type: w.type, content: w.content,
+              createdAt: w.created_at, createdBy: w.created_by
+          }));
+
           setState({ 
             users: mappedUsers, shifts: mappedShifts, timeEntries: mappedTime, roles: mappedRoles, hrJobRoles: mappedHrRoles,
             taxes: mappedTaxes, benefits: mappedBenefits, legalSettings, inssBrackets, irrfBrackets, 
             payrollEvents: mappedEvents, recurringEvents: mappedRecurringEvents, eventTypes: mappedEventTypes, contractTemplates: mappedContractTemplates, payrollEntries: [],
             thirteenthPayments: mappedThirteenth, vacationPeriods: mappedVacationPeriods, vacationSchedules: mappedVacationSchedules, terminations: mappedTerminations,
+            warnings: mappedWarnings,
             isLoading: false 
           });
       }
@@ -378,6 +389,26 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const deleteContractTemplate = async (id: string) => {
       if (!tenantId) return;
       const { error } = await supabase.from('rh_contract_templates').delete().eq('id', id);
+      if (error) throw error;
+      await fetchData();
+  };
+
+  const addStaffWarning = async (warning: Partial<StaffWarning>) => {
+      if (!tenantId) return;
+      const { error } = await supabase.from('rh_staff_warnings').insert({
+          tenant_id: tenantId,
+          staff_id: warning.staffId,
+          type: warning.type,
+          content: warning.content,
+          created_by: currentUser?.id
+      });
+      if (error) throw error;
+      await fetchData();
+  };
+
+  const deleteStaffWarning = async (id: string) => {
+      if (!tenantId) return;
+      const { error } = await supabase.from('rh_staff_warnings').delete().eq('id', id);
       if (error) throw error;
       await fetchData();
   };
@@ -1330,7 +1361,8 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         addContractTemplate, updateContractTemplate, deleteContractTemplate, uploadSignedContract,
         calculateThirteenth, saveThirteenth, deleteThirteenth,
         calculateVacation, saveVacationSchedule, updateVacationSchedule, deleteVacationSchedule,
-        calculateTermination, saveTermination, finalizeTermination, deleteTermination
+        calculateTermination, saveTermination, finalizeTermination, deleteTermination,
+        addStaffWarning, deleteStaffWarning
     }}>
       {children}
     </StaffContext.Provider>

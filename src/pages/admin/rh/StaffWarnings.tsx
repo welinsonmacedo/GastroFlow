@@ -4,21 +4,23 @@ import { useStaff } from '../../../context/StaffContext';
 import { useUI } from '../../../context/UIContext';
 import { useRestaurant } from '../../../context/RestaurantContext';
 import { Button } from '../../../components/Button';
-import { AlertTriangle, User as LucideUser, Printer, Edit3, Eye } from 'lucide-react';
+import { AlertTriangle, User as LucideUser, Printer, Edit3, Eye, History, Trash2 } from 'lucide-react';
 
 export const StaffWarnings: React.FC = () => {
-    const { state } = useStaff();
+    const { state, addStaffWarning, deleteStaffWarning } = useStaff();
     const { state: restState } = useRestaurant();
-    const { showAlert } = useUI();
+    const { showAlert, showConfirm } = useUI();
 
     const [selectedStaffId, setSelectedStaffId] = useState<string>('');
     const [warningType, setWarningType] = useState<'VERBAL' | 'FORMAL'>('FORMAL');
     const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
     const [content, setContent] = useState<string>('');
     const [isPreviewMode, setIsPreviewMode] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
 
     const warningTemplates = state.contractTemplates.filter(t => t.isActive && t.type === 'WARNING');
     const selectedStaff = state.users.find(u => u.id === selectedStaffId);
+    const staffWarnings = state.warnings.filter(w => !selectedStaffId || w.staffId === selectedStaffId);
 
     useEffect(() => {
         if (selectedTemplateId) {
@@ -29,33 +31,127 @@ export const StaffWarnings: React.FC = () => {
         }
     }, [selectedTemplateId]);
 
-    const handlePrint = () => {
+    const handleSaveAndPrint = async () => {
         if (!selectedStaffId || !content) {
             return showAlert({ title: "Campos Obrigatórios", message: "Selecione um colaborador e preencha o conteúdo.", type: "WARNING" });
         }
 
+        try {
+            setIsSaving(true);
+            
+            // 1. Save to database
+            await addStaffWarning({
+                staffId: selectedStaffId,
+                type: warningType,
+                content: content
+            });
+
+            // 2. Print
+            const printWindow = window.open('', '_blank');
+            if (!printWindow) return;
+
+            const company = restState.businessInfo;
+            
+            // Replace variables
+            let rendered = content
+                .replace(/{{empresa_nome}}/g, company.restaurantName || '')
+                .replace(/{{empresa_cnpj}}/g, company.cnpj || '')
+                .replace(/{{empresa_endereco}}/g, `${company.address?.street || ''}, ${company.address?.number || ''}`)
+                .replace(/{{empresa_cidade}}/g, company.address?.city || '')
+                .replace(/{{empresa_estado}}/g, company.address?.state || '')
+                .replace(/{{nome}}/g, selectedStaff?.name || '')
+                .replace(/{{cpf}}/g, selectedStaff?.documentCpf || '')
+                .replace(/{{cargo}}/g, selectedStaff?.customRoleName || '')
+                .replace(/{{data}}/g, new Date().toLocaleDateString('pt-BR'))
+                .replace(/{{tipo_advertencia}}/g, warningType === 'VERBAL' ? 'VERBAL' : 'ESCRITA/FORMAL');
+
+            printWindow.document.write(`
+                <html>
+                    <head>
+                        <title>Advertência - ${selectedStaff?.name}</title>
+                        <style>
+                            body { font-family: 'Inter', sans-serif; padding: 50px; line-height: 1.6; color: #000; }
+                            .header { text-align: center; margin-bottom: 40px; border-bottom: 2px solid #000; padding-bottom: 20px; }
+                            .content { margin-bottom: 60px; text-align: justify; }
+                            .signatures { display: flex; justify-content: space-between; margin-top: 100px; }
+                            .sig-box { border-top: 1px solid #000; width: 250px; text-align: center; padding-top: 10px; font-size: 12px; }
+                            @media print { body { padding: 0; } }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="header">
+                            <h2>${company.restaurantName?.toUpperCase()}</h2>
+                            <p>${warningType === 'VERBAL' ? 'REGISTRO DE ADVERTÊNCIA VERBAL' : 'ADVERTÊNCIA DISCIPLINAR FORMAL'}</p>
+                        </div>
+                        <div class="content">
+                            ${rendered}
+                        </div>
+                        <div class="signatures">
+                            <div class="sig-box">
+                                Assinatura do Empregador
+                            </div>
+                            <div class="sig-box">
+                                Assinatura do Colaborador<br/>
+                                ${selectedStaff?.name}
+                            </div>
+                        </div>
+                        <script>window.print(); window.close();</script>
+                    </body>
+                </html>
+            `);
+            printWindow.document.close();
+            
+            showAlert({ title: "Sucesso", message: "Advertência registrada e enviada para impressão.", type: "SUCCESS" });
+            
+            // Reset form
+            setSelectedTemplateId('');
+            setContent('');
+        } catch (error) {
+            console.error(error);
+            showAlert({ title: "Erro", message: "Não foi possível salvar a advertência.", type: "ERROR" });
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleDeleteWarning = (id: string) => {
+        showConfirm({
+            title: "Excluir Registro",
+            message: "Tem certeza que deseja excluir este registro do histórico?",
+            onConfirm: async () => {
+                try {
+                    await deleteStaffWarning(id);
+                    showAlert({ title: "Sucesso", message: "Registro excluído.", type: "SUCCESS" });
+                } catch (error) {
+                    showAlert({ title: "Erro", message: "Erro ao excluir registro.", type: "ERROR" });
+                }
+            }
+        });
+    };
+
+    const handleViewWarning = (warning: any) => {
+        const staff = state.users.find(u => u.id === warning.staffId);
         const printWindow = window.open('', '_blank');
         if (!printWindow) return;
 
         const company = restState.businessInfo;
         
-        // Replace variables
-        let rendered = content
+        let rendered = warning.content
             .replace(/{{empresa_nome}}/g, company.restaurantName || '')
             .replace(/{{empresa_cnpj}}/g, company.cnpj || '')
             .replace(/{{empresa_endereco}}/g, `${company.address?.street || ''}, ${company.address?.number || ''}`)
             .replace(/{{empresa_cidade}}/g, company.address?.city || '')
             .replace(/{{empresa_estado}}/g, company.address?.state || '')
-            .replace(/{{nome}}/g, selectedStaff?.name || '')
-            .replace(/{{cpf}}/g, selectedStaff?.documentCpf || '')
-            .replace(/{{cargo}}/g, selectedStaff?.customRoleName || '')
-            .replace(/{{data}}/g, new Date().toLocaleDateString('pt-BR'))
-            .replace(/{{tipo_advertencia}}/g, warningType === 'VERBAL' ? 'VERBAL' : 'ESCRITA/FORMAL');
+            .replace(/{{nome}}/g, staff?.name || '')
+            .replace(/{{cpf}}/g, staff?.documentCpf || '')
+            .replace(/{{cargo}}/g, staff?.customRoleName || '')
+            .replace(/{{data}}/g, new Date(warning.createdAt).toLocaleDateString('pt-BR'))
+            .replace(/{{tipo_advertencia}}/g, warning.type === 'VERBAL' ? 'VERBAL' : 'ESCRITA/FORMAL');
 
         printWindow.document.write(`
             <html>
                 <head>
-                    <title>Advertência - ${selectedStaff?.name}</title>
+                    <title>Advertência - ${staff?.name}</title>
                     <style>
                         body { font-family: 'Inter', sans-serif; padding: 50px; line-height: 1.6; color: #000; }
                         .header { text-align: center; margin-bottom: 40px; border-bottom: 2px solid #000; padding-bottom: 20px; }
@@ -68,19 +164,14 @@ export const StaffWarnings: React.FC = () => {
                 <body>
                     <div class="header">
                         <h2>${company.restaurantName?.toUpperCase()}</h2>
-                        <p>${warningType === 'VERBAL' ? 'REGISTRO DE ADVERTÊNCIA VERBAL' : 'ADVERTÊNCIA DISCIPLINAR FORMAL'}</p>
+                        <p>${warning.type === 'VERBAL' ? 'REGISTRO DE ADVERTÊNCIA VERBAL' : 'ADVERTÊNCIA DISCIPLINAR FORMAL'}</p>
                     </div>
                     <div class="content">
                         ${rendered}
                     </div>
                     <div class="signatures">
-                        <div class="sig-box">
-                            Assinatura do Empregador
-                        </div>
-                        <div class="sig-box">
-                            Assinatura do Colaborador<br/>
-                            ${selectedStaff?.name}
-                        </div>
+                        <div class="sig-box">Assinatura do Empregador</div>
+                        <div class="sig-box">Assinatura do Colaborador<br/>${staff?.name}</div>
                     </div>
                     <script>window.print(); window.close();</script>
                 </body>
@@ -90,7 +181,7 @@ export const StaffWarnings: React.FC = () => {
     };
 
     return (
-        <div className="space-y-6 animate-fade-in">
+        <div className="space-y-6 animate-fade-in pb-20">
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
                 <div className="flex justify-between items-center mb-6">
                     <div>
@@ -103,69 +194,104 @@ export const StaffWarnings: React.FC = () => {
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     {/* Painel de Configuração */}
-                    <div className="lg:col-span-1 space-y-6 bg-slate-50 p-6 rounded-2xl border border-slate-100">
-                        <h3 className="text-xs font-black text-slate-400 uppercase tracking-wider mb-4">Nova Advertência</h3>
-                        
-                        <div>
-                            <label className="block text-xs font-bold mb-1 text-slate-600">Colaborador *</label>
-                            <div className="relative">
-                                <LucideUser className="absolute left-3 top-2.5 text-gray-400" size={16} />
-                                <select 
-                                    className="w-full border pl-9 p-2.5 rounded-xl text-sm bg-white"
-                                    value={selectedStaffId}
-                                    onChange={e => setSelectedStaffId(e.target.value)}
-                                >
-                                    <option value="">Selecione o funcionário...</option>
-                                    {state.users.filter(u => u.status === 'ACTIVE').map(user => (
-                                        <option key={user.id} value={user.id}>{user.name}</option>
-                                    ))}
-                                </select>
+                    <div className="lg:col-span-1 space-y-6">
+                        <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100">
+                            <h3 className="text-xs font-black text-slate-400 uppercase tracking-wider mb-4">Nova Advertência</h3>
+                            
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-xs font-bold mb-1 text-slate-600">Colaborador *</label>
+                                    <div className="relative">
+                                        <LucideUser className="absolute left-3 top-2.5 text-gray-400" size={16} />
+                                        <select 
+                                            className="w-full border pl-9 p-2.5 rounded-xl text-sm bg-white"
+                                            value={selectedStaffId}
+                                            onChange={e => setSelectedStaffId(e.target.value)}
+                                        >
+                                            <option value="">Selecione o funcionário...</option>
+                                            {state.users.filter(u => u.status === 'ACTIVE').map(user => (
+                                                <option key={user.id} value={user.id}>{user.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-bold mb-1 text-slate-600">Tipo de Advertência</label>
+                                    <div className="flex gap-2">
+                                        <button 
+                                            onClick={() => setWarningType('VERBAL')}
+                                            className={`flex-1 py-2 text-xs font-bold rounded-lg border transition-all ${warningType === 'VERBAL' ? 'bg-orange-500 text-white border-orange-600' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
+                                        >
+                                            Verbal
+                                        </button>
+                                        <button 
+                                            onClick={() => setWarningType('FORMAL')}
+                                            className={`flex-1 py-2 text-xs font-bold rounded-lg border transition-all ${warningType === 'FORMAL' ? 'bg-red-600 text-white border-red-700' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
+                                        >
+                                            Formal/Escrita
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-bold mb-1 text-slate-600">Modelo Base</label>
+                                    <select 
+                                        className="w-full border p-2.5 rounded-xl text-sm bg-white"
+                                        value={selectedTemplateId}
+                                        onChange={e => setSelectedTemplateId(e.target.value)}
+                                    >
+                                        <option value="">Selecione um modelo...</option>
+                                        {warningTemplates.map(t => (
+                                            <option key={t.id} value={t.id}>{t.name}</option>
+                                        ))}
+                                    </select>
+                                    {warningTemplates.length === 0 && (
+                                        <p className="text-[10px] text-orange-600 mt-1 font-bold">Nenhum modelo do tipo "Advertência" cadastrado.</p>
+                                    )}
+                                </div>
+
+                                <div className="pt-4">
+                                    <Button 
+                                        onClick={handleSaveAndPrint}
+                                        className="w-full bg-slate-800 hover:bg-slate-900 text-white py-3 rounded-xl flex items-center justify-center gap-2"
+                                        disabled={!selectedStaffId || !content || isSaving}
+                                    >
+                                        {isSaving ? 'Salvando...' : <><Printer size={18} /> Lançar e Imprimir</>}
+                                    </Button>
+                                </div>
                             </div>
                         </div>
 
-                        <div>
-                            <label className="block text-xs font-bold mb-1 text-slate-600">Tipo de Advertência</label>
-                            <div className="flex gap-2">
-                                <button 
-                                    onClick={() => setWarningType('VERBAL')}
-                                    className={`flex-1 py-2 text-xs font-bold rounded-lg border transition-all ${warningType === 'VERBAL' ? 'bg-orange-500 text-white border-orange-600' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
-                                >
-                                    Verbal
-                                </button>
-                                <button 
-                                    onClick={() => setWarningType('FORMAL')}
-                                    className={`flex-1 py-2 text-xs font-bold rounded-lg border transition-all ${warningType === 'FORMAL' ? 'bg-red-600 text-white border-red-700' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
-                                >
-                                    Formal/Escrita
-                                </button>
+                        {/* Histórico Rápido */}
+                        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                            <h3 className="text-xs font-black text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+                                <History size={14} /> Histórico Recente
+                            </h3>
+                            <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 scrollbar-hide">
+                                {staffWarnings.length === 0 ? (
+                                    <p className="text-xs text-gray-400 italic text-center py-4">Nenhum registro encontrado.</p>
+                                ) : (
+                                    staffWarnings.map(warning => {
+                                        const staff = state.users.find(u => u.id === warning.staffId);
+                                        return (
+                                            <div key={warning.id} className="p-3 rounded-xl bg-slate-50 border border-slate-100 group">
+                                                <div className="flex justify-between items-start mb-1">
+                                                    <span className={`text-[9px] font-black px-1.5 py-0.5 rounded uppercase ${warning.type === 'VERBAL' ? 'bg-orange-100 text-orange-700' : 'bg-red-100 text-red-700'}`}>
+                                                        {warning.type}
+                                                    </span>
+                                                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <button onClick={() => handleViewWarning(warning)} className="p-1 hover:bg-white rounded text-blue-600"><Printer size={12} /></button>
+                                                        <button onClick={() => handleDeleteWarning(warning.id)} className="p-1 hover:bg-white rounded text-red-600"><Trash2 size={12} /></button>
+                                                    </div>
+                                                </div>
+                                                <p className="text-xs font-bold text-slate-700 truncate">{staff?.name}</p>
+                                                <p className="text-[10px] text-slate-400">{new Date(warning.createdAt).toLocaleDateString('pt-BR')}</p>
+                                            </div>
+                                        );
+                                    })
+                                )}
                             </div>
-                        </div>
-
-                        <div>
-                            <label className="block text-xs font-bold mb-1 text-slate-600">Modelo Base</label>
-                            <select 
-                                className="w-full border p-2.5 rounded-xl text-sm bg-white"
-                                value={selectedTemplateId}
-                                onChange={e => setSelectedTemplateId(e.target.value)}
-                            >
-                                <option value="">Selecione um modelo...</option>
-                                {warningTemplates.map(t => (
-                                    <option key={t.id} value={t.id}>{t.name}</option>
-                                ))}
-                            </select>
-                            {warningTemplates.length === 0 && (
-                                <p className="text-[10px] text-orange-600 mt-1 font-bold">Nenhum modelo do tipo "Advertência" cadastrado.</p>
-                            )}
-                        </div>
-
-                        <div className="pt-4">
-                            <Button 
-                                onClick={handlePrint}
-                                className="w-full bg-slate-800 hover:bg-slate-900 text-white py-3 rounded-xl flex items-center justify-center gap-2"
-                                disabled={!selectedStaffId || !content}
-                            >
-                                <Printer size={18} /> Imprimir Documento
-                            </Button>
                         </div>
                     </div>
 
@@ -191,13 +317,13 @@ export const StaffWarnings: React.FC = () => {
 
                         {!isPreviewMode ? (
                             <textarea 
-                                className="w-full h-[500px] border p-6 rounded-2xl text-sm font-mono leading-relaxed focus:ring-2 focus:ring-blue-500 outline-none resize-none bg-white shadow-inner"
+                                className="w-full h-[600px] border p-6 rounded-2xl text-sm font-mono leading-relaxed focus:ring-2 focus:ring-blue-500 outline-none resize-none bg-white shadow-inner"
                                 value={content}
                                 onChange={e => setContent(e.target.value)}
                                 placeholder="O conteúdo da advertência aparecerá aqui após selecionar um modelo..."
                             />
                         ) : (
-                            <div className="w-full h-[500px] border p-8 rounded-2xl bg-white overflow-y-auto shadow-inner prose prose-slate max-w-none">
+                            <div className="w-full h-[600px] border p-8 rounded-2xl bg-white overflow-y-auto shadow-inner prose prose-slate max-w-none">
                                 <div 
                                     dangerouslySetInnerHTML={{ 
                                         __html: content
