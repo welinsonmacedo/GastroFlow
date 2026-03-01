@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { useStaff } from '../../../context/StaffContext';
 import { 
-    DollarSign, Calendar, Search, CheckCircle, AlertCircle, 
-    Printer, FileText, Calculator, Trash2 
+    Search, AlertCircle, Trash2 
 } from 'lucide-react';
 import { ThirteenthPayment } from '../../../types';
+import { Modal } from '../../../components/Modal';
 
 export const StaffThirteenth: React.FC = () => {
     const { state, calculateThirteenth, saveThirteenth, deleteThirteenth } = useStaff();
@@ -59,7 +59,6 @@ export const StaffThirteenth: React.FC = () => {
 
     return (
         <div className="space-y-6">
-            {/* ... existing header ... */}
             <div className="flex justify-between items-center">
                 <div>
                     <h2 className="text-2xl font-bold text-gray-800">13º Salário</h2>
@@ -190,78 +189,74 @@ export const StaffThirteenth: React.FC = () => {
             </div>
 
             {/* Modal de Confirmação/Edição */}
-            {isModalOpen && previewPayment && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
-                        <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-                            <h3 className="text-lg font-bold text-gray-800">
-                                {previewPayment.installment}ª Parcela - 13º Salário
-                            </h3>
-                            <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600">✕</button>
+            <Modal
+                isOpen={isModalOpen && !!previewPayment}
+                onClose={() => setIsModalOpen(false)}
+                title={`${previewPayment?.installment}ª Parcela - 13º Salário`}
+                maxWidth="md"
+            >
+                {previewPayment && (
+                    <div className="space-y-6">
+                        <div className="bg-blue-50 p-4 rounded-lg text-sm text-blue-800 space-y-2">
+                            <p className="font-bold flex items-center gap-2">
+                                <AlertCircle size={16}/> Memória de Cálculo:
+                            </p>
+                            <ul className="list-disc pl-4 space-y-1">
+                                <li>Salário Base: R$ {previewPayment.referenceSalary.toFixed(2)}</li>
+                                <li>Meses Trabalhados: {previewPayment.monthsWorked}/12</li>
+                                <li>Valor Proporcional: R$ {((previewPayment.referenceSalary / 12) * previewPayment.monthsWorked).toFixed(2)}</li>
+                                {previewPayment.installment === 1 ? (
+                                    <li>1ª Parcela: 50% do valor proporcional (sem descontos).</li>
+                                ) : (
+                                    <li>2ª Parcela: Valor total - 1ª Parcela - INSS - IRRF.</li>
+                                )}
+                            </ul>
                         </div>
-                        
-                        <div className="p-6 space-y-4">
-                            <div className="bg-blue-50 p-4 rounded-lg text-sm text-blue-800 space-y-2">
-                                <p className="font-bold flex items-center gap-2">
-                                    <AlertCircle size={16}/> Memória de Cálculo:
-                                </p>
-                                <ul className="list-disc pl-4 space-y-1">
-                                    <li>Salário Base: R$ {previewPayment.referenceSalary.toFixed(2)}</li>
-                                    <li>Meses Trabalhados: {previewPayment.monthsWorked}/12</li>
-                                    <li>Valor Proporcional: R$ {((previewPayment.referenceSalary / 12) * previewPayment.monthsWorked).toFixed(2)}</li>
-                                    {previewPayment.installment === 1 ? (
-                                        <li>1ª Parcela: 50% do valor proporcional (sem descontos).</li>
-                                    ) : (
-                                        <li>2ª Parcela: Valor total - 1ª Parcela - INSS - IRRF.</li>
-                                    )}
-                                </ul>
-                            </div>
 
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Valor Bruto (Editável)</label>
-                                <div className="relative">
-                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">R$</span>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Valor Bruto (Editável)</label>
+                            <div className="relative">
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">R$</span>
+                                <input 
+                                    type="number"
+                                    value={previewPayment.value}
+                                    onChange={(e) => setPreviewPayment({...previewPayment, value: Number(e.target.value), netValue: Number(e.target.value) - previewPayment.inssValue - previewPayment.irrfValue})}
+                                    className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-pink-500"
+                                />
+                            </div>
+                        </div>
+
+                        {previewPayment.installment === 2 && (
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">INSS</label>
                                     <input 
                                         type="number"
-                                        value={previewPayment.value}
-                                        onChange={(e) => setPreviewPayment({...previewPayment, value: Number(e.target.value), netValue: Number(e.target.value) - previewPayment.inssValue - previewPayment.irrfValue})}
-                                        className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-pink-500"
+                                        value={previewPayment.inssValue}
+                                        onChange={(e) => setPreviewPayment({...previewPayment, inssValue: Number(e.target.value), netValue: previewPayment.value - Number(e.target.value) - previewPayment.irrfValue})}
+                                        className="w-full px-3 py-2 rounded-lg border border-gray-300"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">IRRF</label>
+                                    <input 
+                                        type="number"
+                                        value={previewPayment.irrfValue}
+                                        onChange={(e) => setPreviewPayment({...previewPayment, irrfValue: Number(e.target.value), netValue: previewPayment.value - previewPayment.inssValue - Number(e.target.value)})}
+                                        className="w-full px-3 py-2 rounded-lg border border-gray-300"
                                     />
                                 </div>
                             </div>
+                        )}
 
-                            {previewPayment.installment === 2 && (
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">INSS</label>
-                                        <input 
-                                            type="number"
-                                            value={previewPayment.inssValue}
-                                            onChange={(e) => setPreviewPayment({...previewPayment, inssValue: Number(e.target.value), netValue: previewPayment.value - Number(e.target.value) - previewPayment.irrfValue})}
-                                            className="w-full px-3 py-2 rounded-lg border border-gray-300"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">IRRF</label>
-                                        <input 
-                                            type="number"
-                                            value={previewPayment.irrfValue}
-                                            onChange={(e) => setPreviewPayment({...previewPayment, irrfValue: Number(e.target.value), netValue: previewPayment.value - previewPayment.inssValue - Number(e.target.value)})}
-                                            className="w-full px-3 py-2 rounded-lg border border-gray-300"
-                                        />
-                                    </div>
-                                </div>
-                            )}
-
-                            <div className="pt-4 border-t border-gray-100 flex justify-between items-center">
-                                <span className="text-gray-600 font-medium">Líquido a Pagar:</span>
-                                <span className="text-xl font-bold text-green-600">
-                                    R$ {previewPayment.netValue.toFixed(2)}
-                                </span>
-                            </div>
+                        <div className="pt-4 border-t border-gray-100 flex justify-between items-center">
+                            <span className="text-gray-600 font-medium">Líquido a Pagar:</span>
+                            <span className="text-xl font-bold text-green-600">
+                                R$ {previewPayment.netValue.toFixed(2)}
+                            </span>
                         </div>
 
-                        <div className="p-6 border-t border-gray-100 bg-gray-50 flex justify-end gap-3">
+                        <div className="flex justify-end gap-3 pt-4">
                             <button 
                                 onClick={() => setIsModalOpen(false)}
                                 className="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium"
@@ -276,8 +271,8 @@ export const StaffThirteenth: React.FC = () => {
                             </button>
                         </div>
                     </div>
-                </div>
-            )}
+                )}
+            </Modal>
         </div>
     );
 };

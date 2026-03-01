@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { useStaff } from '../../../context/StaffContext';
 import { 
-    UserMinus, Search, AlertTriangle, FileText, CheckCircle, XCircle, Trash2, AlertCircle 
+    UserMinus, Search, FileText, CheckCircle, Trash2, AlertCircle 
 } from 'lucide-react';
 import { Termination, TerminationReason, NoticePeriodType } from '../../../types';
+import { Modal } from '../../../components/Modal';
 
 export const StaffTermination: React.FC = () => {
     const { state, calculateTermination, saveTermination, finalizeTermination, deleteTermination } = useStaff();
@@ -16,11 +17,6 @@ export const StaffTermination: React.FC = () => {
     const [reason, setReason] = useState<TerminationReason>('DISMISSAL_NO_CAUSE');
     const [noticeType, setNoticeType] = useState<NoticePeriodType>('INDEMNIFIED');
     const [preview, setPreview] = useState<Termination | null>(null);
-
-    const filteredUsers = state.users.filter(user => 
-        user.status === 'ACTIVE' && 
-        user.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
 
     const handleCalculate = async () => {
         if (!selectedStaffId || !terminationDate) return;
@@ -191,182 +187,178 @@ export const StaffTermination: React.FC = () => {
             </div>
 
             {/* Modal de Nova Rescisão */}
-            {isModalOpen && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
-                        <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-                            <h3 className="text-lg font-bold text-gray-800">Calcular Rescisão</h3>
-                            <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600">✕</button>
+            <Modal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                title="Calcular Rescisão"
+                maxWidth="lg"
+            >
+                <div className="space-y-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Colaborador</label>
+                        <select 
+                            value={selectedStaffId}
+                            onChange={(e) => setSelectedStaffId(e.target.value)}
+                            className="w-full rounded-lg border-gray-300 shadow-sm focus:border-pink-500 focus:ring-pink-500"
+                        >
+                            <option value="">Selecione...</option>
+                            {state.users.filter(u => u.status === 'ACTIVE').map(u => (
+                                <option key={u.id} value={u.id}>{u.name}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Data Desligamento</label>
+                            <input 
+                                type="date"
+                                value={terminationDate}
+                                onChange={(e) => setTerminationDate(e.target.value)}
+                                className="w-full rounded-lg border-gray-300 shadow-sm focus:border-pink-500 focus:ring-pink-500"
+                            />
                         </div>
-                        
-                        <div className="p-6 space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Colaborador</label>
-                                <select 
-                                    value={selectedStaffId}
-                                    onChange={(e) => setSelectedStaffId(e.target.value)}
-                                    className="w-full rounded-lg border-gray-300 shadow-sm focus:border-pink-500 focus:ring-pink-500"
-                                >
-                                    <option value="">Selecione...</option>
-                                    {state.users.filter(u => u.status === 'ACTIVE').map(u => (
-                                        <option key={u.id} value={u.id}>{u.name}</option>
-                                    ))}
-                                </select>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Motivo</label>
+                            <select 
+                                value={reason}
+                                onChange={(e) => setReason(e.target.value as any)}
+                                className="w-full rounded-lg border-gray-300 shadow-sm focus:border-pink-500 focus:ring-pink-500"
+                            >
+                                <option value="DISMISSAL_NO_CAUSE">Dispensa sem Justa Causa</option>
+                                <option value="DISMISSAL_CAUSE">Dispensa por Justa Causa</option>
+                                <option value="RESIGNATION">Pedido de Demissão</option>
+                                <option value="AGREEMENT">Acordo (Comum Acordo)</option>
+                                <option value="CONTRACT_END">Término de Contrato</option>
+                                <option value="DEATH">Falecimento</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Aviso Prévio</label>
+                        <select 
+                            value={noticeType}
+                            onChange={(e) => setNoticeType(e.target.value as any)}
+                            className="w-full rounded-lg border-gray-300 shadow-sm focus:border-pink-500 focus:ring-pink-500"
+                        >
+                            <option value="INDEMNIFIED">Indenizado (Pago)</option>
+                            <option value="WORKED">Trabalhado</option>
+                            <option value="WAIVED">Dispensado/Descontado</option>
+                        </select>
+                    </div>
+
+                    <div className="flex justify-end pt-4">
+                        <button 
+                            onClick={handleCalculate}
+                            className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium mr-2"
+                        >
+                            Simular Cálculo
+                        </button>
+                    </div>
+
+                    {preview && (
+                        <div className="mt-4 p-4 bg-red-50 rounded-lg border border-red-100 text-sm space-y-2">
+                            <div className="bg-white p-3 rounded border border-red-100 mb-3">
+                                <p className="font-bold text-red-800 flex items-center gap-2 mb-2">
+                                    <AlertCircle size={14}/> Memória de Cálculo
+                                </p>
+                                <ul className="list-disc pl-4 text-xs text-red-700 space-y-1">
+                                    <li>Saldo de Salário: Dias trabalhados no mês do desligamento.</li>
+                                    <li>Aviso Prévio: {preview.noticeDays} dias {noticeType === 'INDEMNIFIED' ? 'indenizados' : 'trabalhados'}.</li>
+                                    <li>Férias Prop.: Proporcional aos meses trabalhados no período aquisitivo atual + 1/3.</li>
+                                    <li>13º Prop.: Proporcional aos meses trabalhados no ano corrente.</li>
+                                    <li>Multa FGTS: 40% sobre o saldo (estimado).</li>
+                                </ul>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-2 gap-3">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Data Desligamento</label>
+                                    <label className="block text-xs font-medium text-gray-600">Saldo Salário (Editável)</label>
                                     <input 
-                                        type="date"
-                                        value={terminationDate}
-                                        onChange={(e) => setTerminationDate(e.target.value)}
-                                        className="w-full rounded-lg border-gray-300 shadow-sm focus:border-pink-500 focus:ring-pink-500"
+                                        type="number" 
+                                        value={preview.balanceSalary}
+                                        onChange={(e) => updatePreviewValue('balanceSalary', Number(e.target.value))}
+                                        className="w-full text-sm border-gray-300 rounded focus:ring-red-500 focus:border-red-500"
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Motivo</label>
-                                    <select 
-                                        value={reason}
-                                        onChange={(e) => setReason(e.target.value as any)}
-                                        className="w-full rounded-lg border-gray-300 shadow-sm focus:border-pink-500 focus:ring-pink-500"
-                                    >
-                                        <option value="DISMISSAL_NO_CAUSE">Dispensa sem Justa Causa</option>
-                                        <option value="DISMISSAL_CAUSE">Dispensa por Justa Causa</option>
-                                        <option value="RESIGNATION">Pedido de Demissão</option>
-                                        <option value="AGREEMENT">Acordo (Comum Acordo)</option>
-                                        <option value="CONTRACT_END">Término de Contrato</option>
-                                        <option value="DEATH">Falecimento</option>
-                                    </select>
+                                    <label className="block text-xs font-medium text-gray-600">Aviso Prévio (Editável)</label>
+                                    <input 
+                                        type="number" 
+                                        value={preview.noticeValue}
+                                        onChange={(e) => updatePreviewValue('noticeValue', Number(e.target.value))}
+                                        className="w-full text-sm border-gray-300 rounded focus:ring-red-500 focus:border-red-500"
+                                    />
                                 </div>
                             </div>
 
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Aviso Prévio</label>
-                                <select 
-                                    value={noticeType}
-                                    onChange={(e) => setNoticeType(e.target.value as any)}
-                                    className="w-full rounded-lg border-gray-300 shadow-sm focus:border-pink-500 focus:ring-pink-500"
-                                >
-                                    <option value="INDEMNIFIED">Indenizado (Pago)</option>
-                                    <option value="WORKED">Trabalhado</option>
-                                    <option value="WAIVED">Dispensado/Descontado</option>
-                                </select>
-                            </div>
-
-                            <div className="flex justify-end pt-4">
-                                <button 
-                                    onClick={handleCalculate}
-                                    className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium mr-2"
-                                >
-                                    Simular Cálculo
-                                </button>
-                            </div>
-
-                            {preview && (
-                                <div className="mt-4 p-4 bg-red-50 rounded-lg border border-red-100 text-sm space-y-2">
-                                    <div className="bg-white p-3 rounded border border-red-100 mb-3">
-                                        <p className="font-bold text-red-800 flex items-center gap-2 mb-2">
-                                            <AlertCircle size={14}/> Memória de Cálculo
-                                        </p>
-                                        <ul className="list-disc pl-4 text-xs text-red-700 space-y-1">
-                                            <li>Saldo de Salário: Dias trabalhados no mês do desligamento.</li>
-                                            <li>Aviso Prévio: {preview.noticeDays} dias {noticeType === 'INDEMNIFIED' ? 'indenizados' : 'trabalhados'}.</li>
-                                            <li>Férias Prop.: Proporcional aos meses trabalhados no período aquisitivo atual + 1/3.</li>
-                                            <li>13º Prop.: Proporcional aos meses trabalhados no ano corrente.</li>
-                                            <li>Multa FGTS: 40% sobre o saldo (estimado).</li>
-                                        </ul>
-                                    </div>
-
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <div>
-                                            <label className="block text-xs font-medium text-gray-600">Saldo Salário (Editável)</label>
-                                            <input 
-                                                type="number" 
-                                                value={preview.balanceSalary}
-                                                onChange={(e) => updatePreviewValue('balanceSalary', Number(e.target.value))}
-                                                className="w-full text-sm border-gray-300 rounded focus:ring-red-500 focus:border-red-500"
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-xs font-medium text-gray-600">Aviso Prévio (Editável)</label>
-                                            <input 
-                                                type="number" 
-                                                value={preview.noticeValue}
-                                                onChange={(e) => updatePreviewValue('noticeValue', Number(e.target.value))}
-                                                className="w-full text-sm border-gray-300 rounded focus:ring-red-500 focus:border-red-500"
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <div>
-                                            <label className="block text-xs font-medium text-gray-600">Férias Prop. + 1/3</label>
-                                            <input 
-                                                type="number" 
-                                                value={preview.vacationProportionalValue}
-                                                onChange={(e) => updatePreviewValue('vacationProportionalValue', Number(e.target.value))}
-                                                className="w-full text-sm border-gray-300 rounded focus:ring-red-500 focus:border-red-500"
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-xs font-medium text-gray-600">13º Proporcional</label>
-                                            <input 
-                                                type="number" 
-                                                value={preview.thirteenthProportionalValue}
-                                                onChange={(e) => updatePreviewValue('thirteenthProportionalValue', Number(e.target.value))}
-                                                className="w-full text-sm border-gray-300 rounded focus:ring-red-500 focus:border-red-500"
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <div>
-                                            <label className="block text-xs font-medium text-gray-600">Multa FGTS</label>
-                                            <input 
-                                                type="number" 
-                                                value={preview.fgtsFineValue}
-                                                onChange={(e) => updatePreviewValue('fgtsFineValue', Number(e.target.value))}
-                                                className="w-full text-sm border-gray-300 rounded focus:ring-red-500 focus:border-red-500"
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className="block text-xs font-medium text-gray-600">Descontos</label>
-                                            <input 
-                                                type="number" 
-                                                value={preview.discountsValue}
-                                                onChange={(e) => updatePreviewValue('discountsValue', Number(e.target.value))}
-                                                className="w-full text-sm border-gray-300 rounded focus:ring-red-500 focus:border-red-500"
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <div className="border-t border-red-200 my-2 pt-2 flex justify-between text-lg font-bold text-red-800">
-                                        <span>Total Rescisório:</span>
-                                        <span>R$ {preview.totalValue.toFixed(2)}</span>
-                                    </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-600">Férias Prop. + 1/3</label>
+                                    <input 
+                                        type="number" 
+                                        value={preview.vacationProportionalValue}
+                                        onChange={(e) => updatePreviewValue('vacationProportionalValue', Number(e.target.value))}
+                                        className="w-full text-sm border-gray-300 rounded focus:ring-red-500 focus:border-red-500"
+                                    />
                                 </div>
-                            )}
-                        </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-600">13º Proporcional</label>
+                                    <input 
+                                        type="number" 
+                                        value={preview.thirteenthProportionalValue}
+                                        onChange={(e) => updatePreviewValue('thirteenthProportionalValue', Number(e.target.value))}
+                                        className="w-full text-sm border-gray-300 rounded focus:ring-red-500 focus:border-red-500"
+                                    />
+                                </div>
+                            </div>
 
-                        <div className="p-6 border-t border-gray-100 bg-gray-50 flex justify-end gap-3">
-                            <button 
-                                onClick={() => setIsModalOpen(false)}
-                                className="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium"
-                            >
-                                Cancelar
-                            </button>
-                            <button 
-                                onClick={handleSave}
-                                disabled={!preview}
-                                className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-bold shadow-lg shadow-red-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                Salvar Rescisão
-                            </button>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-600">Multa FGTS</label>
+                                    <input 
+                                        type="number" 
+                                        value={preview.fgtsFineValue}
+                                        onChange={(e) => updatePreviewValue('fgtsFineValue', Number(e.target.value))}
+                                        className="w-full text-sm border-gray-300 rounded focus:ring-red-500 focus:border-red-500"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-600">Descontos</label>
+                                    <input 
+                                        type="number" 
+                                        value={preview.discountsValue}
+                                        onChange={(e) => updatePreviewValue('discountsValue', Number(e.target.value))}
+                                        className="w-full text-sm border-gray-300 rounded focus:ring-red-500 focus:border-red-500"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="border-t border-red-200 my-2 pt-2 flex justify-between text-lg font-bold text-red-800">
+                                <span>Total Rescisório:</span>
+                                <span>R$ {preview.totalValue.toFixed(2)}</span>
+                            </div>
                         </div>
+                    )}
+
+                    <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+                        <button 
+                            onClick={() => setIsModalOpen(false)}
+                            className="px-4 py-2 text-gray-600 hover:text-gray-800 font-medium"
+                        >
+                            Cancelar
+                        </button>
+                        <button 
+                            onClick={handleSave}
+                            disabled={!preview}
+                            className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-bold shadow-lg shadow-red-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            Salvar Rescisão
+                        </button>
                     </div>
                 </div>
-            )}
+            </Modal>
         </div>
     );
 };
