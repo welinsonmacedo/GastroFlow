@@ -1,6 +1,12 @@
 
 import React, { useState, useRef } from 'react';
+import ReactQuill, { Quill } from 'react-quill';
+import 'react-quill/dist/quill.snow.css';
 import { useStaff } from '../../../context/StaffContext';
+
+// Register inline styles for Quill to ensure proper printing
+const AlignStyle = Quill.import('attributors/style/align');
+Quill.register(AlignStyle, true);
 import { useUI } from '../../../context/UIContext';
 import { useRestaurant } from '../../../context/RestaurantContext';
 import { Button } from '../../../components/Button';
@@ -164,21 +170,17 @@ export const StaffSettings: React.FC = () => {
         showConfirm({ title: "Excluir Cargo", message: "Confirma a exclusão deste cargo de RH?", onConfirm: () => deleteHrJobRole(id) });
     };
 
+    const quillRef = useRef<ReactQuill>(null);
+
     const insertAtCursor = (text: string) => {
-        if (!textareaRef.current) return;
-        const start = textareaRef.current.selectionStart;
-        const end = textareaRef.current.selectionEnd;
-        const content = contractForm.content || '';
-        const newContent = content.substring(0, start) + text + content.substring(end);
-        setContractForm({ ...contractForm, content: newContent });
-        
-        // Reset focus and cursor
-        setTimeout(() => {
-            if (textareaRef.current) {
-                textareaRef.current.focus();
-                textareaRef.current.setSelectionRange(start + text.length, start + text.length);
-            }
-        }, 0);
+        const quill = quillRef.current?.getEditor();
+        if (quill) {
+            const range = quill.getSelection(true);
+            quill.insertText(range.index, text);
+            quill.setSelection(range.index + text.length, 0);
+        } else {
+            setContractForm({ ...contractForm, content: (contractForm.content || '') + text });
+        }
     };
 
     const handlePrintContract = () => {
@@ -714,31 +716,22 @@ export const StaffSettings: React.FC = () => {
 
                     {!contractPreviewMode ? (
                         <div className="flex gap-4 h-[500px]">
-                            <div className="flex-1 flex flex-col">
-                                <div className="flex gap-1 mb-2 bg-slate-100 p-1 rounded-lg">
-                                    <button onClick={() => insertAtCursor('<b></b>')} className="p-1.5 hover:bg-white rounded text-slate-600" title="Negrito"><Bold size={14}/></button>
-                                    <button onClick={() => insertAtCursor('<i></i>')} className="p-1.5 hover:bg-white rounded text-slate-600" title="Itálico"><Italic size={14}/></button>
-                                    <button onClick={() => insertAtCursor('<u></u>')} className="p-1.5 hover:bg-white rounded text-slate-600" title="Sublinhado"><Underline size={14}/></button>
-                                    <div className="w-px h-4 bg-slate-300 mx-1 self-center"></div>
-                                    <button onClick={() => insertAtCursor('<p style="text-align: center;"></p>')} className="p-1.5 hover:bg-white rounded text-slate-600" title="Centralizar"><AlignCenter size={14}/></button>
-                                    <button onClick={() => insertAtCursor('<p></p>')} className="p-1.5 hover:bg-white rounded text-slate-600" title="Parágrafo"><Type size={14}/></button>
-                                    <button onClick={() => insertAtCursor('<br/>')} className="p-1.5 hover:bg-white rounded text-slate-600" title="Quebra de Linha"><Plus size={14}/></button>
-                                    <div className="w-px h-4 bg-slate-300 mx-1 self-center"></div>
-                                    <button onClick={() => insertAtCursor('<h1></h1>')} className="p-1.5 hover:bg-white rounded text-slate-600 font-bold text-xs">H1</button>
-                                    <button onClick={() => insertAtCursor('<h2></h2>')} className="p-1.5 hover:bg-white rounded text-slate-600 font-bold text-xs">H2</button>
-                                </div>
-                                <textarea 
-                                    ref={textareaRef}
-                                    className="w-full flex-1 border p-4 rounded-xl text-sm font-mono leading-relaxed resize-none focus:ring-2 focus:ring-blue-500 outline-none" 
-                                    value={contractForm.content || ''} 
-                                    onChange={e => setContractForm({...contractForm, content: e.target.value})}
-                                    onDragOver={(e) => e.preventDefault()}
-                                    onDrop={(e) => {
-                                        e.preventDefault();
-                                        const data = e.dataTransfer.getData('text/plain');
-                                        insertAtCursor(data);
+                            <div className="flex-1 flex flex-col h-full overflow-hidden">
+                                <ReactQuill 
+                                    ref={quillRef}
+                                    theme="snow"
+                                    value={contractForm.content || ''}
+                                    onChange={(content) => setContractForm({...contractForm, content})}
+                                    className="h-[400px] bg-white rounded-xl"
+                                    modules={{
+                                        toolbar: [
+                                            [{ 'header': [1, 2, 3, false] }],
+                                            ['bold', 'italic', 'underline', 'strike'],
+                                            [{ 'align': [] }],
+                                            [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                                            ['clean']
+                                        ]
                                     }}
-                                    placeholder="Digite o contrato aqui (suporta HTML)..."
                                 />
                             </div>
                             <div className="w-72 bg-slate-50 p-4 rounded-xl border border-slate-200 overflow-y-auto">

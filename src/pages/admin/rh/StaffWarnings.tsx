@@ -1,6 +1,12 @@
 
 import React, { useState, useEffect } from 'react';
+import ReactQuill, { Quill } from 'react-quill';
+import 'react-quill/dist/quill.snow.css';
 import { useStaff } from '../../../context/StaffContext';
+
+// Register inline styles for Quill to ensure proper printing
+const AlignStyle = Quill.import('attributors/style/align');
+Quill.register(AlignStyle, true);
 import { useUI } from '../../../context/UIContext';
 import { useRestaurant } from '../../../context/RestaurantContext';
 import { Button } from '../../../components/Button';
@@ -288,16 +294,27 @@ export const StaffWarnings: React.FC = () => {
                                         <Eye size={14} className="inline mr-1"/> Visualizar
                                     </button>
                                 </div>
-                                <span className="text-[10px] font-bold text-slate-400 uppercase">Suporta Tags HTML</span>
                             </div>
 
                             {!isPreviewMode ? (
-                                <textarea 
-                                    className="w-full h-[600px] border p-6 rounded-2xl text-sm font-mono leading-relaxed focus:ring-2 focus:ring-blue-500 outline-none resize-none bg-white shadow-inner"
-                                    value={content}
-                                    onChange={e => setContent(e.target.value)}
-                                    placeholder="O conteúdo da advertência aparecerá aqui após selecionar um modelo..."
-                                />
+                                <div className="h-[600px] bg-white rounded-2xl shadow-inner overflow-hidden">
+                                    <ReactQuill 
+                                        theme="snow"
+                                        value={content}
+                                        onChange={setContent}
+                                        className="h-[550px]"
+                                        modules={{
+                                            toolbar: [
+                                                [{ 'header': [1, 2, 3, false] }],
+                                                ['bold', 'italic', 'underline', 'strike'],
+                                                [{ 'align': [] }],
+                                                [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                                                ['clean']
+                                            ]
+                                        }}
+                                        placeholder="O conteúdo da advertência aparecerá aqui após selecionar um modelo..."
+                                    />
+                                </div>
                             ) : (
                                 <div className="w-full h-[600px] border p-8 rounded-2xl bg-white overflow-y-auto shadow-inner prose prose-slate max-w-none">
                                     <div 
