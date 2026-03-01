@@ -12,14 +12,10 @@ import {
 import { Role } from '../types';
 
 // Sub-páginas RH
-import { StaffList } from './admin/rh/StaffList';
-import { StaffPayroll } from './admin/rh/StaffPayroll';
+import { StaffEmployeesWrapper } from './admin/rh/StaffEmployeesWrapper';
+import { StaffPayrollWrapper } from './admin/rh/StaffPayrollWrapper';
 import { StaffAttendance } from './admin/rh/StaffAttendance';
 import { StaffSettings } from './admin/rh/StaffSettings';
-import { StaffThirteenth } from './admin/rh/StaffThirteenth';
-import { StaffVacation } from './admin/rh/StaffVacation';
-import { StaffTermination } from './admin/rh/StaffTermination';
-import { StaffWarnings } from './admin/rh/StaffWarnings';
 
 export const StaffDashboard: React.FC = () => {
   const { state: restState } = useRestaurant();
@@ -47,32 +43,8 @@ export const StaffDashboard: React.FC = () => {
     },
     { 
         path: '/rh/payroll', 
-        label: 'PRÉ-FOLHA', 
+        label: 'FOLHA', 
         icon: FileText, 
-        featureKeys: ['hr_payroll']
-    },
-    { 
-        path: '/rh/thirteenth', 
-        label: '13º SALÁRIO', 
-        icon: DollarSign, 
-        featureKeys: ['hr_payroll']
-    },
-    { 
-        path: '/rh/vacation', 
-        label: 'FÉRIAS', 
-        icon: Calendar, 
-        featureKeys: ['hr_payroll']
-    },
-    { 
-        path: '/rh/termination', 
-        label: 'RESCISÃO', 
-        icon: UserMinus, 
-        featureKeys: ['hr_payroll']
-    },
-    { 
-        path: '/rh/warnings', 
-        label: 'ADVERTÊNCIAS', 
-        icon: AlertTriangle, 
         featureKeys: ['hr_payroll']
     },
     { 
@@ -168,13 +140,9 @@ export const StaffDashboard: React.FC = () => {
         <main className="flex-1 overflow-y-auto bg-gray-50 relative p-4 md:p-8">
             <div className="h-full w-full max-w-[1920px] mx-auto">
                 <Routes>
-                    <Route path="/" element={<StaffList />} />
+                    <Route path="/" element={<StaffEmployeesWrapper />} />
                     <Route path="/attendance" element={<StaffAttendance />} />
-                    <Route path="/payroll" element={<StaffPayroll />} />
-                    <Route path="/thirteenth" element={<StaffThirteenth />} />
-                    <Route path="/vacation" element={<StaffVacation />} />
-                    <Route path="/termination" element={<StaffTermination />} />
-                    <Route path="/warnings" element={<StaffWarnings />} />
+                    <Route path="/payroll" element={<StaffPayrollWrapper />} />
                     <Route path="/settings" element={<StaffSettings />} />
                     <Route path="*" element={<Navigate to="" replace />} />
                 </Routes>
