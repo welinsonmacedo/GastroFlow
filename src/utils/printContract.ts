@@ -16,29 +16,34 @@ export const printContract = (templateContent: string, user: User, company: Busi
 
     let content = templateContent;
 
-    // Replace variables
-    content = content.replace(/{{empresa_nome}}/g, company.restaurantName || '____________________');
-    content = content.replace(/{{empresa_cnpj}}/g, company.cnpj || '____________________');
-    content = content.replace(/{{empresa_endereco}}/g, `${company.address?.street || ''}, ${company.address?.number || ''}`);
-    content = content.replace(/{{empresa_cidade}}/g, company.address?.city || '____________________');
-    content = content.replace(/{{empresa_estado}}/g, company.address?.state || '____________________');
-    content = content.replace(/{{empresa_telefone}}/g, company.phone || '____________________');
-    content = content.replace(/{{empresa_email}}/g, company.email || '____________________');
+    // Remove HTML tags inside the curly braces to prevent rich text formatting from breaking the variables
+    content = content.replace(/\{\{([^}]+)\}\}/g, (match) => match.replace(/<[^>]+>/g, ''));
 
-    content = content.replace(/{{nome}}/g, user.name || '____________________');
-    content = content.replace(/{{cpf}}/g, user.documentCpf || '____________________');
-    content = content.replace(/{{rg}}/g, user.rgNumber ? `${user.rgNumber} ${user.rgIssuer}/${user.rgState}` : '____________________');
-    content = content.replace(/{{endereco}}/g, user.addressStreet ? `${user.addressStreet}, ${user.addressNumber} ${user.addressComplement || ''} - ${user.addressNeighborhood}` : '____________________');
-    content = content.replace(/{{cidade_uf}}/g, user.addressCity ? `${user.addressCity}/${user.addressState}` : '____________________');
-    content = content.replace(/{{nacionalidade}}/g, 'Brasileiro(a)'); // Default for now
-    content = content.replace(/{{estado_civil}}/g, user.maritalStatus || '____________________');
-    content = content.replace(/{{cargo}}/g, roleName || '____________________');
-    content = content.replace(/{{setor}}/g, user.department || '____________________');
-    content = content.replace(/{{salario}}/g, formatCurrency(user.baseSalary));
-    content = content.replace(/{{data_admissao}}/g, formatDate(user.hireDate));
-    content = content.replace(/{{jornada}}/g, user.workModel || '____________________');
-    content = content.replace(/{{ctps}}/g, user.ctpsNumber ? `${user.ctpsNumber} Série ${user.ctpsSeries}/${user.ctpsState}` : '____________________');
-    content = content.replace(/{{pis}}/g, user.pisPasep || '____________________');
+    const addressString = company.address?.street ? `${company.address.street}, ${company.address.number || 'S/N'}` : '';
+
+    // Replace variables
+    content = content.replace(/\{\{\s*empresa_nome\s*\}\}/g, company.restaurantName || '____________________');
+    content = content.replace(/\{\{\s*empresa_cnpj\s*\}\}/g, company.cnpj || '____________________');
+    content = content.replace(/\{\{\s*empresa_endereco\s*\}\}/g, addressString || '____________________');
+    content = content.replace(/\{\{\s*empresa_cidade\s*\}\}/g, company.address?.city || '____________________');
+    content = content.replace(/\{\{\s*empresa_estado\s*\}\}/g, company.address?.state || '____________________');
+    content = content.replace(/\{\{\s*empresa_telefone\s*\}\}/g, company.phone || '____________________');
+    content = content.replace(/\{\{\s*empresa_email\s*\}\}/g, company.email || '____________________');
+
+    content = content.replace(/\{\{\s*nome\s*\}\}/g, user.name || '____________________');
+    content = content.replace(/\{\{\s*cpf\s*\}\}/g, user.documentCpf || '____________________');
+    content = content.replace(/\{\{\s*rg\s*\}\}/g, user.rgNumber ? `${user.rgNumber} ${user.rgIssuer}/${user.rgState}` : '____________________');
+    content = content.replace(/\{\{\s*endereco\s*\}\}/g, user.addressStreet ? `${user.addressStreet}, ${user.addressNumber} ${user.addressComplement || ''} - ${user.addressNeighborhood}` : '____________________');
+    content = content.replace(/\{\{\s*cidade_uf\s*\}\}/g, user.addressCity ? `${user.addressCity}/${user.addressState}` : '____________________');
+    content = content.replace(/\{\{\s*nacionalidade\s*\}\}/g, 'Brasileiro(a)'); // Default for now
+    content = content.replace(/\{\{\s*estado_civil\s*\}\}/g, user.maritalStatus || '____________________');
+    content = content.replace(/\{\{\s*cargo\s*\}\}/g, roleName || '____________________');
+    content = content.replace(/\{\{\s*setor\s*\}\}/g, user.department || '____________________');
+    content = content.replace(/\{\{\s*salario\s*\}\}/g, formatCurrency(user.baseSalary));
+    content = content.replace(/\{\{\s*data_admissao\s*\}\}/g, formatDate(user.hireDate));
+    content = content.replace(/\{\{\s*jornada\s*\}\}/g, user.workModel || '____________________');
+    content = content.replace(/\{\{\s*ctps\s*\}\}/g, user.ctpsNumber ? `${user.ctpsNumber} Série ${user.ctpsSeries}/${user.ctpsState}` : '____________________');
+    content = content.replace(/\{\{\s*pis\s*\}\}/g, user.pisPasep || '____________________');
 
     const htmlContent = `
         <!DOCTYPE html>

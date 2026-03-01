@@ -61,20 +61,22 @@ export const StaffWarnings: React.FC = () => {
             const role = state.hrJobRoles.find(r => r.id === selectedStaff?.hrJobRoleId);
             const roleName = role ? role.title : (selectedStaff?.customRoleName || '');
             const department = selectedStaff?.department || '';
+            const addressString = company.address?.street ? `${company.address.street}, ${company.address.number || 'S/N'}` : '';
             
             // Replace variables
             let rendered = content
-                .replace(/{{empresa_nome}}/g, company.restaurantName || '')
-                .replace(/{{empresa_cnpj}}/g, company.cnpj || '')
-                .replace(/{{empresa_endereco}}/g, `${company.address?.street || ''}, ${company.address?.number || ''}`)
-                .replace(/{{empresa_cidade}}/g, company.address?.city || '')
-                .replace(/{{empresa_estado}}/g, company.address?.state || '')
-                .replace(/{{nome}}/g, selectedStaff?.name || '')
-                .replace(/{{cpf}}/g, selectedStaff?.documentCpf || '')
-                .replace(/{{cargo}}/g, roleName)
-                .replace(/{{setor}}/g, department)
-                .replace(/{{data}}/g, new Date().toLocaleDateString('pt-BR'))
-                .replace(/{{tipo_advertencia}}/g, warningType === 'VERBAL' ? 'VERBAL' : 'ESCRITA/FORMAL');
+                .replace(/\{\{([^}]+)\}\}/g, (match) => match.replace(/<[^>]+>/g, ''))
+                .replace(/\{\{\s*empresa_nome\s*\}\}/g, company.restaurantName || '')
+                .replace(/\{\{\s*empresa_cnpj\s*\}\}/g, company.cnpj || '')
+                .replace(/\{\{\s*empresa_endereco\s*\}\}/g, addressString)
+                .replace(/\{\{\s*empresa_cidade\s*\}\}/g, company.address?.city || '')
+                .replace(/\{\{\s*empresa_estado\s*\}\}/g, company.address?.state || '')
+                .replace(/\{\{\s*nome\s*\}\}/g, selectedStaff?.name || '')
+                .replace(/\{\{\s*cpf\s*\}\}/g, selectedStaff?.documentCpf || '')
+                .replace(/\{\{\s*cargo\s*\}\}/g, roleName)
+                .replace(/\{\{\s*setor\s*\}\}/g, department)
+                .replace(/\{\{\s*data\s*\}\}/g, new Date().toLocaleDateString('pt-BR'))
+                .replace(/\{\{\s*tipo_advertencia\s*\}\}/g, warningType === 'VERBAL' ? 'VERBAL' : 'ESCRITA/FORMAL');
 
             printWindow.document.write(`
                 <html>
@@ -146,18 +148,24 @@ export const StaffWarnings: React.FC = () => {
         if (!printWindow) return;
 
         const company = restState.businessInfo;
+        const role = state.hrJobRoles.find(r => r.id === staff?.hrJobRoleId);
+        const roleName = role ? role.title : (staff?.customRoleName || '');
+        const department = staff?.department || '';
+        const addressString = company.address?.street ? `${company.address.street}, ${company.address.number || 'S/N'}` : '';
         
         let rendered = warning.content
-            .replace(/{{empresa_nome}}/g, company.restaurantName || '')
-            .replace(/{{empresa_cnpj}}/g, company.cnpj || '')
-            .replace(/{{empresa_endereco}}/g, `${company.address?.street || ''}, ${company.address?.number || ''}`)
-            .replace(/{{empresa_cidade}}/g, company.address?.city || '')
-            .replace(/{{empresa_estado}}/g, company.address?.state || '')
-            .replace(/{{nome}}/g, staff?.name || '')
-            .replace(/{{cpf}}/g, staff?.documentCpf || '')
-            .replace(/{{cargo}}/g, staff?.customRoleName || '')
-            .replace(/{{data}}/g, new Date(warning.createdAt).toLocaleDateString('pt-BR'))
-            .replace(/{{tipo_advertencia}}/g, warning.type === 'VERBAL' ? 'VERBAL' : 'ESCRITA/FORMAL');
+            .replace(/\{\{([^}]+)\}\}/g, (match: string) => match.replace(/<[^>]+>/g, ''))
+            .replace(/\{\{\s*empresa_nome\s*\}\}/g, company.restaurantName || '')
+            .replace(/\{\{\s*empresa_cnpj\s*\}\}/g, company.cnpj || '')
+            .replace(/\{\{\s*empresa_endereco\s*\}\}/g, addressString)
+            .replace(/\{\{\s*empresa_cidade\s*\}\}/g, company.address?.city || '')
+            .replace(/\{\{\s*empresa_estado\s*\}\}/g, company.address?.state || '')
+            .replace(/\{\{\s*nome\s*\}\}/g, staff?.name || '')
+            .replace(/\{\{\s*cpf\s*\}\}/g, staff?.documentCpf || '')
+            .replace(/\{\{\s*cargo\s*\}\}/g, roleName)
+            .replace(/\{\{\s*setor\s*\}\}/g, department)
+            .replace(/\{\{\s*data\s*\}\}/g, new Date(warning.createdAt).toLocaleDateString('pt-BR'))
+            .replace(/\{\{\s*tipo_advertencia\s*\}\}/g, warning.type === 'VERBAL' ? 'VERBAL' : 'ESCRITA/FORMAL');
 
         printWindow.document.write(`
             <html>
@@ -324,9 +332,10 @@ export const StaffWarnings: React.FC = () => {
                                     <div 
                                         dangerouslySetInnerHTML={{ 
                                             __html: content
-                                                .replace(/{{empresa_nome}}/g, restState.businessInfo.restaurantName || 'Empresa Teste')
-                                                .replace(/{{nome}}/g, selectedStaff?.name || 'Nome do Colaborador')
-                                                .replace(/{{tipo_advertencia}}/g, warningType === 'VERBAL' ? 'VERBAL' : 'FORMAL')
+                                                .replace(/\{\{([^}]+)\}\}/g, (match) => match.replace(/<[^>]+>/g, ''))
+                                                .replace(/\{\{\s*empresa_nome\s*\}\}/g, restState.businessInfo.restaurantName || 'Empresa Teste')
+                                                .replace(/\{\{\s*nome\s*\}\}/g, selectedStaff?.name || 'Nome do Colaborador')
+                                                .replace(/\{\{\s*tipo_advertencia\s*\}\}/g, warningType === 'VERBAL' ? 'VERBAL' : 'FORMAL')
                                         }} 
                                     />
                                 </div>
