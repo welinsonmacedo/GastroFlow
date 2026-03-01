@@ -144,6 +144,8 @@ export const SendToPayrollTab: React.FC = () => {
                                     <tr>
                                         <th className="p-4">Data</th>
                                         <th className="p-4">Entrada</th>
+                                        <th className="p-4">Saída Intervalo</th>
+                                        <th className="p-4">Retorno Intervalo</th>
                                         <th className="p-4">Saída</th>
                                         <th className="p-4">Total</th>
                                         <th className="p-4 text-center">Status</th>
@@ -158,6 +160,8 @@ export const SendToPayrollTab: React.FC = () => {
                                             <tr key={entry.id}>
                                                 <td className="p-4 font-bold">{new Date(entry.entryDate).toLocaleDateString()}</td>
                                                 <td className="p-4 font-mono">{entry.clockIn ? new Date(entry.clockIn).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '--:--'}</td>
+                                                <td className="p-4 font-mono text-slate-500">{entry.breakStart ? new Date(entry.breakStart).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '--:--'}</td>
+                                                <td className="p-4 font-mono text-slate-500">{entry.breakEnd ? new Date(entry.breakEnd).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '--:--'}</td>
                                                 <td className="p-4 font-mono">{entry.clockOut ? new Date(entry.clockOut).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '--:--'}</td>
                                                 <td className="p-4 font-black">{hours}h</td>
                                                 <td className="p-4 text-center">

@@ -421,6 +421,13 @@ export interface User {
   bankAccount?: string;
   bankAccountType?: string;
   pixKey?: string;
+  emergencyContactName?: string;
+  emergencyContactPhone?: string;
+  healthPlanInfo?: string;
+  pensionInfo?: string;
+  transportVoucherInfo?: string;
+  mealVoucherInfo?: string;
+  sstInfo?: string;
 }
 
 export interface SystemAccessLog {

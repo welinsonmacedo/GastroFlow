@@ -122,7 +122,19 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               workModel: u.work_model || '44H_WEEKLY',
               baseSalary: Number(u.base_salary) || 0, benefitsTotal: Number(u.benefits_total) || 0, status: u.status,
               shiftId: u.shift_id, phone: u.phone, documentCpf: u.document_cpf, dependentsCount: u.dependents_count || 0,
-              bankHoursBalance: Number(u.bank_hours_balance) || 0
+              bankHoursBalance: Number(u.bank_hours_balance) || 0,
+              // Extended Fields
+              birthDate: u.birth_date ? new Date(u.birth_date) : undefined,
+              rgNumber: u.rg_number, rgIssuer: u.rg_issuer, rgState: u.rg_state,
+              addressZip: u.address_zip, addressStreet: u.address_street, addressNumber: u.address_number,
+              addressComplement: u.address_complement, addressNeighborhood: u.address_neighborhood,
+              addressCity: u.address_city, addressState: u.address_state,
+              pisPasep: u.pis_pasep, ctpsNumber: u.ctps_number, ctpsSeries: u.ctps_series, ctpsState: u.ctps_state,
+              maritalStatus: u.marital_status, emergencyContactName: u.emergency_contact_name, emergencyContactPhone: u.emergency_contact_phone,
+              fathersName: u.fathers_name, mothersName: u.mothers_name, educationLevel: u.education_level, voterRegistration: u.voter_registration,
+              bankName: u.bank_name, bankAgency: u.bank_agency, bankAccount: u.bank_account, bankAccountType: u.bank_account_type, pixKey: u.pix_key,
+              healthPlanInfo: u.health_plan_info, pensionInfo: u.pension_info, transportVoucherInfo: u.transport_voucher_info, mealVoucherInfo: u.meal_voucher_info,
+              sstInfo: u.sst_info
           }));
 
           const legalSettings: RhPayrollSetting | null = settingsRes.data ? {
@@ -230,6 +242,18 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           work_model: user.workModel,
           base_salary: user.baseSalary, benefits_total: user.benefitsTotal, status: user.status,
           shift_id: user.shiftId || null, phone: user.phone, document_cpf: user.documentCpf, dependents_count: user.dependentsCount || 0,
+          // Extended Fields
+          birth_date: user.birthDate ? new Date(user.birthDate).toISOString().split('T')[0] : null,
+          rg_number: user.rgNumber, rg_issuer: user.rgIssuer, rg_state: user.rgState,
+          address_zip: user.addressZip, address_street: user.addressStreet, address_number: user.addressNumber,
+          address_complement: user.addressComplement, address_neighborhood: user.addressNeighborhood,
+          address_city: user.addressCity, address_state: user.addressState,
+          pis_pasep: user.pisPasep, ctps_number: user.ctpsNumber, ctps_series: user.ctpsSeries, ctps_state: user.ctpsState,
+          marital_status: user.maritalStatus, emergency_contact_name: user.emergencyContactName, emergency_contact_phone: user.emergencyContactPhone,
+          fathers_name: user.fathersName, mothers_name: user.mothersName, education_level: user.educationLevel, voter_registration: user.voterRegistration,
+          bank_name: user.bankName, bank_agency: user.bankAgency, bank_account: user.bankAccount, bank_account_type: user.bankAccountType, pix_key: user.pixKey,
+          health_plan_info: user.healthPlanInfo, pension_info: user.pensionInfo, transport_voucher_info: user.transportVoucherInfo, meal_voucher_info: user.mealVoucherInfo,
+          sst_info: user.sstInfo
       });
 
       if (error) { throw new Error(error.message); }
@@ -249,6 +273,18 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           base_salary: user.baseSalary, benefits_total: user.benefitsTotal,
           status: user.status, shift_id: user.shiftId || null, phone: user.phone, document_cpf: user.documentCpf,
           dependents_count: user.dependentsCount || 0,
+          // Extended Fields
+          birth_date: user.birthDate ? new Date(user.birthDate).toISOString().split('T')[0] : null,
+          rg_number: user.rgNumber, rg_issuer: user.rgIssuer, rg_state: user.rgState,
+          address_zip: user.addressZip, address_street: user.addressStreet, address_number: user.addressNumber,
+          address_complement: user.addressComplement, address_neighborhood: user.addressNeighborhood,
+          address_city: user.addressCity, address_state: user.addressState,
+          pis_pasep: user.pisPasep, ctps_number: user.ctpsNumber, ctps_series: user.ctpsSeries, ctps_state: user.ctpsState,
+          marital_status: user.maritalStatus, emergency_contact_name: user.emergencyContactName, emergency_contact_phone: user.emergencyContactPhone,
+          fathers_name: user.fathersName, mothers_name: user.mothersName, education_level: user.educationLevel, voter_registration: user.voterRegistration,
+          bank_name: user.bankName, bank_agency: user.bankAgency, bank_account: user.bankAccount, bank_account_type: user.bankAccountType, pix_key: user.pixKey,
+          health_plan_info: user.healthPlanInfo, pension_info: user.pensionInfo, transport_voucher_info: user.transportVoucherInfo, meal_voucher_info: user.mealVoucherInfo,
+          sst_info: user.sstInfo
       }).eq('id', user.id);
 
       if (error) { throw new Error(error.message); }
