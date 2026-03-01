@@ -14,7 +14,6 @@ import { Role } from '../types';
 // Sub-páginas RH
 import { StaffList } from './admin/rh/StaffList';
 import { StaffPayroll } from './admin/rh/StaffPayroll';
-import { StaffRecurringEvents } from './admin/rh/StaffRecurringEvents';
 import { StaffAttendance } from './admin/rh/StaffAttendance';
 import { StaffSettings } from './admin/rh/StaffSettings';
 import { StaffThirteenth } from './admin/rh/StaffThirteenth';
@@ -67,12 +66,6 @@ export const StaffDashboard: React.FC = () => {
         path: '/rh/termination', 
         label: 'RESCISÃO', 
         icon: UserMinus, 
-        featureKeys: ['hr_payroll']
-    },
-    { 
-        path: '/rh/recurring', 
-        label: 'EVENTOS RECORRENTES', 
-        icon: FileText, 
         featureKeys: ['hr_payroll']
     },
     { 
@@ -174,7 +167,6 @@ export const StaffDashboard: React.FC = () => {
                     <Route path="/thirteenth" element={<StaffThirteenth />} />
                     <Route path="/vacation" element={<StaffVacation />} />
                     <Route path="/termination" element={<StaffTermination />} />
-                    <Route path="/recurring" element={<StaffRecurringEvents />} />
                     <Route path="/settings" element={<StaffSettings />} />
                     <Route path="*" element={<Navigate to="" replace />} />
                 </Routes>

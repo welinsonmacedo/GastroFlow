@@ -9,13 +9,14 @@ import { LegalSettingsModal } from '../../../components/modals/LegalSettingsModa
 import { HrJobRoleModal } from '../../../components/modals/HrJobRoleModal';
 import { Modal } from '../../../components/Modal';
 import { StaffSchedules } from './StaffSchedules';
+import { StaffRecurringEvents } from './StaffRecurringEvents';
 
 export const StaffSettings: React.FC = () => {
     const { state, applyLegalDefaults, deleteHrJobRole, addEventType, updateEventType, deleteEventType, addContractTemplate, updateContractTemplate, deleteContractTemplate } = useStaff();
     const { showAlert, showConfirm } = useUI();
 
     // Abas de Configuração
-    const [activeTab, setActiveTab] = useState<'LEGAL' | 'CUSTOM' | 'ROLES' | 'EVENT_TYPES' | 'CONTRACTS' | 'CALC_PARAMS' | 'SCHEDULES'>('LEGAL');
+    const [activeTab, setActiveTab] = useState<'LEGAL' | 'CUSTOM' | 'ROLES' | 'EVENT_TYPES' | 'CONTRACTS' | 'CALC_PARAMS' | 'SCHEDULES' | 'RECURRING'>('LEGAL');
     const [isLegalModalOpen, setIsLegalModalOpen] = useState(false);
     
     // Estado para Parâmetros de Cálculo
@@ -171,6 +172,7 @@ export const StaffSettings: React.FC = () => {
                     <button onClick={() => setActiveTab('ROLES')} className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'ROLES' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}>Cargos & CBO</button>
                     <button onClick={() => setActiveTab('EVENT_TYPES')} className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'EVENT_TYPES' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}>Tipos de Eventos</button>
                     <button onClick={() => setActiveTab('CONTRACTS')} className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'CONTRACTS' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}>Modelos de Contrato</button>
+                    <button onClick={() => setActiveTab('RECURRING')} className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'RECURRING' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}>Eventos Recorrentes</button>
                     <button onClick={() => setActiveTab('SCHEDULES')} className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'SCHEDULES' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}>Escalas & Turnos</button>
                     <button onClick={() => setActiveTab('CALC_PARAMS')} className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'CALC_PARAMS' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}>Parâmetros de Cálculos</button>
                 </div>
@@ -527,6 +529,11 @@ export const StaffSettings: React.FC = () => {
             {/* ABA 7: ESCALAS & TURNOS */}
             {activeTab === 'SCHEDULES' && (
                 <StaffSchedules />
+            )}
+
+            {/* ABA 8: EVENTOS RECORRENTES */}
+            {activeTab === 'RECURRING' && (
+                <StaffRecurringEvents />
             )}
 
             {/* Modal de Configuração Legal */}

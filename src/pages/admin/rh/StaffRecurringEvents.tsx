@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useStaff } from '../../../context/StaffContext';
 import { useUI } from '../../../context/UIContext';
 import { RecurringEvent, PayrollEventType } from '../../../types';
-import { Plus, Trash2, Edit2, CalendarClock } from 'lucide-react';
+import { Plus, Trash2, Edit2 } from 'lucide-react';
 import { Button } from '../../../components/Button';
 import { Modal } from '../../../components/Modal';
 
@@ -79,14 +79,9 @@ export const StaffRecurringEvents: React.FC = () => {
 
     return (
         <div className="space-y-6 animate-fade-in pb-10">
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div>
-                    <h2 className="text-2xl font-black text-slate-800 flex items-center gap-2">
-                        <CalendarClock className="text-blue-600"/> Eventos Recorrentes
-                    </h2>
-                    <p className="text-sm text-gray-500 mt-1">
-                        Configure lançamentos fixos (bônus, descontos, insalubridade) que se repetem todo mês para os colaboradores.
-                    </p>
+            <div className="flex justify-between items-center bg-blue-50 p-4 rounded-xl border border-blue-100">
+                <div className="text-xs text-blue-800">
+                    <strong>Eventos Recorrentes:</strong> Configure lançamentos fixos (bônus, descontos, insalubridade) que se repetem todo mês para os colaboradores.
                 </div>
                 <Button onClick={() => handleOpenModal()} className="bg-blue-600 hover:bg-blue-700 text-white shrink-0">
                     <Plus size={18} className="mr-2"/> Novo Evento Fixo
@@ -95,7 +90,7 @@ export const StaffRecurringEvents: React.FC = () => {
 
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                 <table className="w-full text-left text-sm">
-                    <thead className="bg-slate-50 text-slate-600 uppercase text-xs border-b">
+                    <thead className="bg-blue-50 text-blue-800 uppercase text-xs border-b">
                         <tr>
                             <th className="p-4">Colaborador</th>
                             <th className="p-4">Tipo</th>
