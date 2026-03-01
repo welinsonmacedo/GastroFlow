@@ -1,27 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useStaff } from '../../../context/StaffContext';
-import { useUI } from '../../../context/UIContext';
-import { Button } from '../../../components/Button';
 import { TimeEntry } from '../../../types';
-import { Search, Calendar, Edit, Plus, Upload, ChevronDown, ChevronUp, FileText } from 'lucide-react';
-import { TimeEntryModal } from '../../../components/modals/TimeEntryModal';
-import { SummaryModal } from '../../../components/modals/SummaryModal';
-import { ImportAFDModal } from '../../../components/modals/ImportAFDModal';
+import { Search, Calendar, FileSignature, ChevronDown, ChevronUp } from 'lucide-react';
+import { PointCorrectionModal } from '../../../components/modals/PointCorrectionModal';
 
-export const DailyLogTab: React.FC = () => {
+export const PointCorrectionTab: React.FC = () => {
     const { state: staffState } = useStaff();
-    const { showAlert } = useUI();
     
     const [filterMonth, setFilterMonth] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM
     const [searchTerm, setSearchTerm] = useState('');
     
-    const [isEntryModalOpen, setIsEntryModalOpen] = useState(false);
-    const [entryToEdit, setEntryToEdit] = useState<TimeEntry | null>(null);
-    const [selectedStaffId, setSelectedStaffId] = useState<string>('');
-    const [isSummaryModalOpen, setIsSummaryModalOpen] = useState(false);
-    const [isImportModalOpen, setIsImportModalOpen] = useState(false);
-    const [summary, setSummary] = useState({ overtime: 0, missingHours: 0, bankHours: 0 });
-    
+    const [isCorrectionModalOpen, setIsCorrectionModalOpen] = useState(false);
+    const [entryToCorrect, setEntryToCorrect] = useState<TimeEntry | null>(null);
     const [expandedStaffId, setExpandedStaffId] = useState<string | null>(null);
 
     const getStaffName = (id: string) => staffState.users.find(u => u.id === id)?.name || 'Desconhecido';
@@ -37,46 +27,15 @@ export const DailyLogTab: React.FC = () => {
         .filter(u => u.name.toLowerCase().includes(searchTerm.toLowerCase()))
         .map(user => {
             const userEntries = monthlyEntries.filter(e => e.staffId === user.id);
-            
-            // Calculate totals
-            let totalHours = 0;
-            let overtime = 0;
-            let missing = 0;
-            
-            // Simple calculation logic (can be improved with shift details)
-            const shift = staffState.shifts.find(s => s.id === user.shiftId);
-            const dailyTarget = shift ? (new Date(`1970-01-01T${shift.endTime}`).getTime() - new Date(`1970-01-01T${shift.startTime}`).getTime()) / 3600000 - (shift.breakMinutes / 60) : 8;
-
-            userEntries.forEach(entry => {
-                if (entry.clockIn && entry.clockOut) {
-                    const worked = (new Date(entry.clockOut).getTime() - new Date(entry.clockIn).getTime()) / 3600000;
-                    totalHours += worked;
-                    const diff = worked - dailyTarget;
-                    if (diff > 0) overtime += diff;
-                    else missing += Math.abs(diff);
-                }
-            });
-
             return {
                 user,
-                entries: userEntries.sort((a, b) => new Date(a.entryDate).getTime() - new Date(b.entryDate).getTime()),
-                totalHours,
-                overtime,
-                missing,
-                bankBalance: user.bankHoursBalance || 0
+                entries: userEntries.sort((a, b) => new Date(a.entryDate).getTime() - new Date(b.entryDate).getTime())
             };
         });
 
-    const handleEditEntry = (entry: TimeEntry) => {
-        setEntryToEdit(entry);
-        setIsEntryModalOpen(true);
-    };
-
-    const handleNewEntry = () => {
-        setEntryToEdit(null);
-        // If expanded, pre-select that staff
-        if (expandedStaffId) setSelectedStaffId(expandedStaffId);
-        setIsEntryModalOpen(true);
+    const handleCorrectEntry = (entry: TimeEntry) => {
+        setEntryToCorrect(entry);
+        setIsCorrectionModalOpen(true);
     };
 
     return (
@@ -91,48 +50,27 @@ export const DailyLogTab: React.FC = () => {
                         <Calendar size={18} className="text-gray-400 ml-2"/>
                         <input type="month" className="bg-transparent text-sm font-bold text-gray-700 outline-none p-1" value={filterMonth} onChange={e => setFilterMonth(e.target.value)} />
                     </div>
-                    <Button onClick={handleNewEntry} className="bg-pink-600 hover:bg-pink-700 text-white border-transparent shadow-pink-200">
-                        <Plus size={18}/> <span className="hidden sm:inline">Lançar Manual</span>
-                    </Button>
-                    <Button onClick={() => setIsImportModalOpen(true)} variant="secondary" className="bg-white text-slate-600 border-slate-200 hover:bg-slate-50">
-                        <Upload size={18} className="mr-2"/> Importar AFD
-                    </Button>
+                </div>
+                <div className="text-sm text-slate-500 italic">
+                    Selecione um registro para realizar a correção e imprimir o termo de consentimento.
                 </div>
             </div>
 
             <div className="space-y-4">
-                {staffSummaries.map(({ user, entries, totalHours, overtime, missing, bankBalance }) => (
+                {staffSummaries.map(({ user, entries }) => (
                     <div key={user.id} className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                         <div 
                             className="p-4 flex items-center justify-between cursor-pointer hover:bg-slate-50 transition-colors"
                             onClick={() => setExpandedStaffId(expandedStaffId === user.id ? null : user.id)}
                         >
                             <div className="flex items-center gap-4">
-                                <div className="w-10 h-10 rounded-xl bg-pink-50 text-pink-600 flex items-center justify-center font-bold">{user.name.charAt(0)}</div>
+                                <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold">{user.name.charAt(0)}</div>
                                 <div>
                                     <h3 className="font-bold text-slate-800">{user.name}</h3>
                                     <p className="text-xs text-slate-500">{user.role} • {entries.length} registros</p>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-6">
-                                <div className="text-right hidden md:block">
-                                    <p className="text-[10px] uppercase font-bold text-slate-400">Horas Totais</p>
-                                    <p className="font-mono font-bold text-slate-700">{totalHours.toFixed(1)}h</p>
-                                </div>
-                                <div className="text-right hidden md:block">
-                                    <p className="text-[10px] uppercase font-bold text-green-600">Extras</p>
-                                    <p className="font-mono font-bold text-green-700">+{overtime.toFixed(1)}h</p>
-                                </div>
-                                <div className="text-right hidden md:block">
-                                    <p className="text-[10px] uppercase font-bold text-red-500">Faltas</p>
-                                    <p className="font-mono font-bold text-red-600">-{missing.toFixed(1)}h</p>
-                                </div>
-                                <div className="text-right hidden md:block">
-                                    <p className="text-[10px] uppercase font-bold text-blue-500">Banco</p>
-                                    <p className="font-mono font-bold text-blue-600">{bankBalance.toFixed(1)}h</p>
-                                </div>
-                                {expandedStaffId === user.id ? <ChevronUp size={20} className="text-slate-400"/> : <ChevronDown size={20} className="text-slate-400"/>}
-                            </div>
+                            {expandedStaffId === user.id ? <ChevronUp size={20} className="text-slate-400"/> : <ChevronDown size={20} className="text-slate-400"/>}
                         </div>
 
                         {expandedStaffId === user.id && (
@@ -159,7 +97,7 @@ export const DailyLogTab: React.FC = () => {
                                                     : '-';
                                                 
                                                 return (
-                                                    <tr key={entry.id} className="hover:bg-white transition-colors">
+                                                    <tr key={entry.id} className={`hover:bg-white transition-colors ${entry.status === 'CORRECTED' ? 'opacity-50 grayscale' : ''}`}>
                                                         <td className="p-3 pl-2 font-mono text-slate-600">
                                                             {new Date(entry.entryDate).toLocaleDateString()} <span className="text-xs text-slate-400">({new Date(entry.entryDate).toLocaleDateString('pt-BR', {weekday: 'short'})})</span>
                                                         </td>
@@ -183,9 +121,12 @@ export const DailyLogTab: React.FC = () => {
                                                         </td>
                                                         <td className="p-3 text-right">
                                                             {entry.status !== 'CORRECTED' && (
-                                                                <button onClick={() => handleEditEntry(entry)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-all" title="Editar">
-                                                                    <Edit size={16}/>
+                                                                <button onClick={() => handleCorrectEntry(entry)} className="p-1.5 text-purple-600 hover:bg-purple-50 rounded-lg transition-all flex items-center gap-1 ml-auto" title="Corrigir Ponto">
+                                                                    <FileSignature size={16}/> <span className="text-xs font-bold hidden sm:inline">Corrigir</span>
                                                                 </button>
+                                                            )}
+                                                            {entry.status === 'CORRECTED' && (
+                                                                <span className="text-[10px] text-slate-400 italic">Inativo</span>
                                                             )}
                                                         </td>
                                                     </tr>
@@ -206,23 +147,10 @@ export const DailyLogTab: React.FC = () => {
                 )}
             </div>
 
-            <TimeEntryModal 
-                isOpen={isEntryModalOpen} 
-                onClose={() => setIsEntryModalOpen(false)} 
-                entryToEdit={entryToEdit}
-                staffId={selectedStaffId || (staffState.users.length > 0 ? staffState.users[0].id : '')}
-            />
-            
-            <SummaryModal 
-                isOpen={isSummaryModalOpen} 
-                onClose={() => setIsSummaryModalOpen(false)} 
-                summary={summary}
-                onSave={(newSummary) => setSummary(newSummary)}
-            />
-
-            <ImportAFDModal 
-                isOpen={isImportModalOpen} 
-                onClose={() => setIsImportModalOpen(false)} 
+            <PointCorrectionModal 
+                isOpen={isCorrectionModalOpen} 
+                onClose={() => setIsCorrectionModalOpen(false)} 
+                entryToCorrect={entryToCorrect}
             />
         </div>
     );

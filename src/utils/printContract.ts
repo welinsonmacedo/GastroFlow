@@ -1,7 +1,7 @@
 
-import { User, BusinessInfo } from '../types';
+import { User, RestaurantBusinessInfo } from '../types';
 
-export const replaceContractVariables = (templateContent: string, user: User, company: BusinessInfo, roleName: string, shiftName: string = ''): string => {
+export const replaceContractVariables = (templateContent: string, user: User, company: RestaurantBusinessInfo, roleName: string, shiftName: string = '', extraVariables: Record<string, string> = {}): string => {
     const formatDate = (date?: Date | string) => {
         if (!date) return '__________';
         return new Date(date).toLocaleDateString('pt-BR');
@@ -73,6 +73,12 @@ export const replaceContractVariables = (templateContent: string, user: User, co
     content = content.replace(/\{\{\s*ctps\s*\}\}/gi, formatCtps());
     content = content.replace(/\{\{\s*pis\s*\}\}/gi, user.pisPasep || '____________________');
 
+    // Replace extra variables
+    Object.keys(extraVariables).forEach(key => {
+        const regex = new RegExp(`\\{\\{\\s*${key}\\s*\\}\\}`, 'gi');
+        content = content.replace(regex, extraVariables[key]);
+    });
+
     return content;
 };
 
@@ -108,7 +114,7 @@ export const printContractHtml = (content: string, userName: string) => {
     printWindow.document.close();
 };
 
-export const printContract = (templateContent: string, user: User, company: BusinessInfo, roleName: string, shiftName: string = '') => {
-    const content = replaceContractVariables(templateContent, user, company, roleName, shiftName);
+export const printContract = (templateContent: string, user: User, company: RestaurantBusinessInfo, roleName: string, shiftName: string = '', extraVariables: Record<string, string> = {}) => {
+    const content = replaceContractVariables(templateContent, user, company, roleName, shiftName, extraVariables);
     printContractHtml(content, user.name || 'Colaborador');
 };

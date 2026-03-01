@@ -1,10 +1,11 @@
 
 import React, { useState } from 'react';
-import { Timer, ArrowRight } from 'lucide-react';
-import { DailyLogTab } from './DailyLogTab'; // To be created from existing content
+import { Timer, ArrowRight, FileSignature } from 'lucide-react';
+import { DailyLogTab } from './DailyLogTab'; // We will modify this to be monthly
 import { SendToPayrollTab } from './SendToPayrollTab';
+import { PointCorrectionTab } from './PointCorrectionTab';
 
-type Tab = 'daily' | 'payroll';
+type Tab = 'daily' | 'payroll' | 'correction';
 
 export const StaffAttendance: React.FC = () => {
     const [activeTab, setActiveTab] = useState<Tab>('daily');
@@ -26,6 +27,11 @@ export const StaffAttendance: React.FC = () => {
                             Espelho de Ponto
                         </button>
                         <button 
+                            onClick={() => setActiveTab('correction')}
+                            className={`px-4 py-2 text-sm font-bold rounded-full transition-colors ${activeTab === 'correction' ? 'bg-white text-pink-600 shadow-sm' : 'text-slate-500 hover:bg-white/50'}`}>
+                            Correção de Ponto
+                        </button>
+                        <button 
                             onClick={() => setActiveTab('payroll')}
                             className={`px-4 py-2 text-sm font-bold rounded-full transition-colors ${activeTab === 'payroll' ? 'bg-white text-pink-600 shadow-sm' : 'text-slate-500 hover:bg-white/50'}`}>
                             Enviar para Folha
@@ -36,6 +42,7 @@ export const StaffAttendance: React.FC = () => {
 
             <div>
                 {activeTab === 'daily' && <DailyLogTab />}
+                {activeTab === 'correction' && <PointCorrectionTab />}
                 {activeTab === 'payroll' && <SendToPayrollTab />}
             </div>
         </div>

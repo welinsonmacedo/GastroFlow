@@ -74,7 +74,7 @@ export const TimeEntryModal: React.FC<TimeEntryModalProps> = ({ isOpen, onClose,
           };
 
           if (entryToEdit) {
-              await updateTimeEntry({ ...entryToEdit, ...entryData } as TimeEntry);
+              await updateTimeEntry(entryToEdit.id, entryData);
               showAlert({ title: "Atualizado", message: "Registro de ponto alterado.", type: "SUCCESS" });
           } else {
               await addTimeEntry(entryData);

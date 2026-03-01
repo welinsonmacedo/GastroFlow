@@ -94,7 +94,9 @@ export interface TimeEntry {
     breakEnd?: Date;
     clockOut?: Date;
     justification?: string;
-    status: 'PENDING' | 'APPROVED' | 'REJECTED';
+    status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'CORRECTED';
+    originalEntryId?: string;
+    correctionReason?: string;
 }
 
 export interface PayrollEntry {

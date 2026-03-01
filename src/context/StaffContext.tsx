@@ -82,7 +82,7 @@ interface StaffContextType {
   deleteShift: (id: string) => Promise<void>;
   registerTime: (staffId: string, type: 'IN' | 'BREAK_START' | 'BREAK_END' | 'OUT', justification?: string) => Promise<void>;
   addTimeEntry: (entry: Partial<TimeEntry>) => Promise<void>;
-  updateTimeEntry: (entry: TimeEntry) => Promise<void>;
+  updateTimeEntry: (id: string, updates: Partial<TimeEntry>) => Promise<void>;
   
   saveLegalSettings: (settings: Partial<RhPayrollSetting>) => Promise<void>;
   saveInssBrackets: (brackets: RhInssBracket[]) => Promise<void>;
@@ -234,7 +234,9 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               breakStart: t.break_start ? new Date(t.break_start) : undefined,
               breakEnd: t.break_end ? new Date(t.break_end) : undefined,
               clockOut: t.clock_out ? new Date(t.clock_out) : undefined,
-              justification: t.justification, status: t.status
+              justification: t.justification, status: t.status,
+              originalEntryId: t.original_entry_id,
+              correctionReason: t.correction_reason
           }));
 
           const mappedRoles = (rolesRes.data || []).map((r: any) => ({
@@ -836,8 +838,41 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       await fetchData();
   };
   
-  const addTimeEntry = async (entry: Partial<TimeEntry>) => { if(!tenantId) return; const payload = { tenant_id: tenantId, staff_id: entry.staffId, entry_date: entry.entryDate instanceof Date ? entry.entryDate.toISOString().split('T')[0] : entry.entryDate, clock_in: entry.clockIn ? entry.clockIn.toISOString() : null, break_start: entry.breakStart ? entry.breakStart.toISOString() : null, break_end: entry.breakEnd ? entry.breakEnd.toISOString() : null, clock_out: entry.clockOut ? entry.clockOut.toISOString() : null, justification: entry.justification, entry_type: 'MANUAL', status: 'APPROVED' }; const { error } = await supabase.from('rh_time_entries').insert(payload); if(error) throw error; await fetchData(); };
-  const updateTimeEntry = async (entry: TimeEntry) => { if(!tenantId) return; const payload = { clock_in: entry.clockIn ? entry.clockIn.toISOString() : null, break_start: entry.breakStart ? entry.breakStart.toISOString() : null, break_end: entry.breakEnd ? entry.breakEnd.toISOString() : null, clock_out: entry.clockOut ? entry.clockOut.toISOString() : null, justification: entry.justification, status: entry.status }; const { error } = await supabase.from('rh_time_entries').update(payload).eq('id', entry.id); if(error) throw error; await fetchData(); };
+  const addTimeEntry = async (entry: Partial<TimeEntry>) => { 
+      if(!tenantId) return; 
+      const payload = { 
+          tenant_id: tenantId, 
+          staff_id: entry.staffId, 
+          entry_date: entry.entryDate instanceof Date ? entry.entryDate.toISOString().split('T')[0] : entry.entryDate, 
+          clock_in: entry.clockIn ? entry.clockIn.toISOString() : null, 
+          break_start: entry.breakStart ? entry.breakStart.toISOString() : null, 
+          break_end: entry.breakEnd ? entry.breakEnd.toISOString() : null, 
+          clock_out: entry.clockOut ? entry.clockOut.toISOString() : null, 
+          justification: entry.justification, 
+          entry_type: 'MANUAL', 
+          status: entry.status || 'APPROVED',
+          original_entry_id: entry.originalEntryId,
+          correction_reason: entry.correctionReason
+      }; 
+      const { error } = await supabase.from('rh_time_entries').insert(payload); 
+      if(error) throw error; 
+      await fetchData(); 
+  };
+
+  const updateTimeEntry = async (id: string, updates: Partial<TimeEntry>) => { 
+      if(!tenantId) return; 
+      const payload: any = {};
+      if (updates.clockIn !== undefined) payload.clock_in = updates.clockIn ? updates.clockIn.toISOString() : null;
+      if (updates.breakStart !== undefined) payload.break_start = updates.breakStart ? updates.breakStart.toISOString() : null;
+      if (updates.breakEnd !== undefined) payload.break_end = updates.breakEnd ? updates.breakEnd.toISOString() : null;
+      if (updates.clockOut !== undefined) payload.clock_out = updates.clockOut ? updates.clockOut.toISOString() : null;
+      if (updates.justification !== undefined) payload.justification = updates.justification;
+      if (updates.status !== undefined) payload.status = updates.status;
+      
+      const { error } = await supabase.from('rh_time_entries').update(payload).eq('id', id); 
+      if(error) throw error; 
+      await fetchData(); 
+  };
 
   // --- MÉTODOS DE CONFIGURAÇÃO LEGAL ---
   const saveLegalSettings = async (settings: Partial<RhPayrollSetting>) => {

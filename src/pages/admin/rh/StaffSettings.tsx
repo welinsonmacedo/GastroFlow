@@ -19,7 +19,7 @@ import { StaffSchedules } from './StaffSchedules';
 import { StaffRecurringEvents } from './StaffRecurringEvents';
 
 export const StaffSettings: React.FC = () => {
-    const { state, applyLegalDefaults, deleteHrJobRole, addEventType, updateEventType, deleteEventType, addContractTemplate, updateContractTemplate, deleteContractTemplate } = useStaff();
+    const { state, applyLegalDefaults, deleteHrJobRole, addEventType, updateEventType, deleteEventType, addContractTemplate, updateContractTemplate, deleteContractTemplate, saveLegalSettings } = useStaff();
     const { state: restState } = useRestaurant();
     const { showAlert, showConfirm } = useUI();
 
@@ -74,9 +74,11 @@ export const StaffSettings: React.FC = () => {
     const handleSaveTimeTracking = async () => {
         if (!state.legalSettings) return showAlert({ title: "Erro", message: "Configure as tabelas legais primeiro.", type: "ERROR" });
         try {
-            await useStaff().saveLegalSettings({
+            await saveLegalSettings({
                 ...state.legalSettings,
-                ...timeTrackingForm
+                timeTrackingMethod: timeTrackingForm.timeTrackingMethod as any,
+                overtimePolicy: timeTrackingForm.overtimePolicy as any,
+                absenceLogic: timeTrackingForm.absenceLogic
             });
             showAlert({ title: "Sucesso", message: "Configurações de ponto atualizadas.", type: "SUCCESS" });
         } catch (error: any) {
@@ -87,7 +89,7 @@ export const StaffSettings: React.FC = () => {
     const handleSaveCalcParams = async () => {
         if (!state.legalSettings) return showAlert({ title: "Erro", message: "Configure as tabelas legais primeiro.", type: "ERROR" });
         try {
-            await useStaff().saveLegalSettings({
+            await saveLegalSettings({
                 ...state.legalSettings,
                 ...calcParamsForm
             });
