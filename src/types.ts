@@ -134,6 +134,15 @@ export interface RhPayrollSetting {
     fgtsRate: number;
     validFrom: string;
     validUntil?: string;
+    // Calculation Parameters
+    vacationDaysEntitlement?: number;
+    vacationSoldDaysLimit?: number;
+    thirteenthMinMonthsWorked?: number;
+    noticePeriodDays?: number;
+    noticePeriodDaysPerYear?: number;
+    noticePeriodMaxDays?: number;
+    fgtsFinePercent?: number;
+    standardMonthlyHours?: number;
 }
 
 export interface RhInssBracket {

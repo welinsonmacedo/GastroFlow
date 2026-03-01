@@ -5,7 +5,7 @@ import { useRestaurant } from '../../../context/RestaurantContext';
 import { useUI } from '../../../context/UIContext';
 import { Button } from '../../../components/Button';
 import { HrJobRole, RHTax, RHBenefit, TaxPayerType, TaxCalculationBasis, EventType, ContractTemplate } from '../../../types';
-import { Plus, Trash2, Settings, Percent, DollarSign, RefreshCcw, Gift, FileText, Building2, Scale, Calculator, Edit3, Briefcase, Tag, FileSignature } from 'lucide-react';
+import { Plus, Trash2, Settings, Percent, DollarSign, RefreshCcw, Gift, FileText, Building2, Scale, Calculator, Edit3, Briefcase, Tag, FileSignature, Calendar } from 'lucide-react';
 import { LegalSettingsModal } from '../../../components/modals/LegalSettingsModal';
 import { HrJobRoleModal } from '../../../components/modals/HrJobRoleModal';
 import { Modal } from '../../../components/Modal';
@@ -16,10 +16,49 @@ export const StaffSettings: React.FC = () => {
     const { showAlert, showConfirm } = useUI();
 
     // Abas de Configuração
-    const [activeTab, setActiveTab] = useState<'LEGAL' | 'CUSTOM' | 'ROLES' | 'EVENT_TYPES' | 'CONTRACTS'>('LEGAL');
+    const [activeTab, setActiveTab] = useState<'LEGAL' | 'CUSTOM' | 'ROLES' | 'EVENT_TYPES' | 'CONTRACTS' | 'CALC_PARAMS'>('LEGAL');
     const [isLegalModalOpen, setIsLegalModalOpen] = useState(false);
     
-    // Modal de Cargos RH
+    // Estado para Parâmetros de Cálculo
+    const [calcParamsForm, setCalcParamsForm] = useState({
+        vacationDaysEntitlement: 30,
+        vacationSoldDaysLimit: 10,
+        thirteenthMinMonthsWorked: 1,
+        noticePeriodDays: 30,
+        noticePeriodDaysPerYear: 3,
+        noticePeriodMaxDays: 90,
+        fgtsFinePercent: 40,
+        standardMonthlyHours: 220
+    });
+
+    React.useEffect(() => {
+        if (state.legalSettings) {
+            setCalcParamsForm({
+                vacationDaysEntitlement: state.legalSettings.vacationDaysEntitlement || 30,
+                vacationSoldDaysLimit: state.legalSettings.vacationSoldDaysLimit || 10,
+                thirteenthMinMonthsWorked: state.legalSettings.thirteenthMinMonthsWorked || 1,
+                noticePeriodDays: state.legalSettings.noticePeriodDays || 30,
+                noticePeriodDaysPerYear: state.legalSettings.noticePeriodDaysPerYear || 3,
+                noticePeriodMaxDays: state.legalSettings.noticePeriodMaxDays || 90,
+                fgtsFinePercent: state.legalSettings.fgtsFinePercent || 40,
+                standardMonthlyHours: state.legalSettings.standardMonthlyHours || 220
+            });
+        }
+    }, [state.legalSettings]);
+
+    const handleSaveCalcParams = async () => {
+        if (!state.legalSettings) return showAlert({ title: "Erro", message: "Configure as tabelas legais primeiro.", type: "ERROR" });
+        try {
+            await useStaff().saveLegalSettings({
+                ...state.legalSettings,
+                ...calcParamsForm
+            });
+            showAlert({ title: "Sucesso", message: "Parâmetros atualizados.", type: "SUCCESS" });
+        } catch (error: any) {
+            showAlert({ title: "Erro", message: error.message, type: "ERROR" });
+        }
+    };
+
     const [isHrRoleModalOpen, setIsHrRoleModalOpen] = useState(false);
     const [editingHrRole, setEditingHrRole] = useState<HrJobRole | null>(null);
 
@@ -184,6 +223,7 @@ export const StaffSettings: React.FC = () => {
                     <button onClick={() => setActiveTab('ROLES')} className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'ROLES' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}>Cargos & CBO</button>
                     <button onClick={() => setActiveTab('EVENT_TYPES')} className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'EVENT_TYPES' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}>Tipos de Eventos</button>
                     <button onClick={() => setActiveTab('CONTRACTS')} className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'CONTRACTS' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}>Modelos de Contrato</button>
+                    <button onClick={() => setActiveTab('CALC_PARAMS')} className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'CALC_PARAMS' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}>Parâmetros de Cálculos</button>
                 </div>
             </div>
 
@@ -417,6 +457,122 @@ export const StaffSettings: React.FC = () => {
                                 Nenhum modelo de contrato cadastrado.
                             </div>
                         )}
+                    </div>
+                </div>
+            )}
+
+            {/* ABA 6: PARÂMETROS DE CÁLCULOS */}
+            {activeTab === 'CALC_PARAMS' && (
+                <div className="space-y-6">
+                    <div className="flex justify-between items-center bg-blue-50 p-4 rounded-xl border border-blue-100">
+                        <div className="text-xs text-blue-800">
+                            <strong>Parâmetros de Cálculos:</strong> Defina as regras para cálculos de férias, 13º salário e rescisões.
+                        </div>
+                        <Button onClick={handleSaveCalcParams} className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm shrink-0">
+                            <Settings size={16} className="mr-2"/> Salvar Parâmetros
+                        </Button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* Férias */}
+                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                            <h3 className="font-bold text-slate-700 mb-4 flex items-center gap-2"><Calendar size={18}/> Férias</h3>
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-xs font-bold mb-1 text-slate-600">Dias de Direito (por ano)</label>
+                                    <input 
+                                        type="number" 
+                                        className="w-full border p-2.5 rounded-xl text-sm" 
+                                        value={calcParamsForm.vacationDaysEntitlement} 
+                                        onChange={e => setCalcParamsForm({...calcParamsForm, vacationDaysEntitlement: Number(e.target.value)})}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold mb-1 text-slate-600">Limite de Dias Vendidos (Abono)</label>
+                                    <input 
+                                        type="number" 
+                                        className="w-full border p-2.5 rounded-xl text-sm" 
+                                        value={calcParamsForm.vacationSoldDaysLimit} 
+                                        onChange={e => setCalcParamsForm({...calcParamsForm, vacationSoldDaysLimit: Number(e.target.value)})}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* 13º Salário */}
+                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                            <h3 className="font-bold text-slate-700 mb-4 flex items-center gap-2"><DollarSign size={18}/> 13º Salário</h3>
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-xs font-bold mb-1 text-slate-600">Meses Mínimos Trabalhados (para direito)</label>
+                                    <input 
+                                        type="number" 
+                                        className="w-full border p-2.5 rounded-xl text-sm" 
+                                        value={calcParamsForm.thirteenthMinMonthsWorked} 
+                                        onChange={e => setCalcParamsForm({...calcParamsForm, thirteenthMinMonthsWorked: Number(e.target.value)})}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Rescisão */}
+                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                            <h3 className="font-bold text-slate-700 mb-4 flex items-center gap-2"><FileText size={18}/> Rescisão</h3>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-bold mb-1 text-slate-600">Aviso Prévio (Dias Base)</label>
+                                    <input 
+                                        type="number" 
+                                        className="w-full border p-2.5 rounded-xl text-sm" 
+                                        value={calcParamsForm.noticePeriodDays} 
+                                        onChange={e => setCalcParamsForm({...calcParamsForm, noticePeriodDays: Number(e.target.value)})}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold mb-1 text-slate-600">Dias por Ano Trabalhado</label>
+                                    <input 
+                                        type="number" 
+                                        className="w-full border p-2.5 rounded-xl text-sm" 
+                                        value={calcParamsForm.noticePeriodDaysPerYear} 
+                                        onChange={e => setCalcParamsForm({...calcParamsForm, noticePeriodDaysPerYear: Number(e.target.value)})}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold mb-1 text-slate-600">Aviso Prévio (Máximo Dias)</label>
+                                    <input 
+                                        type="number" 
+                                        className="w-full border p-2.5 rounded-xl text-sm" 
+                                        value={calcParamsForm.noticePeriodMaxDays} 
+                                        onChange={e => setCalcParamsForm({...calcParamsForm, noticePeriodMaxDays: Number(e.target.value)})}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold mb-1 text-slate-600">Multa FGTS (%)</label>
+                                    <input 
+                                        type="number" 
+                                        className="w-full border p-2.5 rounded-xl text-sm" 
+                                        value={calcParamsForm.fgtsFinePercent} 
+                                        onChange={e => setCalcParamsForm({...calcParamsForm, fgtsFinePercent: Number(e.target.value)})}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Geral */}
+                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                            <h3 className="font-bold text-slate-700 mb-4 flex items-center gap-2"><Settings size={18}/> Geral</h3>
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-xs font-bold mb-1 text-slate-600">Horas Mensais Padrão</label>
+                                    <input 
+                                        type="number" 
+                                        className="w-full border p-2.5 rounded-xl text-sm" 
+                                        value={calcParamsForm.standardMonthlyHours} 
+                                        onChange={e => setCalcParamsForm({...calcParamsForm, standardMonthlyHours: Number(e.target.value)})}
+                                    />
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}

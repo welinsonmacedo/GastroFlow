@@ -1,0 +1,10 @@
+
+ALTER TABLE rh_payroll_settings
+ADD COLUMN IF NOT EXISTS vacation_days_entitlement INTEGER DEFAULT 30,
+ADD COLUMN IF NOT EXISTS vacation_sold_days_limit INTEGER DEFAULT 10,
+ADD COLUMN IF NOT EXISTS thirteenth_min_months_worked INTEGER DEFAULT 1,
+ADD COLUMN IF NOT EXISTS notice_period_days INTEGER DEFAULT 30,
+ADD COLUMN IF NOT EXISTS notice_period_days_per_year INTEGER DEFAULT 3,
+ADD COLUMN IF NOT EXISTS notice_period_max_days INTEGER DEFAULT 90,
+ADD COLUMN IF NOT EXISTS fgts_fine_percent NUMERIC DEFAULT 40,
+ADD COLUMN IF NOT EXISTS standard_monthly_hours INTEGER DEFAULT 220;

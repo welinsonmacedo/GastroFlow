@@ -178,7 +178,16 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           const legalSettings: RhPayrollSetting | null = settingsRes.data ? {
               id: settingsRes.data.id, minWage: Number(settingsRes.data.min_wage),
               inssCeiling: Number(settingsRes.data.inss_ceiling), irrfDependentDeduction: Number(settingsRes.data.irrf_dependent_deduction),
-              fgtsRate: Number(settingsRes.data.fgts_rate), validFrom: settingsRes.data.valid_from, validUntil: settingsRes.data.valid_until
+              fgtsRate: Number(settingsRes.data.fgts_rate), validFrom: settingsRes.data.valid_from, validUntil: settingsRes.data.valid_until,
+              // Calculation Params
+              vacationDaysEntitlement: Number(settingsRes.data.vacation_days_entitlement || 30),
+              vacationSoldDaysLimit: Number(settingsRes.data.vacation_sold_days_limit || 10),
+              thirteenthMinMonthsWorked: Number(settingsRes.data.thirteenth_min_months_worked || 1),
+              noticePeriodDays: Number(settingsRes.data.notice_period_days || 30),
+              noticePeriodDaysPerYear: Number(settingsRes.data.notice_period_days_per_year || 3),
+              noticePeriodMaxDays: Number(settingsRes.data.notice_period_max_days || 90),
+              fgtsFinePercent: Number(settingsRes.data.fgts_fine_percent || 40),
+              standardMonthlyHours: Number(settingsRes.data.standard_monthly_hours || 220)
           } : null;
 
           const inssBrackets = (inssRes.data || []).map((i: any) => ({
@@ -796,7 +805,16 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const payload = {
           tenant_id: tenantId, min_wage: settings.minWage, inss_ceiling: settings.inssCeiling,
           irrf_dependent_deduction: settings.irrfDependentDeduction, fgts_rate: settings.fgtsRate,
-          valid_from: settings.validFrom, valid_until: settings.validUntil
+          valid_from: settings.validFrom, valid_until: settings.validUntil,
+          // Calculation Params
+          vacation_days_entitlement: settings.vacationDaysEntitlement,
+          vacation_sold_days_limit: settings.vacationSoldDaysLimit,
+          thirteenth_min_months_worked: settings.thirteenthMinMonthsWorked,
+          notice_period_days: settings.noticePeriodDays,
+          notice_period_days_per_year: settings.noticePeriodDaysPerYear,
+          notice_period_max_days: settings.noticePeriodMaxDays,
+          fgts_fine_percent: settings.fgtsFinePercent,
+          standard_monthly_hours: settings.standardMonthlyHours
       };
       await supabase.from('rh_payroll_settings').delete().eq('tenant_id', tenantId);
       await supabase.from('rh_payroll_settings').insert(payload);
