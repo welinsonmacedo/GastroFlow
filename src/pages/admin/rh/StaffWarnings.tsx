@@ -317,11 +317,17 @@ export const StaffWarnings: React.FC = () => {
                                 <div className="w-full h-[600px] border p-8 rounded-2xl bg-white overflow-y-auto shadow-inner prose prose-slate max-w-none">
                                     <div 
                                         dangerouslySetInnerHTML={{ 
-                                            __html: content
-                                                .replace(/\{\{([^}]+)\}\}/g, (match) => match.replace(/<[^>]+>/g, ''))
-                                                .replace(/\{\{\s*empresa_nome\s*\}\}/g, restState.businessInfo.restaurantName || 'Empresa Teste')
-                                                .replace(/\{\{\s*nome\s*\}\}/g, selectedStaff?.name || 'Nome do Colaborador')
-                                                .replace(/\{\{\s*tipo_advertencia\s*\}\}/g, warningType === 'VERBAL' ? 'VERBAL' : 'FORMAL')
+                                            __html: (() => {
+                                                const company = restState.businessInfo;
+                                                const role = state.hrJobRoles.find(r => r.id === selectedStaff?.hrJobRoleId);
+                                                const roleName = role ? role.title : (selectedStaff?.customRoleName || '');
+                                                const shift = state.shifts.find(s => s.id === selectedStaff?.shiftId);
+                                                const shiftName = shift ? shift.name : '';
+                                                
+                                                return replaceContractVariables(content, selectedStaff as any, company, roleName, shiftName)
+                                                    .replace(/\{\{\s*data\s*\}\}/g, new Date().toLocaleDateString('pt-BR'))
+                                                    .replace(/\{\{\s*tipo_advertencia\s*\}\}/g, warningType === 'VERBAL' ? 'VERBAL' : 'ESCRITA/FORMAL');
+                                            })()
                                         }} 
                                     />
                                 </div>
