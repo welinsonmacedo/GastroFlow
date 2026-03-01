@@ -11,7 +11,7 @@ import { useUI } from '../../../context/UIContext';
 import { useRestaurant } from '../../../context/RestaurantContext';
 import { Button } from '../../../components/Button';
 import { HrJobRole, EventType, ContractTemplate, ContractTemplateType } from '../../../types';
-import { Plus, Trash2, Settings, DollarSign, RefreshCcw, FileText, Scale, Calculator, Edit3, Calendar, Bold, Italic, Underline, AlignCenter, Type, Eye, Printer, Clock } from 'lucide-react';
+import { Plus, Trash2, Settings, DollarSign, RefreshCcw, FileText, Scale, Calculator, Edit3, Calendar, Bold, Italic, Underline, AlignCenter, Type, Eye, Printer, Clock, UserCheck, ListChecks, RefreshCw, FileSignature } from 'lucide-react';
 import { LegalSettingsModal } from '../../../components/modals/LegalSettingsModal';
 import { HrJobRoleModal } from '../../../components/modals/HrJobRoleModal';
 import { Modal } from '../../../components/Modal';
@@ -268,24 +268,119 @@ export const StaffSettings: React.FC = () => {
     };
 
     return (
-        <div className="space-y-8 animate-fade-in pb-10">
-             
-             {/* Header */}
-             <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                <h2 className="text-2xl font-black text-slate-800 flex items-center gap-2"><Settings className="text-gray-600"/> Parâmetros de Folha</h2>
-                <p className="text-sm text-gray-500">Regras fiscais, tabelas oficiais e descontos extras.</p>
-                
-                <div className="flex gap-4 mt-6 border-b">
-                    <button onClick={() => setActiveTab('LEGAL')} className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'LEGAL' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}>Tabelas Legais (INSS/IRRF)</button>
-                    <button onClick={() => setActiveTab('ROLES')} className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'ROLES' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}>Cargos & CBO</button>
-                    <button onClick={() => setActiveTab('EVENT_TYPES')} className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'EVENT_TYPES' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}>Tipos de Eventos</button>
-                    <button onClick={() => setActiveTab('CONTRACTS')} className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'CONTRACTS' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}>Gerador de Modelos</button>
-                    <button onClick={() => setActiveTab('RECURRING')} className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'RECURRING' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}>Eventos Recorrentes</button>
-                    <button onClick={() => setActiveTab('SCHEDULES')} className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'SCHEDULES' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}>Escalas & Turnos</button>
-                    <button onClick={() => setActiveTab('TIME_TRACKING')} className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'TIME_TRACKING' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}>Configurações de Ponto</button>
-                    <button onClick={() => setActiveTab('CALC_PARAMS')} className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'CALC_PARAMS' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}>Parâmetros de Cálculos</button>
+        <div className="flex h-full animate-fade-in gap-6">
+            {/* Sidebar Navigation */}
+            <div className="w-64 shrink-0 space-y-6">
+                <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
+                    <h2 className="text-lg font-black text-slate-800 flex items-center gap-2 mb-4 px-2">
+                        <Settings className="text-blue-600" size={20}/> Configurações
+                    </h2>
+                    
+                    <div className="space-y-6">
+                        {/* Grupo: Geral / Estrutura */}
+                        <div>
+                            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 px-2">Estrutura</h3>
+                            <div className="space-y-1">
+                                <button 
+                                    onClick={() => setActiveTab('ROLES')} 
+                                    className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${activeTab === 'ROLES' ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50'}`}
+                                >
+                                    <UserCheck size={16}/> Cargos & CBO
+                                </button>
+                                <button 
+                                    onClick={() => setActiveTab('SCHEDULES')} 
+                                    className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${activeTab === 'SCHEDULES' ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50'}`}
+                                >
+                                    <Calendar size={16}/> Escalas & Turnos
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Grupo: Folha de Pagamento */}
+                        <div>
+                            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 px-2">Folha de Pagamento</h3>
+                            <div className="space-y-1">
+                                <button 
+                                    onClick={() => setActiveTab('LEGAL')} 
+                                    className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${activeTab === 'LEGAL' ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50'}`}
+                                >
+                                    <FileText size={16}/> Tabelas Legais
+                                </button>
+                                <button 
+                                    onClick={() => setActiveTab('EVENT_TYPES')} 
+                                    className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${activeTab === 'EVENT_TYPES' ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50'}`}
+                                >
+                                    <ListChecks size={16}/> Tipos de Eventos
+                                </button>
+                                <button 
+                                    onClick={() => setActiveTab('RECURRING')} 
+                                    className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${activeTab === 'RECURRING' ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50'}`}
+                                >
+                                    <RefreshCw size={16}/> Eventos Recorrentes
+                                </button>
+                                <button 
+                                    onClick={() => setActiveTab('CALC_PARAMS')} 
+                                    className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${activeTab === 'CALC_PARAMS' ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50'}`}
+                                >
+                                    <Calculator size={16}/> Parâmetros de Cálculos
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Grupo: Ponto & Jornada */}
+                        <div>
+                            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 px-2">Ponto & Jornada</h3>
+                            <div className="space-y-1">
+                                <button 
+                                    onClick={() => setActiveTab('TIME_TRACKING')} 
+                                    className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${activeTab === 'TIME_TRACKING' ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50'}`}
+                                >
+                                    <Clock size={16}/> Configurações de Ponto
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Grupo: Documentos */}
+                        <div>
+                            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 px-2">Documentos</h3>
+                            <div className="space-y-1">
+                                <button 
+                                    onClick={() => setActiveTab('CONTRACTS')} 
+                                    className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${activeTab === 'CONTRACTS' ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50'}`}
+                                >
+                                    <FileSignature size={16}/> Gerador de Modelos
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
+
+            {/* Main Content Area */}
+            <div className="flex-1 pb-10 space-y-6">
+                {/* Header do Conteúdo Ativo */}
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 mb-6">
+                    <h2 className="text-2xl font-black text-slate-800">
+                        {activeTab === 'ROLES' && 'Cargos & CBO'}
+                        {activeTab === 'SCHEDULES' && 'Escalas & Turnos'}
+                        {activeTab === 'LEGAL' && 'Tabelas Legais (INSS/IRRF)'}
+                        {activeTab === 'EVENT_TYPES' && 'Tipos de Eventos'}
+                        {activeTab === 'RECURRING' && 'Eventos Recorrentes'}
+                        {activeTab === 'CALC_PARAMS' && 'Parâmetros de Cálculos'}
+                        {activeTab === 'TIME_TRACKING' && 'Configurações de Ponto'}
+                        {activeTab === 'CONTRACTS' && 'Gerador de Modelos'}
+                    </h2>
+                    <p className="text-sm text-gray-500 mt-1">
+                        {activeTab === 'ROLES' && 'Gerencie os cargos, funções e códigos CBO da sua equipe.'}
+                        {activeTab === 'SCHEDULES' && 'Defina os horários de trabalho e escalas de revezamento.'}
+                        {activeTab === 'LEGAL' && 'Configure as tabelas de descontos oficiais vigentes.'}
+                        {activeTab === 'EVENT_TYPES' && 'Cadastre tipos de proventos e descontos para a folha.'}
+                        {activeTab === 'RECURRING' && 'Configure eventos que se repetem mensalmente para colaboradores.'}
+                        {activeTab === 'CALC_PARAMS' && 'Defina regras para férias, 13º salário e rescisões.'}
+                        {activeTab === 'TIME_TRACKING' && 'Configure métodos de registro, tolerâncias e banco de horas.'}
+                        {activeTab === 'CONTRACTS' && 'Crie modelos de contratos e documentos personalizados.'}
+                    </p>
+                </div>
 
             {/* ABA 1: TABELAS LEGAIS */}
             {activeTab === 'LEGAL' && (
@@ -1080,6 +1175,7 @@ export const StaffSettings: React.FC = () => {
                     </div>
                 </div>
             </Modal>
+            </div>
         </div>
     );
 };
