@@ -1,13 +1,13 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useStaff } from '../../../context/StaffContext';
 import { useRestaurant } from '../../../context/RestaurantContext'; 
 import { useUI } from '../../../context/UIContext';
 import { useFinance } from '../../../context/FinanceContext';
 import { Button } from '../../../components/Button';
 import { PayrollPreview, ClosedPayroll, PayrollEventType } from '../../../types';
-import { FileText, Printer, Calculator, RefreshCcw, Eye, X, Building2, Lock, Plus, Download, AlertTriangle, ArrowRight, Calendar, CheckSquare, Square, List, Trash2, Unlock } from 'lucide-react';
-import { printHtml, getReportStyles } from '../../../utils/printHelper';
+import { FileText, Printer, Calculator, RefreshCcw, Eye, Lock, Plus, Download, AlertTriangle, ArrowRight, Calendar, CheckSquare, List, Trash2, Unlock } from 'lucide-react';
+import { printHtml } from '../../../utils/printHelper';
 import { Modal } from '../../../components/Modal';
 
 export const StaffPayroll: React.FC = () => {
@@ -38,7 +38,7 @@ export const StaffPayroll: React.FC = () => {
     let selectedBaseHours = 220;
     if (selectedEmployee?.workModel === '12X36') selectedBaseHours = 180;
     else if (selectedEmployee?.workModel === 'PART_TIME') selectedBaseHours = 125;
-    else if (selectedEmployee?.workModel === 'HOURLY' && selectedSlip) selectedBaseHours = selectedSlip.hoursWorked;
+    else if ((selectedEmployee?.workModel as string) === 'HOURLY' && selectedSlip) selectedBaseHours = selectedSlip.hoursWorked;
     
     // Estados para Calculadora de Eventos
     const [calcMode, setCalcMode] = useState<'MANUAL' | 'DAYS' | 'HOURS'>('MANUAL');
@@ -134,7 +134,7 @@ export const StaffPayroll: React.FC = () => {
                             description: `Salário ${p.staffName} - Ref: ${String(month + 1).padStart(2, '0')}/${year}`,
                             amount: p.netTotal,
                             category: 'Folha de Pagamento',
-                            dueDate: dueDate.toISOString().split('T')[0],
+                            dueDate: dueDate,
                             isPaid: false,
                             isRecurring: false
                         });
@@ -154,7 +154,7 @@ export const StaffPayroll: React.FC = () => {
                         description: `Guia INSS - Ref: ${String(month + 1).padStart(2, '0')}/${year}`,
                         amount: totalINSS,
                         category: 'Impostos Folha',
-                        dueDate: dueDateINSS.toISOString().split('T')[0],
+                        dueDate: dueDateINSS,
                         isPaid: false,
                         isRecurring: false
                     });
@@ -167,7 +167,7 @@ export const StaffPayroll: React.FC = () => {
                         description: `Guia IRRF - Ref: ${String(month + 1).padStart(2, '0')}/${year}`,
                         amount: totalIRRF,
                         category: 'Impostos Folha',
-                        dueDate: dueDateIRRF.toISOString().split('T')[0],
+                        dueDate: dueDateIRRF,
                         isPaid: false,
                         isRecurring: false
                     });
@@ -180,7 +180,7 @@ export const StaffPayroll: React.FC = () => {
                         description: `Guia FGTS - Ref: ${String(month + 1).padStart(2, '0')}/${year}`,
                         amount: totalFGTS,
                         category: 'Impostos Folha',
-                        dueDate: dueDateFGTS.toISOString().split('T')[0],
+                        dueDate: dueDateFGTS,
                         isPaid: false,
                         isRecurring: false
                     });
@@ -319,7 +319,7 @@ export const StaffPayroll: React.FC = () => {
         let baseHours = 220; // Default 44h weekly
         if (employee?.workModel === '12X36') baseHours = 180;
         else if (employee?.workModel === 'PART_TIME') baseHours = 125;
-        else if (employee?.workModel === 'HOURLY') baseHours = slip.hoursWorked;
+        else if ((employee?.workModel as string) === 'HOURLY') baseHours = slip.hoursWorked;
 
         const html = `
             <!DOCTYPE html>
@@ -1013,7 +1013,7 @@ export const StaffPayroll: React.FC = () => {
                                         </div>
                                         <div className="flex items-center gap-4">
                                             <div className={`font-black ${isDeduction ? 'text-red-600' : 'text-emerald-600'}`}>
-                                                {isDeduction ? '-' : '+'} R$ {ev.value.toFixed(2)}
+                                                {isDeduction ? '-' : '+'} {evtType?.calculationType === 'PERCENTAGE' ? `${ev.value}%` : `R$ ${ev.value.toFixed(2)}`}
                                             </div>
                                             {!isClosed && (
                                                 <button onClick={() => handleDeleteEvent(ev.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors">

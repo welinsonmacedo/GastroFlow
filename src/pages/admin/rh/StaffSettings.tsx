@@ -4,14 +4,14 @@ import { useStaff } from '../../../context/StaffContext';
 import { useRestaurant } from '../../../context/RestaurantContext';
 import { useUI } from '../../../context/UIContext';
 import { Button } from '../../../components/Button';
-import { HrJobRole, RHTax, RHBenefit, TaxPayerType, TaxCalculationBasis, EventType, ContractTemplate } from '../../../types';
-import { Plus, Trash2, Settings, Percent, DollarSign, RefreshCcw, Gift, FileText, Building2, Scale, Calculator, Edit3, Briefcase, Tag, FileSignature, Calendar } from 'lucide-react';
+import { HrJobRole, EventType, ContractTemplate } from '../../../types';
+import { Plus, Trash2, Settings, DollarSign, RefreshCcw, FileText, Scale, Calculator, Edit3, Calendar } from 'lucide-react';
 import { LegalSettingsModal } from '../../../components/modals/LegalSettingsModal';
 import { HrJobRoleModal } from '../../../components/modals/HrJobRoleModal';
 import { Modal } from '../../../components/Modal';
 
 export const StaffSettings: React.FC = () => {
-    const { state, addTax, deleteTax, addBenefit, deleteBenefit, applyRegimeDefaults, applyLegalDefaults, deleteHrJobRole, addEventType, updateEventType, deleteEventType, addContractTemplate, updateContractTemplate, deleteContractTemplate } = useStaff();
+    const { state, applyLegalDefaults, deleteHrJobRole, addEventType, updateEventType, deleteEventType, addContractTemplate, updateContractTemplate, deleteContractTemplate } = useStaff();
     const { state: restState } = useRestaurant();
     const { showAlert, showConfirm } = useUI();
 
@@ -140,31 +140,6 @@ export const StaffSettings: React.FC = () => {
         });
     };
 
-    // Estado para impostos customizados
-    const [taxTab, setTaxTab] = useState<TaxPayerType>('EMPLOYEE');
-    const [taxForm, setTaxForm] = useState<Partial<RHTax>>({ name: '', type: 'PERCENTAGE', value: 0, calculationBasis: 'GROSS_TOTAL' });
-    const [benForm, setBenForm] = useState<Partial<RHBenefit>>({ name: '', type: 'FIXED', value: 0 });
-
-    const handleAddTax = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!taxForm.name || taxForm.value === undefined) return;
-        try { 
-            await addTax({ ...taxForm, payerType: taxTab }); 
-            setTaxForm({ name: '', type: 'PERCENTAGE', value: 0, calculationBasis: 'GROSS_TOTAL' }); 
-            showAlert({ title: "Sucesso", message: "Item adicionado.", type: "SUCCESS" }); 
-        } catch (e) { showAlert({ title: "Erro", message: "Falha ao salvar.", type: "ERROR" }); }
-    };
-
-    const handleDeleteTax = (id: string) => { showConfirm({ title: "Excluir Item", message: "Tem certeza?", onConfirm: () => deleteTax(id) }); };
-
-    const handleAddBenefit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!benForm.name || benForm.value === undefined) return;
-        try { await addBenefit(benForm); setBenForm({ name: '', type: 'FIXED', value: 0 }); showAlert({ title: "Sucesso", message: "Benefício adicionado.", type: "SUCCESS" }); } catch (e) { showAlert({ title: "Erro", message: "Falha ao salvar.", type: "ERROR" }); }
-    };
-
-    const handleDeleteBenefit = (id: string) => { showConfirm({ title: "Excluir Benefício", message: "Tem certeza?", onConfirm: () => deleteBenefit(id) }); };
-
     const handleResetLegal = () => {
         showConfirm({
             title: "Carregar Tabela Oficial 2026?",
@@ -176,29 +151,6 @@ export const StaffSettings: React.FC = () => {
         });
     };
 
-    const handleResetCustom = () => {
-        const regime = restState.businessInfo?.taxRegime || 'SIMPLES_NACIONAL';
-        showConfirm({
-            title: `Redefinir para ${regime.replace('_', ' ')}?`,
-            message: "Isso apagará os impostos customizados atuais e aplicará o padrão sugerido.",
-            onConfirm: async () => {
-                await applyRegimeDefaults(regime);
-                showAlert({ title: "Redefinido", message: "Impostos atualizados.", type: "SUCCESS" });
-            }
-        });
-    };
-
-    const handleSelectYear = (year: '2024' | '2026') => {
-        showConfirm({
-            title: `Carregar Tabela ${year}?`,
-            message: `Isso irá substituir os valores atuais de INSS e IRRF.`,
-            onConfirm: async () => {
-                await applyLegalDefaults(year);
-                showAlert({ title: "Tabela Carregada", message: `Tabela de ${year} aplicada com sucesso.`, type: "SUCCESS" });
-            }
-        });
-    };
-
     const handleDeleteHrRole = (id: string) => {
         const usersWithRole = state.users.filter(u => u.hrJobRoleId === id);
         if (usersWithRole.length > 0) {
@@ -206,9 +158,6 @@ export const StaffSettings: React.FC = () => {
         }
         showConfirm({ title: "Excluir Cargo", message: "Confirma a exclusão deste cargo de RH?", onConfirm: () => deleteHrJobRole(id) });
     };
-
-    // Filtra impostos pela aba custom
-    const filteredTaxes = state.taxes.filter(t => (t.payerType || 'EMPLOYEE') === taxTab);
 
     return (
         <div className="space-y-8 animate-fade-in pb-10">
@@ -246,9 +195,7 @@ export const StaffSettings: React.FC = () => {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-center gap-4 md:col-span-2">
-                            <span className="text-sm font-bold text-slate-600">Usar outra tabela:</span>
-                            <Button onClick={() => handleSelectYear('2024')} variant="secondary" size="sm">Tabela 2024</Button>
-                            <Button onClick={() => handleSelectYear('2026')} variant="secondary" size="sm">Tabela 2026</Button>
+                            <span className="text-sm font-bold text-slate-600">Configurações de Tabelas Legais</span>
                         </div>
                         {/* INSS Progressivo */}
                         <div className="bg-white p-6 rounded-2xl shadow-sm border border-orange-100">
@@ -259,7 +206,7 @@ export const StaffSettings: React.FC = () => {
                                         <tr><th className="p-3">Faixa Salarial</th><th className="p-3 text-right">Alíquota</th></tr>
                                     </thead>
                                     <tbody className="divide-y divide-orange-50">
-                                        {state.inssBrackets.map((b, i) => (
+                                        {state.inssBrackets.map((b) => (
                                             <tr key={b.id}>
                                                 <td className="p-3">
                                                     R$ {b.minValue.toFixed(2)} até {b.maxValue ? `R$ ${b.maxValue.toFixed(2)}` : '...'}
@@ -285,7 +232,7 @@ export const StaffSettings: React.FC = () => {
                                         <tr><th className="p-3">Base de Cálculo</th><th className="p-3 text-right">Alíquota</th><th className="p-3 text-right">Dedução</th></tr>
                                     </thead>
                                     <tbody className="divide-y divide-blue-50">
-                                        {state.irrfBrackets.map((b, i) => (
+                                        {state.irrfBrackets.map((b) => (
                                             <tr key={b.id}>
                                                 <td className="p-3">
                                                     {b.minValue === 0 ? 'Até' : `De R$ ${b.minValue.toFixed(2)}`} {b.maxValue ? `até R$ ${b.maxValue.toFixed(2)}` : 'em diante'}

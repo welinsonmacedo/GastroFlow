@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useStaff } from '../../../context/StaffContext';
 import { useUI } from '../../../context/UIContext';
 import { RecurringEvent, PayrollEventType } from '../../../types';
-import { Plus, Trash2, Edit2, CalendarClock, DollarSign, Percent, AlertCircle } from 'lucide-react';
+import { Plus, Trash2, Edit2, CalendarClock } from 'lucide-react';
 import { Button } from '../../../components/Button';
 import { Modal } from '../../../components/Modal';
 
@@ -100,7 +100,7 @@ export const StaffRecurringEvents: React.FC = () => {
                             <th className="p-4">Colaborador</th>
                             <th className="p-4">Tipo</th>
                             <th className="p-4">Descrição</th>
-                            <th className="p-4 text-right">Valor (R$)</th>
+                            <th className="p-4 text-right">Valor</th>
                             <th className="p-4 text-center">Status</th>
                             <th className="p-4 text-right">Ações</th>
                         </tr>
@@ -118,7 +118,9 @@ export const StaffRecurringEvents: React.FC = () => {
                                     </td>
                                     <td className="p-4 text-slate-600">{evt.description}</td>
                                     <td className="p-4 text-right font-mono font-bold text-slate-800">
-                                        {evt.value.toFixed(2)}
+                                        {state.eventTypes.find(t => t.id === evt.type)?.calculationType === 'PERCENTAGE' 
+                                            ? `${evt.value.toFixed(2)}%` 
+                                            : `R$ ${evt.value.toFixed(2)}`}
                                     </td>
                                     <td className="p-4 text-center">
                                         <span className={`px-2 py-1 rounded text-xs font-bold ${evt.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
