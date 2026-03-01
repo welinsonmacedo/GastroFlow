@@ -6,7 +6,8 @@ import { useRestaurant } from '../context/RestaurantContext';
 import { useAuth } from '../context/AuthProvider';
 import { 
     Users, Clock, Calendar, FileText, BarChart3, 
-    LogOut, Grid, ChefHat, UserPlus, Timer, Settings, Download
+    LogOut, Grid, ChefHat, UserPlus, Timer, Settings, Download,
+    DollarSign, UserMinus
 } from 'lucide-react';
 import { Role } from '../types';
 
@@ -16,7 +17,10 @@ import { StaffSchedules } from './admin/rh/StaffSchedules';
 import { StaffPayroll } from './admin/rh/StaffPayroll';
 import { StaffRecurringEvents } from './admin/rh/StaffRecurringEvents';
 import { StaffAttendance } from './admin/rh/StaffAttendance';
-import { StaffSettings } from './admin/rh/StaffSettings'; // Nova Importação
+import { StaffSettings } from './admin/rh/StaffSettings';
+import { StaffThirteenth } from './admin/rh/StaffThirteenth';
+import { StaffVacation } from './admin/rh/StaffVacation';
+import { StaffTermination } from './admin/rh/StaffTermination';
 
 export const StaffDashboard: React.FC = () => {
   const { state: restState } = useRestaurant();
@@ -52,6 +56,24 @@ export const StaffDashboard: React.FC = () => {
         path: '/rh/payroll', 
         label: 'PRÉ-FOLHA', 
         icon: FileText, 
+        featureKeys: ['hr_payroll']
+    },
+    { 
+        path: '/rh/thirteenth', 
+        label: '13º SALÁRIO', 
+        icon: DollarSign, 
+        featureKeys: ['hr_payroll']
+    },
+    { 
+        path: '/rh/vacation', 
+        label: 'FÉRIAS', 
+        icon: Calendar, 
+        featureKeys: ['hr_payroll']
+    },
+    { 
+        path: '/rh/termination', 
+        label: 'RESCISÃO', 
+        icon: UserMinus, 
         featureKeys: ['hr_payroll']
     },
     { 
@@ -157,6 +179,9 @@ export const StaffDashboard: React.FC = () => {
                     <Route path="/attendance" element={<StaffAttendance />} />
                     <Route path="/schedules" element={<StaffSchedules />} />
                     <Route path="/payroll" element={<StaffPayroll />} />
+                    <Route path="/thirteenth" element={<StaffThirteenth />} />
+                    <Route path="/vacation" element={<StaffVacation />} />
+                    <Route path="/termination" element={<StaffTermination />} />
                     <Route path="/recurring" element={<StaffRecurringEvents />} />
                     <Route path="/settings" element={<StaffSettings />} />
                     <Route path="*" element={<Navigate to="" replace />} />

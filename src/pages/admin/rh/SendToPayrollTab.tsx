@@ -42,7 +42,13 @@ export const SendToPayrollTab: React.FC = () => {
 
         userEntries.forEach(entry => {
             if (entry.clockIn && entry.clockOut) {
-                const hoursWorked = ((new Date(entry.clockOut).getTime() - new Date(entry.clockIn).getTime()) / 3600000);
+                let hoursWorked = ((new Date(entry.clockOut).getTime() - new Date(entry.clockIn).getTime()) / 3600000);
+                
+                if (entry.breakStart && entry.breakEnd) {
+                    const breakDuration = ((new Date(entry.breakEnd).getTime() - new Date(entry.breakStart).getTime()) / 3600000);
+                    hoursWorked -= breakDuration;
+                }
+
                 const balance = hoursWorked - targetHours;
 
                 if (balance > 0) {
@@ -153,9 +159,14 @@ export const SendToPayrollTab: React.FC = () => {
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
                                     {monthlyEntries.map(entry => {
-                                        const hours = entry.clockIn && entry.clockOut 
-                                            ? ((new Date(entry.clockOut).getTime() - new Date(entry.clockIn).getTime()) / 3600000).toFixed(1) 
-                                            : '-';
+                                        let hours = '-';
+                                        if (entry.clockIn && entry.clockOut) {
+                                            let h = (new Date(entry.clockOut).getTime() - new Date(entry.clockIn).getTime()) / 3600000;
+                                            if (entry.breakStart && entry.breakEnd) {
+                                                h -= (new Date(entry.breakEnd).getTime() - new Date(entry.breakStart).getTime()) / 3600000;
+                                            }
+                                            hours = h.toFixed(1);
+                                        }
                                         return (
                                             <tr key={entry.id}>
                                                 <td className="p-4 font-bold">{new Date(entry.entryDate).toLocaleDateString()}</td>

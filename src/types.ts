@@ -208,6 +208,86 @@ export interface PayrollPreview {
     eventBreakdown: { name: string; value: number; type: 'CREDIT' | 'DEBIT' }[];
 }
 
+// --- 13º Salário ---
+export interface ThirteenthPayment {
+    id: string;
+    staffId: string;
+    year: number;
+    installment: 1 | 2;
+    value: number;
+    referenceSalary: number;
+    monthsWorked: number;
+    inssValue: number;
+    irrfValue: number;
+    fgtsValue: number;
+    netValue: number;
+    status: 'PENDING' | 'PAID' | 'CANCELLED';
+    paidAt?: Date;
+    createdAt: Date;
+}
+
+// --- Férias ---
+export interface VacationPeriod {
+    id: string;
+    staffId: string;
+    acquisitionStart: Date;
+    acquisitionEnd: Date;
+    concessiveLimit: Date;
+    daysVested: number;
+    daysTaken: number;
+    daysSold: number;
+    daysBalance: number;
+    status: 'OPEN' | 'SCHEDULED' | 'TAKEN' | 'EXPIRED' | 'PAID_OUT';
+}
+
+export interface VacationSchedule {
+    id: string;
+    vacationId: string;
+    staffId: string;
+    startDate: Date;
+    endDate: Date;
+    daysCount: number;
+    soldDays: number;
+    
+    baseValue: number;
+    oneThirdValue: number;
+    soldValue: number;
+    soldOneThirdValue: number;
+    
+    inssValue: number;
+    irrfValue: number;
+    totalGross: number;
+    totalNet: number;
+    
+    paymentDate?: Date;
+    status: 'SCHEDULED' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED';
+}
+
+// --- Rescisão ---
+export type TerminationReason = 'DISMISSAL_NO_CAUSE' | 'DISMISSAL_CAUSE' | 'RESIGNATION' | 'AGREEMENT' | 'DEATH' | 'CONTRACT_END';
+export type NoticePeriodType = 'WORKED' | 'INDEMNIFIED' | 'WAIVED' | 'NOT_APPLICABLE';
+
+export interface Termination {
+    id: string;
+    staffId: string;
+    terminationDate: Date;
+    reason: TerminationReason;
+    noticePeriodType: NoticePeriodType;
+    noticeDays: number;
+    
+    balanceSalary: number;
+    noticeValue: number;
+    vacationProportionalValue: number;
+    vacationExpiredValue: number;
+    thirteenthProportionalValue: number;
+    fgtsFineValue: number;
+    
+    discountsValue: number;
+    totalValue: number;
+    
+    status: 'DRAFT' | 'FINALIZED' | 'PAID';
+}
+
 export interface ClosedPayroll {
     id: string;
     month: number;

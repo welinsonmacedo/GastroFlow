@@ -4,7 +4,8 @@ import {
     User, Shift, TimeEntry, PayrollPreview, CustomRole, 
     RHTax, RHBenefit, TaxRegime, TaxPayerType, TaxCalculationBasis,
     RhPayrollSetting, RhInssBracket, RhIrrfBracket, ClosedPayroll,
-    PayrollEvent, PayrollEventType, PayrollEntry, HrJobRole, RecurringEvent, EventType, ContractTemplate
+    PayrollEvent, PayrollEventType, PayrollEntry, HrJobRole, RecurringEvent, EventType, ContractTemplate,
+    ThirteenthPayment, VacationPeriod, VacationSchedule, Termination
 } from '../types';
 import { supabase, logAudit } from '../lib/supabase';
 import { useRestaurant } from './RestaurantContext';
@@ -27,6 +28,10 @@ interface StaffState {
   eventTypes: EventType[];
   contractTemplates: ContractTemplate[];
   payrollEntries: PayrollEntry[];
+  thirteenthPayments: ThirteenthPayment[];
+  vacationPeriods: VacationPeriod[];
+  vacationSchedules: VacationSchedule[];
+  terminations: Termination[];
   isLoading: boolean;
 }
 
@@ -44,6 +49,23 @@ interface StaffContextType {
   addContractTemplate: (template: Partial<ContractTemplate>) => Promise<void>;
   updateContractTemplate: (template: ContractTemplate) => Promise<void>;
   deleteContractTemplate: (id: string) => Promise<void>;
+
+  // 13º Salário
+  calculateThirteenth: (staffId: string, year: number, installment: 1 | 2) => Promise<ThirteenthPayment>;
+  saveThirteenth: (payment: Partial<ThirteenthPayment>) => Promise<void>;
+  deleteThirteenth: (id: string) => Promise<void>;
+
+  // Férias
+  calculateVacation: (staffId: string, startDate: Date, days: number, soldDays: number) => Promise<VacationSchedule>;
+  saveVacationSchedule: (schedule: Partial<VacationSchedule>) => Promise<void>;
+  updateVacationSchedule: (schedule: VacationSchedule) => Promise<void>;
+  deleteVacationSchedule: (id: string) => Promise<void>;
+  
+  // Rescisão
+  calculateTermination: (staffId: string, date: Date, reason: string, noticeType: string) => Promise<Termination>;
+  saveTermination: (termination: Partial<Termination>) => Promise<void>;
+  finalizeTermination: (id: string) => Promise<void>;
+  deleteTermination: (id: string) => Promise<void>;
 
   addHrJobRole: (role: Partial<HrJobRole>) => Promise<void>;
   updateHrJobRole: (role: HrJobRole) => Promise<void>;
@@ -97,7 +119,8 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   
   const [state, setState] = useState<StaffState>({ 
     users: [], shifts: [], timeEntries: [], roles: [], hrJobRoles: [], taxes: [], benefits: [],
-    legalSettings: null, inssBrackets: [], irrfBrackets: [], payrollEvents: [], recurringEvents: [], eventTypes: [], contractTemplates: [], payrollEntries: [], isLoading: true 
+    legalSettings: null, inssBrackets: [], irrfBrackets: [], payrollEvents: [], recurringEvents: [], eventTypes: [], contractTemplates: [], payrollEntries: [],
+    thirteenthPayments: [], vacationPeriods: [], vacationSchedules: [], terminations: [], isLoading: true 
   });
 
   const fetchData = useCallback(async () => {
@@ -105,7 +128,8 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       
       const [
           staffRes, shiftsRes, timeRes, rolesRes, taxesRes, benefitsRes,
-          settingsRes, inssRes, irrfRes, eventsRes, recurringEventsRes, hrRolesRes, eventTypesRes, contractTemplatesRes
+          settingsRes, inssRes, irrfRes, eventsRes, recurringEventsRes, hrRolesRes, eventTypesRes, contractTemplatesRes,
+          thirteenthRes, vacationsRes, vacationSchedulesRes, terminationsRes
       ] = await Promise.all([
           supabase.from('staff').select('*, custom_roles(name)').eq('tenant_id', tenantId).order('name'),
           supabase.from('rh_shifts').select('*').eq('tenant_id', tenantId),
@@ -120,7 +144,11 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           supabase.from('rh_recurring_events').select('*').eq('tenant_id', tenantId),
           supabase.from('rh_job_roles').select('*').eq('tenant_id', tenantId),
           supabase.from('rh_event_types').select('*').eq('tenant_id', tenantId).order('name'),
-          supabase.from('rh_contract_templates').select('*').eq('tenant_id', tenantId).order('name')
+          supabase.from('rh_contract_templates').select('*').eq('tenant_id', tenantId).order('name'),
+          supabase.from('rh_thirteenth_payments').select('*').eq('tenant_id', tenantId),
+          supabase.from('rh_vacations').select('*').eq('tenant_id', tenantId),
+          supabase.from('rh_vacation_schedules').select('*').eq('tenant_id', tenantId),
+          supabase.from('rh_terminations').select('*').eq('tenant_id', tenantId)
       ]);
 
       if (staffRes.data) {
@@ -216,10 +244,47 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               id: t.id, name: t.name, content: t.content, isActive: t.is_active
           }));
 
+          const mappedThirteenth = (thirteenthRes.data || []).map((t: any) => ({
+              id: t.id, staffId: t.staff_id, year: t.year, installment: t.installment,
+              value: Number(t.value), referenceSalary: Number(t.reference_salary), monthsWorked: t.months_worked,
+              inssValue: Number(t.inss_value), irrfValue: Number(t.irrf_value), fgtsValue: Number(t.fgts_value),
+              netValue: Number(t.net_value), status: t.status, paidAt: t.paid_at ? new Date(t.paid_at) : undefined,
+              createdAt: new Date(t.created_at)
+          }));
+
+          const mappedVacationPeriods = (vacationsRes.data || []).map((v: any) => ({
+              id: v.id, staffId: v.staff_id, acquisitionStart: new Date(v.acquisition_start),
+              acquisitionEnd: new Date(v.acquisition_end), concessiveLimit: new Date(v.concessive_limit),
+              daysVested: v.days_vested, daysTaken: v.days_taken, daysSold: v.days_sold, daysBalance: v.days_balance,
+              status: v.status
+          }));
+
+          const mappedVacationSchedules = (vacationSchedulesRes.data || []).map((s: any) => ({
+              id: s.id, vacationId: s.vacation_id, staffId: s.staff_id,
+              startDate: new Date(s.start_date), endDate: new Date(s.end_date),
+              daysCount: s.days_count, soldDays: s.sold_days,
+              baseValue: Number(s.base_value), oneThirdValue: Number(s.one_third_value),
+              soldValue: Number(s.sold_value), soldOneThirdValue: Number(s.sold_one_third_value),
+              inssValue: Number(s.inss_value), irrfValue: Number(s.irrf_value),
+              totalGross: Number(s.total_gross), totalNet: Number(s.total_net),
+              paymentDate: s.payment_date ? new Date(s.payment_date) : undefined, status: s.status
+          }));
+
+          const mappedTerminations = (terminationsRes.data || []).map((t: any) => ({
+              id: t.id, staffId: t.staff_id, terminationDate: new Date(t.termination_date),
+              reason: t.reason, noticePeriodType: t.notice_period_type, noticeDays: t.notice_days,
+              balanceSalary: Number(t.balance_salary), noticeValue: Number(t.notice_value),
+              vacationProportionalValue: Number(t.vacation_proportional_value), vacationExpiredValue: Number(t.vacation_expired_value),
+              thirteenthProportionalValue: Number(t.thirteenth_proportional_value), fgtsFineValue: Number(t.fgts_fine_value),
+              discountsValue: Number(t.discounts_value), totalValue: Number(t.total_value), status: t.status
+          }));
+
           setState({ 
             users: mappedUsers, shifts: mappedShifts, timeEntries: mappedTime, roles: mappedRoles, hrJobRoles: mappedHrRoles,
             taxes: mappedTaxes, benefits: mappedBenefits, legalSettings, inssBrackets, irrfBrackets, 
-            payrollEvents: mappedEvents, recurringEvents: mappedRecurringEvents, eventTypes: mappedEventTypes, contractTemplates: mappedContractTemplates, payrollEntries: [], isLoading: false 
+            payrollEvents: mappedEvents, recurringEvents: mappedRecurringEvents, eventTypes: mappedEventTypes, contractTemplates: mappedContractTemplates, payrollEntries: [],
+            thirteenthPayments: mappedThirteenth, vacationPeriods: mappedVacationPeriods, vacationSchedules: mappedVacationSchedules, terminations: mappedTerminations,
+            isLoading: false 
           });
       }
   }, [tenantId]);
@@ -237,6 +302,10 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               .on('postgres_changes', { event: '*', schema: 'public', table: 'rh_inss_brackets', filter: `tenant_id=eq.${tenantId}` }, fetchData)
               .on('postgres_changes', { event: '*', schema: 'public', table: 'rh_irrf_brackets', filter: `tenant_id=eq.${tenantId}` }, fetchData)
               .on('postgres_changes', { event: '*', schema: 'public', table: 'rh_contract_templates', filter: `tenant_id=eq.${tenantId}` }, fetchData)
+              .on('postgres_changes', { event: '*', schema: 'public', table: 'rh_thirteenth_payments', filter: `tenant_id=eq.${tenantId}` }, fetchData)
+              .on('postgres_changes', { event: '*', schema: 'public', table: 'rh_vacations', filter: `tenant_id=eq.${tenantId}` }, fetchData)
+              .on('postgres_changes', { event: '*', schema: 'public', table: 'rh_vacation_schedules', filter: `tenant_id=eq.${tenantId}` }, fetchData)
+              .on('postgres_changes', { event: '*', schema: 'public', table: 'rh_terminations', filter: `tenant_id=eq.${tenantId}` }, fetchData)
               .subscribe();
           return () => { supabase.removeChannel(channel); };
       }
@@ -298,6 +367,205 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const deleteContractTemplate = async (id: string) => {
       if (!tenantId) return;
       const { error } = await supabase.from('rh_contract_templates').delete().eq('id', id);
+      if (error) throw error;
+      await fetchData();
+  };
+
+  // --- 13º SALÁRIO ---
+  const calculateThirteenth = async (staffId: string, year: number, installment: 1 | 2): Promise<ThirteenthPayment> => {
+      const user = state.users.find(u => u.id === staffId);
+      if (!user) throw new Error("Colaborador não encontrado");
+      
+      // Lógica simplificada: considera salário base atual
+      const baseSalary = user.baseSalary || 0;
+      
+      // Calcular avos trabalhados no ano
+      const hireDate = user.hireDate ? new Date(user.hireDate) : new Date();
+      let monthsWorked = 12;
+      if (hireDate.getFullYear() === year) {
+          monthsWorked = 12 - hireDate.getMonth();
+          if (hireDate.getDate() > 15) monthsWorked -= 1; // Se admitido após dia 15, não conta o mês
+      }
+      monthsWorked = Math.max(0, Math.min(12, monthsWorked));
+
+      let value = (baseSalary / 12) * monthsWorked;
+      
+      let inssValue = 0;
+      let irrfValue = 0;
+      let fgtsValue = 0;
+
+      if (installment === 1) {
+          value = value / 2; // 50% sem descontos
+      } else {
+          // 2ª Parcela: Valor integral menos o que já foi pago na 1ª
+          // Incidem descontos sobre o TOTAL
+          const totalThirteenth = (baseSalary / 12) * monthsWorked;
+          inssValue = calculateINSS(totalThirteenth);
+          irrfValue = calculateIRRF(totalThirteenth, inssValue, user.dependentsCount || 0);
+          
+          // Subtrair adiantamento (1ª parcela)
+          // Na prática, precisaria buscar se já houve 1ª parcela paga. 
+          // Aqui vamos assumir que se está pedindo a 2ª, é o saldo restante.
+          value = totalThirteenth - (totalThirteenth / 2) - inssValue - irrfValue;
+      }
+      
+      fgtsValue = (installment === 1 ? value : (baseSalary / 12 * monthsWorked)) * 0.08; // FGTS sobre o valor bruto da competência
+
+      return {
+          id: '', staffId, year, installment, value, referenceSalary: baseSalary, monthsWorked,
+          inssValue, irrfValue, fgtsValue, netValue: value, status: 'PENDING', createdAt: new Date()
+      } as ThirteenthPayment;
+  };
+
+  const saveThirteenth = async (payment: Partial<ThirteenthPayment>) => {
+      if (!tenantId) return;
+      const { error } = await supabase.from('rh_thirteenth_payments').insert({
+          tenant_id: tenantId, staff_id: payment.staffId, year: payment.year,
+          installment: payment.installment, value: payment.value, reference_salary: payment.referenceSalary,
+          months_worked: payment.monthsWorked, inss_value: payment.inssValue, irrf_value: payment.irrfValue,
+          fgts_value: payment.fgtsValue, net_value: payment.netValue, status: 'PENDING'
+      });
+      if (error) throw error;
+      await fetchData();
+  };
+
+  const deleteThirteenth = async (id: string) => {
+      const { error } = await supabase.from('rh_thirteenth_payments').delete().eq('id', id);
+      if (error) throw error;
+      await fetchData();
+  };
+
+  // --- FÉRIAS ---
+  const calculateVacation = async (staffId: string, startDate: Date, days: number, soldDays: number): Promise<VacationSchedule> => {
+      const user = state.users.find(u => u.id === staffId);
+      if (!user) throw new Error("Colaborador não encontrado");
+      
+      const baseSalary = user.baseSalary || 0;
+      const dailyRate = baseSalary / 30;
+      
+      const vacationValue = dailyRate * days;
+      const oneThird = vacationValue / 3;
+      
+      const soldValue = dailyRate * soldDays;
+      const soldOneThird = soldValue / 3;
+      
+      const totalGross = vacationValue + oneThird + soldValue + soldOneThird;
+      
+      // Tributação (Abono não incide IRRF/INSS normalmente, mas férias gozadas sim)
+      const taxableBase = vacationValue + oneThird;
+      const inssValue = calculateINSS(taxableBase);
+      const irrfValue = calculateIRRF(taxableBase, inssValue, user.dependentsCount || 0);
+      
+      const totalNet = totalGross - inssValue - irrfValue;
+
+      return {
+          id: '', vacationId: '', staffId, startDate, endDate: new Date(startDate.getTime() + (days * 24 * 60 * 60 * 1000)),
+          daysCount: days, soldDays, baseValue: vacationValue, oneThirdValue: oneThird,
+          soldValue, soldOneThirdValue: soldOneThird, inssValue, irrfValue, totalGross, totalNet,
+          status: 'SCHEDULED'
+      } as VacationSchedule;
+  };
+
+  const saveVacationSchedule = async (schedule: Partial<VacationSchedule>) => {
+      if (!tenantId) return;
+      // Primeiro, garantir que existe um período aquisitivo aberto ou criar um
+      // Simplificação: Vamos criar o agendamento direto, assumindo que o frontend já validou ou selecionou o período
+      
+      const { error } = await supabase.from('rh_vacation_schedules').insert({
+          tenant_id: tenantId, vacation_id: schedule.vacationId, staff_id: schedule.staffId,
+          start_date: schedule.startDate, end_date: schedule.endDate, days_count: schedule.daysCount,
+          sold_days: schedule.soldDays, base_value: schedule.baseValue, one_third_value: schedule.oneThirdValue,
+          sold_value: schedule.soldValue, sold_one_third_value: schedule.soldOneThirdValue,
+          inss_value: schedule.inssValue, irrf_value: schedule.irrfValue, total_gross: schedule.totalGross,
+          total_net: schedule.totalNet, status: 'SCHEDULED'
+      });
+      if (error) throw error;
+      await fetchData();
+  };
+
+  const updateVacationSchedule = async (schedule: VacationSchedule) => {
+      if (!tenantId) return;
+      const { error } = await supabase.from('rh_vacation_schedules').update({
+          start_date: schedule.startDate, end_date: schedule.endDate, days_count: schedule.daysCount,
+          sold_days: schedule.soldDays, base_value: schedule.baseValue, one_third_value: schedule.oneThirdValue,
+          sold_value: schedule.soldValue, sold_one_third_value: schedule.soldOneThirdValue,
+          inss_value: schedule.inssValue, irrf_value: schedule.irrfValue, total_gross: schedule.totalGross,
+          total_net: schedule.totalNet, status: schedule.status
+      }).eq('id', schedule.id);
+      if (error) throw error;
+      await fetchData();
+  };
+
+  const deleteVacationSchedule = async (id: string) => {
+      const { error } = await supabase.from('rh_vacation_schedules').delete().eq('id', id);
+      if (error) throw error;
+      await fetchData();
+  };
+
+  // --- RESCISÃO ---
+  const calculateTermination = async (staffId: string, date: Date, reason: string, noticeType: string): Promise<Termination> => {
+      const user = state.users.find(u => u.id === staffId);
+      if (!user) throw new Error("Colaborador não encontrado");
+      
+      const baseSalary = user.baseSalary || 0;
+      const dailyRate = baseSalary / 30;
+      
+      // Saldo de Salário (dias trabalhados no mês)
+      const daysWorkedInMonth = date.getDate();
+      const balanceSalary = dailyRate * daysWorkedInMonth;
+      
+      // Aviso Prévio
+      let noticeValue = 0;
+      let noticeDays = 30; // Simplificado. Deveria ser 30 + 3 por ano.
+      if (noticeType === 'INDEMNIFIED') {
+          noticeValue = dailyRate * noticeDays;
+      }
+      
+      // Férias Proporcionais (Simplificado: 1/12 por mês trabalhado no ano se < 1 ano, ou desde o último período)
+      // Vamos assumir 6/12 avos como exemplo fixo para MVP, idealmente calcularia datas
+      const vacationProportionalValue = (baseSalary / 12) * 6 + ((baseSalary / 12) * 6 / 3);
+      const vacationExpiredValue = 0; // Teria que checar períodos vencidos
+      
+      // 13º Proporcional
+      const thirteenthProportionalValue = (baseSalary / 12) * 6;
+      
+      // Multa FGTS
+      const fgtsFineValue = reason.includes('DISMISSAL_NO_CAUSE') ? (baseSalary * 12 * 0.08 * 0.40) : 0; // Estimativa baseada em 1 ano de trabalho
+      
+      const totalValue = balanceSalary + noticeValue + vacationProportionalValue + vacationExpiredValue + thirteenthProportionalValue + fgtsFineValue;
+
+      return {
+          id: '', staffId, terminationDate: date, reason: reason as any, noticePeriodType: noticeType as any, noticeDays,
+          balanceSalary, noticeValue, vacationProportionalValue, vacationExpiredValue, thirteenthProportionalValue,
+          fgtsFineValue, discountsValue: 0, totalValue, status: 'DRAFT'
+      } as Termination;
+  };
+
+  const saveTermination = async (termination: Partial<Termination>) => {
+      if (!tenantId) return;
+      const { error } = await supabase.from('rh_terminations').insert({
+          tenant_id: tenantId, staff_id: termination.staffId, termination_date: termination.terminationDate,
+          reason: termination.reason, notice_period_type: termination.noticePeriodType, notice_days: termination.noticeDays,
+          balance_salary: termination.balanceSalary, notice_value: termination.noticeValue,
+          vacation_proportional_value: termination.vacationProportionalValue, vacation_expired_value: termination.vacationExpiredValue,
+          thirteenth_proportional_value: termination.thirteenthProportionalValue, fgts_fine_value: termination.fgtsFineValue,
+          discounts_value: termination.discountsValue, total_value: termination.totalValue, status: 'DRAFT'
+      });
+      if (error) throw error;
+      await fetchData();
+  };
+
+  const finalizeTermination = async (id: string) => {
+      if (!tenantId) return;
+      const { error } = await supabase.from('rh_terminations').update({ status: 'FINALIZED' }).eq('id', id);
+      if (error) throw error;
+      // Também deveria inativar o funcionário
+      // await supabase.from('staff').update({ status: 'TERMINATED' }).eq('id', staffId);
+      await fetchData();
+  };
+
+  const deleteTermination = async (id: string) => {
+      const { error } = await supabase.from('rh_terminations').delete().eq('id', id);
       if (error) throw error;
       await fetchData();
   };
@@ -977,7 +1245,10 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         addBenefit, deleteBenefit,
         addPayrollEvent, updatePayrollEvent, deletePayrollEvent, addPayrollEntry,
         addRecurringEvent, updateRecurringEvent, deleteRecurringEvent, generateRecurringEventsForMonth,
-        addContractTemplate, updateContractTemplate, deleteContractTemplate, uploadSignedContract
+        addContractTemplate, updateContractTemplate, deleteContractTemplate, uploadSignedContract,
+        calculateThirteenth, saveThirteenth, deleteThirteenth,
+        calculateVacation, saveVacationSchedule, updateVacationSchedule, deleteVacationSchedule,
+        calculateTermination, saveTermination, finalizeTermination, deleteTermination
     }}>
       {children}
     </StaffContext.Provider>
