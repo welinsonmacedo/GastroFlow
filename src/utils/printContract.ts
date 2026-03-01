@@ -73,6 +73,17 @@ export const replaceContractVariables = (templateContent: string, user: User, co
     content = content.replace(/\{\{\s*ctps\s*\}\}/gi, formatCtps());
     content = content.replace(/\{\{\s*pis\s*\}\}/gi, user.pisPasep || '____________________');
 
+    // Global Date/Time Variables
+    const now = new Date();
+    const months = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+    
+    content = content.replace(/\{\{\s*data_atual_abreviada\s*\}\}/gi, now.toLocaleDateString('pt-BR'));
+    content = content.replace(/\{\{\s*data_atual_extenso\s*\}\}/gi, `${now.getDate()} de ${months[now.getMonth()]} de ${now.getFullYear()}`);
+    content = content.replace(/\{\{\s*hora_atual\s*\}\}/gi, now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));
+    content = content.replace(/\{\{\s*ano_atual\s*\}\}/gi, now.getFullYear().toString());
+    content = content.replace(/\{\{\s*mes_atual\s*\}\}/gi, months[now.getMonth()]);
+    content = content.replace(/\{\{\s*dia_atual\s*\}\}/gi, now.getDate().toString().padStart(2, '0'));
+
     // Replace extra variables
     Object.keys(extraVariables).forEach(key => {
         const regex = new RegExp(`\\{\\{\\s*${key}\\s*\\}\\}`, 'gi');

@@ -279,7 +279,7 @@ export const StaffSettings: React.FC = () => {
                     <button onClick={() => setActiveTab('LEGAL')} className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'LEGAL' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}>Tabelas Legais (INSS/IRRF)</button>
                     <button onClick={() => setActiveTab('ROLES')} className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'ROLES' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}>Cargos & CBO</button>
                     <button onClick={() => setActiveTab('EVENT_TYPES')} className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'EVENT_TYPES' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}>Tipos de Eventos</button>
-                    <button onClick={() => setActiveTab('CONTRACTS')} className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'CONTRACTS' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}>Modelos de Contrato</button>
+                    <button onClick={() => setActiveTab('CONTRACTS')} className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'CONTRACTS' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}>Gerador de Modelos</button>
                     <button onClick={() => setActiveTab('RECURRING')} className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'RECURRING' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}>Eventos Recorrentes</button>
                     <button onClick={() => setActiveTab('SCHEDULES')} className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'SCHEDULES' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}>Escalas & Turnos</button>
                     <button onClick={() => setActiveTab('TIME_TRACKING')} className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'TIME_TRACKING' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'}`}>Configurações de Ponto</button>
@@ -485,7 +485,7 @@ export const StaffSettings: React.FC = () => {
                 <div className="space-y-6">
                     <div className="flex justify-between items-center bg-blue-50 p-4 rounded-xl border border-blue-100">
                         <div className="text-xs text-blue-800">
-                            <strong>Modelos de Contrato:</strong> Crie modelos de contrato de trabalho para gerar automaticamente para seus colaboradores.
+                            <strong>Gerador de Modelos:</strong> Crie modelos de documentos (contratos, avisos, termos) para gerar automaticamente para seus colaboradores.
                         </div>
                         <Button onClick={() => handleOpenContractModal()} className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm shrink-0">
                             <Plus size={16} className="mr-2"/> Novo Modelo

@@ -179,7 +179,7 @@ export const PointCorrectionModal: React.FC<PointCorrectionModalProps> = ({ isOp
                         ))}
                     </select>
                     <p className="text-[10px] text-slate-400 mt-1">
-                        Crie modelos em "Configurações de RH" {'>'} "Modelos de Contrato". Use variáveis como {'{{horario_anterior}}'}, {'{{horario_corrigido}}'}, {'{{justificativa}}'}.
+                        Crie modelos em "Configurações de RH" {'>'} "Gerador de Modelos". Use variáveis como {'{{horario_anterior}}'}, {'{{horario_corrigido}}'}, {'{{justificativa}}'}.
                     </p>
                 </div>
 
