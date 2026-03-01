@@ -198,7 +198,21 @@ export const StaffSettings: React.FC = () => {
             .replace(/{{empresa_cidade}}/g, company.address?.city || '')
             .replace(/{{empresa_estado}}/g, company.address?.state || '')
             .replace(/{{empresa_telefone}}/g, company.phone || '')
-            .replace(/{{empresa_email}}/g, company.email || '');
+            .replace(/{{empresa_email}}/g, company.email || '')
+            .replace(/{{nome}}/g, 'Nome do Colaborador')
+            .replace(/{{cpf}}/g, '000.000.000-00')
+            .replace(/{{rg}}/g, '00.000.000-0')
+            .replace(/{{endereco}}/g, 'Rua Teste, 123')
+            .replace(/{{cidade_uf}}/g, 'Cidade/UF')
+            .replace(/{{nacionalidade}}/g, 'Brasileiro(a)')
+            .replace(/{{estado_civil}}/g, 'Solteiro(a)')
+            .replace(/{{cargo}}/g, 'Cargo Teste')
+            .replace(/{{setor}}/g, 'Setor Teste')
+            .replace(/{{salario}}/g, 'R$ 2.000,00')
+            .replace(/{{data_admissao}}/g, '01/01/2026')
+            .replace(/{{jornada}}/g, '44h semanais')
+            .replace(/{{ctps}}/g, '1234567 Série 001/UF')
+            .replace(/{{pis}}/g, '123.45678.90-1');
 
         printWindow.document.write(`
             <html>
@@ -776,6 +790,7 @@ export const StaffSettings: React.FC = () => {
                                                 { label: 'Nacionalidade', code: '{{nacionalidade}}' },
                                                 { label: 'Estado Civil', code: '{{estado_civil}}' },
                                                 { label: 'Cargo', code: '{{cargo}}' },
+                                                { label: 'Setor', code: '{{setor}}' },
                                                 { label: 'Salário Base', code: '{{salario}}' },
                                                 { label: 'Data Admissão', code: '{{data_admissao}}' },
                                                 { label: 'Jornada', code: '{{jornada}}' },

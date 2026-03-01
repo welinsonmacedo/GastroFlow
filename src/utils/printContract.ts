@@ -1,7 +1,7 @@
 
-import { User } from '../types';
+import { User, BusinessInfo } from '../types';
 
-export const printContract = (templateContent: string, user: User) => {
+export const printContract = (templateContent: string, user: User, company: BusinessInfo, roleName: string) => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
 
@@ -17,6 +17,14 @@ export const printContract = (templateContent: string, user: User) => {
     let content = templateContent;
 
     // Replace variables
+    content = content.replace(/{{empresa_nome}}/g, company.restaurantName || '____________________');
+    content = content.replace(/{{empresa_cnpj}}/g, company.cnpj || '____________________');
+    content = content.replace(/{{empresa_endereco}}/g, `${company.address?.street || ''}, ${company.address?.number || ''}`);
+    content = content.replace(/{{empresa_cidade}}/g, company.address?.city || '____________________');
+    content = content.replace(/{{empresa_estado}}/g, company.address?.state || '____________________');
+    content = content.replace(/{{empresa_telefone}}/g, company.phone || '____________________');
+    content = content.replace(/{{empresa_email}}/g, company.email || '____________________');
+
     content = content.replace(/{{nome}}/g, user.name || '____________________');
     content = content.replace(/{{cpf}}/g, user.documentCpf || '____________________');
     content = content.replace(/{{rg}}/g, user.rgNumber ? `${user.rgNumber} ${user.rgIssuer}/${user.rgState}` : '____________________');
@@ -24,7 +32,8 @@ export const printContract = (templateContent: string, user: User) => {
     content = content.replace(/{{cidade_uf}}/g, user.addressCity ? `${user.addressCity}/${user.addressState}` : '____________________');
     content = content.replace(/{{nacionalidade}}/g, 'Brasileiro(a)'); // Default for now
     content = content.replace(/{{estado_civil}}/g, user.maritalStatus || '____________________');
-    content = content.replace(/{{cargo}}/g, user.hrJobRoleId || '____________________'); // Ideally fetch role name
+    content = content.replace(/{{cargo}}/g, roleName || '____________________');
+    content = content.replace(/{{setor}}/g, user.department || '____________________');
     content = content.replace(/{{salario}}/g, formatCurrency(user.baseSalary));
     content = content.replace(/{{data_admissao}}/g, formatDate(user.hireDate));
     content = content.replace(/{{jornada}}/g, user.workModel || '____________________');

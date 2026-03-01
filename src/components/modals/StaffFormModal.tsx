@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Modal } from '../Modal';
 import { useStaff } from '../../context/StaffContext';
 import { useUI } from '../../context/UIContext';
+import { useRestaurant } from '../../context/RestaurantContext';
 import { User, Role, ContractType, WorkModel } from '../../types';
 import { Shield, Mail, User as UserIcon, Briefcase, Clock, MapPin, DollarSign, HeartPulse, FileText, Printer, FileSignature, RefreshCcw } from 'lucide-react';
 import { printStaffSheet } from '../../utils/printStaffSheet';
@@ -19,6 +20,7 @@ type Tab = 'GENERAL' | 'PERSONAL' | 'ADDRESS' | 'CONTRACT' | 'FINANCIAL' | 'SST'
 
 export const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose, userToEdit, variant = 'ACCESS' }) => {
   const { addUser, updateUser, state, uploadSignedContract } = useStaff(); 
+  const { state: restState } = useRestaurant();
   const { showAlert } = useUI();
 
   const [form, setForm] = useState<Partial<User>>({});
@@ -32,7 +34,11 @@ export const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose,
       
       // Merge form data with userToEdit to ensure latest changes are used
       const userData = { ...userToEdit, ...form } as User;
-      printContract(template.content, userData);
+      const company = restState.businessInfo;
+      const role = state.hrJobRoles.find(r => r.id === userData.hrJobRoleId);
+      const roleName = role ? role.title : (userData.customRoleName || '');
+      
+      printContract(template.content, userData, company, roleName);
   };
 
   const handleUploadContract = async (e: React.ChangeEvent<HTMLInputElement>) => {

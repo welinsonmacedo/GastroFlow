@@ -58,6 +58,9 @@ export const StaffWarnings: React.FC = () => {
             if (!printWindow) return;
 
             const company = restState.businessInfo;
+            const role = state.hrJobRoles.find(r => r.id === selectedStaff?.hrJobRoleId);
+            const roleName = role ? role.title : (selectedStaff?.customRoleName || '');
+            const department = selectedStaff?.department || '';
             
             // Replace variables
             let rendered = content
@@ -68,7 +71,8 @@ export const StaffWarnings: React.FC = () => {
                 .replace(/{{empresa_estado}}/g, company.address?.state || '')
                 .replace(/{{nome}}/g, selectedStaff?.name || '')
                 .replace(/{{cpf}}/g, selectedStaff?.documentCpf || '')
-                .replace(/{{cargo}}/g, selectedStaff?.customRoleName || '')
+                .replace(/{{cargo}}/g, roleName)
+                .replace(/{{setor}}/g, department)
                 .replace(/{{data}}/g, new Date().toLocaleDateString('pt-BR'))
                 .replace(/{{tipo_advertencia}}/g, warningType === 'VERBAL' ? 'VERBAL' : 'ESCRITA/FORMAL');
 
