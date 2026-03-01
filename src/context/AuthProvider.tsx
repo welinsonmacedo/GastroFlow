@@ -81,7 +81,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+            console.error("Session error:", error.message);
+            if (error.message.includes('Refresh Token') || error.message.includes('refresh_token')) {
+                await supabase.auth.signOut();
+            }
+        }
+
         if (session?.user) {
             const { data: tenant } = await supabase.from('tenants').select('id').eq('slug', slug).maybeSingle();
             if (tenant) {
@@ -143,8 +151,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     loadUserFromSession();
+    
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event: string) => {
+        if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
+            await stopHeartbeat();
+            setState({ currentUser: null, isAuthenticated: false, isLoading: false });
+        } else if (event === 'TOKEN_REFRESHED') {
+            // Token was successfully refreshed
+        }
+    });
+
     return () => {
         if (heartbeatInterval.current) clearInterval(heartbeatInterval.current);
+        subscription.unsubscribe();
     };
   }, []);
 
@@ -159,7 +178,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     const slug = getTenantSlug();
     if(slug) {
-        supabase.from('tenants').select('id').eq('slug', slug).single().then(({data}) => {
+        supabase.from('tenants').select('id').eq('slug', slug).single().then(({data}: {data: any}) => {
             if(data) startHeartbeat(data.id, user.id);
         });
     }

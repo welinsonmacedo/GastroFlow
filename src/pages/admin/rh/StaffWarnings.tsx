@@ -17,6 +17,7 @@ export const StaffWarnings: React.FC = () => {
     const [content, setContent] = useState<string>('');
     const [isPreviewMode, setIsPreviewMode] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
+    const [activeTab, setActiveTab] = useState<'NEW' | 'HISTORY'>('NEW');
 
     const warningTemplates = state.contractTemplates.filter(t => t.isActive && t.type === 'WARNING');
     const selectedStaff = state.users.find(u => u.id === selectedStaffId);
@@ -192,167 +193,212 @@ export const StaffWarnings: React.FC = () => {
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    {/* Painel de Configuração */}
-                    <div className="lg:col-span-1 space-y-6">
-                        <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100">
-                            <h3 className="text-xs font-black text-slate-400 uppercase tracking-wider mb-4">Nova Advertência</h3>
-                            
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="block text-xs font-bold mb-1 text-slate-600">Colaborador *</label>
-                                    <div className="relative">
-                                        <LucideUser className="absolute left-3 top-2.5 text-gray-400" size={16} />
+                <div className="flex gap-4 mt-6 border-b mb-8">
+                    <button onClick={() => setActiveTab('NEW')} className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'NEW' ? 'border-orange-500 text-orange-500' : 'border-transparent text-gray-500'}`}>Nova Advertência</button>
+                    <button onClick={() => setActiveTab('HISTORY')} className={`pb-3 px-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'HISTORY' ? 'border-orange-500 text-orange-500' : 'border-transparent text-gray-500'}`}>Histórico</button>
+                </div>
+
+                {activeTab === 'NEW' && (
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        {/* Painel de Configuração */}
+                        <div className="lg:col-span-1 space-y-6">
+                            <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100">
+                                <h3 className="text-xs font-black text-slate-400 uppercase tracking-wider mb-4">Nova Advertência</h3>
+                                
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-xs font-bold mb-1 text-slate-600">Colaborador *</label>
+                                        <div className="relative">
+                                            <LucideUser className="absolute left-3 top-2.5 text-gray-400" size={16} />
+                                            <select 
+                                                className="w-full border pl-9 p-2.5 rounded-xl text-sm bg-white"
+                                                value={selectedStaffId}
+                                                onChange={e => setSelectedStaffId(e.target.value)}
+                                            >
+                                                <option value="">Selecione o funcionário...</option>
+                                                {state.users.filter(u => u.status === 'ACTIVE').map(user => (
+                                                    <option key={user.id} value={user.id}>{user.name}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-xs font-bold mb-1 text-slate-600">Tipo de Advertência</label>
+                                        <div className="flex gap-2">
+                                            <button 
+                                                onClick={() => setWarningType('VERBAL')}
+                                                className={`flex-1 py-2 text-xs font-bold rounded-lg border transition-all ${warningType === 'VERBAL' ? 'bg-orange-500 text-white border-orange-600' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
+                                            >
+                                                Verbal
+                                            </button>
+                                            <button 
+                                                onClick={() => setWarningType('FORMAL')}
+                                                className={`flex-1 py-2 text-xs font-bold rounded-lg border transition-all ${warningType === 'FORMAL' ? 'bg-red-600 text-white border-red-700' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
+                                            >
+                                                Formal/Escrita
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-xs font-bold mb-1 text-slate-600">Modelo Base</label>
                                         <select 
-                                            className="w-full border pl-9 p-2.5 rounded-xl text-sm bg-white"
-                                            value={selectedStaffId}
-                                            onChange={e => setSelectedStaffId(e.target.value)}
+                                            className="w-full border p-2.5 rounded-xl text-sm bg-white"
+                                            value={selectedTemplateId}
+                                            onChange={e => setSelectedTemplateId(e.target.value)}
                                         >
-                                            <option value="">Selecione o funcionário...</option>
-                                            {state.users.filter(u => u.status === 'ACTIVE').map(user => (
-                                                <option key={user.id} value={user.id}>{user.name}</option>
+                                            <option value="">Selecione um modelo...</option>
+                                            {warningTemplates.map(t => (
+                                                <option key={t.id} value={t.id}>{t.name}</option>
                                             ))}
                                         </select>
+                                        {warningTemplates.length === 0 && (
+                                            <p className="text-[10px] text-orange-600 mt-1 font-bold">Nenhum modelo do tipo "Advertência" cadastrado.</p>
+                                        )}
+                                    </div>
+
+                                    <div className="pt-4">
+                                        <Button 
+                                            onClick={handleSaveAndPrint}
+                                            className="w-full bg-slate-800 hover:bg-slate-900 text-white py-3 rounded-xl flex items-center justify-center gap-2"
+                                            disabled={!selectedStaffId || !content || isSaving}
+                                        >
+                                            {isSaving ? 'Salvando...' : <><Printer size={18} /> Lançar e Imprimir</>}
+                                        </Button>
                                     </div>
                                 </div>
+                            </div>
+                        </div>
 
-                                <div>
-                                    <label className="block text-xs font-bold mb-1 text-slate-600">Tipo de Advertência</label>
-                                    <div className="flex gap-2">
-                                        <button 
-                                            onClick={() => setWarningType('VERBAL')}
-                                            className={`flex-1 py-2 text-xs font-bold rounded-lg border transition-all ${warningType === 'VERBAL' ? 'bg-orange-500 text-white border-orange-600' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
-                                        >
-                                            Verbal
-                                        </button>
-                                        <button 
-                                            onClick={() => setWarningType('FORMAL')}
-                                            className={`flex-1 py-2 text-xs font-bold rounded-lg border transition-all ${warningType === 'FORMAL' ? 'bg-red-600 text-white border-red-700' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
-                                        >
-                                            Formal/Escrita
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <label className="block text-xs font-bold mb-1 text-slate-600">Modelo Base</label>
-                                    <select 
-                                        className="w-full border p-2.5 rounded-xl text-sm bg-white"
-                                        value={selectedTemplateId}
-                                        onChange={e => setSelectedTemplateId(e.target.value)}
+                        {/* Editor de Conteúdo */}
+                        <div className="lg:col-span-2 space-y-4">
+                            <div className="flex items-center justify-between border-b pb-2">
+                                <div className="flex gap-4">
+                                    <button 
+                                        onClick={() => setIsPreviewMode(false)}
+                                        className={`text-sm font-bold pb-2 border-b-2 transition-all ${!isPreviewMode ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-400'}`}
                                     >
-                                        <option value="">Selecione um modelo...</option>
-                                        {warningTemplates.map(t => (
-                                            <option key={t.id} value={t.id}>{t.name}</option>
-                                        ))}
-                                    </select>
-                                    {warningTemplates.length === 0 && (
-                                        <p className="text-[10px] text-orange-600 mt-1 font-bold">Nenhum modelo do tipo "Advertência" cadastrado.</p>
-                                    )}
-                                </div>
-
-                                <div className="pt-4">
-                                    <Button 
-                                        onClick={handleSaveAndPrint}
-                                        className="w-full bg-slate-800 hover:bg-slate-900 text-white py-3 rounded-xl flex items-center justify-center gap-2"
-                                        disabled={!selectedStaffId || !content || isSaving}
+                                        <Edit3 size={14} className="inline mr-1"/> Editar Texto
+                                    </button>
+                                    <button 
+                                        onClick={() => setIsPreviewMode(true)}
+                                        className={`text-sm font-bold pb-2 border-b-2 transition-all ${isPreviewMode ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-400'}`}
                                     >
-                                        {isSaving ? 'Salvando...' : <><Printer size={18} /> Lançar e Imprimir</>}
-                                    </Button>
+                                        <Eye size={14} className="inline mr-1"/> Visualizar
+                                    </button>
                                 </div>
+                                <span className="text-[10px] font-bold text-slate-400 uppercase">Suporta Tags HTML</span>
                             </div>
-                        </div>
 
-                        {/* Histórico Rápido */}
-                        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-                            <h3 className="text-xs font-black text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-2">
-                                <History size={14} /> Histórico Recente
-                            </h3>
-                            <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 scrollbar-hide">
-                                {staffWarnings.length === 0 ? (
-                                    <p className="text-xs text-gray-400 italic text-center py-4">Nenhum registro encontrado.</p>
-                                ) : (
-                                    staffWarnings.map(warning => {
-                                        const staff = state.users.find(u => u.id === warning.staffId);
-                                        return (
-                                            <div key={warning.id} className="p-3 rounded-xl bg-slate-50 border border-slate-100 group">
-                                                <div className="flex justify-between items-start mb-1">
-                                                    <span className={`text-[9px] font-black px-1.5 py-0.5 rounded uppercase ${warning.type === 'VERBAL' ? 'bg-orange-100 text-orange-700' : 'bg-red-100 text-red-700'}`}>
-                                                        {warning.type}
-                                                    </span>
-                                                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                        <button onClick={() => handleViewWarning(warning)} className="p-1 hover:bg-white rounded text-blue-600"><Printer size={12} /></button>
-                                                        <button onClick={() => handleDeleteWarning(warning.id)} className="p-1 hover:bg-white rounded text-red-600"><Trash2 size={12} /></button>
-                                                    </div>
-                                                </div>
-                                                <p className="text-xs font-bold text-slate-700 truncate">{staff?.name}</p>
-                                                <p className="text-[10px] text-slate-400">{new Date(warning.createdAt).toLocaleDateString('pt-BR')}</p>
-                                            </div>
-                                        );
-                                    })
-                                )}
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Editor de Conteúdo */}
-                    <div className="lg:col-span-2 space-y-4">
-                        <div className="flex items-center justify-between border-b pb-2">
-                            <div className="flex gap-4">
-                                <button 
-                                    onClick={() => setIsPreviewMode(false)}
-                                    className={`text-sm font-bold pb-2 border-b-2 transition-all ${!isPreviewMode ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-400'}`}
-                                >
-                                    <Edit3 size={14} className="inline mr-1"/> Editar Texto
-                                </button>
-                                <button 
-                                    onClick={() => setIsPreviewMode(true)}
-                                    className={`text-sm font-bold pb-2 border-b-2 transition-all ${isPreviewMode ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-400'}`}
-                                >
-                                    <Eye size={14} className="inline mr-1"/> Visualizar
-                                </button>
-                            </div>
-                            <span className="text-[10px] font-bold text-slate-400 uppercase">Suporta Tags HTML</span>
-                        </div>
-
-                        {!isPreviewMode ? (
-                            <textarea 
-                                className="w-full h-[600px] border p-6 rounded-2xl text-sm font-mono leading-relaxed focus:ring-2 focus:ring-blue-500 outline-none resize-none bg-white shadow-inner"
-                                value={content}
-                                onChange={e => setContent(e.target.value)}
-                                placeholder="O conteúdo da advertência aparecerá aqui após selecionar um modelo..."
-                            />
-                        ) : (
-                            <div className="w-full h-[600px] border p-8 rounded-2xl bg-white overflow-y-auto shadow-inner prose prose-slate max-w-none">
-                                <div 
-                                    dangerouslySetInnerHTML={{ 
-                                        __html: content
-                                            .replace(/{{empresa_nome}}/g, restState.businessInfo.restaurantName || 'Empresa Teste')
-                                            .replace(/{{nome}}/g, selectedStaff?.name || 'Nome do Colaborador')
-                                            .replace(/{{tipo_advertencia}}/g, warningType === 'VERBAL' ? 'VERBAL' : 'FORMAL')
-                                    }} 
+                            {!isPreviewMode ? (
+                                <textarea 
+                                    className="w-full h-[600px] border p-6 rounded-2xl text-sm font-mono leading-relaxed focus:ring-2 focus:ring-blue-500 outline-none resize-none bg-white shadow-inner"
+                                    value={content}
+                                    onChange={e => setContent(e.target.value)}
+                                    placeholder="O conteúdo da advertência aparecerá aqui após selecionar um modelo..."
                                 />
-                            </div>
-                        )}
+                            ) : (
+                                <div className="w-full h-[600px] border p-8 rounded-2xl bg-white overflow-y-auto shadow-inner prose prose-slate max-w-none">
+                                    <div 
+                                        dangerouslySetInnerHTML={{ 
+                                            __html: content
+                                                .replace(/{{empresa_nome}}/g, restState.businessInfo.restaurantName || 'Empresa Teste')
+                                                .replace(/{{nome}}/g, selectedStaff?.name || 'Nome do Colaborador')
+                                                .replace(/{{tipo_advertencia}}/g, warningType === 'VERBAL' ? 'VERBAL' : 'FORMAL')
+                                        }} 
+                                    />
+                                </div>
+                            )}
 
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                            {[
-                                { label: 'Nome', code: '{{nome}}' },
-                                { label: 'CPF', code: '{{cpf}}' },
-                                { label: 'Cargo', code: '{{cargo}}' },
-                                { label: 'Data', code: '{{data}}' },
-                            ].map(v => (
-                                <button 
-                                    key={v.code}
-                                    onClick={() => setContent(prev => prev + v.code)}
-                                    className="text-[10px] font-bold bg-slate-100 hover:bg-slate-200 p-2 rounded border border-slate-200 text-slate-600 transition-colors"
-                                >
-                                    {v.label}: <code className="text-blue-600">{v.code}</code>
-                                </button>
-                            ))}
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                                {[
+                                    { label: 'Nome', code: '{{nome}}' },
+                                    { label: 'CPF', code: '{{cpf}}' },
+                                    { label: 'Cargo', code: '{{cargo}}' },
+                                    { label: 'Data', code: '{{data}}' },
+                                ].map(v => (
+                                    <button 
+                                        key={v.code}
+                                        onClick={() => setContent(prev => prev + v.code)}
+                                        className="text-[10px] font-bold bg-slate-100 hover:bg-slate-200 p-2 rounded border border-slate-200 text-slate-600 transition-colors"
+                                    >
+                                        {v.label}: <code className="text-blue-600">{v.code}</code>
+                                    </button>
+                                ))}
+                            </div>
                         </div>
                     </div>
-                </div>
+                )}
+
+                {activeTab === 'HISTORY' && (
+                    <div className="space-y-6">
+                        <div className="flex items-center gap-4 mb-6">
+                            <div className="relative w-64">
+                                <LucideUser className="absolute left-3 top-2.5 text-gray-400" size={16} />
+                                <select 
+                                    className="w-full border pl-9 p-2.5 rounded-xl text-sm bg-white"
+                                    value={selectedStaffId}
+                                    onChange={e => setSelectedStaffId(e.target.value)}
+                                >
+                                    <option value="">Todos os funcionários</option>
+                                    {state.users.map(user => (
+                                        <option key={user.id} value={user.id}>{user.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="bg-slate-50 border-b border-slate-200 text-xs text-slate-500 uppercase tracking-wider">
+                                        <th className="p-4 font-bold">Data</th>
+                                        <th className="p-4 font-bold">Colaborador</th>
+                                        <th className="p-4 font-bold">Tipo</th>
+                                        <th className="p-4 font-bold text-right">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {staffWarnings.length === 0 ? (
+                                        <tr>
+                                            <td colSpan={4} className="p-8 text-center text-slate-400 text-sm">Nenhum registro encontrado.</td>
+                                        </tr>
+                                    ) : (
+                                        staffWarnings.map(warning => {
+                                            const staff = state.users.find(u => u.id === warning.staffId);
+                                            return (
+                                                <tr key={warning.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                                                    <td className="p-4 text-sm text-slate-600">
+                                                        {new Date(warning.createdAt).toLocaleDateString('pt-BR')}
+                                                    </td>
+                                                    <td className="p-4 text-sm font-bold text-slate-800">
+                                                        {staff?.name}
+                                                    </td>
+                                                    <td className="p-4">
+                                                        <span className={`text-[10px] font-black px-2 py-1 rounded uppercase ${warning.type === 'VERBAL' ? 'bg-orange-100 text-orange-700' : 'bg-red-100 text-red-700'}`}>
+                                                            {warning.type}
+                                                        </span>
+                                                    </td>
+                                                    <td className="p-4 text-right">
+                                                        <div className="flex justify-end gap-2">
+                                                            <button onClick={() => handleViewWarning(warning)} className="p-2 hover:bg-white rounded-lg text-blue-600 border border-transparent hover:border-blue-100 transition-all" title="Imprimir/Visualizar">
+                                                                <Printer size={16} />
+                                                            </button>
+                                                            <button onClick={() => handleDeleteWarning(warning.id)} className="p-2 hover:bg-white rounded-lg text-red-600 border border-transparent hover:border-red-100 transition-all" title="Excluir Registro">
+                                                                <Trash2 size={16} />
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );

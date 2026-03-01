@@ -221,8 +221,34 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
       const restoreSession = async () => {
-          const { data: { session } } = await supabase.auth.getSession();
-          if (session?.user && !state.isAuthenticated) {
+          try {
+              const { data: { session }, error } = await supabase.auth.getSession();
+              
+              if (error) {
+                  console.error("Session error:", error.message);
+                  if (error.message.includes('Refresh Token') || error.message.includes('refresh_token')) {
+                      await supabase.auth.signOut();
+                  }
+              }
+
+              if (session?.user && !state.isAuthenticated) {
+                  dispatch({ 
+                      type: 'LOGIN_ADMIN', 
+                      name: session.user.user_metadata?.name || 'Admin', 
+                      id: session.user.id, 
+                      email: session.user.email || ''
+                  });
+              }
+          } catch (err) {
+              console.error("Failed to restore session:", err);
+          }
+      };
+      restoreSession();
+
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((event: string, session: any) => {
+          if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
+              dispatch({ type: 'LOGOUT_ADMIN' });
+          } else if (event === 'SIGNED_IN' && session?.user && !state.isAuthenticated) {
               dispatch({ 
                   type: 'LOGIN_ADMIN', 
                   name: session.user.user_metadata?.name || 'Admin', 
@@ -230,14 +256,17 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
                   email: session.user.email || ''
               });
           }
+      });
+
+      return () => {
+          subscription.unsubscribe();
       };
-      restoreSession();
   }, []);
 
     const fetchPlans = async () => {
          const { data } = await supabase.from('plans').select('*').order('created_at', { ascending: true });
          if(data) {
-             const mappedPlans: Plan[] = data.map(p => ({
+             const mappedPlans: Plan[] = data.map((p: any) => ({
                  id: p.id,
                  key: p.key as PlanType,
                  name: p.name,
@@ -628,7 +657,7 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
             // Refresh plans to get the real ID
             const { data: plans } = await supabase.from('plans').select('*').order('created_at', { ascending: true });
             if (plans) {
-                 const mappedPlans: Plan[] = plans.map(p => ({
+                 const mappedPlans: Plan[] = plans.map((p: any) => ({
                      id: p.id,
                      key: p.key as PlanType,
                      name: p.name,

@@ -153,7 +153,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           supabase.from('rh_vacations').select('*').eq('tenant_id', tenantId),
           supabase.from('rh_vacation_schedules').select('*').eq('tenant_id', tenantId),
           supabase.from('rh_terminations').select('*').eq('tenant_id', tenantId),
-          supabase.from('rh_staff_warnings').select('*').eq('tenant_id', tenantId).order('created_at', { ascending: false })
+          supabase.from('rh_staff_warnings').select('*').eq('tenant_id', tenantId).eq('is_active', true).order('created_at', { ascending: false })
       ]);
 
       if (staffRes.data) {
@@ -408,7 +408,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const deleteStaffWarning = async (id: string) => {
       if (!tenantId) return;
-      const { error } = await supabase.from('rh_staff_warnings').delete().eq('id', id);
+      const { error } = await supabase.from('rh_staff_warnings').update({ is_active: false }).eq('id', id);
       if (error) throw error;
       await fetchData();
   };
