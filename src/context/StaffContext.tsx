@@ -12,6 +12,8 @@ import { useRestaurant } from './RestaurantContext';
 import { useUI } from './UIContext';
 import { useAuth } from './AuthProvider'; 
 
+import { payrollService } from '../services/payrollService';
+
 interface StaffState {
   users: User[];
   shifts: Shift[];
@@ -80,7 +82,7 @@ interface StaffContextType {
   deleteEventType: (id: string) => Promise<void>;
   addShift: (shift: Partial<Shift>) => Promise<void>;
   deleteShift: (id: string) => Promise<void>;
-  registerTime: (staffId: string, type: 'IN' | 'BREAK_START' | 'BREAK_END' | 'OUT', justification?: string) => Promise<void>;
+  registerTime: (staffId: string, type: 'IN' | 'BREAK_START' | 'BREAK_END' | 'OUT', justification?: string, location?: { lat: number, lng: number }) => Promise<void>;
   addTimeEntry: (entry: Partial<TimeEntry>) => Promise<void>;
   updateTimeEntry: (id: string, updates: Partial<TimeEntry>) => Promise<void>;
   
@@ -426,52 +428,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // --- 13º SALÁRIO ---
   const calculateThirteenth = async (staffId: string, year: number, installment: 1 | 2): Promise<ThirteenthPayment> => {
-      const user = state.users.find(u => u.id === staffId);
-      if (!user) throw new Error("Colaborador não encontrado");
-      
-      const baseSalary = user.baseSalary || 0;
-      
-      // Calcular avos trabalhados no ano
-      const hireDate = user.hireDate ? new Date(user.hireDate) : new Date();
-      let monthsWorked = 12;
-      
-      if (hireDate.getFullYear() === year) {
-          monthsWorked = 12 - hireDate.getMonth();
-          // Se admitido após dia 15, não conta o mês de admissão
-          if (hireDate.getDate() > 15) monthsWorked -= 1;
-      } else if (hireDate.getFullYear() > year) {
-          monthsWorked = 0;
-      }
-      
-      monthsWorked = Math.max(0, Math.min(12, monthsWorked));
-
-      let value = (baseSalary / 12) * monthsWorked;
-      
-      let inssValue = 0;
-      let irrfValue = 0;
-      let fgtsValue = 0;
-
-      if (installment === 1) {
-          value = value / 2; // 50% sem descontos
-      } else {
-          // 2ª Parcela: Valor integral menos o que já foi pago na 1ª
-          // Incidem descontos sobre o TOTAL
-          const totalThirteenth = (baseSalary / 12) * monthsWorked;
-          inssValue = calculateINSS(totalThirteenth);
-          irrfValue = calculateIRRF(totalThirteenth, inssValue, user.dependentsCount || 0);
-          
-          // Subtrair adiantamento (1ª parcela)
-          // Na prática, precisaria buscar se já houve 1ª parcela paga. 
-          // Aqui vamos assumir que se está pedindo a 2ª, é o saldo restante.
-          value = totalThirteenth - (totalThirteenth / 2) - inssValue - irrfValue;
-      }
-      
-      fgtsValue = (installment === 1 ? value : (baseSalary / 12 * monthsWorked)) * 0.08; // FGTS sobre o valor bruto da competência
-
-      return {
-          id: '', staffId, year, installment, value, referenceSalary: baseSalary, monthsWorked,
-          inssValue, irrfValue, fgtsValue, netValue: value, status: 'PENDING', createdAt: new Date()
-      } as ThirteenthPayment;
+      return await payrollService.calculateThirteenth(staffId, year, installment);
   };
 
   const saveThirteenth = async (payment: Partial<ThirteenthPayment>) => {
@@ -494,33 +451,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // --- FÉRIAS ---
   const calculateVacation = async (staffId: string, startDate: Date, days: number, soldDays: number): Promise<VacationSchedule> => {
-      const user = state.users.find(u => u.id === staffId);
-      if (!user) throw new Error("Colaborador não encontrado");
-      
-      const baseSalary = user.baseSalary || 0;
-      const dailyRate = baseSalary / 30;
-      
-      const vacationValue = dailyRate * days;
-      const oneThird = vacationValue / 3;
-      
-      const soldValue = dailyRate * soldDays;
-      const soldOneThird = soldValue / 3;
-      
-      const totalGross = vacationValue + oneThird + soldValue + soldOneThird;
-      
-      // Tributação (Abono não incide IRRF/INSS normalmente, mas férias gozadas sim)
-      const taxableBase = vacationValue + oneThird;
-      const inssValue = calculateINSS(taxableBase);
-      const irrfValue = calculateIRRF(taxableBase, inssValue, user.dependentsCount || 0);
-      
-      const totalNet = totalGross - inssValue - irrfValue;
-
-      return {
-          id: '', vacationId: '', staffId, startDate, endDate: new Date(startDate.getTime() + (days * 24 * 60 * 60 * 1000)),
-          daysCount: days, soldDays, baseValue: vacationValue, oneThirdValue: oneThird,
-          soldValue, soldOneThirdValue: soldOneThird, inssValue, irrfValue, totalGross, totalNet,
-          status: 'SCHEDULED'
-      } as VacationSchedule;
+      return await payrollService.calculateVacation(staffId, startDate, days, soldDays);
   };
 
   const saveVacationSchedule = async (schedule: Partial<VacationSchedule>) => {
@@ -561,85 +492,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // --- RESCISÃO ---
   const calculateTermination = async (staffId: string, date: Date, reason: string, noticeType: string): Promise<Termination> => {
-      const user = state.users.find(u => u.id === staffId);
-      if (!user) throw new Error("Colaborador não encontrado");
-      
-      const baseSalary = user.baseSalary || 0;
-      const dailyRate = baseSalary / 30;
-      const hireDate = user.hireDate ? new Date(user.hireDate) : new Date();
-      
-      // Saldo de Salário (dias trabalhados no mês)
-      const daysWorkedInMonth = date.getDate();
-      const balanceSalary = dailyRate * daysWorkedInMonth;
-      
-      // Aviso Prévio
-      let noticeValue = 0;
-      // Lei 12.506/2011: 30 dias + 3 dias por ano completo de serviço (até max 90 dias)
-      const yearsOfService = Math.floor((date.getTime() - hireDate.getTime()) / (1000 * 60 * 60 * 24 * 365));
-      let noticeDays = 30 + (yearsOfService * 3);
-      if (noticeDays > 90) noticeDays = 90;
-
-      if (noticeType === 'INDEMNIFIED') {
-          noticeValue = dailyRate * noticeDays;
-      }
-      
-      // Férias Proporcionais
-      // Calcular meses trabalhados desde o último aniversário de admissão até a data de desligamento
-      // Se aviso prévio indenizado, projeta mais 1 mês (ou o tempo do aviso)
-      const terminationDateWithNotice = new Date(date);
-      if (noticeType === 'INDEMNIFIED') {
-          terminationDateWithNotice.setDate(terminationDateWithNotice.getDate() + noticeDays);
-      }
-
-      // Calcular avos de férias (meses trabalhados no período aquisitivo atual)
-      // Simplificação: Diferença de meses entre hireDate (mês/dia) e terminationDateWithNotice
-      // Precisaria de lógica mais robusta para períodos aquisitivos exatos
-      let vacationAvos = 0;
-      let currentPeriodStart = new Date(hireDate);
-      currentPeriodStart.setFullYear(terminationDateWithNotice.getFullYear());
-      if (currentPeriodStart > terminationDateWithNotice) {
-          currentPeriodStart.setFullYear(terminationDateWithNotice.getFullYear() - 1);
-      }
-      
-      // Diferença em meses
-      vacationAvos = (terminationDateWithNotice.getFullYear() - currentPeriodStart.getFullYear()) * 12 + (terminationDateWithNotice.getMonth() - currentPeriodStart.getMonth());
-      if (terminationDateWithNotice.getDate() >= 15) vacationAvos += 1;
-      if (vacationAvos > 12) vacationAvos = 12; // Cap em 12
-      if (vacationAvos < 0) vacationAvos = 0;
-
-      const vacationProportionalValue = (baseSalary / 12) * vacationAvos + ((baseSalary / 12) * vacationAvos / 3);
-      
-      // Férias Vencidas (verificar se tem período completo não gozado)
-      // Simplificação: 0 por enquanto, idealmente buscaria na tabela rh_vacations
-      const vacationExpiredValue = 0; 
-      
-      // 13º Proporcional
-      // Meses trabalhados no ano corrente
-      let thirteenthAvos = terminationDateWithNotice.getMonth(); // Jan = 0, mas se trabalhou >= 15 dias conta
-      if (terminationDateWithNotice.getDate() >= 15) thirteenthAvos += 1;
-      
-      // Se admissão foi neste ano, desconta os meses anteriores
-      if (hireDate.getFullYear() === terminationDateWithNotice.getFullYear()) {
-          thirteenthAvos -= hireDate.getMonth();
-          if (hireDate.getDate() > 15) thirteenthAvos -= 1;
-      }
-      thirteenthAvos = Math.max(0, Math.min(12, thirteenthAvos));
-
-      const thirteenthProportionalValue = (baseSalary / 12) * thirteenthAvos;
-      
-      // Multa FGTS
-      // Saldo FGTS precisaria ser informado ou estimado. Vamos estimar 8% do salário * meses totais trabalhados
-      const totalMonthsWorked = (date.getFullYear() - hireDate.getFullYear()) * 12 + (date.getMonth() - hireDate.getMonth());
-      const estimatedFgtsBalance = baseSalary * 0.08 * totalMonthsWorked;
-      const fgtsFineValue = reason.includes('DISMISSAL_NO_CAUSE') ? (estimatedFgtsBalance * 0.40) : 0; 
-      
-      const totalValue = balanceSalary + noticeValue + vacationProportionalValue + vacationExpiredValue + thirteenthProportionalValue + fgtsFineValue;
-
-      return {
-          id: '', staffId, terminationDate: date, reason: reason as any, noticePeriodType: noticeType as any, noticeDays,
-          balanceSalary, noticeValue, vacationProportionalValue, vacationExpiredValue, thirteenthProportionalValue,
-          fgtsFineValue, discountsValue: 0, totalValue, status: 'DRAFT'
-      } as Termination;
+      return await payrollService.calculateTermination(staffId, date, reason, noticeType);
   };
 
   const saveTermination = async (termination: Partial<Termination>) => {
@@ -819,24 +672,18 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const addShift = async (shift: Partial<Shift>) => { if(!tenantId) return; await supabase.from('rh_shifts').insert({ tenant_id: tenantId, name: shift.name, start_time: shift.startTime, end_time: shift.endTime, break_minutes: shift.breakMinutes, tolerance_minutes: shift.toleranceMinutes, night_shift: shift.nightShift }); };
   const deleteShift = async (id: string) => { await supabase.from('rh_shifts').delete().eq('id', id); };
   
-  const registerTime = async (staffId: string, type: 'IN' | 'BREAK_START' | 'BREAK_END' | 'OUT', justification?: string) => {
+  const registerTime = async (staffId: string, type: 'IN' | 'BREAK_START' | 'BREAK_END' | 'OUT', justification?: string, location?: { lat: number, lng: number }) => {
       if(!tenantId) return;
-      const today = new Date().toISOString().split('T')[0];
-      const now = new Date().toISOString();
-      const { data: existing } = await supabase.from('rh_time_entries').select('*').eq('staff_id', staffId).eq('entry_date', today).maybeSingle();
-      if (existing) {
-          const update: any = {};
-          if (type === 'IN') update.clock_in = now;
-          if (type === 'BREAK_START') update.break_start = now;
-          if (type === 'BREAK_END') update.break_end = now;
-          if (type === 'OUT') update.clock_out = now;
-          if (justification) update.justification = justification;
-          await supabase.from('rh_time_entries').update(update).eq('id', existing.id);
-      } else {
-          const insert: any = { tenant_id: tenantId, staff_id: staffId, entry_date: today, status: 'PENDING', entry_type: 'DIGITAL' };
-          if (type === 'IN') insert.clock_in = now;
-          await supabase.from('rh_time_entries').insert(insert);
-      }
+      
+      const { error } = await supabase.rpc('register_time_entry', {
+          p_staff_id: staffId,
+          p_type: type,
+          p_justification: justification || null,
+          p_lat: location?.lat || null,
+          p_lng: location?.lng || null
+      });
+
+      if (error) throw error;
       await fetchData();
   };
   
@@ -1176,222 +1023,8 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       fetchData();
   };
 
-  const calculateINSS = (grossSalary: number): number => {
-      const brackets = state.inssBrackets;
-      const ceiling = state.legalSettings?.inssCeiling || 7786.02;
-      const salaryForCalc = Math.min(grossSalary, ceiling);
-      let totalINSS = 0;
-      let remainingSalary = salaryForCalc;
-      let previousBracketMax = 0;
-
-      for (const bracket of brackets) {
-          if (salaryForCalc > previousBracketMax) {
-              const taxableAmountInBracket = Math.min(remainingSalary, (bracket.maxValue || ceiling) - previousBracketMax);
-              totalINSS += taxableAmountInBracket * (bracket.rate / 100);
-              remainingSalary -= taxableAmountInBracket;
-              if (remainingSalary <= 0) break;
-              previousBracketMax = bracket.maxValue || ceiling;
-          }
-      }
-      return totalINSS;
-  };
-
-  const calculateIRRF = (grossSalary: number, inssValue: number, dependents: number): number => {
-      const deductionPerDependent = state.legalSettings?.irrfDependentDeduction || 189.59;
-      const basis = grossSalary - inssValue - (dependents * deductionPerDependent);
-      if (basis <= 0) return 0;
-      const bracket = state.irrfBrackets.find(b => basis >= b.minValue && (b.maxValue === undefined || b.maxValue === null || basis <= b.maxValue));
-      if (!bracket || bracket.rate === 0) return 0;
-      return (basis * (bracket.rate / 100)) - bracket.deduction;
-  };
-
   const getPayroll = async (month: number, year: number): Promise<{ payroll: PayrollPreview[], isClosed: boolean, closedInfo?: ClosedPayroll }> => {
-      if (!tenantId) return { payroll: [], isClosed: false };
-      
-      const { data: closedPayroll } = await supabase.from('rh_closed_payrolls')
-        .select('*')
-        .eq('tenant_id', tenantId)
-        .eq('month', month)
-        .eq('year', year)
-        .maybeSingle();
-
-      if (closedPayroll) {
-          const { data: items } = await supabase.from('rh_closed_payroll_items').select('*').eq('payroll_id', closedPayroll.id);
-          const historyItems = (items || []).map((i: any) => ({
-              staffId: i.staff_id, staffName: i.staff_name, baseSalary: Number(i.base_salary),
-              grossTotal: Number(i.gross_total), netTotal: Number(i.net_total), discounts: Number(i.total_discounts),
-              ...i.details
-          }));
-
-          return { 
-              payroll: historyItems, 
-              isClosed: true,
-              closedInfo: {
-                  id: closedPayroll.id, month: closedPayroll.month, year: closedPayroll.year,
-                  totalCost: closedPayroll.total_cost, totalNet: closedPayroll.total_net,
-                  employeeCount: closedPayroll.employee_count, closedAt: new Date(closedPayroll.closed_at),
-                  closedBy: closedPayroll.closed_by
-              }
-          };
-      }
-
-      // CÁLCULO DINÂMICO
-      const start = new Date(year, month, 1).toISOString().split('T')[0];
-      const end = new Date(year, month + 1, 0).toISOString().split('T')[0];
-      
-      // Buscar Ponto
-      const { data: entries } = await supabase.from('rh_time_entries').select('*').eq('tenant_id', tenantId).gte('entry_date', start).lte('entry_date', end).eq('status', 'APPROVED');
-      
-      // Buscar Eventos Variáveis
-      const { data: events } = await supabase.from('rh_payroll_events').select('*').eq('tenant_id', tenantId).eq('month', month).eq('year', year);
-
-      const fgtsRate = state.legalSettings?.fgtsRate || 8;
-      
-      // Mapeia dias úteis e DSR se necessário, mas vamos simplificar com carga mensal
-      const STANDARD_HOURS_MAP: Record<string, number> = {
-          '44H_WEEKLY': 220,
-          '12X36': 180, // Média 15 dias * 12h
-          'PART_TIME': 110,
-          'INTERMITTENT': 0, // Paga por hora
-          'ROTATING': 220
-      };
-
-      const livePayroll = state.users.map(user => {
-          // 1. Horas Trabalhadas
-          const userEntries = (entries || []).filter((e: any) => e.staff_id === user.id);
-          let totalMins = 0;
-          let nightMins = 0; // Adicional noturno
-          
-          userEntries.forEach((e: any) => {
-              if (e.clock_in && e.clock_out) {
-                  const inTime = new Date(e.clock_in);
-                  const outTime = new Date(e.clock_out);
-                  const diff = outTime.getTime() - inTime.getTime();
-                  let mins = diff / 60000;
-                  
-                  if (e.break_start && e.break_end) {
-                       mins -= ((new Date(e.break_end).getTime() - new Date(e.break_start).getTime()) / 60000);
-                  }
-                  totalMins += Math.max(0, mins);
-
-                  // Cálculo simplificado noturno (22:00 - 05:00)
-                  // Detecta se cruzou a noite
-                  const inHour = inTime.getHours();
-                  const outHour = outTime.getHours();
-                  // Lógica completa seria complexa, aqui vamos estimar se o turno é noturno
-                  // Se o turno cruza meia noite ou começa depois das 22h
-                  if (inHour >= 22 || outHour < 5 || outTime.getDate() > inTime.getDate()) {
-                      // Estima que tudo foi noturno se shiftId diz nightShift, senão calcula proporcional
-                      // Para simplificar neste MVP, assumimos 20% do tempo total se for turno da noite
-                      const shift = state.shifts.find(s => s.id === user.shiftId);
-                      if (shift?.nightShift) {
-                          nightMins += mins;
-                      }
-                  }
-              }
-          });
-
-          const hoursWorked = totalMins / 60;
-          const targetHours = STANDARD_HOURS_MAP[user.workModel || '44H_WEEKLY'] || 220;
-          const baseSalary = user.baseSalary || 0;
-          const hourlyRate = targetHours > 0 ? baseSalary / targetHours : 0;
-          
-          // Banco de Horas / Extra
-          const balance = hoursWorked - targetHours;
-          const overtimeHours = Math.max(0, balance); // Positivo = Extra
-          const underHours = Math.min(0, balance); // Negativo = Falta
-          
-          // Cálculo financeiro de Extras (50% dia normal, 100% domingo/feriado - simplificado para 50%)
-          // Melhoria: Iterar dias para saber se foi domingo
-          let overtime50Val = overtimeHours * (hourlyRate * 1.5);
-          let overtime100Val = 0; // Implementar checagem de domingo
-
-          const nightShiftAdd = (nightMins / 60) * (hourlyRate * 0.20); // 20% sobre hora normal
-
-          // Eventos Variáveis
-          const userEvents = (events || []).filter((ev: any) => ev.staff_id === user.id);
-          let eventAdditions = 0;
-          let eventDeductions = 0;
-          let advances = 0;
-          const eventBreakdown: any[] = [];
-          
-          userEvents.forEach((ev: any) => {
-              const evtType = state.eventTypes.find(t => t.id === ev.type);
-              
-              // Se for um tipo customizado
-              if (evtType) {
-                  let val = Number(ev.value);
-                  // Se for porcentagem, calcula sobre o salário base
-                  if (evtType.calculationType === 'PERCENTAGE') {
-                      val = (baseSalary * (val / 100));
-                  }
-
-                  if (evtType.operation === '+') {
-                      eventAdditions += val;
-                      eventBreakdown.push({ name: ev.description || evtType.name, value: val, type: 'CREDIT' });
-                  } else {
-                      eventDeductions += val;
-                      eventBreakdown.push({ name: ev.description || evtType.name, value: val, type: 'DEBIT' });
-                  }
-              } else {
-                  // Fallback para tipos legados (hardcoded)
-                  if (['BONUS', 'COMMISSION', 'INSALUBRITY', 'DANGEROUSNESS', 'NIGHT_SHIFT'].includes(ev.type)) {
-                      eventAdditions += Number(ev.value);
-                      eventBreakdown.push({ name: ev.description || ev.type, value: Number(ev.value), type: 'CREDIT' });
-                  } else if (['DEDUCTION', 'FOOD_VOUCHER'].includes(ev.type)) {
-                      eventDeductions += Number(ev.value);
-                      eventBreakdown.push({ name: ev.description || ev.type, value: Number(ev.value), type: 'DEBIT' });
-                  } else if (ev.type === 'ADVANCE') {
-                      advances += Number(ev.value);
-                      eventBreakdown.push({ name: 'Adiantamento', value: Number(ev.value), type: 'DEBIT' });
-                  }
-              }
-          });
-
-          // Benefícios Fixos (Recorrentes) - REMOVIDO
-          let benefitsValue = 0; // user.benefitsTotal || 0;
-          const benefitBreakdown: { name: string, value: number }[] = [];
-          // activeBenefits.forEach(ben => {
-          //      let val = ben.type === 'PERCENTAGE' ? (baseSalary * (ben.value / 100)) : ben.value;
-          //      benefitsValue += val;
-          //      benefitBreakdown.push({ name: ben.name, value: val });
-          // });
-
-          // Total Bruto
-          const gross = baseSalary + overtime50Val + overtime100Val + nightShiftAdd + benefitsValue + eventAdditions;
-
-          // Impostos
-          const inssValue = calculateINSS(gross);
-          const irrfValue = calculateIRRF(gross, inssValue, user.dependentsCount || 0);
-          
-          let otherDeductions = eventDeductions + advances; // Inclui eventos manuais de desconto
-          let otherEmployerCharges = 0;
-          const taxBreakdown: { name: string, value: number, type: TaxPayerType }[] = [];
-
-          if (inssValue > 0) taxBreakdown.push({ name: 'INSS', value: inssValue, type: 'EMPLOYEE' });
-          if (irrfValue > 0) taxBreakdown.push({ name: 'IRRF', value: irrfValue, type: 'EMPLOYEE' });
-
-          // activeTaxes.forEach(tax => { ... }); // REMOVIDO
-
-          const totalEmployeeDeductions = inssValue + irrfValue + otherDeductions;
-          const net = gross - totalEmployeeDeductions;
-          
-          const fgtsValue = gross * (fgtsRate / 100);
-          taxBreakdown.push({ name: `FGTS (${fgtsRate}%)`, value: fgtsValue, type: 'EMPLOYER' });
-          const totalEmployerCharges = fgtsValue + otherEmployerCharges;
-          const totalCompanyCost = gross + totalEmployerCharges;
-
-          return {
-              staffId: user.id, staffName: user.name, baseSalary, 
-              overtime50: overtime50Val, overtime100: overtime100Val, nightShiftAdd, bankOfHoursBalance: balance,
-              absencesTotal: underHours, addictionals: 0, eventsValue: eventAdditions,
-              benefits: benefitsValue, grossTotal: gross, discounts: totalEmployeeDeductions, advances, netTotal: net, hoursWorked,
-              employerCharges: totalEmployerCharges, totalCompanyCost, inssValue, irrfValue, fgtsValue,
-              taxBreakdown, benefitBreakdown, eventBreakdown
-          };
-      });
-
-      return { payroll: livePayroll, isClosed: false };
+      return await payrollService.getPayrollPreview(month, year);
   };
 
   const closePayroll = async (month: number, year: number) => {

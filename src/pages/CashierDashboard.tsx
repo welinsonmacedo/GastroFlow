@@ -6,7 +6,7 @@ import { useUI } from '../context/UIContext';
 import { useAuth } from '../context/AuthProvider';
 import { TableStatus } from '../types'; 
 import { Button } from '../components/Button';
-import { DollarSign, History, ShoppingCart, Wallet, Receipt, Lock, RefreshCcw, LogOut, LayoutGrid, Bike, User, Eye, XCircle, Banknote, Zap, CreditCard, Split, CheckSquare, Loader2 } from 'lucide-react';
+import { History, ShoppingCart, Wallet, Receipt, Lock, RefreshCcw, LogOut, LayoutGrid, Bike, User, Eye, XCircle, Banknote, Zap, CreditCard, Split, CheckSquare, Loader2 } from 'lucide-react';
 import { CloseRegisterModal } from '../components/modals/CloseRegisterModal';
 import { CashBleedModal } from '../components/modals/CashBleedModal';
 import { Modal } from '../components/Modal';

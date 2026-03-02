@@ -22,7 +22,6 @@ export const AdminReports: React.FC = () => {
     const [dateEnd, setDateEnd] = useState(new Date().toISOString().split('T')[0]);
     const [activeTab, setActiveTab] = useState<ReportTab>('REVENUE');
     const [isDetailed, setIsDetailed] = useState(false);
-    const [loading, setLoading] = useState(false);
     
     // Dados
     const [data, setData] = useState<any[]>([]);
@@ -36,7 +35,6 @@ export const AdminReports: React.FC = () => {
 
     const fetchData = async () => {
         if (!state.tenantId) return;
-        setLoading(true);
         setData([]);
         setSummary({});
 
@@ -49,14 +47,14 @@ export const AdminReports: React.FC = () => {
                 if (error) throw error;
                 const mappedData = (trans || []).map((t: any) => ({ ...t, amount: Number(t.amount) || 0 }));
                 setData(mappedData);
-                setSummary({ total: mappedData.reduce((acc, t) => acc + t.amount, 0), count: mappedData.length });
+                setSummary({ total: mappedData.reduce((acc: any, t: any) => acc + t.amount, 0), count: mappedData.length });
             }
             else if (activeTab === 'EXPENSES') {
                 const { data: exps, error } = await supabase.from('expenses').select('*').eq('tenant_id', state.tenantId).gte('due_date', dateStart).lte('due_date', dateEnd).order('due_date', { ascending: false });
                 if (error) throw error;
                 const mappedData = (exps || []).map((e: any) => ({ ...e, amount: Number(e.amount) || 0 }));
                 setData(mappedData);
-                setSummary({ total: mappedData.reduce((acc, e) => acc + e.amount, 0), paid: mappedData.filter((e: any) => e.is_paid).reduce((acc, e) => acc + e.amount, 0), pending: mappedData.filter((e: any) => !e.is_paid).reduce((acc, e) => acc + e.amount, 0) });
+                setSummary({ total: mappedData.reduce((acc: any, e: any) => acc + e.amount, 0), paid: mappedData.filter((e: any) => e.is_paid).reduce((acc: any, e: any) => acc + e.amount, 0), pending: mappedData.filter((e: any) => !e.is_paid).reduce((acc: any, e: any) => acc + e.amount, 0) });
             }
             else if (activeTab === 'FINANCE') {
                 const { data: exps } = await supabase.from('expenses').select('paid_date, amount, description, category').eq('tenant_id', state.tenantId).eq('is_paid', true).gte('paid_date', dateStart).lte('paid_date', dateEnd);
@@ -84,8 +82,6 @@ export const AdminReports: React.FC = () => {
         } catch (error) {
             console.error(error);
             showAlert({ title: "Erro", message: "Falha ao carregar relatório.", type: "ERROR" });
-        } finally {
-            setLoading(false);
         }
     };
 

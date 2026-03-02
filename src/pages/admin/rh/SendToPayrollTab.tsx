@@ -3,7 +3,7 @@ import { useStaff } from '../../../context/StaffContext';
 import { useUI } from '../../../context/UIContext';
 import { Button } from '../../../components/Button';
 import { TimeEntry } from '../../../types';
-import { User, Calendar, ArrowRight, Edit, Search } from 'lucide-react';
+import { ArrowRight, Edit } from 'lucide-react';
 import { SummaryModal } from '../../../components/modals/SummaryModal';
 
 export const SendToPayrollTab: React.FC = () => {

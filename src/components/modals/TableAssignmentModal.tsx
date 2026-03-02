@@ -3,7 +3,7 @@ import { Modal } from '../Modal';
 import { useOrder } from '../../context/OrderContext';
 import { User } from '../../types';
 import { Button } from '../Button';
-import { Search, CheckCircle, Circle, AlertCircle } from 'lucide-react';
+import { Search, CheckCircle, AlertCircle } from 'lucide-react';
 
 interface TableAssignmentModalProps {
     isOpen: boolean;

@@ -7,8 +7,8 @@ import { useUI } from '../../context/UIContext';
 import { useAuth } from '../../context/AuthProvider';
 import { InventoryItem } from '../../types';
 import { 
-    Search, ShoppingCart, Trash2, Package, Banknote, Zap, CreditCard, 
-    ScanLine, RefreshCcw, Plus, Minus, Keyboard, X, Lock, Wallet, LogOut, Loader2, ArrowDown, AlertTriangle
+    ShoppingCart, Trash2, Package, Banknote, Zap, CreditCard, 
+    ScanLine, Plus, Minus, Lock, Wallet, LogOut, Loader2, ArrowDown, AlertTriangle
 } from 'lucide-react';
 import { Modal } from '../../components/Modal';
 import { Button } from '../../components/Button';
@@ -40,7 +40,6 @@ export const CommercePOS: React.FC = () => {
 
     const [cart, setCart] = useState<{ item: InventoryItem; quantity: number; notes: string; extras: InventoryItem[] }[]>([]);
     const [customerName, setCustomerName] = useState('');
-    const [processing, setProcessing] = useState(false);
     
     const [searchInput, setSearchInput] = useState('');
     const debouncedSearchTerm = useDebounce(searchInput, 250);
@@ -184,14 +183,13 @@ export const CommercePOS: React.FC = () => {
     };
     
     const finalizeSale = async (methodName: string) => {
-        setProcessing(true);
         try {
             const itemsPayload = cart.map(cartItem => ({ inventoryItemId: cartItem.item.id, quantity: cartItem.quantity, notes: cartItem.notes }));
             await orderDispatch({ type: 'PROCESS_POS_SALE', sale: { customerName: customerName.trim() || 'Consumidor Final', items: itemsPayload, totalAmount: cartTotal, method: methodName } });
             setCart([]); setCustomerName(''); setPaymentModalOpen(false);
             showAlert({ title: "Venda Registrada", message: `Venda de R$ ${cartTotal.toFixed(2)} realizada!`, type: 'SUCCESS' });
             await refreshTransactions();
-        } catch (error: any) { showAlert({ title: "Erro na Venda", message: "Não foi possível salvar.", type: 'ERROR' }); } finally { setProcessing(false); }
+        } catch (error: any) { showAlert({ title: "Erro na Venda", message: "Não foi possível salvar.", type: 'ERROR' }); }
     };
 
     const handleOpenRegister = async (e: React.FormEvent) => {

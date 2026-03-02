@@ -2,6 +2,7 @@
 import React, { useState, useRef } from 'react';
 import ReactQuill, { Quill } from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
+import DOMPurify from 'dompurify';
 import { useStaff } from '../../../context/StaffContext';
 
 // Register inline styles for Quill to ensure proper printing
@@ -116,7 +117,6 @@ export const StaffSettings: React.FC = () => {
     const [editingContract, setEditingContract] = useState<ContractTemplate | null>(null);
     const [contractForm, setContractForm] = useState<Partial<ContractTemplate>>({ name: '', content: '', type: 'CONTRACT', isActive: true });
     const [contractPreviewMode, setContractPreviewMode] = useState(false);
-    const textareaRef = useRef<HTMLTextAreaElement>(null);
 
     const handleOpenContractModal = (template?: ContractTemplate) => {
         setContractPreviewMode(false);
@@ -253,6 +253,8 @@ export const StaffSettings: React.FC = () => {
             .replace(/{{ctps}}/g, '1234567 Série 001/UF')
             .replace(/{{pis}}/g, '123.45678.90-1');
 
+        const cleanRendered = DOMPurify.sanitize(rendered);
+
         printWindow.document.write(`
             <html>
                 <head>
@@ -265,7 +267,7 @@ export const StaffSettings: React.FC = () => {
                     </style>
                 </head>
                 <body>
-                    ${rendered}
+                    ${cleanRendered}
                     <script>window.print(); window.close();</script>
                 </body>
             </html>
@@ -1167,11 +1169,11 @@ export const StaffSettings: React.FC = () => {
                             <div 
                                 className="prose prose-slate max-w-none"
                                 dangerouslySetInnerHTML={{ 
-                                    __html: (contractForm.content || '')
+                                    __html: DOMPurify.sanitize((contractForm.content || '')
                                         .replace(/{{empresa_nome}}/g, restState.businessInfo.restaurantName || 'Empresa Teste')
                                         .replace(/{{empresa_cnpj}}/g, restState.businessInfo.cnpj || '00.000.000/0001-00')
                                         .replace(/{{nome}}/g, 'João da Silva')
-                                        .replace(/{{cpf}}/g, '123.456.789-00')
+                                        .replace(/{{cpf}}/g, '123.456.789-00'))
                                 }} 
                             />
                         </div>

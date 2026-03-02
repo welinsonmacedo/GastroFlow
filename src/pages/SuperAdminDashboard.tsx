@@ -65,7 +65,6 @@ export const SuperAdminDashboard: React.FC = () => {
     return acc + (isNaN(price) ? 0 : price);
   }, 0);
 
-  const getDemoUrl = (slug: string) => `${window.location.origin}/?restaurant=${slug}`;
 
   const handleLogout = () => {
       showConfirm({

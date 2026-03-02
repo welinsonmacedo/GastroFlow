@@ -4,10 +4,8 @@ import { Plan, SystemModule, PlanLimits } from '../../../types';
 import { Button } from '../../../components/Button';
 import { Modal } from '../../../components/Modal';
 import { 
-    Plus, Edit, Trash2, Check, X, ChefHat, DollarSign, Package, Users, Store, 
-    Settings, ShieldAlert, Briefcase, Clock, Tv, LayoutGrid, BookOpen, Palette, 
-    Truck, HelpCircle, FileText, ClipboardList, BarChart3, Shield, UserPlus, 
-    History, Monitor, ListChecks, Settings2
+    Plus, Edit, Trash2, ChefHat, DollarSign, Package, Users, Store, 
+    Settings, ShieldAlert, Briefcase, Clock, HelpCircle
 } from 'lucide-react';
 import { logSecurityIncident } from '../../../utils/security';
 

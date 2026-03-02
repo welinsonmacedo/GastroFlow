@@ -6,11 +6,10 @@ import { useRestaurant } from '../context/RestaurantContext';
 import { useAuth } from '../context/AuthProvider';
 import { SystemModule } from '../types';
 import { PERMISSIONS_SCHEMA } from '../constants';
-import { ChefHat, Coffee, Truck, ShoppingBag, ArrowRight, LogOut, Grid, Briefcase, Settings, DollarSign, Store, Package, Users, Clock, LifeBuoy, ShieldCheck } from 'lucide-react';
+import { ChefHat, Coffee, Truck, ArrowRight, LogOut, Grid, Briefcase, Settings, DollarSign, Store, Package, Users, Clock, LifeBuoy, ShieldCheck } from 'lucide-react';
 import { Button } from '../components/Button';
 
 const ModuleCard = ({ 
-    type, 
     title, 
     desc, 
     icon: Icon, 
@@ -56,7 +55,6 @@ export const ModuleSelector: React.FC = () => {
 
     const allowed = state.allowedModules || ['RESTAURANT', 'MANAGER', 'CONFIG', 'FINANCE', 'COMMERCE', 'INVENTORY', 'HR', 'AUDIT'];
     const tenantName = state.theme.restaurantName;
-    const { planLimits } = state;
 
     const isModuleAllowed = (module: SystemModule) => {
         // O tenant PRECISA ter o módulo liberado para qualquer um ver (incluindo ADMIN)

@@ -1,5 +1,6 @@
 
 import { User, RestaurantBusinessInfo } from '../types';
+import DOMPurify from 'dompurify';
 
 export const replaceContractVariables = (templateContent: string, user: User, company: RestaurantBusinessInfo, roleName: string, shiftName: string = '', extraVariables: Record<string, string> = {}): string => {
     const formatDate = (date?: Date | string) => {
@@ -97,6 +98,8 @@ export const printContractHtml = (content: string, userName: string) => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
 
+    const cleanContent = DOMPurify.sanitize(content);
+
     const htmlContent = `
         <!DOCTYPE html>
         <html lang="pt-BR">
@@ -113,7 +116,7 @@ export const printContractHtml = (content: string, userName: string) => {
             </style>
         </head>
         <body>
-            ${content}
+            ${cleanContent}
             <script>
                 window.onload = function() { window.print(); }
             </script>

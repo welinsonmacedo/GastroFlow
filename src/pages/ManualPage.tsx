@@ -4,13 +4,13 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useRestaurant } from '../context/RestaurantContext';
 import { 
-  ChefHat, Coffee, DollarSign, Settings, 
+  Coffee, DollarSign, Settings, 
   ArrowRight, CheckCircle, Bell, QrCode, 
-  Monitor, Smartphone, Play, Check, AlertTriangle,
+  Monitor, Smartphone, Play, AlertTriangle,
   ArrowLeft, BookOpen, Users, LayoutDashboard,
   Package, FileText, TrendingUp, Truck, Lock, Calculator, Layers,
-  HelpCircle, MessageCircle, WifiOff, Printer, UserCheck, CreditCard,
-  Utensils, RefreshCw, ShieldCheck, MousePointerClick
+  HelpCircle, MessageCircle,
+  RefreshCw, ShieldCheck, MousePointerClick
 } from 'lucide-react';
 import { TicketsClient } from '../components/TicketsClient';
 

@@ -1,14 +1,14 @@
 
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useRestaurant } from '../../context/RestaurantContext';
 import { useUI } from '../../context/UIContext';
 import { Button } from '../../components/Button';
 import { supabase } from '../../lib/supabase';
 import { DREReportPrint } from '../../components/reports/DREReportPrint';
 import { 
-    Loader2, RefreshCcw, Printer, Filter, Settings, 
+    Loader2, RefreshCcw, Printer, Settings, 
     TrendingUp, TrendingDown, DollarSign, PieChart, 
-    Calendar, ChevronDown, ChevronUp, AlertCircle, FileText
+    Calendar, AlertCircle, FileText
 } from 'lucide-react';
 
 export const AdminAccounting: React.FC = () => {
@@ -35,7 +35,7 @@ export const AdminAccounting: React.FC = () => {
   });
 
   // Visibilidade das Seções
-  const [visibility, setVisibility] = useState({
+  const [visibility] = useState({
       charts: true,
       revenue: true,
       cmv: true,
@@ -207,11 +207,11 @@ export const AdminAccounting: React.FC = () => {
   const formatCurrency = (val: number) => val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
   // Métricas para os Cards
-  const cmvPerc = data.netRevenue > 0 ? (data.cmv / data.netRevenue) * 100 : 0;
-  const marginPerc = data.netRevenue > 0 ? (data.grossProfit / data.netRevenue) * 100 : 0;
-  const profitPerc = data.grossRevenue > 0 ? (data.netIncome / data.grossRevenue) * 100 : 0;
+  // const cmvPerc = data.netRevenue > 0 ? (data.cmv / data.netRevenue) * 100 : 0;
+  // const marginPerc = data.netRevenue > 0 ? (data.grossProfit / data.netRevenue) * 100 : 0;
+  // const profitPerc = data.grossRevenue > 0 ? (data.netIncome / data.grossRevenue) * 100 : 0;
 
-  const Row = ({ label, value, type = 'normal', indent = false, isNegative = false, description = '' }: any) => (
+  const Row = ({ label, value, type = 'normal', indent = false, isNegative = false }: any) => (
     <div className={`flex justify-between py-2.5 ${indent ? 'pl-8' : ''} ${type === 'total' ? 'border-t-2 border-slate-800 font-black text-slate-900 bg-slate-50 mt-2 px-2' : 'border-b border-slate-100 text-slate-600'}`}>
         <div className="flex items-center gap-2 group relative">
             <span className={type === 'total' ? 'uppercase tracking-tight text-sm' : 'font-medium text-sm'}>{label}</span>

@@ -40,14 +40,14 @@ export const PurchaseOrderView: React.FC<PurchaseOrderViewProps> = ({ order, onB
     }, [order.linkedExpenseId]);
 
     const fetchLinkedExpense = async (expenseId: string) => {
-        const { data, error } = await supabase.from('expenses').select('*').eq('id', expenseId).single();
+        const { data } = await supabase.from('expenses').select('*').eq('id', expenseId).single();
         if (data) setLinkedExpense(data);
     };
 
     const fetchAvailableExpenses = async () => {
         if (!order.supplierId || !restState.tenantId) return;
         
-        const { data, error } = await supabase
+        const { data } = await supabase
             .from('expenses')
             .select('*')
             .eq('tenant_id', restState.tenantId)

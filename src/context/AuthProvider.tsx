@@ -32,7 +32,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const startHeartbeat = async (tenantId: string, staffId: string) => {
       try {
-          const { data, error } = await supabase.from('system_access_logs').insert({
+          const { data } = await supabase.from('system_access_logs').insert({
               tenant_id: tenantId,
               staff_id: staffId,
               login_at: new Date().toISOString(),

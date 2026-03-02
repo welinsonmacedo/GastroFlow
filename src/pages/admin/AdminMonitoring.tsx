@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useRestaurant } from '../../context/RestaurantContext';
 import { supabase } from '../../lib/supabase';
 import { SystemAccessLog } from '../../types';
-import { User, Clock, Calendar, Shield, Monitor, RefreshCcw, Activity } from 'lucide-react';
+import { User, Clock, Monitor, RefreshCcw, Activity } from 'lucide-react';
 import { Button } from '../../components/Button';
 
 export const AdminMonitoring: React.FC = () => {

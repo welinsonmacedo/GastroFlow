@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useRestaurant } from '../../context/RestaurantContext';
 import { useUI } from '../../context/UIContext';
 import { Button } from '../../components/Button';
-import { Building2, MapPin, Phone, Loader2, Share2, Clock, Lock, Save, ShieldCheck, Bike, Plus, Trash2, Edit, CreditCard, Tag, FileText, Bell } from 'lucide-react';
+import { Building2, MapPin, Loader2, Share2, Clock, Lock, Save, ShieldCheck, Bike, Plus, Trash2, Edit, CreditCard, Tag, FileText, Bell } from 'lucide-react';
 import { RestaurantBusinessInfo, DeliveryMethodConfig, PaymentMethodConfig, ExpenseCategory, TaxRegime } from '../../types';
 import { Modal } from '../../components/Modal';
 
@@ -204,7 +204,7 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ view = 'BUSINESS' 
                   }));
                   showAlert({ title: "Localização Definida", message: "Coordenadas atualizadas com sucesso.", type: 'SUCCESS' });
               },
-              (error) => {
+              () => {
                   showAlert({ title: "Erro", message: "Não foi possível obter sua localização.", type: 'ERROR' });
               }
           );
@@ -595,7 +595,7 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ view = 'BUSINESS' 
                                                 });
                                                 showAlert({ title: "Localização Obtida", message: "Coordenadas atualizadas com sua posição atual.", type: 'SUCCESS' });
                                             },
-                                            (err) => showAlert({ title: "Erro", message: "Não foi possível obter sua localização.", type: 'ERROR' })
+                                            () => showAlert({ title: "Erro", message: "Não foi possível obter sua localização.", type: 'ERROR' })
                                         );
                                     }}
                                 >

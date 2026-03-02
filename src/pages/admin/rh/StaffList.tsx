@@ -4,7 +4,7 @@ import { useStaff } from '../../../context/StaffContext';
 import { useUI } from '../../../context/UIContext';
 import { Button } from '../../../components/Button';
 import { User, EmployeeStatus } from '../../../types';
-import { Edit, Trash2, UserPlus, Building2, Calendar, BadgeCheck, DollarSign } from 'lucide-react';
+import { Edit, Trash2, UserPlus, Building2, Calendar, BadgeCheck } from 'lucide-react';
 import { StaffFormModal } from '../../../components/modals/StaffFormModal';
 
 export const StaffList: React.FC = () => {

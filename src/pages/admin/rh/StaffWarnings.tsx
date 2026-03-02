@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import ReactQuill, { Quill } from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
+import DOMPurify from 'dompurify';
 import { useStaff } from '../../../context/StaffContext';
 
 // Register inline styles for Quill to ensure proper printing
@@ -11,7 +12,7 @@ import { useUI } from '../../../context/UIContext';
 import { useRestaurant } from '../../../context/RestaurantContext';
 import { replaceContractVariables } from '../../../utils/printContract';
 import { Button } from '../../../components/Button';
-import { AlertTriangle, User as LucideUser, Printer, Edit3, Eye, History, Trash2 } from 'lucide-react';
+import { AlertTriangle, User as LucideUser, Printer, Edit3, Eye, Trash2 } from 'lucide-react';
 
 export const StaffWarnings: React.FC = () => {
     const { state, addStaffWarning, deleteStaffWarning } = useStaff();
@@ -73,6 +74,8 @@ export const StaffWarnings: React.FC = () => {
                 .replace(/\{\{\s*data\s*\}\}/g, new Date().toLocaleDateString('pt-BR'))
                 .replace(/\{\{\s*tipo_advertencia\s*\}\}/g, warningType === 'VERBAL' ? 'VERBAL' : 'ESCRITA/FORMAL');
 
+            const cleanRendered = DOMPurify.sanitize(rendered);
+
             printWindow.document.write(`
                 <html>
                     <head>
@@ -92,7 +95,7 @@ export const StaffWarnings: React.FC = () => {
                             <p>${warningType === 'VERBAL' ? 'REGISTRO DE ADVERTÊNCIA VERBAL' : 'ADVERTÊNCIA DISCIPLINAR FORMAL'}</p>
                         </div>
                         <div class="content">
-                            ${rendered}
+                            ${cleanRendered}
                         </div>
                         <div class="signatures">
                             <div class="sig-box">
@@ -324,9 +327,9 @@ export const StaffWarnings: React.FC = () => {
                                                 const shift = state.shifts.find(s => s.id === selectedStaff?.shiftId);
                                                 const shiftName = shift ? shift.name : '';
                                                 
-                                                return replaceContractVariables(content, selectedStaff as any, company, roleName, shiftName)
+                                                return DOMPurify.sanitize(replaceContractVariables(content, selectedStaff as any, company, roleName, shiftName)
                                                     .replace(/\{\{\s*data\s*\}\}/g, new Date().toLocaleDateString('pt-BR'))
-                                                    .replace(/\{\{\s*tipo_advertencia\s*\}\}/g, warningType === 'VERBAL' ? 'VERBAL' : 'ESCRITA/FORMAL');
+                                                    .replace(/\{\{\s*tipo_advertencia\s*\}\}/g, warningType === 'VERBAL' ? 'VERBAL' : 'ESCRITA/FORMAL'));
                                             })()
                                         }} 
                                     />

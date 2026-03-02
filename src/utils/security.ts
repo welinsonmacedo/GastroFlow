@@ -1,4 +1,5 @@
 
+import DOMPurify from 'dompurify';
 import { supabase } from '../lib/supabase';
 
 // --- RATE LIMITER (In-Memory para Cliente) ---
@@ -35,13 +36,8 @@ export const checkRateLimit = (key: string, limit: number = 10, windowMs: number
 // --- DATA SANITIZATION ---
 export const sanitizeInput = (input: string): string => {
     if (!input) return '';
-    // Remove tags HTML/Script básicas para evitar XSS
-    return input
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/script/gi, "")
-        .replace(/on\w+=/gi, "") // Remove eventos como onclick=
-        .trim();
+    // Usa DOMPurify para limpar HTML malicioso (XSS)
+    return DOMPurify.sanitize(input).trim();
 };
 
 export const sanitizeObject = (obj: any): any => {

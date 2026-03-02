@@ -7,7 +7,6 @@ import { ChefHat, ArrowLeft, Loader2, CheckCircle, Store, Mail, Lock, User as Us
 import { Button } from '../components/Button';
 
 export const RegisterRestaurant: React.FC = () => {
-    const navigate = useNavigate();
     const [step, setStep] = useState<1 | 2>(1);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');

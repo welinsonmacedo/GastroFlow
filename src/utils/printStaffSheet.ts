@@ -1,5 +1,6 @@
 
 import { User } from '../types';
+import DOMPurify from 'dompurify';
 
 export const printStaffSheet = (user: User) => {
     const printWindow = window.open('', '_blank');
@@ -215,6 +216,8 @@ export const printStaffSheet = (user: User) => {
         </html>
     `;
 
-    printWindow.document.write(htmlContent);
+    const cleanContent = DOMPurify.sanitize(htmlContent);
+
+    printWindow.document.write(cleanContent);
     printWindow.document.close();
 };

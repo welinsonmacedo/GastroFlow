@@ -3,8 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthProvider';
 import { useStaff } from '../context/StaffContext';
 import { useRestaurant } from '../context/RestaurantContext';
-import { Button } from '../components/Button';
-import { Clock, PlayCircle, PauseCircle, StopCircle, LogOut, ArrowLeft, History, MapPin } from 'lucide-react';
+import { PlayCircle, PauseCircle, StopCircle, LogOut, ArrowLeft, History } from 'lucide-react';
 // @ts-ignore
 import { useNavigate } from 'react-router-dom';
 
@@ -46,19 +45,6 @@ export const TimeClock: React.FC = () => {
         }
     }
 
-    // Helper para calcular distância (Haversine)
-    const getDistanceFromLatLonInMeters = (lat1: number, lon1: number, lat2: number, lon2: number) => {
-        const R = 6371e3; // Raio da terra em metros
-        const dLat = (lat2 - lat1) * Math.PI / 180;
-        const dLon = (lon2 - lon1) * Math.PI / 180;
-        const a = 
-            Math.sin(dLat/2) * Math.sin(dLat/2) +
-            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-            Math.sin(dLon/2) * Math.sin(dLon/2); 
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
-        return R * c;
-    };
-
     const handleClockAction = async (type: 'IN' | 'BREAK_START' | 'BREAK_END' | 'OUT') => {
         if (!user) return;
         setLoading(true);
@@ -68,26 +54,15 @@ export const TimeClock: React.FC = () => {
 
         // Validação 1: Limite de 4 pontos (Se NONE)
         if (config.validationType === 'NONE') {
-            // O fluxo padrão já limita a 4 batidas (Entrada, Pausa, Volta, Saída)
-            // Se já tiver saída, bloqueia
             if (todaysEntry?.clockOut) {
                 setLocationError(`Limite diário de registros atingido (${config.maxDailyPunches || 4} pontos).`);
                 setLoading(false);
                 return;
             }
-            
-            // Se for apenas validação de quantidade, o fluxo natural de IN -> BREAK -> END -> OUT já são 4.
-            // Então apenas prosseguimos.
         }
 
         // Validação 2: Geolocalização
         if (config.validationType === 'GEOLOCATION') {
-            if (!config.restaurantLocation?.lat || !config.restaurantLocation?.lng) {
-                setLocationError("Localização da empresa não configurada. Contate o administrador.");
-                setLoading(false);
-                return;
-            }
-
             if (!navigator.geolocation) {
                 setLocationError("Geolocalização não suportada neste dispositivo.");
                 setLoading(false);
@@ -96,26 +71,15 @@ export const TimeClock: React.FC = () => {
 
             navigator.geolocation.getCurrentPosition(
                 async (position) => {
-                    const dist = getDistanceFromLatLonInMeters(
-                        position.coords.latitude,
-                        position.coords.longitude,
-                        config.restaurantLocation!.lat,
-                        config.restaurantLocation!.lng
-                    );
-
-                    const maxDist = config.maxDistanceMeters || 100;
-
-                    if (dist > maxDist) {
-                        setLocationError(`Você está a ${Math.round(dist)}m da empresa. Máximo permitido: ${maxDist}m.`);
-                        setLoading(false);
-                        return;
-                    }
-
-                    // Sucesso na validação
+                    // Envia coordenadas para o servidor validar
                     try {
-                        await registerTime(user.id, type);
-                    } catch (e) {
-                        alert("Erro ao registrar ponto.");
+                        await registerTime(user.id, type, undefined, {
+                            lat: position.coords.latitude,
+                            lng: position.coords.longitude
+                        });
+                    } catch (e: any) {
+                        console.error(e);
+                        setLocationError(e.message || "Erro ao registrar ponto.");
                     } finally {
                         setLoading(false);
                     }
@@ -130,11 +94,11 @@ export const TimeClock: React.FC = () => {
             return; // Sai para esperar o callback
         }
 
-        // Se chegou aqui (NONE validation ou fallback), registra direto
+        // Se chegou aqui (NONE validation ou fallback), registra direto sem location
         try {
             await registerTime(user.id, type);
-        } catch (e) {
-            alert("Erro ao registrar ponto.");
+        } catch (e: any) {
+             setLocationError(e.message || "Erro ao registrar ponto.");
         } finally {
             setLoading(false);
         }

@@ -5,7 +5,7 @@ import { Routes, Route, Navigate, Link, useLocation, useNavigate } from 'react-r
 import { useRestaurant } from '../context/RestaurantContext';
 import { useAuth } from '../context/AuthProvider';
 import { 
-    Package, ShoppingCart, Truck, LogOut, Grid, ChefHat, 
+    Package, ShoppingCart, Truck, LogOut, Grid, 
     ClipboardList, Archive, PlusCircle, FileInput, Scale
 } from 'lucide-react';
 

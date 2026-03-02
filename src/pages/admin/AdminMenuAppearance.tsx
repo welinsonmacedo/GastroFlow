@@ -5,7 +5,7 @@ import { useMenu } from '../../context/MenuContext';
 import { useUI } from '../../context/UIContext';
 import { Button } from '../../components/Button';
 import { ImageUploader } from '../../components/ImageUploader';
-import { Palette, LayoutTemplate, Image as ImageIcon, Smartphone, ChefHat, Search, ShoppingCart, Plus, Save, Type, MousePointerClick, Box, Check, LayoutGrid, List, Square } from 'lucide-react';
+import { Image as ImageIcon, Smartphone, ChefHat, Search, ShoppingCart, Plus, Save, LayoutGrid, List, Square } from 'lucide-react';
 
 export const AdminMenuAppearance: React.FC = () => {
   const { state, dispatch } = useRestaurant();
@@ -156,15 +156,7 @@ export const AdminMenuAppearance: React.FC = () => {
       );
   };
 
-  const TabButton = ({ id, icon: Icon, label }: any) => (
-      <button 
-          onClick={() => setActiveTab(id)}
-          className={`flex items-center gap-3 w-full p-4 rounded-xl transition-all text-left font-bold text-sm ${activeTab === id ? 'bg-blue-50 text-blue-700 shadow-sm border border-blue-100' : 'text-slate-500 hover:bg-gray-50 hover:text-slate-700'}`}
-      >
-          <Icon size={18} className={activeTab === id ? "text-blue-600" : "text-slate-400"}/>
-          {label}
-      </button>
-  );
+
 
   return (
     <div className="h-full flex flex-col md:flex-row bg-gray-50 overflow-hidden font-sans">

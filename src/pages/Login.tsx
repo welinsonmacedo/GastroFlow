@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthProvider'; // Use AuthProvider
 import { useRestaurant } from '../context/RestaurantContext';
 // @ts-ignore
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { Loader2, BookOpen } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 
 import { supabase } from '../lib/supabase';
 import { Button } from '../components/Button';

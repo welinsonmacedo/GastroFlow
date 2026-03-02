@@ -7,6 +7,7 @@ import { Search, Calendar, Plus, Upload, ChevronDown, ChevronUp, Printer } from 
 import { TimeEntryModal } from '../../../components/modals/TimeEntryModal';
 import { SummaryModal } from '../../../components/modals/SummaryModal';
 import { ImportAFDModal } from '../../../components/modals/ImportAFDModal';
+import DOMPurify from 'dompurify';
 
 export const DailyLogTab: React.FC = () => {
     const { state: staffState } = useStaff();
@@ -225,7 +226,9 @@ export const DailyLogTab: React.FC = () => {
             </html>
         `;
 
-        printWindow.document.write(html);
+        const cleanHtml = DOMPurify.sanitize(html);
+
+        printWindow.document.write(cleanHtml);
         printWindow.document.close();
     };
 

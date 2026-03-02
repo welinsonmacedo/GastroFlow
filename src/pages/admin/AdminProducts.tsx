@@ -1,8 +1,6 @@
 
 import React, { useState } from 'react';
 import { useMenu } from '../../context/MenuContext'; 
-import { useRestaurant } from '../../context/RestaurantContext'; 
-import { useInventory } from '../../context/InventoryContext';
 import { useUI } from '../../context/UIContext';
 import { Button } from '../../components/Button';
 import { ProductFormModal } from '../../components/modals/ProductFormModal';
@@ -107,7 +105,7 @@ export const AdminProducts: React.FC = () => {
 
         <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
             <div className="divide-y divide-gray-100">
-                {displayedProducts.map((product, index) => {
+                {displayedProducts.map((product) => {
                     const realIndex = sortedProducts.findIndex(p => p.id === product.id);
                     return (
                         <div 

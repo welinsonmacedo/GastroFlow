@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { useInventory } from '../../../context/InventoryContext';
 import { useUI } from '../../../context/UIContext';
 import { Button } from '../../../components/Button';
-import { Truck, Plus, Trash2, Edit, Eye } from 'lucide-react';
+import { Truck, Plus, Trash2, Edit } from 'lucide-react';
 import { SupplierModal } from './SupplierModal';
 import { Supplier } from '../../../types';
 

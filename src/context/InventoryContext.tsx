@@ -4,7 +4,6 @@ import { InventoryItem, InventoryRecipeItem, InventoryLog, Supplier, PurchaseEnt
 import { supabase, logAudit } from '../lib/supabase';
 import { useRestaurant } from './RestaurantContext'; 
 import { useAuth } from './AuthProvider';
-import { useUI } from './UIContext';
 
 interface InventoryState {
   inventory: InventoryItem[];
@@ -32,7 +31,6 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const { state: restaurantState } = useRestaurant();
   const { state: authState } = useAuth();
   const { tenantId } = restaurantState;
-  const { showAlert } = useUI();
 
   const currentUser = authState.currentUser;
 

@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 // @ts-ignore
 import { Link } from 'react-router-dom';
-import { ChefHat, CheckCircle, Smartphone, BarChart3, ShieldCheck, MessageCircle, ArrowRight, Star, Send, LogIn, Zap, MonitorPlay, LayoutDashboard, QrCode, Package, Users, DollarSign, Truck } from 'lucide-react';
+import { ChefHat, CheckCircle, Smartphone, BarChart3, ShieldCheck, MessageCircle, ArrowRight, Star, Send, Zap, MonitorPlay, LayoutDashboard, QrCode, Package, Users, DollarSign, Truck } from 'lucide-react';
 import { useSaaS } from '../context/SaaSContext';
 import { Plan } from '../types';
 import { LandingNavbar } from '../components/LandingNavbar';

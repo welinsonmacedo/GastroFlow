@@ -113,7 +113,7 @@ export const SaaSLogin: React.FC = () => {
         }
 
         // 2. FALLBACK: Tabela Customizada 'saas_admins'
-        const { data, error: dbError } = await supabase
+        const { data } = await supabase
             .from('saas_admins')
             .select('*')
             .eq('email', email)

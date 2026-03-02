@@ -8,7 +8,6 @@ import { Button } from '../components/Button';
 import { logSecurityIncident } from '../utils/security';
 
 export const OwnerLogin: React.FC = () => {
-    const navigate = useNavigate();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [form, setForm] = useState({ email: '', password: '' });
@@ -49,7 +48,7 @@ export const OwnerLogin: React.FC = () => {
 
             // 2. Descobrir qual o Tenant (Restaurante) deste usuário
             // Query robusta para staff e tenant associado. Usa limit(1) para evitar erro se tiver multiplos vinculos.
-            const { data: staffData, error: staffError } = await supabase
+            const { data: staffData } = await supabase
                 .from('staff')
                 .select(`
                     tenant_id, 

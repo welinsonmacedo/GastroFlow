@@ -7,7 +7,7 @@ import { useMenu } from '../../context/MenuContext';
 import { useAuth } from '../../context/AuthProvider';
 import { useUI } from '../../context/UIContext';
 import { Product, Order, OrderStatus } from '../../types';
-import { Utensils, Trash2, X, Minus, Plus, CheckSquare, Square, AlertCircle, DollarSign, CreditCard, Banknote, Zap, Split, CheckCircle2 } from 'lucide-react';
+import { Utensils, Trash2, X, Minus, Plus, CheckSquare, Square, AlertCircle, DollarSign, CreditCard, Zap, Split, CheckCircle2 } from 'lucide-react';
 
 // --- Open Table Modal ---
 export const OpenTableModal: React.FC<{ isOpen: boolean, onClose: () => void, tableId: string | null }> = ({ isOpen, onClose, tableId }) => {

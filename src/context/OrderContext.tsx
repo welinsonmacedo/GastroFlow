@@ -3,7 +3,6 @@ import React, { createContext, useContext, useEffect, useReducer, useCallback } 
 import { Table, Order, ServiceCall, OrderStatus, OrderType, DeliveryInfo } from '../types';
 import { supabase } from '../lib/supabase';
 import { useRestaurant } from './RestaurantContext';
-import { useMenu } from './MenuContext';
 import { useUI } from './UIContext';
 import { useAuth } from './AuthProvider';
 import { checkRateLimit, sanitizeObject } from '../utils/security'; // Importando segurança
@@ -70,7 +69,6 @@ const OrderContext = createContext<OrderContextType | undefined>(undefined);
 export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { state: restState } = useRestaurant();
   const { tenantId, planLimits } = restState;
-  const { state: menuState } = useMenu();
   const { state: authState } = useAuth();
   const { showAlert } = useUI();
 
@@ -110,7 +108,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               });
           }
 
-          if (tablesRes.data) localDispatch({ type: 'SET_TABLES', tables: tablesRes.data.map(t => ({ 
+          if (tablesRes.data) localDispatch({ type: 'SET_TABLES', tables: tablesRes.data.map((t: any) => ({ 
               id: t.id, 
               number: t.number, 
               status: t.status, 
@@ -122,7 +120,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           })) });
           
           if (ordersRes.data) {
-              const mappedOrders = ordersRes.data.map(o => ({
+              const mappedOrders = ordersRes.data.map((o: any) => ({
                   id: o.id, 
                   tableId: o.table_id, 
                   timestamp: new Date(o.created_at), 
@@ -145,7 +143,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               localDispatch({ type: 'SET_ORDERS', orders: mappedOrders });
           }
 
-          if (callsRes.data) localDispatch({ type: 'SET_CALLS', calls: callsRes.data.map(c => ({ id: c.id, tableId: c.table_id, status: c.status, timestamp: new Date(c.created_at), reason: c.reason })) });
+          if (callsRes.data) localDispatch({ type: 'SET_CALLS', calls: callsRes.data.map((c: any) => ({ id: c.id, tableId: c.table_id, status: c.status, timestamp: new Date(c.created_at), reason: c.reason })) });
       } catch (e) {
           console.error("Erro ao buscar dados:", e);
       }
@@ -183,7 +181,9 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       // Sanitização de Entrada
       const safeDeliveryInfo = params.deliveryInfo ? sanitizeObject(params.deliveryInfo) : null;
       const safeItems = params.items.map(i => ({
-          ...i,
+          productId: i.productId,
+          inventoryItemId: i.inventoryItemId,
+          quantity: i.quantity,
           notes: sanitizeObject(i.notes)
       }));
 
@@ -193,42 +193,27 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           finalOrderType = tableId ? 'DINE_IN' : 'PDV'; 
       }
 
-      const { data: order } = await supabase.from('orders').insert({ 
-          tenant_id: tenantId, 
-          table_id: tableId || null, 
-          status: 'PENDING', 
-          is_paid: false,
-          order_type: finalOrderType,
-          delivery_info: safeDeliveryInfo,
-          customer_name: safeDeliveryInfo?.customerName || (tableId ? undefined : 'Balcão')
-      }).select().single();
+      // Chamada RPC para garantir integridade de preços e estoque no servidor
+      const { error } = await supabase.rpc('place_order', {
+          p_tenant_id: tenantId,
+          p_table_id: tableId || null,
+          p_order_type: finalOrderType,
+          p_delivery_info: safeDeliveryInfo,
+          p_items: safeItems
+      });
 
-      if (order) {
-          const dbItems = safeItems.map((i: any) => {
-              const product = menuState.products.find(p => p.id === i.productId);
-              return {
-                  tenant_id: tenantId, 
-                  order_id: order.id, 
-                  product_id: i.productId || null, 
-                  inventory_item_id: i.inventoryItemId || null,
-                  quantity: i.quantity, 
-                  notes: i.notes || '', 
-                  status: 'PENDING',
-                  product_name: product?.name || i.name || 'Item', 
-                  product_type: product?.type || i.type || 'KITCHEN',
-                  product_price: Number(product?.price ?? i.salePrice ?? 0), 
-                  product_cost_price: Number(product?.costPrice ?? 0)
-              };
-          });
-          await supabase.from('order_items').insert(dbItems);
+      if (error) {
+          console.error("Erro ao enviar pedido:", error);
+          showAlert({ title: "Erro", message: "Não foi possível enviar o pedido.", type: "ERROR" });
+      } else {
           fetchData();
       }
   };
 
   const cancelOrder = async (orderId: string) => {
       if (!tenantId) return;
-      await supabase.from('orders').update({ status: 'CANCELLED' }).eq('id', orderId);
-      await supabase.from('order_items').update({ status: 'CANCELLED' }).eq('order_id', orderId);
+      // Idealmente também seria um RPC para validar permissões de cancelamento
+      await supabase.rpc('cancel_order', { p_order_id: orderId });
       fetchData();
   };
 
@@ -246,9 +231,12 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           notes: i.notes
       }));
       
+      // NÃO enviamos o totalAmount. O backend deve calcular.
       await supabase.rpc('process_pos_sale', { 
-          p_tenant_id: tenantId, p_customer_name: safeData.customerName, 
-          p_total_amount: safeData.totalAmount, p_method: safeData.method, p_items: enrichedItems 
+          p_tenant_id: tenantId, 
+          p_customer_name: safeData.customerName, 
+          p_method: safeData.method, 
+          p_items: enrichedItems 
       });
       fetchData();
   };
@@ -349,7 +337,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       fetchData();
   };
 
-  const updateItemStatus = async (orderId: string, itemId: string, status: OrderStatus) => {
+  const updateItemStatus = async (_orderId: string, itemId: string, status: OrderStatus) => {
       await supabase.from('order_items').update({ status }).eq('id', itemId);
       fetchData();
   };

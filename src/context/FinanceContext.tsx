@@ -3,8 +3,6 @@ import React, { createContext, useContext, useEffect, useState, useCallback } fr
 import { Transaction, CashSession, CashMovement, Expense } from '../types';
 import { supabase } from '../lib/supabase';
 import { useRestaurant } from './RestaurantContext';
-import { useUI } from './UIContext';
-import { useAuth } from './AuthProvider';
 
 interface FinanceState {
   transactions: Transaction[];
@@ -30,9 +28,7 @@ const FinanceContext = createContext<FinanceContextType | undefined>(undefined);
 
 export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { state: restaurantState } = useRestaurant();
-  const { state: authState } = useAuth();
   const { tenantId } = restaurantState;
-  const { showAlert } = useUI();
 
   const [state, setState] = useState<FinanceState>({
     transactions: [],
@@ -143,7 +139,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
           })
           
           // C. Sessões: Lógica específica para abrir/fechar via evento
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'cash_sessions', filter: `tenant_id=eq.${tenantId}` }, (payload) => {
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'cash_sessions', filter: `tenant_id=eq.${tenantId}` }, (payload: any) => {
               // CORREÇÃO: Removemos a checagem de owner. Se alguém abrir/fechar o caixa, reflete para todos.
               
               if (payload.eventType === 'INSERT') {

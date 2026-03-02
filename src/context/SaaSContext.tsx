@@ -641,7 +641,7 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     if (action.type === 'CREATE_PLAN') {
         try {
-            const { data, error } = await supabase.from('plans').insert({
+            const { error } = await supabase.from('plans').insert({
                 key: action.plan.key,
                 name: action.plan.name,
                 price: action.plan.price,

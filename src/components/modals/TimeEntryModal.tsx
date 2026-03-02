@@ -5,7 +5,7 @@ import { Button } from '../Button';
 import { useStaff } from '../../context/StaffContext';
 import { useUI } from '../../context/UIContext';
 import { TimeEntry } from '../../types';
-import { Clock, Calendar, AlertCircle, User as UserIcon } from 'lucide-react';
+import { Calendar, AlertCircle, User as UserIcon } from 'lucide-react';
 
 interface TimeEntryModalProps {
   isOpen: boolean;

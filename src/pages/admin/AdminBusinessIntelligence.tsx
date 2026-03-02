@@ -2,17 +2,16 @@
 import React, { useState, useMemo } from 'react';
 import { useFinance } from '../../context/FinanceContext';
 import { useOrder } from '../../context/OrderContext';
-import { useInventory } from '../../context/InventoryContext';
 import { 
-    TrendingUp, AlertTriangle, Target, Calendar, 
-    ArrowUpRight, ArrowDownRight, PieChart, BarChart3, 
-    Zap, Award, TrendingDown, DollarSign, Activity, Filter, Package, FileText, Wallet, Truck
+    AlertTriangle, Target, 
+    ArrowUpRight, ArrowDownRight, BarChart3, 
+    Zap, Award, TrendingDown, Activity, Filter, Package, FileText, Wallet, Truck
 } from 'lucide-react';
 
 export const AdminBusinessIntelligence: React.FC = () => {
     const { state: finState } = useFinance();
     const { state: orderState } = useOrder();
-    const { state: invState } = useInventory(); // Mantido para futuras implementações se necessário
+
 
     const [activeTab, setActiveTab] = useState<'EXECUTIVE' | 'PRODUCTS' | 'FORECAST'>('EXECUTIVE');
     const [revenueGoal, setRevenueGoal] = useState(50000); 

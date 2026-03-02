@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 // @ts-ignore
 import { useParams, Link } from 'react-router-dom';
 import { useRestaurant } from '../context/RestaurantContext';
@@ -10,7 +10,7 @@ import { Button } from '../components/Button';
 import { TableStatus, Product, Order } from '../types';
 import { 
     ShoppingCart, ChefHat, Plus, Minus, X, Lock, 
-    Receipt, Loader2, Bell, Search, Edit3, 
+    Receipt, Loader2, Bell, Search, 
     Zap, Clock, Trash2, ArrowRight, 
     Activity, AlertCircle, Utensils, Home, CreditCard, Banknote, Shield
 } from 'lucide-react';

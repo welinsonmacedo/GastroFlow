@@ -6,7 +6,7 @@ import { useRestaurant } from '../context/RestaurantContext';
 import { useAuth } from '../context/AuthProvider';
 import { 
     Palette, Users, SlidersHorizontal, LogOut, Grid, ChefHat, 
-    Building2, Bike, DollarSign, ShieldCheck, FileText, Settings, Clock
+    Building2, Bike, DollarSign, ShieldCheck, Clock
 } from 'lucide-react';
 
 // Importando Sub-páginas

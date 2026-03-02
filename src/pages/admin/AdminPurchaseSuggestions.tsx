@@ -2,10 +2,9 @@
 import React, { useEffect, useState } from 'react';
 import { useInventory } from '../../context/InventoryContext';
 import { useRestaurant } from '../../context/RestaurantContext';
-import { usePurchaseOrders } from '../../hooks/usePurchaseOrders';
 import { supabase } from '../../lib/supabase';
 import { Button } from '../../components/Button';
-import { ShoppingCart, RefreshCcw, TrendingUp, AlertTriangle, Package, ArrowLeft, PlusCircle, X, Save } from 'lucide-react';
+import { TrendingUp, AlertTriangle, Package } from 'lucide-react';
 import { PurchaseOrderView } from '../../components/admin/PurchaseOrderView';
 
 interface SuggestionItem {
@@ -28,14 +27,12 @@ export const AdminPurchaseSuggestions: React.FC = () => {
     const { state: invState } = useInventory();
     const { state: restState } = useRestaurant();
     const [suggestions, setSuggestions] = useState<SuggestionItem[]>([]);
-    const [loading, setLoading] = useState(false);
     const [selectedItems, setSelectedItems] = useState<Record<string, number>>({}); // { [itemId]: quantity }
     const [view, setView] = useState<'LIST' | 'ORDER'>('LIST');
     const [activeOrder, setActiveOrder] = useState<{ supplierName: string; items: SuggestionItem[], supplierId?: string } | null>(null);
 
     const calculateSuggestions = async () => {
         if (!restState.tenantId) return;
-        setLoading(true);
 
         try {
             // 1. Buscar histórico de vendas dos últimos 30 dias para calcular popularidade
@@ -103,8 +100,6 @@ export const AdminPurchaseSuggestions: React.FC = () => {
 
         } catch (error) {
             console.error("Erro ao calcular sugestões:", error);
-        } finally {
-            setLoading(false);
         }
     };
 

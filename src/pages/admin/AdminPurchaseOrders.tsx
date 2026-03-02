@@ -301,13 +301,13 @@ export const AdminPurchaseOrders: React.FC = () => {
                                     </td>
                                     <td className="p-3 text-right">
                                         <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <Button size="sm" variant="ghost" onClick={() => handlePrintOrder(order)} title="Imprimir">
+                                            <Button size="sm" variant="outline" onClick={() => handlePrintOrder(order)} title="Imprimir">
                                                 <Printer size={16} className="text-slate-500 hover:text-blue-600"/>
                                             </Button>
-                                            <Button size="sm" variant="ghost" onClick={() => handleEditOrder(order)} title="Editar">
+                                            <Button size="sm" variant="outline" onClick={() => handleEditOrder(order)} title="Editar">
                                                 <Edit size={16} className="text-slate-500 hover:text-blue-600"/>
                                             </Button>
-                                            <Button size="sm" variant="ghost" onClick={() => handleDeleteOrder(order.id)} title="Excluir">
+                                            <Button size="sm" variant="outline" onClick={() => handleDeleteOrder(order.id)} title="Excluir">
                                                 <Trash2 size={16} className="text-slate-500 hover:text-red-600"/>
                                             </Button>
                                         </div>

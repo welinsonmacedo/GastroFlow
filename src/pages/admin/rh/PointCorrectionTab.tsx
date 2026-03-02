@@ -14,8 +14,6 @@ export const PointCorrectionTab: React.FC = () => {
     const [entryToCorrect, setEntryToCorrect] = useState<TimeEntry | null>(null);
     const [expandedStaffId, setExpandedStaffId] = useState<string | null>(null);
 
-    const getStaffName = (id: string) => staffState.users.find(u => u.id === id)?.name || 'Desconhecido';
-    
     // Filter entries by month
     const monthlyEntries = staffState.timeEntries.filter(entry => {
         const entryMonth = entry.entryDate.toISOString().slice(0, 7);

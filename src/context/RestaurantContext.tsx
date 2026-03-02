@@ -199,7 +199,7 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                   table: 'tenants', 
                   filter: `id=eq.${state.tenantId}` 
               }, 
-              async (payload) => {
+              async (payload: any) => {
                   if (payload.new) {
                       localDispatch({ type: 'SYNC_REALTIME_DATA', payload: payload.new });
                       

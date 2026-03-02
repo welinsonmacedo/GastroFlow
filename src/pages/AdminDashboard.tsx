@@ -18,7 +18,7 @@ import { AdminMonitoring } from './admin/AdminMonitoring';
 export const AdminDashboard: React.FC = () => {
   const { state: restState } = useRestaurant();
   const { state: authState, logout } = useAuth();
-  const { planLimits, allowedFeatures } = restState;
+  const { planLimits } = restState;
   const location = useLocation();
   const navigate = useNavigate();
 

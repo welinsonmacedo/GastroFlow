@@ -9,7 +9,7 @@ import { useAuth } from '../context/AuthProvider';
 import { TableStatus, Product, OrderStatus, ProductType } from '../types';
 import { Button } from '../components/Button';
 import { WaiterProductModal, OpenTableModal, TableActionsModal } from '../components/modals/WaiterModals';
-import { Bell, Search, ShoppingCart, ArrowLeft, Utensils, Trash2, Clock, CheckCircle, ChevronUp, ChevronDown, Zap, RefreshCcw, Lock, List, Grid, History, AlertTriangle, PackageX, CheckCheck, Check, Plus, Minus, CreditCard, Banknote, Volume2 } from 'lucide-react';
+import { Bell, Search, ShoppingCart, ArrowLeft, Utensils, Trash2, Clock, CheckCircle, ChevronUp, ChevronDown, Zap, RefreshCcw, Lock, List, Grid, History, AlertTriangle, PackageX, CheckCheck, Check, Plus, CreditCard, Volume2 } from 'lucide-react';
 import { Modal } from '../components/Modal';
 import { playNotificationSound, unlockAudioContext } from '../utils/audio';
 
@@ -23,7 +23,6 @@ export const WaiterApp: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'TABLES' | 'ORDERS'>('TABLES');
   const [showHistory, setShowHistory] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [lastSoundTime, setLastSoundTime] = useState(0); 
   const [audioBlocked, setAudioBlocked] = useState(false);
   const { showAlert } = useUI();
 
@@ -78,7 +77,6 @@ export const WaiterApp: React.FC = () => {
 
   const prevCallsCount = useRef(0);
   const prevReadyCount = useRef(0);
-  const prevNewOrdersCount = useRef(0);
 
 
 

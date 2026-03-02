@@ -21,7 +21,7 @@ export const AdminFinancialTips: React.FC = () => {
             const validTrans = finState.transactions.filter(t => t.status !== 'CANCELLED' && new Date(t.timestamp) >= start);
             const totalRevenue = validTrans.reduce((acc, t) => acc + t.amount, 0);
             const { data: items } = await supabase.from('order_items').select('quantity, product_cost_price').eq('tenant_id', restState.tenantId).gte('created_at', start.toISOString()).neq('status', 'CANCELLED');
-            const totalCmv = items?.reduce((acc, i) => acc + (i.quantity * i.product_cost_price), 0) || 0;
+            const totalCmv = items?.reduce((acc: any, i: any) => acc + (i.quantity * i.product_cost_price), 0) || 0;
             setRevenue(totalRevenue);
             setCmv(totalCmv);
             setLoading(false);

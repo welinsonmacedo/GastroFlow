@@ -5,14 +5,12 @@ import { Routes, Route, Navigate, Link, useLocation, useNavigate } from 'react-r
 import { useRestaurant } from '../context/RestaurantContext';
 import { useAuth } from '../context/AuthProvider';
 import { 
-    DollarSign, ShoppingCart, BarChart3,
-    LogOut, Grid, Store, Lock, History, Truck
+    ShoppingCart,
+    LogOut, Grid, Store, Lock, History
 } from 'lucide-react';
 import { Role } from '../types';
 
 // Importando Sub-páginas
-import { AdminFinance } from './admin/AdminFinance';
-import { AdminReports } from './admin/AdminReports';
 import { CommercePOS } from './commerce/CommercePOS';
 import { CommerceHistoryView } from './commerce/CommerceHistoryView';
 

@@ -23,7 +23,7 @@ import { AdminMenuAppearance } from './admin/AdminMenuAppearance';
 export const RestaurantDashboard: React.FC = () => {
   const { state: restState } = useRestaurant();
   const { state: authState, logout } = useAuth();
-  const { planLimits, allowedFeatures } = restState; // Pega features
+  const { planLimits } = restState; // Pega features
   const location = useLocation();
   const navigate = useNavigate();
 

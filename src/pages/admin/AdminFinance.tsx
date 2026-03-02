@@ -9,20 +9,20 @@ import { ExpenseFormModal } from '../../components/modals/ExpenseFormModal';
 import { CashBleedModal } from '../../components/modals/CashBleedModal';
 import { supabase } from '../../lib/supabase';
 import { Expense, CashSession, Transaction, CashMovement } from '../../types';
-import { Plus, CheckSquare, Trash2, Wallet, CreditCard, Banknote, ArrowDown, Repeat, Archive, User, ChevronRight, LayoutDashboard, List, DollarSign, Edit, Lock } from 'lucide-react';
+import { Plus, CheckSquare, Trash2, Wallet, Banknote, ArrowDown, Repeat, Archive, User, ChevronRight, LayoutDashboard, List, DollarSign, Edit, Lock } from 'lucide-react';
 
 export const AdminFinance: React.FC = () => {
   const { state: restState } = useRestaurant();
   const { state: finState, updateExpense, deleteExpense } = useFinance();
-  const { showConfirm, showAlert } = useUI();
+  const { showAlert } = useUI();
   
   // State for Tabs (Simplified to just Operational Finance)
   const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'SESSIONS' | 'EXPENSES'>('OVERVIEW');
 
   // State for Expenses Filter
-  const [expenseViewMode, setExpenseViewMode] = useState<'MONTH' | 'RECURRING' | 'HISTORY'>('MONTH');
-  const [historyStart, setHistoryStart] = useState(new Date(new Date().setDate(1)).toISOString().split('T')[0]);
-  const [historyEnd, setHistoryEnd] = useState(new Date().toISOString().split('T')[0]);
+  const [expenseViewMode] = useState<'MONTH' | 'RECURRING' | 'HISTORY'>('MONTH');
+  const [historyStart] = useState(new Date(new Date().setDate(1)).toISOString().split('T')[0]);
+  const [historyEnd] = useState(new Date().toISOString().split('T')[0]);
 
   // State for Modals
   const [editingExpense, setEditingExpense] = useState<Partial<Expense> | null>(null);

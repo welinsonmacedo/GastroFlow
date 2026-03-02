@@ -4,15 +4,15 @@ import { useRestaurant } from '../context/RestaurantContext';
 import { useAuth } from '../context/AuthProvider';
 import { supabase } from '../lib/supabase';
 import { 
-    Shield, Search, Filter, Printer, Download, Calendar, 
-    User, Activity, ChevronRight, Grid, LogOut, FileText,
+    Shield, Search, Printer, Calendar, 
+    Activity, Grid, LogOut, FileText,
     Package, DollarSign, Users, Settings, ChefHat, Store,
-    ArrowLeft, Eye
+    Eye
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
-import { Button } from '../components/Button';
 import { Modal } from '../components/Modal';
+import DOMPurify from 'dompurify';
 
 interface AuditLogEntry {
     id: string;
@@ -25,7 +25,7 @@ interface AuditLogEntry {
 
 export const AuditDashboard: React.FC = () => {
     const { state: restState } = useRestaurant();
-    const { state: authState, logout } = useAuth();
+    const { logout } = useAuth();
     const navigate = useNavigate();
     
     const [logs, setLogs] = useState<AuditLogEntry[]>([]);
@@ -273,7 +273,7 @@ export const AuditDashboard: React.FC = () => {
             </main>
 
             {/* Print Styles */}
-            <style dangerouslySetInnerHTML={{ __html: `
+            <style dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(`
                 @media print {
                     @page { margin: 2cm; }
                     body { background: white; }
@@ -285,7 +285,7 @@ export const AuditDashboard: React.FC = () => {
                     .rounded-3xl { border-radius: 0 !important; }
                     .shadow-xl { box-shadow: none !important; }
                 }
-            `}} />
+            `)}} />
 
             {/* Modal de Detalhes do Log */}
             <Modal
