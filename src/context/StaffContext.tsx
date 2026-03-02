@@ -968,45 +968,22 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const generateRecurringEventsForMonth = async (month: number, year: number) => {
       if(!tenantId || !currentUser) return;
       
-      // 1. Get active recurring events
-      const activeEvents = state.recurringEvents.filter(e => e.isActive);
-      if (activeEvents.length === 0) return;
+      try {
+          const { data, error } = await supabase.rpc('generate_recurring_events', {
+              p_month: month,
+              p_year: year,
+              p_created_by: currentUser.id
+          });
 
-      // 2. Get existing events for this month to avoid duplicates
-      const { data: existingEvents } = await supabase.from('rh_payroll_events')
-          .select('staff_id, type, description')
-          .eq('tenant_id', tenantId)
-          .eq('month', month)
-          .eq('year', year);
-
-      const inserts = [];
-      for (const rec of activeEvents) {
-          // Check if this exact event was already generated
-          const alreadyExists = existingEvents?.some((e: any) => 
-              e.staff_id === rec.staffId && 
-              e.type === rec.type && 
-              e.description === rec.description
-          );
-
-          if (!alreadyExists) {
-              inserts.push({
-                  tenant_id: tenantId,
-                  staff_id: rec.staffId,
-                  month,
-                  year,
-                  type: rec.type,
-                  description: rec.description,
-                  value: rec.value,
-                  created_by: currentUser.id
-              });
-          }
-      }
-
-      if (inserts.length > 0) {
-          const { error } = await supabase.from('rh_payroll_events').insert(inserts);
           if (error) throw error;
-          await logAudit(tenantId, currentUser.id, currentUser.name, 'HR', 'Geração de Eventos Recorrentes', { count: inserts.length, month, year });
-          fetchData();
+
+          if (data > 0) {
+              await logAudit(tenantId, currentUser.id, currentUser.name, 'HR', 'Geração de Eventos Recorrentes', { count: data, month, year });
+              fetchData();
+          }
+      } catch (error) {
+          console.error("Error generating recurring events:", error);
+          throw error;
       }
   };
 
