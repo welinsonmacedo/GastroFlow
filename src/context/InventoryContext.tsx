@@ -263,17 +263,17 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const updateStock = async (itemId: string, quantity: number, operation: 'IN' | 'OUT', reason: string, userName: string = 'Sistema') => {
       if(!tenantId) return;
-      const item = state.inventory.find(i => i.id === itemId);
-      if (!item) return;
-      
-      const currentQty = Number(item.quantity) || 0;
-      const newQty = operation === 'IN' ? currentQty + quantity : currentQty - quantity;
-      
-      await supabase.from('inventory_items').update({ quantity: newQty }).eq('id', itemId);
-      
-      await supabase.from('inventory_logs').insert({
-          tenant_id: tenantId, item_id: itemId, type: operation, quantity, reason, user_name: userName
+      const { error } = await supabase.rpc('adjust_inventory', {
+          p_tenant_id: tenantId,
+          p_item_id: itemId,
+          p_operation: operation,
+          p_quantity: quantity,
+          p_reason: reason,
+          p_user_name: userName
       });
+
+      if (error) throw error;
+      fetchData();
   };
 
   const processInventoryAdjustment = async (adjustments: { itemId: string; realQty: number }[]) => {
@@ -338,55 +338,13 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const processPurchase = async (purchase: PurchaseEntry) => {
       if(!tenantId) return;
-      try {
-          const itemsTotal = purchase.items.reduce((acc, i) => acc + i.totalPrice, 0);
-          
-          // Soma de todos os impostos
-          const totalTaxes = (purchase.taxes.icms || 0) + 
-                             (purchase.taxes.ipi || 0) + 
-                             (purchase.taxes.st || 0) + 
-                             (purchase.taxes.freight || 0) + 
-                             (purchase.taxes.others || 0);
+      const { error } = await supabase.rpc('process_inventory_purchase', {
+          p_tenant_id: tenantId,
+          p_purchase_data: purchase
+      });
 
-          for (const item of purchase.items) {
-              let effectiveUnitCost = item.unitPrice;
-              if (purchase.distributeTax && totalTaxes > 0 && itemsTotal > 0) {
-                  const taxShare = (item.totalPrice / itemsTotal) * totalTaxes;
-                  effectiveUnitCost = (item.totalPrice + taxShare) / item.quantity;
-              }
-
-              const invItem = state.inventory.find(i => i.id === item.inventoryItemId);
-              const newQty = (Number(invItem?.quantity) || 0) + item.quantity;
-              
-              await supabase.from('inventory_items').update({ 
-                  quantity: newQty,
-                  cost_price: effectiveUnitCost 
-              }).eq('id', item.inventoryItemId);
-
-              await supabase.from('inventory_logs').insert({
-                  tenant_id: tenantId, item_id: item.inventoryItemId, type: 'IN', quantity: item.quantity, 
-                  reason: `Compra NF ${purchase.invoiceNumber} (Série ${purchase.series || '-'})`, user_name: 'Admin'
-              });
-          }
-
-          const supplierName = state.suppliers.find(s => s.id === purchase.supplierId)?.name || 'Fornecedor';
-          const desc = `Compra NF ${purchase.invoiceNumber} - Série ${purchase.series || '0'} (${supplierName})`;
-          
-          await supabase.from('expenses').insert({
-              tenant_id: tenantId,
-              description: desc,
-              amount: purchase.totalAmount, // Inclui impostos
-              category: 'Fornecedor',
-              due_date: purchase.date,
-              is_paid: false,
-              payment_method: 'BANK',
-              supplier_id: purchase.supplierId
-          });
-          
-      } catch (error) {
-          console.error("Erro ao processar compra:", error);
-          throw error;
-      }
+      if (error) throw error;
+      fetchData();
   };
 
   return (

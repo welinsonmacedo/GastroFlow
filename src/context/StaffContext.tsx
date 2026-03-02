@@ -806,10 +806,9 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const saveLegalSettings = async (settings: Partial<RhPayrollSetting>) => {
       if (!tenantId) return;
       const payload = {
-          tenant_id: tenantId, min_wage: settings.minWage, inss_ceiling: settings.inssCeiling,
+          min_wage: settings.minWage, inss_ceiling: settings.inssCeiling,
           irrf_dependent_deduction: settings.irrfDependentDeduction, fgts_rate: settings.fgtsRate,
           valid_from: settings.validFrom, valid_until: settings.validUntil,
-          // Calculation Params
           vacation_days_entitlement: settings.vacationDaysEntitlement,
           vacation_sold_days_limit: settings.vacationSoldDaysLimit,
           thirteenth_min_months_worked: settings.thirteenthMinMonthsWorked,
@@ -818,30 +817,49 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           notice_period_max_days: settings.noticePeriodMaxDays,
           fgts_fine_percent: settings.fgtsFinePercent,
           standard_monthly_hours: settings.standardMonthlyHours,
-          // Time Tracking
           time_tracking_method: settings.timeTrackingMethod,
           overtime_policy: settings.overtimePolicy,
           deduct_delays_from_overtime: settings.deductDelaysFromOvertime,
           absence_logic: settings.absenceLogic
       };
-      await supabase.from('rh_payroll_settings').delete().eq('tenant_id', tenantId);
-      await supabase.from('rh_payroll_settings').insert(payload);
+      const { error } = await supabase.rpc('save_payroll_settings', {
+          p_tenant_id: tenantId,
+          p_settings: payload
+      });
+      if (error) throw error;
       fetchData();
   };
 
   const saveInssBrackets = async (brackets: RhInssBracket[]) => {
       if (!tenantId) return;
-      await supabase.from('rh_inss_brackets').delete().eq('tenant_id', tenantId);
-      const inserts = brackets.map(b => ({ tenant_id: tenantId, min_value: b.minValue, max_value: b.maxValue, rate: b.rate, valid_from: b.validFrom }));
-      await supabase.from('rh_inss_brackets').insert(inserts);
+      const payload = brackets.map(b => ({ 
+          min_value: b.minValue, 
+          max_value: b.maxValue, 
+          rate: b.rate, 
+          valid_from: b.validFrom 
+      }));
+      const { error } = await supabase.rpc('save_inss_brackets', {
+          p_tenant_id: tenantId,
+          p_brackets: payload
+      });
+      if (error) throw error;
       fetchData();
   };
 
   const saveIrrfBrackets = async (brackets: RhIrrfBracket[]) => {
       if (!tenantId) return;
-      await supabase.from('rh_irrf_brackets').delete().eq('tenant_id', tenantId);
-      const inserts = brackets.map(b => ({ tenant_id: tenantId, min_value: b.minValue, max_value: b.maxValue, rate: b.rate, deduction: b.deduction, valid_from: b.validFrom }));
-      await supabase.from('rh_irrf_brackets').insert(inserts);
+      const payload = brackets.map(b => ({ 
+          min_value: b.minValue, 
+          max_value: b.maxValue, 
+          rate: b.rate, 
+          deduction: b.deduction, 
+          valid_from: b.validFrom 
+      }));
+      const { error } = await supabase.rpc('save_irrf_brackets', {
+          p_tenant_id: tenantId,
+          p_brackets: payload
+      });
+      if (error) throw error;
       fetchData();
   };
 
@@ -1009,27 +1027,16 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const { payroll, isClosed } = await getPayroll(month, year);
       if (isClosed) throw new Error("Esta folha já está fechada.");
 
-      const totalCost = payroll.reduce((acc, p) => acc + p.totalCompanyCost, 0);
-      const totalNet = payroll.reduce((acc, p) => acc + p.netTotal, 0);
       const userName = authState.currentUser?.name || 'Admin';
 
-      const { data: closedHeader, error: headerError } = await supabase.from('rh_closed_payrolls').insert({
-          tenant_id: tenantId, month, year,
-          total_cost: totalCost, total_net: totalNet, employee_count: payroll.length,
-          status: 'CLOSED', closed_by: userName
-      }).select().single();
-
-      if (headerError) throw headerError;
-
       const itemsToInsert = payroll.map(p => ({
-          payroll_id: closedHeader.id,
-          tenant_id: tenantId,
           staff_id: p.staffId,
           staff_name: p.staffName,
           base_salary: p.baseSalary,
           gross_total: p.grossTotal,
           net_total: p.netTotal,
-          total_discounts: p.discounts,
+          discounts: p.discounts,
+          total_company_cost: p.totalCompanyCost,
           details: { 
               overtime50: p.overtime50,
               overtime100: p.overtime100,
@@ -1050,34 +1057,28 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           }
       }));
 
-      const { error: itemsError } = await supabase.from('rh_closed_payroll_items').insert(itemsToInsert);
-      if (itemsError) {
-          await supabase.from('rh_closed_payrolls').delete().eq('id', closedHeader.id);
-          throw itemsError;
-      }
-      
-      // Atualizar Saldo de Banco de Horas no Staff
-      // (Opcional: Zerar se pagou ou acumular)
-      // Neste modelo simples, estamos pagando tudo como hora extra na folha, então não acumulamos.
-      // Se quiser acumular, precisaria de lógica de "Compensar vs Pagar".
+      const { error } = await supabase.rpc('close_payroll', {
+          p_tenant_id: tenantId,
+          p_month: month,
+          p_year: year,
+          p_closed_by: userName,
+          p_items: itemsToInsert
+      });
+
+      if (error) throw error;
+      await fetchData();
   };
 
   const reopenPayroll = async (month: number, year: number) => {
       if (!tenantId) return;
-      const { data: closedPayroll } = await supabase.from('rh_closed_payrolls')
-        .select('id')
-        .eq('tenant_id', tenantId)
-        .eq('month', month)
-        .eq('year', year)
-        .maybeSingle();
-
-      if (!closedPayroll) throw new Error("Esta folha não está fechada.");
-
-      // Excluir os itens e o cabeçalho
-      await supabase.from('rh_closed_payroll_items').delete().eq('payroll_id', closedPayroll.id);
-      await supabase.from('rh_closed_payrolls').delete().eq('id', closedPayroll.id);
-      
+      const { error } = await supabase.rpc('reopen_payroll', {
+          p_tenant_id: tenantId,
+          p_month: month,
+          p_year: year
+      });
+      if (error) throw error;
       await logAudit(tenantId, currentUser?.id || '', currentUser?.name || '', 'HR', 'Reabertura de Folha', { month, year });
+      await fetchData();
   };
 
   return (

@@ -3,6 +3,7 @@ import React, { createContext, useContext, useEffect, useState, useCallback } fr
 import { Transaction, CashSession, CashMovement, Expense } from '../types';
 import { supabase } from '../lib/supabase';
 import { useRestaurant } from './RestaurantContext';
+import { useAuth } from './AuthProvider';
 
 interface FinanceState {
   transactions: Transaction[];
@@ -28,6 +29,7 @@ const FinanceContext = createContext<FinanceContextType | undefined>(undefined);
 
 export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { state: restaurantState } = useRestaurant();
+  const { state: authState } = useAuth();
   const { tenantId } = restaurantState;
 
   const [state, setState] = useState<FinanceState>({
@@ -313,62 +315,14 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       if (!correctPin) throw new Error("Senha mestra não configurada nas Configurações.");
       if (adminPin !== correctPin) throw new Error("Senha incorreta.");
 
-      const { data: transaction } = await supabase.from('transactions').select('order_id, status').eq('id', transactionId).single();
+      const userName = authState.currentUser?.name || 'Admin';
       
-      if (!transaction) throw new Error("Transação não encontrada.");
-      if (transaction.status === 'CANCELLED') throw new Error("Transação já cancelada.");
+      const { error } = await supabase.rpc('cancel_transaction', {
+          p_transaction_id: transactionId,
+          p_user_name: userName
+      });
 
-      if (transaction.order_id) {
-          const { data: items } = await supabase.from('order_items').select('product_id, quantity').eq('order_id', transaction.order_id);
-          
-          if (items && items.length > 0) {
-              for (const item of items) {
-                  const { data: prod } = await supabase.from('products').select('linked_inventory_item_id').eq('id', item.product_id).single();
-                  
-                  if (prod && prod.linked_inventory_item_id) {
-                      const invId = prod.linked_inventory_item_id;
-                      const { data: invItem } = await supabase.from('inventory_items').select('id, type, quantity').eq('id', invId).single();
-
-                      if (invItem) {
-                          if (invItem.type === 'COMPOSITE') {
-                              const { data: recipe } = await supabase.from('inventory_recipes').select('*').eq('parent_item_id', invItem.id);
-                              if (recipe) {
-                                  for (const step of recipe) {
-                                      const { data: ing } = await supabase.from('inventory_items').select('quantity').eq('id', step.ingredient_item_id).single();
-                                      if (ing) {
-                                          const restoreQty = step.quantity * item.quantity;
-                                          const newQty = ing.quantity + restoreQty;
-                                          await supabase.from('inventory_items').update({ quantity: newQty }).eq('id', step.ingredient_item_id);
-                                          await supabase.from('inventory_logs').insert({
-                                              tenant_id: tenantId, item_id: step.ingredient_item_id, type: 'IN', quantity: restoreQty, 
-                                              reason: `Estorno Cancelamento (Pedido #${transaction.order_id.slice(0,4)})`, user_name: 'Admin'
-                                          });
-                                      }
-                                  }
-                              }
-                          } else {
-                              const restoreQty = item.quantity;
-                              const newQty = invItem.quantity + restoreQty;
-                              await supabase.from('inventory_items').update({ quantity: newQty }).eq('id', invItem.id);
-                              await supabase.from('inventory_logs').insert({
-                                  tenant_id: tenantId, item_id: invItem.id, type: 'IN', quantity: restoreQty, 
-                                  reason: `Estorno Cancelamento (Pedido #${transaction.order_id.slice(0,4)})`, user_name: 'Admin'
-                              });
-                          }
-                      }
-                  }
-              }
-          }
-      }
-
-      const { error: transError } = await supabase.from('transactions').update({ status: 'CANCELLED' }).eq('id', transactionId);
-      if (transError) throw transError;
-
-      if (transaction.order_id) {
-          await supabase.from('orders').update({ status: 'CANCELLED', is_paid: false }).eq('id', transaction.order_id);
-          await supabase.from('order_items').update({ status: 'CANCELLED' }).eq('order_id', transaction.order_id);
-      }
-      
+      if (error) throw error;
       await fetchFinancialData();
   };
 

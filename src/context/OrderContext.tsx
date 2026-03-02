@@ -212,7 +212,6 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const cancelOrder = async (orderId: string) => {
       if (!tenantId) return;
-      // Idealmente também seria um RPC para validar permissões de cancelamento
       await supabase.rpc('cancel_order', { p_order_id: orderId });
       fetchData();
   };
@@ -244,19 +243,13 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const dispatchOrder = async (orderId: string, courierInfo: { id: string, name: string }) => {
       if(!tenantId) return;
       
-      const updatePayload: any = { status: 'DISPATCHED' };
-      const { data: currentOrder } = await supabase.from('orders').select('delivery_info').eq('id', orderId).single();
-      
-      if (currentOrder && currentOrder.delivery_info) {
-          updatePayload.delivery_info = {
-              ...currentOrder.delivery_info,
-              courierId: courierInfo.id,
-              courierName: courierInfo.name
-          };
-      }
+      const { error } = await supabase.rpc('dispatch_order', {
+          p_tenant_id: tenantId,
+          p_order_id: orderId,
+          p_courier_info: courierInfo
+      });
 
-      await supabase.from('orders').update(updatePayload).eq('id', orderId);
-      await supabase.from('order_items').update({ status: 'DISPATCHED' }).eq('order_id', orderId);
+      if (error) throw error;
       fetchData();
   };
 
