@@ -14,7 +14,6 @@ import { Modal } from '../../components/Modal';
 import { Button } from '../../components/Button';
 import { CloseRegisterModal } from '../../components/modals/CloseRegisterModal';
 import { CashBleedModal } from '../../components/modals/CashBleedModal';
-import { AddToCartModal } from '../../components/modals/AddToCartModal';
 
 // Custom hook for debouncing
 function useDebounce<T>(value: T, delay: number): T {
@@ -46,9 +45,6 @@ export const CommercePOS: React.FC = () => {
     const [showSuggestions, setShowSuggestions] = useState(false);
     const searchRef = useRef<HTMLDivElement>(null);
 
-    const [itemModalOpen, setItemModalOpen] = useState(false);
-    const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
-
     const [paymentModalOpen, setPaymentModalOpen] = useState(false);
     const [cashReceived, setCashReceived] = useState('');
 
@@ -62,17 +58,17 @@ export const CommercePOS: React.FC = () => {
     useEffect(() => {
         const focusInput = (e: MouseEvent) => {
             if (searchRef.current && searchRef.current.contains(e.target as Node)) return;
-            if (!paymentModalOpen && !closeModalOpen && !bleedModalOpen && !itemModalOpen && inputRef.current) {
+            if (!paymentModalOpen && !closeModalOpen && !bleedModalOpen && inputRef.current) {
                 inputRef.current.focus();
             }
         };
         window.addEventListener('click', focusInput);
         return () => window.removeEventListener('click', focusInput);
-    }, [paymentModalOpen, closeModalOpen, bleedModalOpen, itemModalOpen]);
+    }, [paymentModalOpen, closeModalOpen, bleedModalOpen]);
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
-            if (paymentModalOpen || closeModalOpen || bleedModalOpen || itemModalOpen) return;
+            if (paymentModalOpen || closeModalOpen || bleedModalOpen) return;
             if (e.key === 'F2') { e.preventDefault(); if (cart.length > 0) setPaymentModalOpen(true); }
             if (e.key === 'F9') { e.preventDefault(); setCart([]); }
             if (e.key === 'Escape') { setShowSuggestions(false); }
@@ -86,7 +82,7 @@ export const CommercePOS: React.FC = () => {
         };
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [cart, paymentModalOpen, closeModalOpen, bleedModalOpen, itemModalOpen]);
+    }, [cart, paymentModalOpen, closeModalOpen, bleedModalOpen]);
 
     const parseSearchInput = (input: string) => {
         let qty = 1;
@@ -185,7 +181,7 @@ export const CommercePOS: React.FC = () => {
     const finalizeSale = async (methodName: string) => {
         try {
             const itemsPayload = cart.map(cartItem => ({ inventoryItemId: cartItem.item.id, quantity: cartItem.quantity, notes: cartItem.notes }));
-            await orderDispatch({ type: 'PROCESS_POS_SALE', sale: { customerName: customerName.trim() || 'Consumidor Final', items: itemsPayload, totalAmount: cartTotal, method: methodName } });
+            await orderDispatch({ type: 'PROCESS_POS_SALE', sale: { customerName: customerName.trim() || 'Consumidor Final', items: itemsPayload, method: methodName } });
             setCart([]); setCustomerName(''); setPaymentModalOpen(false);
             showAlert({ title: "Venda Registrada", message: `Venda de R$ ${cartTotal.toFixed(2)} realizada!`, type: 'SUCCESS' });
             await refreshTransactions();
@@ -204,10 +200,6 @@ export const CommercePOS: React.FC = () => {
     };
 
     const handleLogout = () => showConfirm({ title: "Sair do Caixa?", message: "Isso fará logout do sistema.", type: 'WARNING', confirmText: "Sair", onConfirm: logout });
-
-    const handleModalAddToCart = (data: { quantity: number; notes: string; extras: InventoryItem[] }) => {
-        if (selectedItem) addToCart(selectedItem, data.quantity, data.notes, data.extras);
-    };
 
     const getPaymentIcon = (type: string) => {
         switch (type) {
@@ -297,7 +289,7 @@ export const CommercePOS: React.FC = () => {
                             .filter(item => item.type !== 'INGREDIENT' && !item.isExtra)
                             .slice(0, 20)
                             .map(item => (
-                            <button key={item.id} onClick={() => { setSelectedItem(item); setItemModalOpen(true); }} className="bg-white p-4 rounded-3xl shadow-sm border border-transparent hover:border-blue-300 hover:shadow-lg transition-all active:scale-95 flex flex-col justify-between h-36 group relative overflow-hidden">
+                            <button key={item.id} onClick={() => addToCart(item, 1)} className="bg-white p-4 rounded-3xl shadow-sm border border-transparent hover:border-blue-300 hover:shadow-lg transition-all active:scale-95 flex flex-col justify-between h-36 group relative overflow-hidden">
                                 <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-100 transition-opacity"><Plus size={20} className="text-blue-600"/></div>
                                 <div className="text-left w-full">
                                     <div className="font-black text-slate-800 text-sm leading-tight line-clamp-2">{item.name}</div>
@@ -355,8 +347,6 @@ export const CommercePOS: React.FC = () => {
                     </div>
                 </div>
             </div>
-
-            <AddToCartModal isOpen={itemModalOpen} onClose={() => setItemModalOpen(false)} item={selectedItem} onConfirm={handleModalAddToCart} />
 
             <Modal isOpen={paymentModalOpen} onClose={() => setPaymentModalOpen(false)} title="Recebimento em Dinheiro" variant="dialog" maxWidth="sm">
                 <div className="space-y-6">
