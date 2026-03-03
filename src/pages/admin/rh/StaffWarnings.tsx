@@ -45,13 +45,6 @@ export const StaffWarnings: React.FC = () => {
             return showAlert({ title: "Campos Obrigatórios", message: "Selecione um colaborador e preencha o conteúdo.", type: "WARNING" });
         }
 
-        // Open window synchronously to avoid popup blocker
-        const printWindow = window.open('', '_blank');
-        if (!printWindow) {
-            showAlert({ title: "Erro", message: "O bloqueador de pop-ups impediu a abertura da janela de impressão.", type: "ERROR" });
-            return;
-        }
-
         try {
             setIsSaving(true);
             
@@ -76,7 +69,17 @@ export const StaffWarnings: React.FC = () => {
 
             const cleanRendered = DOMPurify.sanitize(rendered);
 
-            printWindow.document.write(`
+            // Create hidden iframe for printing (PWA friendly)
+            const iframe = document.createElement('iframe');
+            iframe.style.position = 'fixed';
+            iframe.style.right = '0';
+            iframe.style.bottom = '0';
+            iframe.style.width = '0';
+            iframe.style.height = '0';
+            iframe.style.border = '0';
+            document.body.appendChild(iframe);
+
+            const htmlContent = `
                 <html>
                     <head>
                         <title>Advertência - ${selectedStaff?.name}</title>
@@ -106,11 +109,20 @@ export const StaffWarnings: React.FC = () => {
                                 ${selectedStaff?.name}
                             </div>
                         </div>
-                        <script>window.print(); window.close();</script>
+                        <script>window.onload = function() { window.print(); }</script>
                     </body>
                 </html>
-            `);
-            printWindow.document.close();
+            `;
+
+            const doc = iframe.contentWindow?.document || iframe.contentDocument;
+            if (doc) {
+                doc.open();
+                doc.write(htmlContent);
+                doc.close();
+                setTimeout(() => {
+                    if (document.body.contains(iframe)) document.body.removeChild(iframe);
+                }, 2000);
+            }
             
             showAlert({ title: "Sucesso", message: "Advertência registrada e enviada para impressão.", type: "SUCCESS" });
             
@@ -119,7 +131,6 @@ export const StaffWarnings: React.FC = () => {
             setContent('');
         } catch (error) {
             console.error(error);
-            printWindow.close();
             showAlert({ title: "Erro", message: "Não foi possível salvar a advertência.", type: "ERROR" });
         } finally {
             setIsSaving(false);
@@ -143,9 +154,6 @@ export const StaffWarnings: React.FC = () => {
 
     const handleViewWarning = (warning: any) => {
         const staff = state.users.find(u => u.id === warning.staffId);
-        const printWindow = window.open('', '_blank');
-        if (!printWindow) return;
-
         const company = restState.businessInfo;
         const role = state.hrJobRoles.find(r => r.id === staff?.hrJobRoleId);
         const roleName = role ? role.title : (staff?.customRoleName || '');
@@ -156,7 +164,16 @@ export const StaffWarnings: React.FC = () => {
             .replace(/\{\{\s*data\s*\}\}/g, new Date(warning.createdAt).toLocaleDateString('pt-BR'))
             .replace(/\{\{\s*tipo_advertencia\s*\}\}/g, warning.type === 'VERBAL' ? 'VERBAL' : 'ESCRITA/FORMAL');
 
-        printWindow.document.write(`
+        const iframe = document.createElement('iframe');
+        iframe.style.position = 'fixed';
+        iframe.style.right = '0';
+        iframe.style.bottom = '0';
+        iframe.style.width = '0';
+        iframe.style.height = '0';
+        iframe.style.border = '0';
+        document.body.appendChild(iframe);
+
+        const htmlContent = `
             <html>
                 <head>
                     <title>Advertência - ${staff?.name}</title>
@@ -181,11 +198,20 @@ export const StaffWarnings: React.FC = () => {
                         <div class="sig-box">Assinatura do Empregador</div>
                         <div class="sig-box">Assinatura do Colaborador<br/>${staff?.name}</div>
                     </div>
-                    <script>window.print(); window.close();</script>
+                    <script>window.onload = function() { window.print(); }</script>
                 </body>
             </html>
-        `);
-        printWindow.document.close();
+        `;
+
+        const doc = iframe.contentWindow?.document || iframe.contentDocument;
+        if (doc) {
+            doc.open();
+            doc.write(htmlContent);
+            doc.close();
+            setTimeout(() => {
+                if (document.body.contains(iframe)) document.body.removeChild(iframe);
+            }, 2000);
+        }
     };
 
     return (

@@ -222,9 +222,6 @@ export const StaffSettings: React.FC = () => {
     };
 
     const handlePrintContract = () => {
-        const printWindow = window.open('', '_blank');
-        if (!printWindow) return;
-        
         const content = contractForm.content || '';
         const company = restState.businessInfo;
         
@@ -255,7 +252,16 @@ export const StaffSettings: React.FC = () => {
 
         const cleanRendered = DOMPurify.sanitize(rendered);
 
-        printWindow.document.write(`
+        const iframe = document.createElement('iframe');
+        iframe.style.position = 'fixed';
+        iframe.style.right = '0';
+        iframe.style.bottom = '0';
+        iframe.style.width = '0';
+        iframe.style.height = '0';
+        iframe.style.border = '0';
+        document.body.appendChild(iframe);
+
+        const htmlContent = `
             <html>
                 <head>
                     <title>Impressão de Documento</title>
@@ -268,11 +274,20 @@ export const StaffSettings: React.FC = () => {
                 </head>
                 <body>
                     ${cleanRendered}
-                    <script>window.print(); window.close();</script>
+                    <script>window.onload = function() { window.print(); }</script>
                 </body>
             </html>
-        `);
-        printWindow.document.close();
+        `;
+
+        const doc = iframe.contentWindow?.document || iframe.contentDocument;
+        if (doc) {
+            doc.open();
+            doc.write(htmlContent);
+            doc.close();
+            setTimeout(() => {
+                if (document.body.contains(iframe)) document.body.removeChild(iframe);
+            }, 2000);
+        }
     };
 
     return (

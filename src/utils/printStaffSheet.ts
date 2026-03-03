@@ -3,9 +3,6 @@ import { User } from '../types';
 import DOMPurify from 'dompurify';
 
 export const printStaffSheet = (user: User) => {
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) return;
-
     const formatDate = (date?: Date | string) => {
         if (!date) return '-';
         return new Date(date).toLocaleDateString('pt-BR');
@@ -218,6 +215,22 @@ export const printStaffSheet = (user: User) => {
 
     const cleanContent = DOMPurify.sanitize(htmlContent);
 
-    printWindow.document.write(cleanContent);
-    printWindow.document.close();
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = '0';
+    document.body.appendChild(iframe);
+
+    const doc = iframe.contentWindow?.document || iframe.contentDocument;
+    if (doc) {
+        doc.open();
+        doc.write(cleanContent);
+        doc.close();
+        setTimeout(() => {
+            if (document.body.contains(iframe)) document.body.removeChild(iframe);
+        }, 2000);
+    }
 };

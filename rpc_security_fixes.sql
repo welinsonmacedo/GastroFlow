@@ -278,4 +278,25 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+-- 12. RPC: Add Staff Warning
+CREATE OR REPLACE FUNCTION public.add_staff_warning(
+    p_tenant_id UUID,
+    p_staff_id UUID,
+    p_type TEXT,
+    p_content TEXT,
+    p_created_by UUID
+) RETURNS UUID AS $$
+DECLARE
+    v_warning_id UUID;
+BEGIN
+    INSERT INTO public.rh_staff_warnings (
+        tenant_id, staff_id, type, content, created_by
+    ) VALUES (
+        p_tenant_id, p_staff_id, p_type, p_content, p_created_by
+    ) RETURNING id INTO v_warning_id;
+
+    RETURN v_warning_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 COMMIT;

@@ -95,17 +95,24 @@ export const replaceContractVariables = (templateContent: string, user: User, co
 };
 
 export const printContractHtml = (content: string, userName: string) => {
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) return;
-
     const cleanContent = DOMPurify.sanitize(content);
+
+    // Create a hidden iframe for printing without leaving the PWA
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = '0';
+    document.body.appendChild(iframe);
 
     const htmlContent = `
         <!DOCTYPE html>
         <html lang="pt-BR">
         <head>
             <meta charset="UTF-8">
-            <title>Contrato de Trabalho - ${userName}</title>
+            <title>Impressão - ${userName}</title>
             <style>
                 @page { size: A4; margin: 20mm; }
                 body { font-family: 'Times New Roman', serif; font-size: 12pt; color: #000; line-height: 1.5; text-align: justify; }
@@ -118,14 +125,27 @@ export const printContractHtml = (content: string, userName: string) => {
         <body>
             ${cleanContent}
             <script>
-                window.onload = function() { window.print(); }
+                window.onload = function() { 
+                    window.print(); 
+                }
             </script>
         </body>
         </html>
     `;
 
-    printWindow.document.write(htmlContent);
-    printWindow.document.close();
+    const doc = iframe.contentWindow?.document || iframe.contentDocument;
+    if (doc) {
+        doc.open();
+        doc.write(htmlContent);
+        doc.close();
+        
+        // Remove iframe after a delay to allow print dialog to open
+        setTimeout(() => {
+            if (document.body.contains(iframe)) {
+                document.body.removeChild(iframe);
+            }
+        }, 2000);
+    }
 };
 
 export const printContract = (templateContent: string, user: User, company: RestaurantBusinessInfo, roleName: string, shiftName: string = '', extraVariables: Record<string, string> = {}) => {

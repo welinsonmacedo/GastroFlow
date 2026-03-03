@@ -408,12 +408,12 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const addStaffWarning = async (warning: Partial<StaffWarning>) => {
       if (!tenantId) return;
-      const { error } = await supabase.from('rh_staff_warnings').insert({
-          tenant_id: tenantId,
-          staff_id: warning.staffId,
-          type: warning.type,
-          content: warning.content,
-          created_by: currentUser?.id
+      const { error } = await supabase.rpc('add_staff_warning', {
+          p_tenant_id: tenantId,
+          p_staff_id: warning.staffId,
+          p_type: warning.type,
+          p_content: warning.content,
+          p_created_by: currentUser?.id
       });
       if (error) throw error;
       await fetchData();

@@ -80,9 +80,6 @@ export const DailyLogTab: React.FC = () => {
             .filter(e => e.staffId === staffId && e.entryDate.toISOString().slice(0, 7) === month)
             .sort((a, b) => new Date(a.entryDate).getTime() - new Date(b.entryDate).getTime());
 
-        const printWindow = window.open('', '_blank');
-        if (!printWindow) return;
-
         const formatDate = (d: Date) => new Date(d).toLocaleDateString('pt-BR');
         const formatTime = (d?: Date) => d ? new Date(d).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '--:--';
 
@@ -221,15 +218,31 @@ export const DailyLogTab: React.FC = () => {
                             Assinatura do Empregador
                         </div>
                     </div>
-                    <script>window.print();</script>
+                    <script>window.onload = function() { window.print(); }</script>
                 </body>
             </html>
         `;
 
         const cleanHtml = DOMPurify.sanitize(html);
 
-        printWindow.document.write(cleanHtml);
-        printWindow.document.close();
+        const iframe = document.createElement('iframe');
+        iframe.style.position = 'fixed';
+        iframe.style.right = '0';
+        iframe.style.bottom = '0';
+        iframe.style.width = '0';
+        iframe.style.height = '0';
+        iframe.style.border = '0';
+        document.body.appendChild(iframe);
+
+        const doc = iframe.contentWindow?.document || iframe.contentDocument;
+        if (doc) {
+            doc.open();
+            doc.write(cleanHtml);
+            doc.close();
+            setTimeout(() => {
+                if (document.body.contains(iframe)) document.body.removeChild(iframe);
+            }, 2000);
+        }
     };
 
     const handleNewEntry = () => {
