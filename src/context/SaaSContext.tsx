@@ -471,7 +471,7 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
 
             const { data, error } = await supabase.rpc('update_tenant_by_saas_admin', {
-                p_admin_id: state.adminId,
+                p_admin_id: state.adminId || null,
                 p_tenant_id: action.payload.id,
                 p_name: action.payload.name,
                 p_slug: action.payload.slug,
@@ -480,7 +480,7 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 p_plan: plan,
                 p_allowed_modules: allowed_modules,
                 p_allowed_features: allowed_features,
-                p_theme_config: action.payload.theme
+                p_theme_config: action.payload.theme || null
             });
 
             if (error) throw error;
