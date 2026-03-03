@@ -65,21 +65,31 @@ export const MenuProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const addProduct = async (product: Partial<Product>) => {
       if(!tenantId) return;
 
-      if (planLimits.maxProducts !== -1 && state.products.length >= planLimits.maxProducts) {
-          showAlert({ title: "Limite Atingido", message: `Seu plano permite no máximo ${planLimits.maxProducts} produtos. Atualize seu plano para adicionar mais.`, type: 'WARNING' });
-          return;
-      }
+      const { error } = await supabase.rpc('add_product', {
+          p_tenant_id: tenantId,
+          p_max_products: planLimits.maxProducts,
+          p_product: {
+              name: product.name,
+              price: product.price,
+              costPrice: product.costPrice,
+              category: product.category,
+              type: product.type,
+              image: product.image,
+              description: product.description,
+              isVisible: product.isVisible,
+              sortOrder: product.sortOrder,
+              linkedInventoryItemId: product.linkedInventoryItemId,
+              isExtra: product.isExtra,
+              linkedExtraIds: product.linkedExtraIds || [],
+              targetCategories: product.targetCategories || []
+          }
+      });
 
-      const { error } = await supabase.from('products').insert({
-          tenant_id: tenantId, 
-          name: product.name, price: product.price, cost_price: product.costPrice,
-          category: product.category, type: product.type, image: product.image, description: product.description,
-          is_visible: product.isVisible, sort_order: product.sortOrder, 
-          linked_inventory_item_id: product.linkedInventoryItemId,
-          is_extra: product.isExtra, linked_extra_ids: product.linkedExtraIds,
-          target_categories: product.targetCategories
-      }); 
-      if (error) throw error;
+      if (error) {
+          showAlert({ title: "Erro", message: error.message || "Erro ao adicionar produto.", type: 'ERROR' });
+          throw error;
+      }
+      
       await fetchProducts();
   };
 

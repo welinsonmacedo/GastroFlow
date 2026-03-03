@@ -540,32 +540,63 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const addUser = async (user: Partial<User>) => {
       if(!tenantId) return;
-      if (planLimits.maxStaff !== -1 && state.users.length >= planLimits.maxStaff) {
-          showAlert({ title: "Limite Atingido", message: `Seu plano permite no máximo ${planLimits.maxStaff} membros.`, type: 'WARNING' });
-          return;
-      }
       
-      const { error } = await supabase.from('staff').insert({ 
-          tenant_id: tenantId, name: user.name, role: user.role, custom_role_id: user.customRoleId || null,
-          pin: '0000', email: user.email, allowed_routes: user.allowedRoutes, department: user.department,
-          hr_job_role_id: user.hrJobRoleId || null,
-          hire_date: user.hireDate?.toISOString().split('T')[0], contract_type: user.contractType,
-          work_model: user.workModel,
-          base_salary: user.baseSalary, benefits_total: user.benefitsTotal, status: user.status,
-          shift_id: user.shiftId || null, phone: user.phone, document_cpf: user.documentCpf, dependents_count: user.dependentsCount || 0,
-          created_by: currentUser?.auth_user_id,
-          // Extended Fields
-          birth_date: user.birthDate ? new Date(user.birthDate).toISOString().split('T')[0] : null,
-          rg_number: user.rgNumber, rg_issuer: user.rgIssuer, rg_state: user.rgState,
-          address_zip: user.addressZip, address_street: user.addressStreet, address_number: user.addressNumber,
-          address_complement: user.addressComplement, address_neighborhood: user.addressNeighborhood,
-          address_city: user.addressCity, address_state: user.addressState,
-          pis_pasep: user.pisPasep, ctps_number: user.ctpsNumber, ctps_series: user.ctpsSeries, ctps_state: user.ctpsState,
-          marital_status: user.maritalStatus, emergency_contact_name: user.emergencyContactName, emergency_contact_phone: user.emergencyContactPhone,
-          fathers_name: user.fathersName, mothers_name: user.mothersName, education_level: user.educationLevel, voter_registration: user.voterRegistration,
-          bank_name: user.bankName, bank_agency: user.bankAgency, bank_account: user.bankAccount, bank_account_type: user.bankAccountType, pix_key: user.pixKey,
-          health_plan_info: user.healthPlanInfo, pension_info: user.pensionInfo, transport_voucher_info: user.transportVoucherInfo, meal_voucher_info: user.mealVoucherInfo,
-          sst_info: user.sstInfo
+      const { error } = await supabase.rpc('add_staff', {
+          p_tenant_id: tenantId,
+          p_max_staff: planLimits.maxStaff,
+          p_staff: {
+              name: user.name,
+              role: user.role,
+              custom_role_id: user.customRoleId || null,
+              pin: '0000',
+              email: user.email,
+              allowed_routes: user.allowedRoutes || [],
+              department: user.department,
+              hr_job_role_id: user.hrJobRoleId || null,
+              hire_date: user.hireDate?.toISOString().split('T')[0],
+              contract_type: user.contractType,
+              work_model: user.workModel,
+              base_salary: user.baseSalary,
+              benefits_total: user.benefitsTotal,
+              status: user.status,
+              shift_id: user.shiftId || null,
+              phone: user.phone,
+              document_cpf: user.documentCpf,
+              dependents_count: user.dependentsCount || 0,
+              created_by: currentUser?.auth_user_id,
+              birth_date: user.birthDate ? new Date(user.birthDate).toISOString().split('T')[0] : null,
+              rg_number: user.rgNumber,
+              rg_issuer: user.rgIssuer,
+              rg_state: user.rgState,
+              address_zip: user.addressZip,
+              address_street: user.addressStreet,
+              address_number: user.addressNumber,
+              address_complement: user.addressComplement,
+              address_neighborhood: user.addressNeighborhood,
+              address_city: user.addressCity,
+              address_state: user.addressState,
+              pis_pasep: user.pisPasep,
+              ctps_number: user.ctpsNumber,
+              ctps_series: user.ctpsSeries,
+              ctps_state: user.ctpsState,
+              marital_status: user.maritalStatus,
+              emergency_contact_name: user.emergencyContactName,
+              emergency_contact_phone: user.emergencyContactPhone,
+              fathers_name: user.fathersName,
+              mothers_name: user.mothersName,
+              education_level: user.educationLevel,
+              voter_registration: user.voterRegistration,
+              bank_name: user.bankName,
+              bank_agency: user.bankAgency,
+              bank_account: user.bankAccount,
+              bank_account_type: user.bankAccountType,
+              pix_key: user.pixKey,
+              health_plan_info: user.healthPlanInfo,
+              pension_info: user.pensionInfo,
+              transport_voucher_info: user.transportVoucherInfo,
+              meal_voucher_info: user.mealVoucherInfo,
+              sst_info: user.sstInfo
+          }
       });
 
       if (error) { throw new Error(error.message); }

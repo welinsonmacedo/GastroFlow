@@ -267,77 +267,28 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Helper para fechar mesa e limpar rotas
   const closeTableInternal = async (tableId: string) => {
-      await supabase.from('restaurant_tables').update({ status: 'AVAILABLE', customer_name: null, access_code: null }).eq('id', tableId);
-      
-      // Clear OPENER routes
-      const { data: allStaffOpener } = await supabase.from('staff').select('id, allowed_routes').eq('tenant_id', tenantId);
-      if (allStaffOpener) {
-          const openers = allStaffOpener.filter((s: any) => s.allowed_routes && s.allowed_routes.includes(`OPENER:${tableId}`));
-          for (const opener of openers) {
-              const newRoutes = (opener.allowed_routes || []).filter((r: string) => r !== `OPENER:${tableId}`);
-              await supabase.from('staff').update({ allowed_routes: newRoutes }).eq('id', opener.id);
-          }
-      }
+      await supabase.rpc('close_table_internal', { p_tenant_id: tenantId, p_table_id: tableId });
   };
 
   const processPayment = async (tableId: string | undefined, amount: number, method: string, cashierName: string = 'Caixa', orderId?: string, specificOrderIds?: string[], courierInfo?: { id: string, name: string }) => {
       if(!tenantId) return;
       
-      // Se for pagamento de delivery com ID específico
-      if (orderId) {
-          const { data: currentOrder } = await supabase.from('orders').select('delivery_info').eq('id', orderId).single();
-          
-          const updatePayload: any = { 
-              status: 'DELIVERED', // Finalizado
-              is_paid: true
-          };
-
-          if (currentOrder && currentOrder.delivery_info) {
-              updatePayload.delivery_info = {
-                  ...currentOrder.delivery_info,
-                  paymentMethod: method,
-                  paymentStatus: 'PAID',
-                  courierId: courierInfo?.id || currentOrder.delivery_info.courierId,
-                  courierName: courierInfo?.name || currentOrder.delivery_info.courierName
-              };
-          }
-
-          await supabase.from('orders').update(updatePayload).eq('id', orderId);
-          await supabase.from('order_items').update({ status: 'DELIVERED' }).eq('order_id', orderId);
-      }
-      // Se for pagamento de mesa
-      else if (tableId) {
-          if (specificOrderIds && specificOrderIds.length > 0) {
-              // Pagamento parcial de mesa (selecionando pedidos)
-              await supabase.from('orders').update({ is_paid: true }).in('id', specificOrderIds);
-              
-              // Verificar se todos os pedidos da mesa foram pagos
-              const { data: pendingOrders } = await supabase.from('orders')
-                  .select('id')
-                  .eq('table_id', tableId)
-                  .eq('is_paid', false)
-                  .neq('status', 'CANCELLED');
-              
-              if (!pendingOrders || pendingOrders.length === 0) {
-                  await closeTableInternal(tableId);
-              }
-          } else {
-              // Pagamento total da mesa
-              await supabase.from('orders').update({ is_paid: true }).eq('table_id', tableId).eq('is_paid', false);
-              await closeTableInternal(tableId);
-          }
-      }
-
-      // Registrar transação financeira
-      await supabase.from('transactions').insert({ 
-          tenant_id: tenantId, 
-          table_id: tableId || null, 
-          order_id: orderId || (specificOrderIds && specificOrderIds.length === 1 ? specificOrderIds[0] : null),
-          amount, 
-          method, 
-          items_summary: specificOrderIds && specificOrderIds.length > 0 ? `Parcial Mesa (x${specificOrderIds.length})` : (tableId ? `Mesa Completa` : `Delivery/Pedido #${orderId?.slice(0,4)}`), 
-          cashier_name: cashierName 
+      const { error } = await supabase.rpc('process_payment', {
+          p_tenant_id: tenantId,
+          p_table_id: tableId || null,
+          p_amount: amount,
+          p_method: method,
+          p_cashier_name: cashierName,
+          p_order_id: orderId || null,
+          p_specific_order_ids: specificOrderIds || null,
+          p_courier_info: courierInfo || null
       });
+
+      if (error) {
+          console.error("Erro ao processar pagamento:", error);
+          showAlert({ title: "Erro", message: "Não foi possível processar o pagamento.", type: "ERROR" });
+          throw error;
+      }
 
       fetchData();
   };
@@ -349,12 +300,16 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const addTable = async () => {
       if (!tenantId) return;
-      if (planLimits.maxTables !== -1 && state.tables.length >= planLimits.maxTables) {
-          showAlert({ title: "Limite Atingido", message: `Seu plano permite no máximo ${planLimits.maxTables} mesas.`, type: 'WARNING' });
-          return;
+      const { error } = await supabase.rpc('add_table', {
+          p_tenant_id: tenantId,
+          p_max_tables: planLimits.maxTables
+      });
+
+      if (error) {
+          showAlert({ title: "Erro", message: error.message || "Erro ao adicionar mesa.", type: 'ERROR' });
+      } else {
+          fetchData();
       }
-      await supabase.from('restaurant_tables').insert({ tenant_id: tenantId, number: state.tables.length + 1, status: 'AVAILABLE' });
-      fetchData();
   };
 
   const dispatch = async (action: any) => {
@@ -366,22 +321,19 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           case 'PROCESS_PAYMENT': await processPayment(action.tableId, action.amount, action.method, action.cashierName, action.orderId, action.specificOrderIds, action.courierInfo); break;
           case 'UPDATE_ITEM_STATUS': await updateItemStatus(action.orderId, action.itemId, action.status); break;
           case 'ADD_TABLE': await addTable(); break;
-          case 'DELETE_TABLE': await supabase.from('restaurant_tables').delete().eq('id', action.tableId); fetchData(); break;
+          case 'DELETE_TABLE': await supabase.from('restaurant_tables').delete().eq('id', action.tableId).eq('tenant_id', tenantId); fetchData(); break;
           case 'OPEN_TABLE': 
-              await supabase.from('restaurant_tables').update({ status: 'OCCUPIED', customer_name: sanitizeObject(action.customerName), access_code: action.accessCode }).eq('id', action.tableId);
-              if (authState.currentUser?.id) {
-                  const { data: user } = await supabase.from('staff').select('allowed_routes').eq('id', authState.currentUser.id).single();
-                  if (user) {
-                      const currentRoutes = user.allowed_routes || [];
-                      if (!currentRoutes.includes(`OPENER:${action.tableId}`)) {
-                          await supabase.from('staff').update({ allowed_routes: [...currentRoutes, `OPENER:${action.tableId}`] }).eq('id', authState.currentUser.id);
-                      }
-                  }
-              }
+              await supabase.rpc('open_table', {
+                  p_tenant_id: tenantId,
+                  p_table_id: action.tableId,
+                  p_customer_name: sanitizeObject(action.customerName),
+                  p_access_code: action.accessCode,
+                  p_user_id: authState.currentUser?.id || null
+              });
               fetchData(); 
               break;
           case 'CLOSE_TABLE': 
-              await closeTableInternal(action.tableId);
+              await supabase.rpc('close_table', { p_tenant_id: tenantId, p_table_id: action.tableId });
               fetchData(); 
               break;
           case 'CALL_WAITER': 
@@ -392,29 +344,13 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               await supabase.from('service_calls').insert({ tenant_id: tenantId, table_id: action.tableId, status: 'PENDING', reason: sanitizeObject(action.reason) }); 
               fetchData(); 
               break;
-          case 'RESOLVE_WAITER_CALL': await supabase.from('service_calls').update({ status: 'RESOLVED' }).eq('id', action.callId); fetchData(); break;
+          case 'RESOLVE_WAITER_CALL': await supabase.from('service_calls').update({ status: 'RESOLVED' }).eq('id', action.callId).eq('tenant_id', tenantId); fetchData(); break;
           case 'ASSIGN_TABLE': 
-              // 1. Remove from previous owner
-              // Fetch all staff and filter in memory to avoid 400 error with .contains()
-              const { data: allStaff } = await supabase.from('staff').select('id, allowed_routes').eq('tenant_id', tenantId);
-              
-              if (allStaff) {
-                  const currentOwners = allStaff.filter((s: any) => s.allowed_routes && s.allowed_routes.includes(`TABLE:${action.tableId}`));
-                  for (const owner of currentOwners) {
-                      const newRoutes = (owner.allowed_routes || []).filter((r: string) => r !== `TABLE:${action.tableId}`);
-                      await supabase.from('staff').update({ allowed_routes: newRoutes }).eq('id', owner.id);
-                  }
-              }
-              // 2. Add to new owner
-              if (action.waiterId) {
-                  const { data: waiter } = await supabase.from('staff').select('allowed_routes').eq('id', action.waiterId).single();
-                  if (waiter) {
-                      const currentRoutes = waiter.allowed_routes || [];
-                      if (!currentRoutes.includes(`TABLE:${action.tableId}`)) {
-                          await supabase.from('staff').update({ allowed_routes: [...currentRoutes, `TABLE:${action.tableId}`] }).eq('id', action.waiterId);
-                      }
-                  }
-              }
+              await supabase.rpc('assign_table', {
+                  p_tenant_id: tenantId,
+                  p_table_id: action.tableId,
+                  p_waiter_id: action.waiterId || null
+              });
               fetchData(); 
               break;
           case 'UNLOCK_AUDIO': localDispatch({ type: 'UNLOCK_AUDIO' }); break;

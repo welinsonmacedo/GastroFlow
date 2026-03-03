@@ -122,128 +122,76 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     return () => { supabase.removeChannel(channel); };
   }, [tenantId, fetchData]);
 
-  const syncExtraToProducts = async (item: InventoryItem, inventoryId: string) => {
-      if (!tenantId) return;
-
-      if (item.isExtra) {
-          const { data: existingProd } = await supabase.from('products').select('id').eq('linked_inventory_item_id', inventoryId).eq('is_extra', true).maybeSingle();
-          
-          const productPayload = {
-              tenant_id: tenantId,
-              name: item.name,
-              price: item.salePrice || 0,
-              cost_price: item.costPrice || 0,
-              linked_inventory_item_id: inventoryId,
-              description: item.description || '', // Sincroniza descrição
-              is_extra: true,
-              target_categories: item.targetCategories || [],
-              category: 'Adicionais',
-              type: item.type === 'RESALE' ? ProductType.BAR : ProductType.KITCHEN,
-              image: item.image,
-              is_visible: true
-          };
-
-          if (existingProd) {
-              await supabase.from('products').update(productPayload).eq('id', existingProd.id);
-          } else {
-              await supabase.from('products').insert(productPayload);
-          }
-      } else {
-          await supabase.from('products').delete().eq('linked_inventory_item_id', inventoryId).eq('is_extra', true);
-      }
-  };
-
   const addInventoryItem = async (item: InventoryItem): Promise<string | null> => {
       if(!tenantId) return null;
       
-      const payload = {
-          tenant_id: tenantId, 
-          name: item.name, 
-          barcode: item.barcode, 
-          unit: item.unit, 
-          quantity: item.quantity || 0,
-          min_quantity: item.minQuantity || 0, 
-          cost_price: item.costPrice || 0, 
-          sale_price: item.salePrice || 0, 
-          type: item.type, 
-          category: item.category,
-          description: item.description, // Salva descrição
-          image: item.image,
-          is_extra: item.isExtra,
-          target_categories: item.targetCategories
-      };
-
-      const { data: newItem, error } = await supabase.from('inventory_items').insert(payload).select().single();
+      const { data, error } = await supabase.rpc('upsert_inventory_item', {
+          p_tenant_id: tenantId,
+          p_item: {
+              name: item.name,
+              barcode: item.barcode,
+              unit: item.unit,
+              quantity: item.quantity || 0,
+              minQuantity: item.minQuantity || 0,
+              costPrice: item.costPrice || 0,
+              salePrice: item.salePrice || 0,
+              type: item.type,
+              category: item.category,
+              description: item.description,
+              image: item.image,
+              isExtra: item.isExtra,
+              targetCategories: item.targetCategories || [],
+              recipe: item.recipe || []
+          }
+      });
 
       if (error) {
           console.error("Erro ao adicionar item:", error);
           throw new Error(`Erro ao salvar item: ${error.message}`);
       }
 
-      if (newItem && item.type === 'COMPOSITE' && item.recipe && item.recipe.length > 0) {
-          const recipes = item.recipe.map(r => ({
-              tenant_id: tenantId, 
-              parent_item_id: newItem.id, 
-              ingredient_item_id: r.ingredientId, 
-              quantity: r.quantity 
-          }));
-          const { error: recipeError } = await supabase.from('inventory_recipes').insert(recipes);
-          if (recipeError) console.error("Erro ao salvar receita:", recipeError);
-      }
-
-      if (newItem) {
-          await syncExtraToProducts(item, newItem.id);
+      if (data && data.success) {
           if (currentUser) {
               await logAudit(tenantId, currentUser.id, currentUser.name, 'INVENTORY', 'Criação de Item', { itemName: item.name, type: item.type });
           }
+          return data.id;
       }
       
-      return newItem ? newItem.id : null;
+      return null;
   };
 
   const updateInventoryItem = async (item: InventoryItem) => {
       if(!tenantId) return;
       
-      const payload = {
-          name: item.name, 
-          barcode: item.barcode, 
-          unit: item.unit, 
-          min_quantity: item.minQuantity || 0,
-          cost_price: item.costPrice || 0, 
-          sale_price: item.salePrice || 0,
-          image: item.image, 
-          type: item.type,
-          category: item.category, 
-          description: item.description, // Atualiza descrição
-          is_extra: item.isExtra,
-          target_categories: item.targetCategories
-      };
-
-      const { error } = await supabase.from('inventory_items').update(payload).eq('id', item.id);
+      const { data, error } = await supabase.rpc('upsert_inventory_item', {
+          p_tenant_id: tenantId,
+          p_item: {
+              id: item.id,
+              name: item.name,
+              barcode: item.barcode,
+              unit: item.unit,
+              minQuantity: item.minQuantity || 0,
+              costPrice: item.costPrice || 0,
+              salePrice: item.salePrice || 0,
+              type: item.type,
+              category: item.category,
+              description: item.description,
+              image: item.image,
+              isExtra: item.isExtra,
+              targetCategories: item.targetCategories || [],
+              recipe: item.recipe || []
+          }
+      });
 
       if (error) {
           console.error("Erro ao atualizar item:", error);
           throw new Error(`Erro ao atualizar item: ${error.message}`);
       }
 
-      if (item.type === 'COMPOSITE') {
-          await supabase.from('inventory_recipes').delete().eq('parent_item_id', item.id);
-          
-          if (item.recipe && item.recipe.length > 0) {
-              const recipes = item.recipe.map(r => ({
-                  tenant_id: tenantId, 
-                  parent_item_id: item.id, 
-                  ingredient_item_id: r.ingredientId, 
-                  quantity: r.quantity
-              }));
-              const { error: recError } = await supabase.from('inventory_recipes').insert(recipes);
-              if (recError) console.error("Erro ao atualizar receita:", recError);
+      if (data && data.success) {
+          if (currentUser) {
+              await logAudit(tenantId, currentUser.id, currentUser.name, 'INVENTORY', 'Atualização de Item', { itemName: item.name });
           }
-      }
-
-      await syncExtraToProducts(item, item.id);
-      if (currentUser) {
-          await logAudit(tenantId, currentUser.id, currentUser.name, 'INVENTORY', 'Atualização de Item', { itemName: item.name });
       }
   };
 
@@ -278,17 +226,19 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const processInventoryAdjustment = async (adjustments: { itemId: string; realQty: number }[]) => {
       if(!tenantId) return;
-      for (const adj of adjustments) {
-          const item = state.inventory.find(i => i.id === adj.itemId);
-          if (item) {
-              const currentQty = Number(item.quantity) || 0;
-              const diff = adj.realQty - currentQty;
-              if (Math.abs(diff) > 0.0001) {
-                  const type = diff > 0 ? 'IN' : 'OUT';
-                  await updateStock(adj.itemId, Math.abs(diff), type, 'Ajuste de Balanço');
-              }
-          }
+      
+      const { error } = await supabase.rpc('process_inventory_adjustments', {
+          p_tenant_id: tenantId,
+          p_adjustments: adjustments,
+          p_user_name: currentUser?.name || 'Sistema'
+      });
+
+      if (error) {
+          console.error("Erro ao processar ajustes:", error);
+          throw new Error(`Erro ao processar ajustes: ${error.message}`);
       }
+
+      fetchData();
   };
 
   const addSupplier = async (supplier: Supplier) => {
