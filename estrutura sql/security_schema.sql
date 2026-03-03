@@ -33,16 +33,22 @@ ALTER TABLE system_settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE blocked_ips ENABLE ROW LEVEL SECURITY;
 
 -- Políticas para security_incidents
-CREATE POLICY "Allow anonymous insert for security incidents" ON security_incidents FOR INSERT WITH CHECK (true);
-CREATE POLICY "Allow superadmins to read security incidents" ON security_incidents FOR SELECT USING (true);
+CREATE POLICY "Allow authenticated insert for security incidents" ON security_incidents FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "Allow superadmins to read security incidents" ON security_incidents FOR SELECT USING (
+  auth.uid() IN (SELECT auth_user_id FROM public.saas_admins)
+);
 
 -- Políticas para system_settings
 CREATE POLICY "Allow read system settings" ON system_settings FOR SELECT USING (true);
-CREATE POLICY "Allow superadmins to manage system settings" ON system_settings FOR ALL USING (true);
+CREATE POLICY "Allow superadmins to manage system settings" ON system_settings FOR ALL USING (
+  auth.uid() IN (SELECT auth_user_id FROM public.saas_admins)
+);
 
 -- Políticas para blocked_ips
 CREATE POLICY "Allow read blocked ips" ON blocked_ips FOR SELECT USING (true);
-CREATE POLICY "Allow manage blocked ips" ON blocked_ips FOR ALL USING (true); -- Ajustar conforme lógica de SuperAdmin
+CREATE POLICY "Allow manage blocked ips" ON blocked_ips FOR ALL USING (
+  auth.uid() IN (SELECT auth_user_id FROM public.saas_admins)
+);
 
 -- Adicionar ao Realtime
 ALTER PUBLICATION supabase_realtime ADD TABLE security_incidents;

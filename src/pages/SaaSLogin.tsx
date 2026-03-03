@@ -109,27 +109,8 @@ export const SaaSLogin: React.FC = () => {
                 email: authData.user.email || email
             });
             navigate('/dashboard');
-            return;
-        }
-
-        // 2. FALLBACK: Tabela Customizada 'saas_admins'
-        const { data } = await supabase
-            .from('saas_admins')
-            .select('*')
-            .eq('email', email)
-            .eq('password', password)
-            .maybeSingle();
-
-        if (data) {
-            dispatch({ 
-                type: 'LOGIN_ADMIN', 
-                name: data.name,
-                id: data.id,
-                email: data.email
-            });
-            navigate('/dashboard');
         } else {
-            // Se falhou no Auth e na Tabela
+            // Se falhou no Auth
             logSecurityIncident({
                 type: 'FAILED_LOGIN_SAAS',
                 severity: 'CRITICAL',

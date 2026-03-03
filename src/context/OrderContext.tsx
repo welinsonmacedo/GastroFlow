@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabase';
 import { useRestaurant } from './RestaurantContext';
 import { useUI } from './UIContext';
 import { useAuth } from './AuthProvider';
-import { checkRateLimit, sanitizeObject } from '../utils/security'; // Importando segurança
+import { sanitizeObject } from '../utils/security'; // Importando segurança
 
 interface OrderState {
   tables: Table[];
@@ -172,12 +172,6 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const placeOrder = async (params: PlaceOrderParams) => {
       if(!tenantId) return;
 
-      // Rate Limit: Máximo de 1 pedido a cada 5 segundos por sessão/cliente
-      if (!checkRateLimit('place_order', 1, 5000)) {
-          showAlert({ title: "Aguarde", message: "Aguarde alguns segundos antes de enviar outro pedido.", type: "WARNING" });
-          return;
-      }
-      
       // Sanitização de Entrada
       const safeDeliveryInfo = params.deliveryInfo ? sanitizeObject(params.deliveryInfo) : null;
       const safeItems = params.items.map(i => ({
@@ -219,8 +213,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const processPosSale = async (data: any) => {
       if(!tenantId) return;
       
-      // Sanitização e Rate Limit
-      if (!checkRateLimit('pos_sale', 1, 2000)) return;
+      // Sanitização
       const safeData = sanitizeObject(data);
 
       const enrichedItems = safeData.items.map((i: any) => ({
@@ -332,10 +325,6 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               fetchData(); 
               break;
           case 'CALL_WAITER': 
-              if(!checkRateLimit(`call_waiter_${action.tableId}`, 1, 30000)) { // 1 chamado a cada 30s
-                  showAlert({title: "Já Chamado", message: "Garçom já notificado.", type: "INFO"});
-                  return;
-              }
               await supabase.from('service_calls').insert({ tenant_id: tenantId, table_id: action.tableId, status: 'PENDING', reason: sanitizeObject(action.reason) }); 
               fetchData(); 
               break;

@@ -16,6 +16,10 @@ DECLARE
     v_existing_id UUID;
     v_new_tenant_id UUID;
 BEGIN
+    IF NOT EXISTS (SELECT 1 FROM public.saas_admins WHERE auth_user_id = auth.uid()) THEN
+        RAISE EXCEPTION 'Acesso Negado: Apenas administradores SaaS podem executar esta ação.';
+    END IF;
+
     -- Check if slug exists
     SELECT id INTO v_existing_id FROM public.tenants WHERE slug = p_slug;
     IF v_existing_id IS NOT NULL THEN
@@ -146,6 +150,10 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 BEGIN
+    IF NOT EXISTS (SELECT 1 FROM public.saas_admins WHERE auth_user_id = auth.uid()) THEN
+        RAISE EXCEPTION 'Acesso Negado: Apenas administradores SaaS podem executar esta ação.';
+    END IF;
+
     INSERT INTO public.staff (
         tenant_id,
         name,
@@ -175,6 +183,10 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 BEGIN
+    IF NOT EXISTS (SELECT 1 FROM public.saas_admins WHERE auth_user_id = auth.uid()) THEN
+        RAISE EXCEPTION 'Acesso Negado: Apenas administradores SaaS podem executar esta ação.';
+    END IF;
+
     INSERT INTO public.saas_config (id, global_settings)
     VALUES (1, p_settings)
     ON CONFLICT (id) DO UPDATE
@@ -200,6 +212,10 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 BEGIN
+    IF NOT EXISTS (SELECT 1 FROM public.saas_admins WHERE auth_user_id = auth.uid()) THEN
+        RAISE EXCEPTION 'Acesso Negado: Apenas administradores SaaS podem executar esta ação.';
+    END IF;
+
     UPDATE public.plans
     SET name = p_name,
         price = p_price,
@@ -239,6 +255,10 @@ AS $$
 DECLARE
     v_new_plan_id UUID;
 BEGIN
+    IF NOT EXISTS (SELECT 1 FROM public.saas_admins WHERE auth_user_id = auth.uid()) THEN
+        RAISE EXCEPTION 'Acesso Negado: Apenas administradores SaaS podem executar esta ação.';
+    END IF;
+
     INSERT INTO public.plans (
         key,
         name,
@@ -272,6 +292,10 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 BEGIN
+    IF NOT EXISTS (SELECT 1 FROM public.saas_admins WHERE auth_user_id = auth.uid()) THEN
+        RAISE EXCEPTION 'Acesso Negado: Apenas administradores SaaS podem executar esta ação.';
+    END IF;
+
     DELETE FROM public.plans WHERE id = p_plan_id;
     RETURN jsonb_build_object('success', true);
 END;
@@ -289,6 +313,10 @@ DECLARE
     v_current_status TEXT;
     v_new_status TEXT;
 BEGIN
+    IF NOT EXISTS (SELECT 1 FROM public.saas_admins WHERE auth_user_id = auth.uid()) THEN
+        RAISE EXCEPTION 'Acesso Negado: Apenas administradores SaaS podem executar esta ação.';
+    END IF;
+
     SELECT status INTO v_current_status FROM public.tenants WHERE id = p_tenant_id;
     
     IF v_current_status = 'ACTIVE' THEN
@@ -314,6 +342,10 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 BEGIN
+    IF NOT EXISTS (SELECT 1 FROM public.saas_admins WHERE auth_user_id = auth.uid()) THEN
+        RAISE EXCEPTION 'Acesso Negado: Apenas administradores SaaS podem executar esta ação.';
+    END IF;
+
     UPDATE public.saas_admins
     SET name = p_name,
         email = p_email,
@@ -339,6 +371,10 @@ DECLARE
     v_current_status TEXT;
     v_new_status TEXT;
 BEGIN
+    IF NOT EXISTS (SELECT 1 FROM public.saas_admins WHERE auth_user_id = auth.uid()) THEN
+        RAISE EXCEPTION 'Acesso Negado: Apenas administradores SaaS podem executar esta ação.';
+    END IF;
+
     SELECT messages, status INTO v_current_messages, v_current_status
     FROM public.tickets
     WHERE id = p_ticket_id;
@@ -381,6 +417,10 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 BEGIN
+    IF NOT EXISTS (SELECT 1 FROM public.saas_admins WHERE auth_user_id = auth.uid()) THEN
+        RAISE EXCEPTION 'Acesso Negado: Apenas administradores SaaS podem executar esta ação.';
+    END IF;
+
     UPDATE public.tickets
     SET status = p_status,
         updated_at = NOW()
@@ -399,6 +439,10 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 BEGIN
+    IF NOT EXISTS (SELECT 1 FROM public.saas_admins WHERE auth_user_id = auth.uid()) THEN
+        RAISE EXCEPTION 'Acesso Negado: Apenas administradores SaaS podem executar esta ação.';
+    END IF;
+
     DELETE FROM public.blocked_ips WHERE ip = p_ip;
     RETURN jsonb_build_object('success', true);
 END;
@@ -414,6 +458,10 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 BEGIN
+    IF NOT EXISTS (SELECT 1 FROM public.saas_admins WHERE auth_user_id = auth.uid()) THEN
+        RAISE EXCEPTION 'Acesso Negado: Apenas administradores SaaS podem executar esta ação.';
+    END IF;
+
     INSERT INTO public.blocked_ips (ip, reason)
     VALUES (p_ip, p_reason)
     ON CONFLICT (ip) DO NOTHING;
@@ -431,6 +479,10 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 BEGIN
+    IF NOT EXISTS (SELECT 1 FROM public.saas_admins WHERE auth_user_id = auth.uid()) THEN
+        RAISE EXCEPTION 'Acesso Negado: Apenas administradores SaaS podem executar esta ação.';
+    END IF;
+
     INSERT INTO public.system_settings (key, value)
     VALUES ('security_config', p_config)
     ON CONFLICT (key) DO UPDATE

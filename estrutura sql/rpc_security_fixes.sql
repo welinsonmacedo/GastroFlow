@@ -26,6 +26,11 @@ DECLARE
     v_total_net NUMERIC(15,2) := 0;
     v_item JSONB;
 BEGIN
+    -- Security Check
+    IF NOT EXISTS (SELECT 1 FROM public.staff WHERE auth_user_id = auth.uid() AND tenant_id = p_tenant_id) THEN
+        RAISE EXCEPTION 'Acesso Negado';
+    END IF;
+
     -- Calculate totals from JSONB items
     FOR v_item IN SELECT * FROM jsonb_array_elements(p_items) LOOP
         v_total_cost := v_total_cost + (v_item->>'total_company_cost')::NUMERIC;
@@ -64,6 +69,11 @@ CREATE OR REPLACE FUNCTION public.reopen_payroll(
     p_year INTEGER
 ) RETURNS VOID AS $$
 BEGIN
+    -- Security Check
+    IF NOT EXISTS (SELECT 1 FROM public.staff WHERE auth_user_id = auth.uid() AND tenant_id = p_tenant_id) THEN
+        RAISE EXCEPTION 'Acesso Negado';
+    END IF;
+
     DELETE FROM public.rh_closed_payrolls 
     WHERE tenant_id = p_tenant_id AND month = p_month AND year = p_year;
 END;
@@ -84,6 +94,11 @@ DECLARE
 BEGIN
     SELECT order_id, tenant_id INTO v_order_id, v_tenant_id 
     FROM public.transactions WHERE id = p_transaction_id;
+
+    -- Security Check
+    IF NOT EXISTS (SELECT 1 FROM public.staff WHERE auth_user_id = auth.uid() AND tenant_id = v_tenant_id) THEN
+        RAISE EXCEPTION 'Acesso Negado';
+    END IF;
 
     -- Update Transaction Status
     UPDATE public.transactions SET status = 'CANCELLED' WHERE id = p_transaction_id;
@@ -131,6 +146,11 @@ CREATE OR REPLACE FUNCTION public.save_payroll_settings(
     p_settings JSONB
 ) RETURNS VOID AS $$
 BEGIN
+    -- Security Check
+    IF NOT EXISTS (SELECT 1 FROM public.staff WHERE auth_user_id = auth.uid() AND tenant_id = p_tenant_id) THEN
+        RAISE EXCEPTION 'Acesso Negado';
+    END IF;
+
     DELETE FROM public.rh_payroll_settings WHERE tenant_id = p_tenant_id;
     
     INSERT INTO public.rh_payroll_settings (
@@ -160,6 +180,11 @@ CREATE OR REPLACE FUNCTION public.save_inss_brackets(
     p_brackets JSONB
 ) RETURNS VOID AS $$
 BEGIN
+    -- Security Check
+    IF NOT EXISTS (SELECT 1 FROM public.staff WHERE auth_user_id = auth.uid() AND tenant_id = p_tenant_id) THEN
+        RAISE EXCEPTION 'Acesso Negado';
+    END IF;
+
     DELETE FROM public.rh_inss_brackets WHERE tenant_id = p_tenant_id;
     
     INSERT INTO public.rh_inss_brackets (tenant_id, min_value, max_value, rate, valid_from)
@@ -174,6 +199,11 @@ CREATE OR REPLACE FUNCTION public.save_irrf_brackets(
     p_brackets JSONB
 ) RETURNS VOID AS $$
 BEGIN
+    -- Security Check
+    IF NOT EXISTS (SELECT 1 FROM public.staff WHERE auth_user_id = auth.uid() AND tenant_id = p_tenant_id) THEN
+        RAISE EXCEPTION 'Acesso Negado';
+    END IF;
+
     DELETE FROM public.rh_irrf_brackets WHERE tenant_id = p_tenant_id;
     
     INSERT INTO public.rh_irrf_brackets (tenant_id, min_value, max_value, rate, deduction, valid_from)
@@ -192,6 +222,11 @@ DECLARE
     v_supplier_name TEXT;
     v_expense_desc TEXT;
 BEGIN
+    -- Security Check
+    IF NOT EXISTS (SELECT 1 FROM public.staff WHERE auth_user_id = auth.uid() AND tenant_id = p_tenant_id) THEN
+        RAISE EXCEPTION 'Acesso Negado';
+    END IF;
+
     SELECT name INTO v_supplier_name FROM public.suppliers WHERE id = (p_purchase_data->>'supplierId')::UUID;
     v_expense_desc := 'Compra NF ' || (p_purchase_data->>'invoiceNumber') || ' - ' || COALESCE(v_supplier_name, 'Fornecedor');
 
@@ -222,6 +257,11 @@ CREATE OR REPLACE FUNCTION public.adjust_inventory(
     p_user_name TEXT
 ) RETURNS VOID AS $$
 BEGIN
+    -- Security Check
+    IF NOT EXISTS (SELECT 1 FROM public.staff WHERE auth_user_id = auth.uid() AND tenant_id = p_tenant_id) THEN
+        RAISE EXCEPTION 'Acesso Negado';
+    END IF;
+
     IF p_operation = 'IN' THEN
         UPDATE public.inventory_items SET quantity = quantity + p_quantity WHERE id = p_item_id;
     ELSE
@@ -242,6 +282,11 @@ CREATE OR REPLACE FUNCTION public.dispatch_order(
 DECLARE
     v_delivery_info JSONB;
 BEGIN
+    -- Security Check
+    IF NOT EXISTS (SELECT 1 FROM public.staff WHERE auth_user_id = auth.uid() AND tenant_id = p_tenant_id) THEN
+        RAISE EXCEPTION 'Acesso Negado';
+    END IF;
+
     SELECT delivery_info INTO v_delivery_info FROM public.orders WHERE id = p_order_id;
     
     IF v_delivery_info IS NOT NULL THEN
@@ -261,7 +306,15 @@ CREATE OR REPLACE FUNCTION public.cancel_order(
 ) RETURNS VOID AS $$
 DECLARE
     v_transaction_id UUID;
+    v_tenant_id UUID;
 BEGIN
+    SELECT tenant_id INTO v_tenant_id FROM public.orders WHERE id = p_order_id;
+    
+    -- Security Check
+    IF NOT EXISTS (SELECT 1 FROM public.staff WHERE auth_user_id = auth.uid() AND tenant_id = v_tenant_id) THEN
+        RAISE EXCEPTION 'Acesso Negado';
+    END IF;
+
     SELECT id INTO v_transaction_id FROM public.transactions WHERE order_id = p_order_id LIMIT 1;
     
     IF v_transaction_id IS NOT NULL THEN
@@ -289,6 +342,11 @@ CREATE OR REPLACE FUNCTION public.add_staff_warning(
 DECLARE
     v_warning_id UUID;
 BEGIN
+    -- Security Check
+    IF NOT EXISTS (SELECT 1 FROM public.staff WHERE auth_user_id = auth.uid() AND tenant_id = p_tenant_id) THEN
+        RAISE EXCEPTION 'Acesso Negado';
+    END IF;
+
     INSERT INTO public.rh_staff_warnings (
         tenant_id, staff_id, type, content, created_by
     ) VALUES (

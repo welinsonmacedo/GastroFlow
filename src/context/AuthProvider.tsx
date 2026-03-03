@@ -3,7 +3,6 @@ import React, { createContext, useContext, useEffect, useState, useRef } from 'r
 import { User, Role } from '../types';
 import { supabase } from '../lib/supabase';
 import { getTenantSlug } from '../utils/tenant';
-import { checkRateLimit } from '../utils/security';
 
 interface AuthState {
   currentUser: User | null;
@@ -168,12 +167,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const login = (user: User) => {
-    // RATE LIMIT NO LOGIN MANUAL
-    if (!checkRateLimit('login_attempt', 5, 60000)) {
-        alert("Muitas tentativas de login. Aguarde um minuto.");
-        return;
-    }
-
     setState({ currentUser: user, isAuthenticated: true, isLoading: false });
     
     const slug = getTenantSlug();
