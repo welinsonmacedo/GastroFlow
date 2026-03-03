@@ -243,17 +243,13 @@ export const AdminFinance: React.FC = () => {
       e.preventDefault();
       if (!deleteModal.expenseId) return;
 
-      if (adminPin !== restState.businessInfo?.adminPin) {
-          return showAlert({ title: "Acesso Negado", message: "Senha mestra incorreta.", type: 'ERROR' });
-      }
-
       try {
-          await deleteExpense(deleteModal.expenseId);
+          await deleteExpense(deleteModal.expenseId, adminPin);
           setDeleteModal({ isOpen: false, expenseId: null });
           setAdminPin('');
           showAlert({ title: "Excluído", message: "Despesa removida com sucesso.", type: 'SUCCESS' });
-      } catch (error) {
-          showAlert({ title: "Erro", message: "Erro ao excluir despesa.", type: 'ERROR' });
+      } catch (error: any) {
+          showAlert({ title: "Erro", message: error.message || "Erro ao excluir despesa.", type: 'ERROR' });
       }
   };
 

@@ -17,10 +17,10 @@ interface FinanceContextType {
   openRegister: (initialAmount: number, operatorName: string) => Promise<void>;
   closeRegister: (finalAmount: number) => Promise<void>;
   bleedRegister: (amount: number, reason: string, userName: string) => Promise<void>;
-  addExpense: (expense: Expense) => Promise<void>;
+  addExpense: (expense: Expense, recurrenceMonths?: number) => Promise<void>;
   updateExpense: (expense: Expense) => Promise<void>;
   payExpense: (expenseId: string) => Promise<void>;
-  deleteExpense: (expenseId: string) => Promise<void>;
+  deleteExpense: (expenseId: string, adminPin: string) => Promise<void>;
   voidTransaction: (transactionId: string, adminPin: string) => Promise<void>; 
   refreshTransactions: () => Promise<void>;
 }
@@ -174,32 +174,18 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const openRegister = async (initialAmount: number, operatorName: string) => {
       if(!tenantId) throw new Error("Restaurante não identificado");
       
-      const { data, error } = await supabase.from('cash_sessions').insert({ 
-          tenant_id: tenantId, 
-          initial_amount: initialAmount, 
-          status: 'OPEN', 
-          operator_name: operatorName 
-      }).select().single();
+      const { error } = await supabase.rpc('open_cash_session', { 
+          p_tenant_id: tenantId, 
+          p_initial_amount: initialAmount, 
+          p_operator_name: operatorName 
+      });
 
       if (error) {
           console.error("Erro ao abrir caixa:", error);
           throw new Error(error.message);
       }
       
-      // Atualização Otimista
-      if (data) {
-          setState(prev => ({
-              ...prev,
-              activeCashSession: {
-                  id: data.id,
-                  openedAt: new Date(data.opened_at),
-                  initialAmount: data.initial_amount,
-                  status: 'OPEN',
-                  operatorName: data.operator_name
-              },
-              cashMovements: []
-          }));
-      }
+      // Realtime will handle the state update
   };
 
   const closeRegister = async (finalAmount: number) => {
@@ -215,27 +201,24 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
           throw new Error(error.message);
       }
       
-      // Limpeza imediata local
-      setState(prev => ({ ...prev, activeCashSession: null, cashMovements: [] }));
+      // Realtime will handle the state update
   };
 
   const bleedRegister = async (amount: number, reason: string, userName: string) => {
       if(!tenantId || !state.activeCashSession) return;
       
-      const { error } = await supabase.from('cash_movements').insert({ 
-          tenant_id: tenantId, 
-          session_id: state.activeCashSession.id, 
-          type: 'BLEED', 
-          amount, 
-          reason, 
-          user_name: userName 
+      const { error } = await supabase.rpc('bleed_cash_register', { 
+          p_tenant_id: tenantId, 
+          p_session_id: state.activeCashSession.id, 
+          p_amount: amount, 
+          p_reason: reason, 
+          p_user_name: userName 
       });
 
       if(error) throw error;
-      // Fetch data não necessário pois o realtime captura
   };
 
-  const addExpense = async (expense: Expense) => {
+  const addExpense = async (expense: Expense, recurrenceMonths: number = 1) => {
       if(!tenantId) return;
       
       const dueDateStr = expense.dueDate instanceof Date 
@@ -249,17 +232,20 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
             : new Date().toISOString().split('T')[0];
       }
 
-      const { error } = await supabase.from('expenses').insert({ 
-          tenant_id: tenantId, 
-          description: expense.description, 
-          amount: expense.amount, 
-          category: expense.category, 
-          due_date: dueDateStr, 
-          paid_date: paidDateVal,
-          is_paid: expense.isPaid,
-          is_recurring: expense.isRecurring,
-          payment_method: expense.paymentMethod,
-          supplier_id: expense.supplierId || null
+      const { error } = await supabase.rpc('upsert_expense', { 
+          p_tenant_id: tenantId, 
+          p_expense: {
+              description: expense.description, 
+              amount: expense.amount, 
+              category: expense.category, 
+              dueDate: dueDateStr, 
+              paidDate: paidDateVal,
+              isPaid: expense.isPaid,
+              isRecurring: expense.isRecurring,
+              paymentMethod: expense.paymentMethod,
+              supplierId: expense.supplierId || null
+          },
+          p_recurrence_months: recurrenceMonths
       });
       
       if (error) throw error;
@@ -279,46 +265,54 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
             : new Date().toISOString().split('T')[0];
       }
 
-      const { error } = await supabase.from('expenses').update({ 
-          description: expense.description, 
-          amount: expense.amount, 
-          category: expense.category, 
-          due_date: dueDateStr, 
-          paid_date: paidDateVal,
-          is_paid: expense.isPaid,
-          is_recurring: expense.isRecurring,
-          payment_method: expense.paymentMethod,
-          supplier_id: expense.supplierId || null
-      }).eq('id', expense.id);
+      const { error } = await supabase.rpc('upsert_expense', { 
+          p_tenant_id: tenantId,
+          p_expense: {
+              id: expense.id,
+              description: expense.description, 
+              amount: expense.amount, 
+              category: expense.category, 
+              dueDate: dueDateStr, 
+              paidDate: paidDateVal,
+              isPaid: expense.isPaid,
+              isRecurring: expense.isRecurring,
+              paymentMethod: expense.paymentMethod,
+              supplierId: expense.supplierId || null
+          }
+      });
       
       if (error) throw error;
   };
 
   const payExpense = async (expenseId: string) => {
-      const { error } = await supabase.from('expenses').update({ 
-          is_paid: true, 
-          paid_date: new Date().toISOString().split('T')[0] 
-      }).eq('id', expenseId);
+      if(!tenantId) return;
+      const { error } = await supabase.rpc('pay_expense', { 
+          p_tenant_id: tenantId,
+          p_expense_id: expenseId 
+      });
       
       if (error) throw error;
   };
 
-  const deleteExpense = async (expenseId: string) => {
-      const { error } = await supabase.from('expenses').delete().eq('id', expenseId);
+  const deleteExpense = async (expenseId: string, adminPin: string) => {
+      if(!tenantId) return;
+      const { error } = await supabase.rpc('delete_expense_', { 
+          p_tenant_id: tenantId,
+          p_expense_id: expenseId,
+          p_admin_pin: adminPin
+      });
       if (error) throw error;
   };
 
   const voidTransaction = async (transactionId: string, adminPin: string) => {
       if (!tenantId) return;
       
-      const correctPin = restaurantState.businessInfo?.adminPin;
-      if (!correctPin) throw new Error("Senha mestra não configurada nas Configurações.");
-      if (adminPin !== correctPin) throw new Error("Senha incorreta.");
-
       const userName = authState.currentUser?.name || 'Admin';
       
-      const { error } = await supabase.rpc('cancel_transaction', {
+      const { error } = await supabase.rpc('cancel_transaction_secure', {
+          p_tenant_id: tenantId,
           p_transaction_id: transactionId,
+          p_admin_pin: adminPin,
           p_user_name: userName
       });
 

@@ -78,41 +78,28 @@ export const ExpenseFormModal: React.FC<ExpenseFormModalProps> = ({ isOpen, onCl
       try {
           const baseDate = new Date(dateStr + 'T12:00:00');
 
-          if (!expenseToEdit && form.isRecurring && recurrenceMonths > 1) {
-              for (let i = 0; i < recurrenceMonths; i++) {
-                  const nextDate = new Date(baseDate);
-                  nextDate.setMonth(baseDate.getMonth() + i);
+          const expenseData = {
+              ...form,
+              amount: amount,
+              dueDate: baseDate,
+              isPaid: form.isPaid || false,
+              paymentMethod: form.paymentMethod || 'BANK',
+              supplierId: form.supplierId || undefined
+          } as Expense;
 
-                  const expenseData = {
-                      ...form,
-                      description: `${form.description} (${i + 1}/${recurrenceMonths})`,
-                      amount: amount,
-                      dueDate: nextDate,
-                      isPaid: i === 0 ? (form.isPaid || false) : false, 
-                      paymentMethod: form.paymentMethod || 'BANK',
-                      supplierId: form.supplierId || undefined
-                  } as Expense;
-
-                  if (!expenseData.id) delete (expenseData as any).id;
-                  await addExpense(expenseData);
-              }
-              showAlert({ title: "Sucesso", message: `${recurrenceMonths} parcelas geradas com sucesso!`, type: 'SUCCESS' });
+          if (expenseToEdit && expenseToEdit.id) {
+              await updateExpense(expenseData);
+              showAlert({ title: "Sucesso", message: "Despesa atualizada!", type: 'SUCCESS' });
           } else {
-              const expenseData = {
-                  ...form,
-                  amount: amount,
-                  dueDate: baseDate,
-                  isPaid: form.isPaid || false,
-                  paymentMethod: form.paymentMethod || 'BANK',
-                  supplierId: form.supplierId || undefined
-              } as Expense;
-
-              if (expenseToEdit && expenseToEdit.id) {
-                  await updateExpense(expenseData);
-                  showAlert({ title: "Sucesso", message: "Despesa atualizada!", type: 'SUCCESS' });
+              if (!expenseData.id) delete (expenseData as any).id;
+              
+              // If recurring, pass recurrenceMonths to addExpense
+              const recMonths = form.isRecurring ? recurrenceMonths : 1;
+              await addExpense(expenseData, recMonths);
+              
+              if (recMonths > 1) {
+                  showAlert({ title: "Sucesso", message: `${recMonths} parcelas geradas com sucesso!`, type: 'SUCCESS' });
               } else {
-                  if (!expenseData.id) delete (expenseData as any).id;
-                  await addExpense(expenseData);
                   showAlert({ title: "Sucesso", message: "Despesa registrada!", type: 'SUCCESS' });
               }
           }
