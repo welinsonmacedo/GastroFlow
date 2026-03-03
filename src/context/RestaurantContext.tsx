@@ -28,7 +28,13 @@ type Action =
   | { type: 'UPDATE_THEME'; theme: RestaurantTheme }
   | { type: 'UPDATE_BUSINESS_INFO'; info: RestaurantBusinessInfo }
   | { type: 'SYNC_REALTIME_DATA'; payload: any }
-  | { type: 'UPDATE_PLAN_LIMITS'; limits: PlanLimits };
+  | { type: 'UPDATE_PLAN_LIMITS'; limits: PlanLimits }
+  | { type: 'UPSERT_DELIVERY_METHOD'; method: any }
+  | { type: 'DELETE_DELIVERY_METHOD'; id: string }
+  | { type: 'UPSERT_PAYMENT_METHOD'; method: any }
+  | { type: 'DELETE_PAYMENT_METHOD'; id: string }
+  | { type: 'UPSERT_EXPENSE_CATEGORY'; category: any }
+  | { type: 'DELETE_EXPENSE_CATEGORY'; id: string };
 
 const initialState: RestaurantState = {
   isLoading: true,
@@ -229,16 +235,39 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const { tenantId } = state;
     if (!tenantId) return;
 
-    switch (action.type) {
-        case 'UPDATE_THEME': 
-            await supabase.from('tenants').update({ theme_config: action.theme }).eq('id', tenantId); 
-            localDispatch(action); 
-            break;
-        case 'UPDATE_BUSINESS_INFO': 
-            await supabase.from('tenants').update({ business_info: action.info }).eq('id', tenantId); 
-            localDispatch(action); 
-            break;
-        default: break; 
+    try {
+        switch (action.type) {
+            case 'UPDATE_THEME': 
+                await supabase.rpc('update_restaurant_theme', { p_tenant_id: tenantId, p_theme: action.theme });
+                localDispatch(action); 
+                break;
+            case 'UPDATE_BUSINESS_INFO': 
+                await supabase.rpc('update_restaurant_business_info', { p_tenant_id: tenantId, p_updates: action.info });
+                localDispatch(action); 
+                break;
+            case 'UPSERT_DELIVERY_METHOD':
+                await supabase.rpc('upsert_delivery_method', { p_tenant_id: tenantId, p_method: action.method });
+                break;
+            case 'DELETE_DELIVERY_METHOD':
+                await supabase.rpc('delete_delivery_method', { p_tenant_id: tenantId, p_method_id: action.id });
+                break;
+            case 'UPSERT_PAYMENT_METHOD':
+                await supabase.rpc('upsert_payment_method', { p_tenant_id: tenantId, p_method: action.method });
+                break;
+            case 'DELETE_PAYMENT_METHOD':
+                await supabase.rpc('delete_payment_method', { p_tenant_id: tenantId, p_method_id: action.id });
+                break;
+            case 'UPSERT_EXPENSE_CATEGORY':
+                await supabase.rpc('upsert_expense_category', { p_tenant_id: tenantId, p_category: action.category });
+                break;
+            case 'DELETE_EXPENSE_CATEGORY':
+                await supabase.rpc('delete_expense_category', { p_tenant_id: tenantId, p_cat_id: action.id });
+                break;
+            default: break; 
+        }
+    } catch (error) {
+        console.error("Error in RestaurantContext dispatch:", error);
+        throw error;
     }
   };
 

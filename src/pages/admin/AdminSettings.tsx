@@ -95,26 +95,14 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ view = 'BUSINESS' 
   const handleSaveDeliveryMethod = async () => { 
       if (!methodForm.name) return showAlert({title: "Nome Obrigatório", message: "Informe um nome.", type: "WARNING"}); 
       
-      let updatedSettings = [...(businessForm.deliverySettings || [])]; 
-      if (editingMethod) { 
-          updatedSettings = updatedSettings.map(m => m.id === editingMethod.id ? methodForm : m); 
-      } else { 
-          updatedSettings.push(methodForm); 
-      } 
-      
-      const newInfo = { ...businessForm, deliverySettings: updatedSettings }; 
-      setBusinessForm(newInfo); 
-      await dispatch({ type: 'UPDATE_BUSINESS_INFO', info: newInfo }); 
+      await dispatch({ type: 'UPSERT_DELIVERY_METHOD', method: methodForm }); 
       setIsDeliveryModalOpen(false); 
       showAlert({ title: "Salvo", message: "Método atualizado.", type: 'SUCCESS' }); 
   };
   
   const handleDeleteDeliveryMethod = (id: string) => { 
       showConfirm({ title: "Excluir Método", message: "Tem certeza?", onConfirm: async () => { 
-          const updated = (businessForm.deliverySettings || []).filter(m => m.id !== id); 
-          const newInfo = { ...businessForm, deliverySettings: updated }; 
-          setBusinessForm(newInfo); 
-          await dispatch({ type: 'UPDATE_BUSINESS_INFO', info: newInfo }); 
+          await dispatch({ type: 'DELETE_DELIVERY_METHOD', id }); 
       }}); 
   };
 
@@ -131,48 +119,28 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ view = 'BUSINESS' 
   const handleSavePaymentMethod = async () => { 
       if (!paymentForm.name) return showAlert({title: "Nome Obrigatório", message: "Informe um nome.", type: "WARNING"}); 
       
-      let updatedMethods = [...(businessForm.paymentMethods || [])]; 
-      const existingIdx = updatedMethods.findIndex(m => m.id === paymentForm.id); 
-      
-      if (existingIdx >= 0) { 
-          updatedMethods[existingIdx] = paymentForm; 
-      } else { 
-          updatedMethods.push(paymentForm); 
-      } 
-      
-      const newInfo = { ...businessForm, paymentMethods: updatedMethods }; 
-      setBusinessForm(newInfo); 
-      await dispatch({ type: 'UPDATE_BUSINESS_INFO', info: newInfo }); 
+      await dispatch({ type: 'UPSERT_PAYMENT_METHOD', method: paymentForm }); 
       setIsPaymentModalOpen(false); 
       showAlert({ title: "Salvo", message: "Pagamento atualizado.", type: 'SUCCESS' }); 
   };
   
   const handleDeletePaymentMethod = (id: string) => { 
       showConfirm({ title: "Excluir Pagamento", message: "Tem certeza?", onConfirm: async () => { 
-          const updated = (businessForm.paymentMethods || []).filter(m => m.id !== id); 
-          const newInfo = { ...businessForm, paymentMethods: updated }; 
-          setBusinessForm(newInfo); 
-          await dispatch({ type: 'UPDATE_BUSINESS_INFO', info: newInfo }); 
+          await dispatch({ type: 'DELETE_PAYMENT_METHOD', id }); 
       }}); 
   };
   
   const handleAddCategory = async () => { 
       if (!newCategoryName.trim()) return; 
-      const newCat: ExpenseCategory = { id: Math.random().toString(36).substr(2, 9), name: newCategoryName.trim() }; 
-      const updatedCats = [...(businessForm.expenseCategories || []), newCat]; 
-      const newInfo = { ...businessForm, expenseCategories: updatedCats }; 
-      setBusinessForm(newInfo); 
-      await dispatch({ type: 'UPDATE_BUSINESS_INFO', info: newInfo }); 
+      const newCat: ExpenseCategory = { id: '', name: newCategoryName.trim() }; 
+      await dispatch({ type: 'UPSERT_EXPENSE_CATEGORY', category: newCat }); 
       setNewCategoryName(''); 
       showAlert({ title: "Sucesso", message: "Categoria adicionada.", type: 'SUCCESS' }); 
   };
   
   const handleDeleteCategory = (id: string) => { 
       showConfirm({ title: "Excluir Categoria", message: "Tem certeza?", onConfirm: async () => { 
-          const updated = (businessForm.expenseCategories || []).filter(c => c.id !== id); 
-          const newInfo = { ...businessForm, expenseCategories: updated }; 
-          setBusinessForm(newInfo); 
-          await dispatch({ type: 'UPDATE_BUSINESS_INFO', info: newInfo }); 
+          await dispatch({ type: 'DELETE_EXPENSE_CATEGORY', id }); 
       }}); 
   };
 
