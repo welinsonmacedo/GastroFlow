@@ -44,10 +44,9 @@ export const AdminBlockedIPs: React.FC = () => {
             type: 'WARNING',
             confirmText: "Desbloquear",
             onConfirm: async () => {
-                const { error } = await supabase
-                    .from('blocked_ips')
-                    .delete()
-                    .eq('ip', ip);
+                const { error } = await supabase.rpc('unblock_ip_by_saas_admin', {
+                    p_ip: ip
+                });
                 
                 if (error) {
                     showAlert({ title: "Erro", message: "Erro ao desbloquear IP: " + error.message, type: 'ERROR' });

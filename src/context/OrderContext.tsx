@@ -265,11 +265,6 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       fetchData();
   };
 
-  // Helper para fechar mesa e limpar rotas
-  const closeTableInternal = async (tableId: string) => {
-      await supabase.rpc('close_table_internal', { p_tenant_id: tenantId, p_table_id: tableId });
-  };
-
   const processPayment = async (tableId: string | undefined, amount: number, method: string, cashierName: string = 'Caixa', orderId?: string, specificOrderIds?: string[], courierInfo?: { id: string, name: string }) => {
       if(!tenantId) return;
       

@@ -87,29 +87,29 @@ export const AdminTickets: React.FC = () => {
     const handleReply = async () => {
         if (!selectedTicket || !replyText) return;
 
-        const newMessage = {
-            sender: 'SUPPORT' as const,
-            text: replyText,
-            timestamp: new Date().toISOString()
-        };
-
-        const updatedMessages = [...selectedTicket.messages, newMessage];
-
-        // If ticket was OPEN, change to IN_PROGRESS automatically
-        const newStatus = selectedTicket.status === 'OPEN' ? 'IN_PROGRESS' : selectedTicket.status;
-
         try {
-            const { error } = await supabase
-                .from('tickets')
-                .update({ 
-                    messages: updatedMessages, 
-                    status: newStatus,
-                    updated_at: new Date().toISOString() 
-                })
-                .eq('id', selectedTicket.id);
+            const { data, error } = await supabase.rpc('reply_to_ticket_by_saas_admin', {
+                p_ticket_id: selectedTicket.id,
+                p_reply_text: replyText
+            });
+            
             if (error) throw error;
+            if (data && data.success === false) throw new Error(data.error);
+
+            setReplyText('');
+            setSelectedTicket({ ...selectedTicket, messages: data.messages, status: data.new_status });
+            fetchTickets();
         } catch (e) {
             console.warn("Falling back to localStorage for tickets:", e);
+            // Fallback logic
+            const newMessage = {
+                sender: 'SUPPORT' as const,
+                text: replyText,
+                timestamp: new Date().toISOString()
+            };
+            const updatedMessages = [...selectedTicket.messages, newMessage];
+            const newStatus = selectedTicket.status === 'OPEN' ? 'IN_PROGRESS' : selectedTicket.status;
+            
             const updatedTicket = { ...selectedTicket, messages: updatedMessages, status: newStatus, updated_at: new Date().toISOString() };
             
             const localTickets = JSON.parse(localStorage.getItem(`flux_tickets_${selectedTicket.tenant_id}`) || '[]');
@@ -119,22 +119,26 @@ export const AdminTickets: React.FC = () => {
             const allTickets = JSON.parse(localStorage.getItem('flux_all_tickets') || '[]');
             const updatedAllTickets = allTickets.map((t: any) => t.id === selectedTicket.id ? updatedTicket : t);
             localStorage.setItem('flux_all_tickets', JSON.stringify(updatedAllTickets));
-        }
 
-        setReplyText('');
-        setSelectedTicket({ ...selectedTicket, messages: updatedMessages, status: newStatus });
-        fetchTickets();
+            setReplyText('');
+            setSelectedTicket({ ...selectedTicket, messages: updatedMessages, status: newStatus });
+            fetchTickets();
+        }
     };
 
     const handleChangeStatus = async (newStatus: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED') => {
         if (!selectedTicket) return;
 
         try {
-            const { error } = await supabase
-                .from('tickets')
-                .update({ status: newStatus, updated_at: new Date().toISOString() })
-                .eq('id', selectedTicket.id);
+            const { error } = await supabase.rpc('change_ticket_status_by_saas_admin', {
+                p_ticket_id: selectedTicket.id,
+                p_status: newStatus
+            });
             if (error) throw error;
+            
+            setSelectedTicket({ ...selectedTicket, status: newStatus });
+            fetchTickets();
+            showAlert({ title: 'Sucesso', message: 'Status atualizado.', type: 'SUCCESS' });
         } catch (e) {
             console.warn("Falling back to localStorage for tickets:", e);
             const updatedTicket = { ...selectedTicket, status: newStatus, updated_at: new Date().toISOString() };
@@ -146,11 +150,11 @@ export const AdminTickets: React.FC = () => {
             const allTickets = JSON.parse(localStorage.getItem('flux_all_tickets') || '[]');
             const updatedAllTickets = allTickets.map((t: any) => t.id === selectedTicket.id ? updatedTicket : t);
             localStorage.setItem('flux_all_tickets', JSON.stringify(updatedAllTickets));
-        }
 
-        setSelectedTicket({ ...selectedTicket, status: newStatus });
-        fetchTickets();
-        showAlert({ title: 'Sucesso', message: 'Status atualizado.', type: 'SUCCESS' });
+            setSelectedTicket({ ...selectedTicket, status: newStatus });
+            fetchTickets();
+            showAlert({ title: 'Sucesso', message: 'Status atualizado (local).', type: 'SUCCESS' });
+        }
     };
 
     const getStatusBadge = (status: string) => {

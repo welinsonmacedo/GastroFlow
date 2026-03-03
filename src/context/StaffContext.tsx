@@ -9,7 +9,6 @@ import {
 } from '../types';
 import { supabase, logAudit } from '../lib/supabase';
 import { useRestaurant } from './RestaurantContext';
-import { useUI } from './UIContext';
 import { useAuth } from './AuthProvider'; 
 
 import { payrollService } from '../services/payrollService';
@@ -119,7 +118,6 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const { state: restState } = useRestaurant();
   const { state: authState } = useAuth();
   const { tenantId, planLimits } = restState;
-  const { showAlert } = useUI();
 
   const currentUser = authState.currentUser;
   

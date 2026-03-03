@@ -57,7 +57,9 @@ export const AdminSecurity: React.FC = () => {
     const toggleConfig = async (key: keyof typeof config) => {
         const newConfig = { ...config, [key]: !config[key] };
         setConfig(newConfig);
-        const { error } = await supabase.from('system_settings').upsert({ key: 'security_config', value: newConfig }, { onConflict: 'key' });
+        const { error } = await supabase.rpc('update_security_config_by_saas_admin', {
+            p_config: newConfig
+        });
         if (error) {
             console.error("Erro ao salvar configuração de segurança:", error);
             alert("Erro ao salvar configuração: " + error.message);
@@ -221,13 +223,12 @@ export const AdminSecurity: React.FC = () => {
                                                 size="sm" 
                                                 className="h-7 px-2 text-[10px]"
                                                 onClick={async () => {
-                                                    const { error } = await supabase.from('blocked_ips').insert({
-                                                        ip: inc.ip_address,
-                                                        reason: `Incidente: ${inc.type} - ${inc.details}`
+                                                    const { error } = await supabase.rpc('block_ip_by_saas_admin', {
+                                                        p_ip: inc.ip_address,
+                                                        p_reason: `Incidente: ${inc.type} - ${inc.details}`
                                                     });
                                                     if (error) {
-                                                        if (error.code === '23505') alert("Este IP já está bloqueado.");
-                                                        else alert("Erro ao bloquear IP: " + error.message);
+                                                        alert("Erro ao bloquear IP: " + error.message);
                                                     } else {
                                                         alert("IP bloqueado com sucesso!");
                                                     }

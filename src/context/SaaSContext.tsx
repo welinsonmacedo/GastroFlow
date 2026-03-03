@@ -403,47 +403,43 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const dispatchWithSideEffects = async (action: SaaSAction) => {
     if (action.type === 'CREATE_TENANT') {
         try {
-            const { data: existing } = await supabase.from('tenants').select('id').eq('slug', action.payload.slug).maybeSingle();
-            if (existing) {
-                showAlert({ title: "Endereço Indisponível", message: "Slug já em uso.", type: 'WARNING' });
-                return; 
-            }
-
             const defaultTheme = { primaryColor: '#2563eb', backgroundColor: '#ffffff', fontColor: '#1f2937', restaurantName: action.payload.name, logoUrl: '' };
 
-            const { data: newTenant, error } = await supabase.from('tenants').insert({
-                name: action.payload.name,
-                slug: action.payload.slug,
-                owner_name: action.payload.ownerName,
-                email: action.payload.email,
-                plan: action.payload.plan,
-                status: 'ACTIVE',
-                theme_config: defaultTheme,
-                allowed_modules: ['RESTAURANT'] 
-            }).select().single();
+            const { data, error } = await supabase.rpc('create_tenant_by_saas_admin', {
+                p_name: action.payload.name,
+                p_slug: action.payload.slug,
+                p_owner_name: action.payload.ownerName,
+                p_email: action.payload.email,
+                p_plan: action.payload.plan,
+                p_theme_config: defaultTheme,
+                p_allowed_modules: ['RESTAURANT']
+            });
 
             if (error) throw error;
+            if (data && data.success === false) {
+                showAlert({ title: "Erro", message: data.error || "Erro ao criar restaurante.", type: 'ERROR' });
+                return;
+            }
 
-            if (newTenant) {
-                await supabase.from('staff').insert({ tenant_id: newTenant.id, name: 'Admin', role: 'ADMIN', pin: '1234' });
-                
+            if (data && data.success) {
                 dispatch({
                     type: 'ADD_TENANT_TO_LIST',
                     tenant: {
-                        id: newTenant.id,
-                        name: newTenant.name,
-                        slug: newTenant.slug,
-                        ownerName: newTenant.owner_name,
-                        email: newTenant.email,
-                        status: newTenant.status,
-                        plan: newTenant.plan,
-                        joinedAt: new Date(newTenant.created_at),
+                        id: data.tenant_id,
+                        name: action.payload.name,
+                        slug: action.payload.slug,
+                        ownerName: action.payload.ownerName,
+                        email: action.payload.email,
+                        status: 'ACTIVE',
+                        plan: action.payload.plan,
+                        joinedAt: new Date(),
                         requestCount: 0,
                         businessInfo: {},
                         allowedModules: ['RESTAURANT'],
                         allowedFeatures: []
                     }
                 });
+                showAlert({ title: "Sucesso", message: "Restaurante criado com sucesso!", type: 'SUCCESS' });
             }
         } catch (error: any) {
             console.error("Erro ao criar tenant:", error);
@@ -458,14 +454,12 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
             let allowed_modules: string[] | null = null;
             let allowed_features: string[] | null = null;
 
-            // Se o plano mudou, incluímos as atualizações de plano aqui para evitar race conditions
             if (action.payload.plan) {
                 const tenant = state.tenants.find(t => t.id === action.payload.id);
                 
                 if (tenant && tenant.plan !== action.payload.plan) {
                     plan = action.payload.plan;
                     
-                    // Fetch fresh plan data from DB to ensure we have the latest limits/modules
                     const { data: planData } = await supabase.from('plans').select('*').eq('key', action.payload.plan).maybeSingle();
 
                     if (planData) {
@@ -485,16 +479,12 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 p_email: action.payload.email,
                 p_plan: plan,
                 p_allowed_modules: allowed_modules,
-                p_allowed_features: allowed_features
+                p_allowed_features: allowed_features,
+                p_theme_config: action.payload.theme
             });
 
             if (error) throw error;
             if (data && data.success === false) throw new Error(data.error || 'Unknown error');
-
-            // Update theme separately to ensure it works even if RPC doesn't support it yet
-            if (action.payload.theme) {
-                await supabase.from('tenants').update({ theme_config: action.payload.theme }).eq('id', action.payload.id);
-            }
 
             dispatch(action);
             showAlert({ title: "Sucesso", message: "Restaurante atualizado!", type: 'SUCCESS' });
@@ -508,10 +498,11 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     if (action.type === 'UPDATE_TENANT_MODULES') {
         try {
-            const { error } = await supabase.from('tenants').update({
-                allowed_modules: action.modules,
-                allowed_features: action.features
-            }).eq('id', action.tenantId);
+            const { error } = await supabase.rpc('update_tenant_modules_by_saas_admin', {
+                p_tenant_id: action.tenantId,
+                p_modules: action.modules,
+                p_features: action.features
+            });
             
             if (error) throw error;
             
@@ -526,9 +517,10 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     if (action.type === 'UPDATE_TENANT_LIMITS') {
         try {
-            const { error } = await supabase.from('tenants').update({
-                custom_limits: action.limits
-            }).eq('id', action.tenantId);
+            const { error } = await supabase.rpc('update_tenant_limits_by_saas_admin', {
+                p_tenant_id: action.tenantId,
+                p_limits: action.limits
+            });
             
             if (error) throw error;
             
@@ -554,14 +546,15 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 if (authError) { showAlert({ title: "Erro Auth", message: authError.message, type: 'ERROR' }); } 
                 else if (authData.user) { authUserId = authData.user.id; }
             }
-            const { error } = await supabase.from('staff').insert({
-                tenant_id: action.payload.tenantId,
-                name: action.payload.name,
-                email: action.payload.email,
-                role: 'ADMIN',
-                pin: action.payload.pin,
-                auth_user_id: authUserId
+            
+            const { error } = await supabase.rpc('create_tenant_admin_by_saas_admin', {
+                p_tenant_id: action.payload.tenantId,
+                p_name: action.payload.name,
+                p_email: action.payload.email,
+                p_pin: action.payload.pin,
+                p_auth_user_id: authUserId
             });
+
             if (error) throw error;
             showAlert({ title: "Sucesso", message: "Admin criado!", type: 'SUCCESS' });
         } catch (error: any) {
@@ -573,7 +566,11 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (action.type === 'UPDATE_PROFILE') {
         if (state.adminId) {
             await supabase.auth.updateUser({ email: action.email, data: { name: action.name } });
-            await supabase.from('saas_admins').update({ name: action.name, email: action.email }).eq('id', state.adminId);
+            await supabase.rpc('update_admin_profile_by_saas_admin', {
+                p_admin_id: state.adminId,
+                p_name: action.name,
+                p_email: action.email
+            });
             dispatch(action);
         }
         return;
@@ -581,9 +578,9 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     if (action.type === 'UPDATE_GLOBAL_SETTINGS') {
         try {
-            const { error } = await supabase
-                .from('saas_config')
-                .upsert({ id: 1, global_settings: action.settings }, { onConflict: 'id' });
+            const { error } = await supabase.rpc('update_global_settings_by_saas_admin', {
+                p_settings: action.settings
+            });
             
             if (error) {
                 console.warn("Database Error, falling back to localStorage:", error);
@@ -594,7 +591,6 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
             showAlert({ title: "Sucesso", message: "Configurações globais atualizadas!", type: 'SUCCESS' });
         } catch (error: any) {
             console.error(error);
-            // Fallback
             localStorage.setItem('flux_saas_global_settings', JSON.stringify(action.settings));
             dispatch(action);
             showAlert({ title: "Sucesso", message: "Configurações salvas localmente (tabela não encontrada).", type: 'SUCCESS' });
@@ -603,37 +599,19 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     if (action.type === 'UPDATE_PLAN_DETAILS') {
-        const { error } = await supabase.from('plans').update({
-            name: action.plan.name, 
-            price: action.plan.price, 
-            features: action.plan.features, 
-            limits: action.plan.limits, 
-            button_text: action.plan.button_text
-        }).eq('id', action.plan.id);
+        const { error } = await supabase.rpc('update_plan_details_by_saas_admin', {
+            p_plan_id: action.plan.id,
+            p_key: action.plan.key,
+            p_name: action.plan.name,
+            p_price: action.plan.price,
+            p_features: action.plan.features,
+            p_limits: action.plan.limits,
+            p_button_text: action.plan.button_text
+        });
         
         if (!error) {
             dispatch(action);
-            
-            // Propagate changes to all tenants with this plan
-            // We update allowed_modules, allowed_features and custom_limits (which stores the plan limits)
-            try {
-                const { error: propError } = await supabase.from('tenants')
-                    .update({
-                        allowed_modules: action.plan.limits?.allowedModules || [],
-                        allowed_features: action.plan.limits?.allowedFeatures || [],
-                        custom_limits: action.plan.limits || {}
-                    })
-                    .eq('plan', action.plan.key);
-
-                if (propError) {
-                    console.error("Erro ao propagar atualizações do plano para os tenants:", propError);
-                    showAlert({ title: "Aviso", message: "Plano salvo, mas houve erro ao atualizar alguns clientes.", type: 'WARNING' });
-                } else {
-                    showAlert({ title: "Sucesso", message: "Plano atualizado e propagado para todos os clientes!", type: 'SUCCESS' });
-                }
-            } catch (err) {
-                console.error("Erro na propagação:", err);
-            }
+            showAlert({ title: "Sucesso", message: "Plano atualizado e propagado para todos os clientes!", type: 'SUCCESS' });
         }
         else showAlert({ title: "Erro", message: "Erro ao salvar plano.", type: 'ERROR' });
         return;
@@ -641,20 +619,19 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     if (action.type === 'CREATE_PLAN') {
         try {
-            const { error } = await supabase.from('plans').insert({
-                key: action.plan.key,
-                name: action.plan.name,
-                price: action.plan.price,
-                period: action.plan.period,
-                features: action.plan.features,
-                limits: action.plan.limits,
-                button_text: action.plan.button_text,
-                is_popular: action.plan.is_popular
-            }).select().single();
+            const { error } = await supabase.rpc('create_plan_by_saas_admin', {
+                p_key: action.plan.key,
+                p_name: action.plan.name,
+                p_price: action.plan.price,
+                p_period: action.plan.period,
+                p_features: action.plan.features,
+                p_limits: action.plan.limits,
+                p_button_text: action.plan.button_text,
+                p_is_popular: action.plan.is_popular
+            });
 
             if (error) throw error;
             
-            // Refresh plans to get the real ID
             const { data: plans } = await supabase.from('plans').select('*').order('created_at', { ascending: true });
             if (plans) {
                  const mappedPlans: Plan[] = plans.map((p: any) => ({
@@ -684,7 +661,9 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     if (action.type === 'DELETE_PLAN') {
         try {
-            const { error } = await supabase.from('plans').delete().eq('id', action.planId);
+            const { error } = await supabase.rpc('delete_plan_by_saas_admin', {
+                p_plan_id: action.planId
+            });
             if (error) throw error;
             dispatch(action);
             showAlert({ title: "Sucesso", message: "Plano removido!", type: 'SUCCESS' });
@@ -697,11 +676,9 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
     dispatch(action);
 
     if (action.type === 'TOGGLE_STATUS') {
-        const tenant = state.tenants.find(t => t.id === action.tenantId);
-        if (tenant) {
-            const newStatus = tenant.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
-            await supabase.from('tenants').update({ status: newStatus }).eq('id', action.tenantId);
-        }
+        await supabase.rpc('toggle_tenant_status_by_saas_admin', {
+            p_tenant_id: action.tenantId
+        });
     }
   };
 
