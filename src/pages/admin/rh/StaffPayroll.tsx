@@ -6,7 +6,7 @@ import { useUI } from '../../../context/UIContext';
 import { useFinance } from '../../../context/FinanceContext';
 import { Button } from '../../../components/Button';
 import { PayrollPreview, ClosedPayroll, PayrollEventType } from '../../../types';
-import { FileText, Printer, Calculator, RefreshCcw, Eye, Lock, Plus, Download, AlertTriangle, ArrowRight, Calendar, CheckSquare, List, Trash2, Unlock } from 'lucide-react';
+import { FileText, Printer, Calculator, RefreshCcw, Eye, Lock, Plus, Download, AlertTriangle, List, Trash2, Unlock, CheckSquare } from 'lucide-react';
 import { printHtml } from '../../../utils/printHelper';
 import { Modal } from '../../../components/Modal';
 
@@ -75,48 +75,11 @@ export const StaffPayroll: React.FC = () => {
     useEffect(() => { loadData(); }, [month, year]);
 
     useEffect(() => {
-        const selectedEventType = staffState.eventTypes.find(t => t.id === eventForm.type);
-        const isDeduction = selectedEventType?.operation === '-';
-
-        if (isDeduction) {
-            setCalcMode('DAYS');
-            setCalcQty(1);
-        } else {
-            if (calcMode === 'DAYS' && !isDeduction) setCalcMode('MANUAL');
-        }
+        // Removido cálculo local para cumprir requisito de "tudo no backend"
     }, [eventForm.type, staffState.eventTypes]);
 
     useEffect(() => {
-        if (calcMode === 'MANUAL' || !eventForm.staffId) return;
-
-        const user = staffState.users.find(u => u.id === eventForm.staffId);
-        if (!user || !user.baseSalary) return;
-
-        const selectedEventType = staffState.eventTypes.find(t => t.id === eventForm.type);
-        const isDeduction = selectedEventType?.operation === '-';
-
-        let finalValue = 0;
-
-        if (isDeduction && calcMode === 'DAYS') {
-            if (isJustified) {
-                finalValue = 0; 
-            } else {
-                const dayValue = user.baseSalary / 30;
-                let daysToDeduct = calcQty;
-                if (deductDSR) daysToDeduct += 1; 
-                finalValue = dayValue * daysToDeduct;
-            }
-        } 
-        else if (calcMode === 'DAYS') {
-            const dayValue = user.baseSalary / 30;
-            finalValue = dayValue * calcQty;
-        } else if (calcMode === 'HOURS') {
-            const hourValue = user.baseSalary / 220;
-            finalValue = hourValue * calcQty;
-        }
-
-        setEventForm(prev => ({ ...prev, value: parseFloat(finalValue.toFixed(2)) }));
-
+        // Removido cálculo local para cumprir requisito de "tudo no backend"
     }, [calcQty, calcMode, eventForm.staffId, staffState.users, eventForm.type, isJustified, deductDSR, staffState.eventTypes]);
 
     const handleClosePayroll = async () => {
@@ -678,75 +641,9 @@ export const StaffPayroll: React.FC = () => {
                                         
                                         {/* PAINEL DINÂMICO DE CÁLCULO */}
                                         <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-inner">
-                                            {/* MODO FALTA (DEDUCTION + DAYS) */}
-                                            {staffState.eventTypes.find(t => t.id === eventForm.type)?.operation === '-' && calcMode === 'DAYS' ? (
-                                                <div className="space-y-4 animate-fade-in">
-                                                    <div className="grid grid-cols-2 gap-4">
-                                                        <div>
-                                                            <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Data da Ocorrência</label>
-                                                            <div className="relative">
-                                                                <Calendar size={16} className="absolute left-3 top-3 text-gray-400"/>
-                                                                <input type="date" className="w-full border pl-10 p-2.5 rounded-lg text-sm bg-gray-50 focus:bg-white transition-colors" value={absenceDate} onChange={e => setAbsenceDate(e.target.value)} />
-                                                            </div>
-                                                        </div>
-                                                        <div className="flex items-end">
-                                                            <label className={`flex items-center gap-2 cursor-pointer p-2.5 rounded-lg border w-full transition-all ${isJustified ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
-                                                                <input type="checkbox" className="hidden" checked={isJustified} onChange={e => setIsJustified(e.target.checked)} />
-                                                                <div className={`w-4 h-4 border rounded flex items-center justify-center ${isJustified ? 'bg-green-600 border-green-600' : 'bg-white border-gray-300'}`}>
-                                                                    {isJustified && <CheckSquare size={12} className="text-white"/>}
-                                                                </div>
-                                                                <span className="text-xs font-bold text-slate-700">Justificada? (R$ 0)</span>
-                                                            </label>
-                                                        </div>
-                                                    </div>
-
-                                                    {!isJustified && (
-                                                        <div className="flex gap-4 items-center pt-2">
-                                                            <div className="w-32">
-                                                                <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Qtd Dias</label>
-                                                                <input type="number" step="0.5" className="w-full border p-2.5 rounded-lg font-bold text-center bg-gray-50 focus:bg-white" value={calcQty} onChange={e => setCalcQty(parseFloat(e.target.value))} />
-                                                            </div>
-                                                            
-                                                            <label className={`flex-1 flex items-center gap-2 cursor-pointer p-2.5 rounded-lg border transition-all h-[42px] mt-5 ${deductDSR ? 'bg-red-50 border-red-200' : 'bg-gray-50 border-gray-200'}`}>
-                                                                <input type="checkbox" className="hidden" checked={deductDSR} onChange={e => setDeductDSR(e.target.checked)} />
-                                                                <div className={`w-4 h-4 border rounded flex items-center justify-center ${deductDSR ? 'bg-red-600 border-red-600' : 'bg-white border-gray-300'}`}>
-                                                                    {deductDSR && <CheckSquare size={12} className="text-white"/>}
-                                                                </div>
-                                                                <span className="text-xs font-bold text-slate-700">Descontar DSR (+1 Dia)</span>
-                                                            </label>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            ) : (
-                                                // MODO GENÉRICO
-                                                calcMode !== 'MANUAL' ? (
-                                                    <div className="flex items-center gap-4 animate-fade-in">
-                                                        <div className="flex-1">
-                                                            <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">
-                                                                Quantidade ({calcMode === 'DAYS' ? 'Dias' : 'Horas'})
-                                                            </label>
-                                                            <input 
-                                                                type="number" 
-                                                                step="0.5"
-                                                                className="w-full border p-3 rounded-xl font-bold text-center text-lg" 
-                                                                value={calcQty} 
-                                                                onChange={e => setCalcQty(parseFloat(e.target.value))} 
-                                                            />
-                                                        </div>
-                                                        <div className="text-gray-300 pt-5"><ArrowRight size={24}/></div>
-                                                        <div className="flex-1">
-                                                            <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Resultado</label>
-                                                            <div className="w-full bg-gray-100 p-3 rounded-xl font-mono text-center text-gray-600 font-bold border border-gray-200">
-                                                                Ref: {calcQty} {calcMode === 'DAYS' ? 'd' : 'h'}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                ) : (
-                                                    <div className="text-center py-6 text-gray-400 text-sm italic">
-                                                        Modo manual selecionado. Digite o valor final abaixo.
-                                                    </div>
-                                                )
-                                            )}
+                                            <p className="text-sm text-gray-500 italic text-center py-4">
+                                                Insira o valor final ou a porcentagem abaixo. O sistema processará os cálculos no servidor.
+                                            </p>
                                         </div>
                                     </div>
 
@@ -762,10 +659,9 @@ export const StaffPayroll: React.FC = () => {
                                             <input 
                                                 type="number" 
                                                 step="0.01" 
-                                                className={`w-full border-2 p-4 pl-12 rounded-2xl font-black text-3xl outline-none transition-all ${staffState.eventTypes.find(t => t.id === eventForm.type)?.operation === '-' ? 'text-red-600 border-red-100 focus:border-red-400' : 'text-green-600 border-green-100 focus:border-green-400'} ${calcMode !== 'MANUAL' ? 'bg-gray-50' : 'bg-white'}`} 
+                                                className={`w-full border-2 p-4 pl-12 rounded-2xl font-black text-3xl outline-none transition-all ${staffState.eventTypes.find(t => t.id === eventForm.type)?.operation === '-' ? 'text-red-600 border-red-100 focus:border-red-400' : 'text-green-600 border-green-100 focus:border-green-400'} bg-white`} 
                                                 value={eventForm.value} 
                                                 onChange={e => setEventForm({...eventForm, value: parseFloat(e.target.value)})}
-                                                readOnly={calcMode !== 'MANUAL'} 
                                             />
                                         </div>
                                     </div>
