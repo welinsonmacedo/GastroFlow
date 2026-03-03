@@ -413,7 +413,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           p_staff_id: warning.staffId,
           p_type: warning.type,
           p_content: warning.content,
-          p_created_by: currentUser?.id
+          p_created_by: currentUser?.auth_user_id
       });
       if (error) throw error;
       await fetchData();
@@ -553,6 +553,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           work_model: user.workModel,
           base_salary: user.baseSalary, benefits_total: user.benefitsTotal, status: user.status,
           shift_id: user.shiftId || null, phone: user.phone, document_cpf: user.documentCpf, dependents_count: user.dependentsCount || 0,
+          created_by: currentUser?.auth_user_id,
           // Extended Fields
           birth_date: user.birthDate ? new Date(user.birthDate).toISOString().split('T')[0] : null,
           rg_number: user.rgNumber, rg_issuer: user.rgIssuer, rg_state: user.rgState,
@@ -620,7 +621,8 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const { error } = await supabase.from('rh_job_roles').insert({ 
           tenant_id: tenantId, title: role.title, cbo_code: role.cboCode, 
           description: role.description, base_salary: role.baseSalary, 
-          custom_role_id: role.customRoleId || null, is_active: role.isActive !== false 
+          custom_role_id: role.customRoleId || null, is_active: role.isActive !== false,
+          created_by: currentUser?.auth_user_id
       }); 
       if (error) throw error; 
   };
@@ -645,7 +647,8 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           name: eventType.name,
           operation: eventType.operation,
           is_active: eventType.isActive,
-          calculation_type: eventType.calculationType || 'FIXED'
+          calculation_type: eventType.calculationType || 'FIXED',
+          created_by: currentUser?.auth_user_id
       });
       if (error) throw error;
       await fetchData();
@@ -669,7 +672,15 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       await fetchData();
   };
 
-  const addShift = async (shift: Partial<Shift>) => { if(!tenantId) return; await supabase.from('rh_shifts').insert({ tenant_id: tenantId, name: shift.name, start_time: shift.startTime, end_time: shift.endTime, break_minutes: shift.breakMinutes, tolerance_minutes: shift.toleranceMinutes, night_shift: shift.nightShift }); };
+  const addShift = async (shift: Partial<Shift>) => { 
+      if(!tenantId) return; 
+      await supabase.from('rh_shifts').insert({ 
+          tenant_id: tenantId, name: shift.name, start_time: shift.startTime, end_time: shift.endTime, 
+          break_minutes: shift.breakMinutes, tolerance_minutes: shift.toleranceMinutes, 
+          night_shift: shift.nightShift,
+          created_by: currentUser?.auth_user_id
+      }); 
+  };
   const deleteShift = async (id: string) => { await supabase.from('rh_shifts').delete().eq('id', id); };
   
   const registerTime = async (staffId: string, type: 'IN' | 'BREAK_START' | 'BREAK_END' | 'OUT', justification?: string, location?: { lat: number, lng: number }) => {
@@ -701,7 +712,8 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           entry_type: 'MANUAL', 
           status: entry.status || 'APPROVED',
           original_entry_id: entry.originalEntryId,
-          correction_reason: entry.correctionReason
+          correction_reason: entry.correctionReason,
+          created_by: currentUser?.auth_user_id
       }; 
       const { error } = await supabase.from('rh_time_entries').insert(payload); 
       if(error) throw error; 
@@ -854,7 +866,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
       const { error } = await supabase.from('rh_payroll_events').insert({
           tenant_id: tenantId, staff_id: event.staffId, month: event.month, year: event.year,
-          type: event.type, description: event.description, value: event.value, created_by: authState.currentUser?.id
+          type: event.type, description: event.description, value: event.value, created_by: currentUser?.auth_user_id
       });
       if(error) throw error;
 
@@ -884,7 +896,8 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if(!tenantId || !currentUser) return;
       const { error } = await supabase.from('rh_recurring_events').insert({
           tenant_id: tenantId, staff_id: event.staffId, type: event.type, 
-          description: event.description, value: event.value, is_active: event.isActive !== false
+          description: event.description, value: event.value, is_active: event.isActive !== false,
+          created_by: currentUser?.auth_user_id
       });
       if(error) throw error;
       fetchData();
