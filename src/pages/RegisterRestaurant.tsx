@@ -96,7 +96,7 @@ export const RegisterRestaurant: React.FC = () => {
                     name: form.ownerName,
                     email: form.email,
                     role: 'ADMIN',
-                    pin: '1234', // Pin de backup
+                    pin: null, // PIN deve ser definido pelo usuário
                     auth_user_id: authData.user.id
                 });
 

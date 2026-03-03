@@ -9,6 +9,8 @@ interface ImageUploaderProps {
 }
 
 export const ImageUploader: React.FC<ImageUploaderProps> = ({ value, onChange, maxSizeKB = 300 }) => {
+  // NOTE: Frontend validation is present, but server-side validation 
+  // via Supabase Storage Policies is mandatory for security.
   const [mode, setMode] = useState<'URL' | 'FILE'>('URL');
   const [error, setError] = useState('');
 
