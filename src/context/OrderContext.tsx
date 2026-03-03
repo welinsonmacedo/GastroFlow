@@ -230,13 +230,25 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           notes: i.notes
       }));
       
-      // NÃO enviamos o totalAmount. O backend deve calcular.
-      await supabase.rpc('process_pos_sale', { 
+      // Chamada RPC
+      const { data: result, error } = await supabase.rpc('process_pos_sale', { 
           p_tenant_id: tenantId, 
           p_customer_name: safeData.customerName, 
           p_method: safeData.method, 
-          p_items: enrichedItems 
+          p_items: enrichedItems,
+          p_cashier_name: safeData.cashierName || 'Sistema'
       });
+
+      if (error) {
+          console.error("Erro RPC:", error);
+          throw new Error(error.message);
+      }
+
+      if (result && result.success === false) {
+          console.error("Erro na lógica da venda:", result.error);
+          throw new Error(result.error || "Erro desconhecido na venda.");
+      }
+
       fetchData();
   };
 

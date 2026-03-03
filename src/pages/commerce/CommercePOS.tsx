@@ -181,11 +181,19 @@ export const CommercePOS: React.FC = () => {
     const finalizeSale = async (methodName: string) => {
         try {
             const itemsPayload = cart.map(cartItem => ({ inventoryItemId: cartItem.item.id, quantity: cartItem.quantity, notes: cartItem.notes }));
-            await orderDispatch({ type: 'PROCESS_POS_SALE', sale: { customerName: customerName.trim() || 'Consumidor Final', items: itemsPayload, method: methodName } });
+            await orderDispatch({ 
+                type: 'PROCESS_POS_SALE', 
+                sale: { 
+                    customerName: customerName.trim() || 'Consumidor Final', 
+                    items: itemsPayload, 
+                    method: methodName,
+                    cashierName: finState.activeCashSession?.operatorName || 'Operador'
+                } 
+            });
             setCart([]); setCustomerName(''); setPaymentModalOpen(false);
             showAlert({ title: "Venda Registrada", message: `Venda de R$ ${cartTotal.toFixed(2)} realizada!`, type: 'SUCCESS' });
             await refreshTransactions();
-        } catch (error: any) { showAlert({ title: "Erro na Venda", message: "Não foi possível salvar.", type: 'ERROR' }); }
+        } catch (error: any) { showAlert({ title: "Erro na Venda", message: error.message || "Não foi possível salvar.", type: 'ERROR' }); }
     };
 
     const handleOpenRegister = async (e: React.FormEvent) => {
