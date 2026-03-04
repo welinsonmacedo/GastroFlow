@@ -7,7 +7,7 @@ import { ArrowRight, Edit } from 'lucide-react';
 import { SummaryModal } from '../../../components/modals/SummaryModal';
 
 export const SendToPayrollTab: React.FC = () => {
-    const { state: staffState, addPayrollEntry } = useStaff();
+    const { state: staffState, addPayrollEntry, deletePayrollEntry } = useStaff();
     const { showAlert } = useUI();
 
     const [selectedStaffId, setSelectedStaffId] = useState<string>('');
@@ -16,6 +16,7 @@ export const SendToPayrollTab: React.FC = () => {
     const [monthlyEntries, setMonthlyEntries] = useState<TimeEntry[]>([]);
     const [isSummaryModalOpen, setIsSummaryModalOpen] = useState(false);
 
+    const existingEntry = staffState.payrollEntries.find(e => e.staffId === selectedStaffId && e.month === filterMonth);
     const getStaffName = (id: string) => staffState.users.find(u => u.id === id)?.name || 'Desconhecido';
 
     useEffect(() => {
@@ -135,7 +136,11 @@ export const SendToPayrollTab: React.FC = () => {
                             </div>
                             <div className="flex justify-end gap-2">
                                 <Button onClick={() => setIsSummaryModalOpen(true)} variant="secondary"><Edit size={16} className="mr-2"/> Editar Resumo</Button>
-                                <Button onClick={handleSendToPayroll} className="bg-green-600 hover:bg-green-700"><ArrowRight size={16} className="mr-2"/> Enviar para Pré-Folha</Button>
+                                {existingEntry ? (
+                                    <Button onClick={async () => { await deletePayrollEntry(existingEntry.id); showAlert({ title: 'Sucesso', message: 'Dados removidos da pré-folha.', type: 'SUCCESS' }); }} variant="danger">Voltar para Edição</Button>
+                                ) : (
+                                    <Button onClick={handleSendToPayroll} className="bg-green-600 hover:bg-green-700"><ArrowRight size={16} className="mr-2"/> Enviar para Pré-Folha</Button>
+                                )}
                             </div>
                         </div>
                     </div>

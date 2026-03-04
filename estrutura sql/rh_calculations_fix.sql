@@ -128,32 +128,41 @@ BEGIN
         v_benefit_breakdown := '[]'::JSONB;
 
         -- Monta o objeto do colaborador
-        v_item := jsonb_build_object(
-            'staff_id', v_staff.id,
-            'staff_name', v_staff.name,
-            'base_salary', v_base_salary,
-            'overtime_50', 0,
-            'overtime_100', 0,
-            'night_shift_add', 0,
-            'bank_hours_balance', COALESCE(v_staff.bank_hours_balance, 0),
-            'absences_total', 0,
-            'addictionals', 0,
-            'events_value', v_events_earnings - v_events_deductions,
-            'benefits', 0,
-            'gross_total', v_gross_total,
-            'discounts', v_total_discounts,
-            'advances', 0,
-            'net_total', v_net_total,
-            'hours_worked', 220,
-            'employer_charges', 0,
-            'total_company_cost', v_gross_total,
-            'inss_value', v_inss_value,
-            'irrf_value', v_irrf_value,
-            'fgts_value', ROUND(v_gross_total * v_fgts_rate, 2),
-            'tax_breakdown', v_tax_breakdown,
-            'benefit_breakdown', v_benefit_breakdown,
-            'event_breakdown', v_event_breakdown
-        );
+        DECLARE
+            v_overtime_data JSONB;
+        BEGIN
+            SELECT * INTO v_overtime_data FROM public.calculate_overtime_and_dsr(v_staff.id, p_month, p_year, v_base_salary);
+            
+            v_item := jsonb_build_object(
+                'staff_id', v_staff.id,
+                'staff_name', v_staff.name,
+                'base_salary', v_base_salary,
+                'overtime_50', (v_overtime_data->>'overtime_50')::NUMERIC,
+                'overtime_100', (v_overtime_data->>'overtime_100')::NUMERIC,
+                'night_shift_add', 0,
+                'bank_hours_balance', COALESCE(v_staff.bank_hours_balance, 0),
+                'absences_total', 0,
+                'addictionals', 0,
+                'events_value', v_events_earnings - v_events_deductions + (v_overtime_data->>'overtime_50')::NUMERIC + (v_overtime_data->>'overtime_100')::NUMERIC + (v_overtime_data->>'dsr_overtime')::NUMERIC,
+                'benefits', 0,
+                'gross_total', v_gross_total + (v_overtime_data->>'overtime_50')::NUMERIC + (v_overtime_data->>'overtime_100')::NUMERIC + (v_overtime_data->>'dsr_overtime')::NUMERIC,
+                'discounts', v_total_discounts,
+                'advances', 0,
+                'net_total', v_net_total + (v_overtime_data->>'overtime_50')::NUMERIC + (v_overtime_data->>'overtime_100')::NUMERIC + (v_overtime_data->>'dsr_overtime')::NUMERIC,
+                'hours_worked', 220,
+                'employer_charges', 0,
+                'total_company_cost', v_gross_total + (v_overtime_data->>'overtime_50')::NUMERIC + (v_overtime_data->>'overtime_100')::NUMERIC + (v_overtime_data->>'dsr_overtime')::NUMERIC,
+                'inss_value', v_inss_value,
+                'irrf_value', v_irrf_value,
+                'fgts_value', ROUND(v_gross_total * v_fgts_rate, 2),
+                'tax_breakdown', v_tax_breakdown,
+                'benefit_breakdown', v_benefit_breakdown,
+                'event_breakdown', v_event_breakdown || jsonb_build_array(
+                    jsonb_build_object('name', 'HORAS EXTRAS 50%', 'value', (v_overtime_data->>'overtime_50')::NUMERIC, 'type', 'CREDIT'),
+                    jsonb_build_object('name', 'DSR SOBRE HORAS EXTRAS', 'value', (v_overtime_data->>'dsr_overtime')::NUMERIC, 'type', 'CREDIT')
+                )
+            );
+        END;
         
         v_payroll := v_payroll || v_item;
     END LOOP;

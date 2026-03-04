@@ -100,6 +100,7 @@ interface StaffContextType {
   updatePayrollEvent: (event: PayrollEvent) => Promise<void>;
   deletePayrollEvent: (id: string) => Promise<void>;
   addPayrollEntry: (entry: Partial<PayrollEntry>) => Promise<void>;
+  deletePayrollEntry: (id: string) => Promise<void>;
 
   addRecurringEvent: (event: Partial<RecurringEvent>) => Promise<void>;
   updateRecurringEvent: (event: RecurringEvent) => Promise<void>;
@@ -133,7 +134,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const [
           staffRes, shiftsRes, timeRes, rolesRes, taxesRes, benefitsRes,
           settingsRes, inssRes, irrfRes, eventsRes, recurringEventsRes, hrRolesRes, eventTypesRes, contractTemplatesRes,
-          thirteenthRes, vacationsRes, vacationSchedulesRes, terminationsRes, warningsRes
+          thirteenthRes, vacationsRes, vacationSchedulesRes, terminationsRes, warningsRes, payrollEntriesRes
       ] = await Promise.all([
           supabase.from('staff').select('*, custom_roles(name)').eq('tenant_id', tenantId).order('name'),
           supabase.from('rh_shifts').select('*').eq('tenant_id', tenantId),
@@ -153,7 +154,8 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           supabase.from('rh_vacations').select('*').eq('tenant_id', tenantId),
           supabase.from('rh_vacation_schedules').select('*').eq('tenant_id', tenantId),
           supabase.from('rh_terminations').select('*').eq('tenant_id', tenantId),
-          supabase.from('rh_staff_warnings').select('*').eq('tenant_id', tenantId).eq('is_active', true).order('created_at', { ascending: false })
+          supabase.from('rh_staff_warnings').select('*').eq('tenant_id', tenantId).eq('is_active', true).order('created_at', { ascending: false }),
+          supabase.from('rh_payroll_entries').select('*').eq('tenant_id', tenantId)
       ]);
 
       if (staffRes.data) {
@@ -312,7 +314,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           setState({ 
             users: mappedUsers, shifts: mappedShifts, timeEntries: mappedTime, roles: mappedRoles, hrJobRoles: mappedHrRoles,
             taxes: mappedTaxes, benefits: mappedBenefits, legalSettings, inssBrackets, irrfBrackets, 
-            payrollEvents: mappedEvents, recurringEvents: mappedRecurringEvents, eventTypes: mappedEventTypes, contractTemplates: mappedContractTemplates, payrollEntries: [],
+            payrollEvents: mappedEvents, recurringEvents: mappedRecurringEvents, eventTypes: mappedEventTypes, contractTemplates: mappedContractTemplates, payrollEntries: mappedPayrollEntries,
             thirteenthPayments: mappedThirteenth, vacationPeriods: mappedVacationPeriods, vacationSchedules: mappedVacationSchedules, terminations: mappedTerminations,
             warnings: mappedWarnings,
             isLoading: false 
@@ -968,6 +970,11 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
   };
 
+  const deletePayrollEntry = async (id: string) => {
+      await supabase.from('rh_payroll_entries').delete().eq('id', id);
+      fetchData();
+  };
+
   const addPayrollEntry = async (entry: Partial<PayrollEntry>) => {
       if (!tenantId) return;
       const { error } = await supabase.from('rh_payroll_entries').insert({
@@ -1055,7 +1062,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         saveLegalSettings, saveInssBrackets, saveIrrfBrackets, applyLegalDefaults,
         addTax, deleteTax, applyRegimeDefaults,
         addBenefit, deleteBenefit,
-        addPayrollEvent, updatePayrollEvent, deletePayrollEvent, addPayrollEntry,
+        addPayrollEvent, updatePayrollEvent, deletePayrollEvent, addPayrollEntry, deletePayrollEntry,
         addRecurringEvent, updateRecurringEvent, deleteRecurringEvent, generateRecurringEventsForMonth,
         addContractTemplate, updateContractTemplate, deleteContractTemplate, uploadSignedContract,
         calculateThirteenth, saveThirteenth, deleteThirteenth,

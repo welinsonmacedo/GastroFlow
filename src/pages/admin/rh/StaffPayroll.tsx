@@ -741,15 +741,33 @@ export const StaffPayroll: React.FC = () => {
                                         <div className="col-span-2 text-right">{selectedSlip.baseSalary.toFixed(2)}</div>
                                         <div className="col-span-2 text-right"></div>
                                     </div>
-                                    {(selectedSlip.overtime50 + selectedSlip.overtime100) > 0 && (
+                                    {selectedSlip.overtime50 > 0 && (
                                         <div className="grid grid-cols-12">
                                             <div className="col-span-1 text-center">002</div>
-                                            <div className="col-span-5">HORAS EXTRAS</div>
+                                            <div className="col-span-5">HORAS EXTRAS 50%</div>
                                             <div className="col-span-2 text-center"></div>
-                                            <div className="col-span-2 text-right">{(selectedSlip.overtime50 + selectedSlip.overtime100).toFixed(2)}</div>
+                                            <div className="col-span-2 text-right">{selectedSlip.overtime50.toFixed(2)}</div>
                                             <div className="col-span-2 text-right"></div>
                                         </div>
                                     )}
+                                    {selectedSlip.overtime100 > 0 && (
+                                        <div className="grid grid-cols-12">
+                                            <div className="col-span-1 text-center">003</div>
+                                            <div className="col-span-5">HORAS EXTRAS 100%</div>
+                                            <div className="col-span-2 text-center"></div>
+                                            <div className="col-span-2 text-right">{selectedSlip.overtime100.toFixed(2)}</div>
+                                            <div className="col-span-2 text-right"></div>
+                                        </div>
+                                    )}
+                                    {selectedSlip.eventBreakdown.filter(e => e.name.toUpperCase().includes('DSR')).map((evt, i) => (
+                                        <div key={`dsr-${i}`} className="grid grid-cols-12">
+                                            <div className="col-span-1 text-center">{600+i}</div>
+                                            <div className="col-span-5">{evt.name.toUpperCase()}</div>
+                                            <div className="col-span-2 text-center"></div>
+                                            <div className="col-span-2 text-right">{evt.value.toFixed(2)}</div>
+                                            <div className="col-span-2 text-right"></div>
+                                        </div>
+                                    ))}
                                     {selectedSlip.benefitBreakdown.map((ben, i) => (
                                         <div key={`ben-${i}`} className="grid grid-cols-12">
                                             <div className="col-span-1 text-center">{100+i}</div>
