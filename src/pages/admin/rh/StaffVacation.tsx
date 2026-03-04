@@ -175,11 +175,11 @@ export const StaffVacation: React.FC = () => {
                                             <div className="text-xs text-gray-500">{user.role}</div>
                                         </td>
                                         <td className="p-4 text-sm text-gray-600">
-                                            {hireDate.toLocaleDateString()}
+                                            {hireDate.toLocaleDateString('pt-BR', { timeZone: 'UTC' })}
                                         </td>
                                         <td className="p-4 text-sm text-gray-600">
                                             <div className="flex flex-col">
-                                                <span>{currentPeriodStart.toLocaleDateString()} - {currentPeriodEnd.toLocaleDateString()}</span>
+                                                <span>{currentPeriodStart.toLocaleDateString('pt-BR', { timeZone: 'UTC' })} - {currentPeriodEnd.toLocaleDateString('pt-BR', { timeZone: 'UTC' })}</span>
                                                 {today > currentPeriodEnd && (
                                                     <span className="text-xs text-orange-600 font-bold flex items-center gap-1">
                                                         <AlertTriangle size={10} /> Vencido
@@ -189,13 +189,13 @@ export const StaffVacation: React.FC = () => {
                                         </td>
                                         <td className="p-4 text-sm text-gray-600">
                                             <span className={today > concessiveLimit ? 'text-red-600 font-bold' : ''}>
-                                                {concessiveLimit.toLocaleDateString()}
+                                                {concessiveLimit.toLocaleDateString('pt-BR', { timeZone: 'UTC' })}
                                             </span>
                                         </td>
                                         <td className="p-4 text-sm text-gray-600">
                                             {lastVacation ? (
                                                 <div className="flex flex-col">
-                                                    <span>{new Date(lastVacation.startDate).toLocaleDateString()} - {new Date(lastVacation.endDate).toLocaleDateString()}</span>
+                                                    <span>{new Date(lastVacation.startDate).toLocaleDateString('pt-BR', { timeZone: 'UTC' })} - {new Date(lastVacation.endDate).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}</span>
                                                     <span className="text-xs text-gray-400">{lastVacation.daysCount} dias</span>
                                                 </div>
                                             ) : (
@@ -415,8 +415,8 @@ export const StaffVacation: React.FC = () => {
                                 .sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime())
                                 .map(vacation => (
                                     <tr key={vacation.id}>
-                                        <td className="p-3">{new Date(vacation.startDate).toLocaleDateString()}</td>
-                                        <td className="p-3">{new Date(vacation.endDate).toLocaleDateString()}</td>
+                                        <td className="p-3">{new Date(vacation.startDate).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}</td>
+                                        <td className="p-3">{new Date(vacation.endDate).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}</td>
                                         <td className="p-3">{vacation.daysCount}</td>
                                         <td className="p-3">{vacation.soldDays > 0 ? `${vacation.soldDays} dias` : '-'}</td>
                                         <td className="p-3 text-right font-bold">R$ {vacation.totalNet.toFixed(2)}</td>

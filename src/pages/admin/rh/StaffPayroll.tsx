@@ -209,7 +209,7 @@ export const StaffPayroll: React.FC = () => {
             let finalDesc = eventForm.description;
             if (!finalDesc) {
                 if (isDeduction && calcMode === 'DAYS') {
-                     const dateStr = new Date(absenceDate).toLocaleDateString('pt-BR');
+                     const dateStr = new Date(absenceDate).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
                      if (isJustified) {
                          finalDesc = `Falta Justificada em ${dateStr}`;
                      } else {

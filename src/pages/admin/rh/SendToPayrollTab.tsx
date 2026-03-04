@@ -19,6 +19,27 @@ export const SendToPayrollTab: React.FC = () => {
     const existingEntry = staffState.payrollEntries.find(e => e.staffId === selectedStaffId && e.month === filterMonth);
     const getStaffName = (id: string) => staffState.users.find(u => u.id === id)?.name || 'Desconhecido';
 
+    const pointClosingDay = staffState.legalSettings?.pointClosingDay || 30;
+
+    const isDateInPayrollMonth = (date: Date, filterMonthStr: string) => {
+        const [yearStr, monthStr] = filterMonthStr.split('-');
+        const pYear = parseInt(yearStr, 10);
+        const pMonth = parseInt(monthStr, 10);
+
+        // Use UTC methods to avoid timezone offset issues since entryDate is parsed from 'YYYY-MM-DD'
+        const entryYear = date.getUTCFullYear();
+        const entryMonth = date.getUTCMonth() + 1;
+        const entryDay = date.getUTCDate();
+
+        const isCurrentMonth = entryYear === pYear && entryMonth === pMonth && entryDay <= pointClosingDay;
+        
+        const prevMonth = pMonth === 1 ? 12 : pMonth - 1;
+        const prevYear = pMonth === 1 ? pYear - 1 : pYear;
+        const isPrevMonth = entryYear === prevYear && entryMonth === prevMonth && entryDay > pointClosingDay;
+
+        return isCurrentMonth || isPrevMonth;
+    };
+
     useEffect(() => {
         if (!selectedStaffId) {
             setMonthlyEntries([]);
@@ -28,7 +49,7 @@ export const SendToPayrollTab: React.FC = () => {
 
         const userEntries = staffState.timeEntries.filter(entry => 
             entry.staffId === selectedStaffId && 
-            entry.entryDate.toISOString().slice(0, 7) === filterMonth
+            isDateInPayrollMonth(entry.entryDate, filterMonth)
         );
         setMonthlyEntries(userEntries.sort((a, b) => new Date(a.entryDate).getTime() - new Date(b.entryDate).getTime()));
 
@@ -174,7 +195,7 @@ export const SendToPayrollTab: React.FC = () => {
                                         }
                                         return (
                                             <tr key={entry.id}>
-                                                <td className="p-4 font-bold">{new Date(entry.entryDate).toLocaleDateString()}</td>
+                                                <td className="p-4 font-bold">{new Date(entry.entryDate).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}</td>
                                                 <td className="p-4 font-mono">{entry.clockIn ? new Date(entry.clockIn).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '--:--'}</td>
                                                 <td className="p-4 font-mono text-slate-500">{entry.breakStart ? new Date(entry.breakStart).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '--:--'}</td>
                                                 <td className="p-4 font-mono text-slate-500">{entry.breakEnd ? new Date(entry.breakEnd).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '--:--'}</td>

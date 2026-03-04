@@ -25,10 +25,30 @@ export const DailyLogTab: React.FC = () => {
     
     const [expandedStaffId, setExpandedStaffId] = useState<string | null>(null);
     
-    // Filter entries by month
+    const pointClosingDay = staffState.legalSettings?.pointClosingDay || 30;
+
+    const isDateInPayrollMonth = (date: Date, filterMonthStr: string) => {
+        const [yearStr, monthStr] = filterMonthStr.split('-');
+        const pYear = parseInt(yearStr, 10);
+        const pMonth = parseInt(monthStr, 10);
+
+        // Use UTC methods to avoid timezone offset issues since entryDate is parsed from 'YYYY-MM-DD'
+        const entryYear = date.getUTCFullYear();
+        const entryMonth = date.getUTCMonth() + 1;
+        const entryDay = date.getUTCDate();
+
+        const isCurrentMonth = entryYear === pYear && entryMonth === pMonth && entryDay <= pointClosingDay;
+        
+        const prevMonth = pMonth === 1 ? 12 : pMonth - 1;
+        const prevYear = pMonth === 1 ? pYear - 1 : pYear;
+        const isPrevMonth = entryYear === prevYear && entryMonth === prevMonth && entryDay > pointClosingDay;
+
+        return isCurrentMonth || isPrevMonth;
+    };
+
+    // Filter entries by payroll month
     const monthlyEntries = staffState.timeEntries.filter(entry => {
-        const entryMonth = entry.entryDate.toISOString().slice(0, 7);
-        return entryMonth === filterMonth;
+        return isDateInPayrollMonth(entry.entryDate, filterMonth);
     });
 
     // Group by Staff
@@ -77,10 +97,10 @@ export const DailyLogTab: React.FC = () => {
         if (!staff) return;
 
         const entries = staffState.timeEntries
-            .filter(e => e.staffId === staffId && e.entryDate.toISOString().slice(0, 7) === month)
+            .filter(e => e.staffId === staffId && isDateInPayrollMonth(e.entryDate, month))
             .sort((a, b) => new Date(a.entryDate).getTime() - new Date(b.entryDate).getTime());
 
-        const formatDate = (d: Date) => new Date(d).toLocaleDateString('pt-BR');
+        const formatDate = (d: Date) => new Date(d).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
         const formatTime = (d?: Date) => d ? new Date(d).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '--:--';
 
         // Calculate totals for the printout
@@ -344,7 +364,7 @@ export const DailyLogTab: React.FC = () => {
                                                 return (
                                                     <tr key={entry.id} className="hover:bg-white transition-colors">
                                                         <td className="p-3 pl-2 font-mono text-slate-600">
-                                                            {new Date(entry.entryDate).toLocaleDateString()} <span className="text-xs text-slate-400">({new Date(entry.entryDate).toLocaleDateString('pt-BR', {weekday: 'short'})})</span>
+                                                            {new Date(entry.entryDate).toLocaleDateString('pt-BR', { timeZone: 'UTC' })} <span className="text-xs text-slate-400">({new Date(entry.entryDate).toLocaleDateString('pt-BR', {weekday: 'short', timeZone: 'UTC'})})</span>
                                                         </td>
                                                         <td className="p-3 font-mono text-slate-600">{entry.clockIn ? new Date(entry.clockIn).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '--:--'}</td>
                                                         <td className="p-3 font-mono text-xs text-slate-500">
