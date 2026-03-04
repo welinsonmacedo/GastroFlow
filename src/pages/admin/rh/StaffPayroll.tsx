@@ -777,7 +777,7 @@ export const StaffPayroll: React.FC = () => {
                                             <div className="col-span-2 text-right"></div>
                                         </div>
                                     ))}
-                                    {selectedSlip.eventBreakdown.filter(e => e.type === 'CREDIT').map((evt, i) => (
+                                    {selectedSlip.eventBreakdown.filter(e => e.type === 'CREDIT' && !e.name.toUpperCase().includes('DSR')).map((evt, i) => (
                                         <div key={`evt-c-${i}`} className="grid grid-cols-12">
                                             <div className="col-span-1 text-center">{200+i}</div>
                                             <div className="col-span-5">{evt.name.toUpperCase()}</div>

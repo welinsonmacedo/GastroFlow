@@ -252,13 +252,13 @@ BEGIN
 
         -- Add Overtime to Breakdown (Only if calculated dynamically)
         IF (v_overtime_data->>'overtime_50')::NUMERIC > 0 THEN
-            v_event_breakdown := v_event_breakdown || jsonb_build_object('name', 'H.E. 50%', 'value', (v_overtime_data->>'overtime_50')::NUMERIC, 'type', 'CREDIT');
+            v_event_breakdown := v_event_breakdown || jsonb_build_object('name', 'HORAS EXTRAS 50%', 'value', (v_overtime_data->>'overtime_50')::NUMERIC, 'type', 'CREDIT');
         END IF;
         IF (v_overtime_data->>'overtime_100')::NUMERIC > 0 THEN
-            v_event_breakdown := v_event_breakdown || jsonb_build_object('name', 'H.E. 100%', 'value', (v_overtime_data->>'overtime_100')::NUMERIC, 'type', 'CREDIT');
+            v_event_breakdown := v_event_breakdown || jsonb_build_object('name', 'HORAS EXTRAS 100%', 'value', (v_overtime_data->>'overtime_100')::NUMERIC, 'type', 'CREDIT');
         END IF;
         IF (v_overtime_data->>'dsr_overtime')::NUMERIC > 0 THEN
-            v_event_breakdown := v_event_breakdown || jsonb_build_object('name', 'DSR s/ H.E.', 'value', (v_overtime_data->>'dsr_overtime')::NUMERIC, 'type', 'CREDIT');
+            v_event_breakdown := v_event_breakdown || jsonb_build_object('name', 'DSR SOBRE HORAS EXTRAS', 'value', (v_overtime_data->>'dsr_overtime')::NUMERIC, 'type', 'CREDIT');
         END IF;
 
         v_item := jsonb_build_object(
