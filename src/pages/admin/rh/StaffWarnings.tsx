@@ -89,7 +89,10 @@ export const StaffWarnings: React.FC = () => {
                             .content { margin-bottom: 60px; text-align: justify; }
                             .signatures { display: flex; justify-content: space-between; margin-top: 100px; }
                             .sig-box { border-top: 1px solid #000; width: 250px; text-align: center; padding-top: 10px; font-size: 12px; }
-                            @media print { body { padding: 0; } }
+                            @media print { 
+                                @page { margin: 0; }
+                                body { padding: 20px; } 
+                            }
                         </style>
                     </head>
                     <body>
@@ -97,6 +100,10 @@ export const StaffWarnings: React.FC = () => {
                         <div class="content">
                             ${cleanRendered}
                         </div>
+                         <div class="signatures">
+                        <div class="sig-box">Testemunha 1:</div>
+                        <div class="sig-box">Testemunha 2:<br/></div>
+                    </div>
                         <div class="signatures">
                             <div class="sig-box">
                                 Assinatura do Empregador
@@ -180,16 +187,19 @@ export const StaffWarnings: React.FC = () => {
                         .content { margin-bottom: 60px; text-align: justify; }
                         .signatures { display: flex; justify-content: space-between; margin-top: 100px; }
                         .sig-box { border-top: 1px solid #000; width: 250px; text-align: center; padding-top: 10px; font-size: 12px; }
-                        @media print { body { padding: 0; } }
+                        @media print { 
+                            @page { margin: 0; }
+                            body { padding: 20px; } 
+                        }
                     </style>
                 </head>
                 <body>
-                    <div class="header">
-                        <h2>${company.restaurantName?.toUpperCase()}</h2>
-                        <p>${warning.type === 'VERBAL' ? 'REGISTRO DE ADVERTÊNCIA VERBAL' : 'ADVERTÊNCIA DISCIPLINAR FORMAL'}</p>
-                    </div>
                     <div class="content">
                         ${rendered}
+                    </div>
+                     <div class="signatures">
+                        <div class="sig-box">Testemunha 1:</div>
+                        <div class="sig-box">Testemunha 2:<br/></div>
                     </div>
                     <div class="signatures">
                         <div class="sig-box">Assinatura do Empregador</div>
