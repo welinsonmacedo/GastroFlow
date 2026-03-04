@@ -162,7 +162,7 @@ BEGIN
         valid_from, valid_until, vacation_days_entitlement, vacation_sold_days_limit,
         thirteenth_min_months_worked, notice_period_days, notice_period_days_per_year,
         notice_period_max_days, fgts_fine_percent, standard_monthly_hours,
-        time_tracking_method, overtime_policy, deduct_delays_from_overtime, absence_logic
+        time_tracking_method, overtime_policy, deduct_delays_from_overtime, point_closing_day, absence_logic
     ) VALUES (
         p_tenant_id, 
         (p_settings->>'min_wage')::NUMERIC, (p_settings->>'inss_ceiling')::NUMERIC,
@@ -173,7 +173,7 @@ BEGIN
         (p_settings->>'notice_period_days_per_year')::INTEGER, (p_settings->>'notice_period_max_days')::INTEGER,
         (p_settings->>'fgts_fine_percent')::NUMERIC, (p_settings->>'standard_monthly_hours')::INTEGER,
         (p_settings->>'time_tracking_method'), (p_settings->>'overtime_policy'),
-        (p_settings->>'deduct_delays_from_overtime')::BOOLEAN, (p_settings->'absence_logic')
+        (p_settings->>'deduct_delays_from_overtime')::BOOLEAN, (p_settings->>'point_closing_day')::INTEGER, (p_settings->'absence_logic')
     );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;

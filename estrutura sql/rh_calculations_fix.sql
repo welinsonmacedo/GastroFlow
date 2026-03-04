@@ -8,6 +8,9 @@ BEGIN;
 -- 1. Ajuste na tabela rh_event_types
 ALTER TABLE public.rh_event_types ADD COLUMN IF NOT EXISTS calculation_type TEXT DEFAULT 'FIXED';
 
+-- 1.1. Garantir que a coluna point_closing_day exista na tabela rh_payroll_settings
+ALTER TABLE public.rh_payroll_settings ADD COLUMN IF NOT EXISTS point_closing_day INTEGER DEFAULT 30;
+
 -- 2. Atualização da função get_payroll_preview
 CREATE OR REPLACE FUNCTION public.get_payroll_preview(
     p_month INTEGER,

@@ -866,9 +866,6 @@ export const StaffSettings: React.FC = () => {
                                     />
                                     <p className="text-xs text-slate-500 mt-2">As horas extras só serão consideradas para a folha após este dia do mês.</p>
                                 </div>
-                                <Button onClick={handleSaveTimeTracking} className="w-full bg-blue-600 hover:bg-blue-700 text-white">
-                                    Salvar Configurações de Ponto
-                                </Button>
                             </div>
 
                             {/* Lógica de Faltas */}

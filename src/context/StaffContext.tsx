@@ -788,6 +788,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           time_tracking_method: settings.timeTrackingMethod,
           overtime_policy: settings.overtimePolicy,
           deduct_delays_from_overtime: settings.deductDelaysFromOvertime,
+          point_closing_day: settings.pointClosingDay,
           absence_logic: settings.absenceLogic
       };
       const { error } = await supabase.rpc('save_payroll_settings', {
