@@ -186,7 +186,16 @@ export const PlanManager: React.FC = () => {
         }
 
         // Sync legacy boolean flags with modules
-        const newLimits = { ...editingPlan.limits } as PlanLimits;
+        const newLimits = { 
+            maxTables: 10,
+            maxProducts: 50,
+            maxStaff: 2,
+            allowKds: false,
+            allowCashier: false,
+            ...editingPlan.limits,
+            allowedModules: editingPlan.limits?.allowedModules || [],
+            allowedFeatures: editingPlan.limits?.allowedFeatures || []
+        } as PlanLimits;
         const modules = newLimits.allowedModules || [];
         const features = newLimits.allowedFeatures || [];
         
