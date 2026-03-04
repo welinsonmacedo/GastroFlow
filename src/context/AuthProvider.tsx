@@ -80,6 +80,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     try {
+        // IP Blocking Check (Server-side via Edge Function)
+        const functionUrl = 'https://mxzlaggtufxeirgcgbhn.supabase.co/functions/v1/bright-responder';
+        
+        try {
+            const ipResponse = await fetch(functionUrl, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
+                }
+            });
+            
+            if (ipResponse.status === 403) {
+                await supabase.auth.signOut();
+                window.location.href = '/blocked';
+                return;
+            }
+        } catch (fetchError) {
+            console.error("IP Blocking check failed:", fetchError);
+            alert("Erro de conexão com o servidor de segurança. Por favor, recarregue a página.");
+            // Stop execution and wait for user to reload
+            return;
+        }
+
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {

@@ -80,6 +80,9 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- 4. RPC: Cancel Transaction (with Inventory Restoration)
+-- Ensure inventory_logs has user_id
+ALTER TABLE public.inventory_logs ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES auth.users(id);
+
 CREATE OR REPLACE FUNCTION public.cancel_transaction(
     p_transaction_id UUID,
     p_user_name TEXT DEFAULT 'Admin'
@@ -91,6 +94,7 @@ DECLARE
     v_inv_id UUID;
     v_inv_type TEXT;
     r_recipe RECORD;
+    v_user_id UUID := auth.uid(); -- Get user ID
 BEGIN
     SELECT order_id, tenant_id INTO v_order_id, v_tenant_id 
     FROM public.transactions WHERE id = p_transaction_id;
@@ -125,14 +129,14 @@ BEGIN
                         SET quantity = quantity + (r_recipe.quantity * r_item.quantity) 
                         WHERE id = r_recipe.ingredient_item_id;
 
-                        INSERT INTO public.inventory_logs (tenant_id, item_id, type, quantity, reason, user_name)
-                        VALUES (v_tenant_id, r_recipe.ingredient_item_id, 'IN', r_recipe.quantity * r_item.quantity, 'Estorno Cancelamento', p_user_name);
+                        INSERT INTO public.inventory_logs (tenant_id, item_id, type, quantity, reason, user_name, user_id)
+                        VALUES (v_tenant_id, r_recipe.ingredient_item_id, 'IN', r_recipe.quantity * r_item.quantity, 'Estorno Cancelamento', p_user_name, v_user_id);
                     END LOOP;
                 ELSE
                     UPDATE public.inventory_items SET quantity = quantity + r_item.quantity WHERE id = v_inv_id;
                     
-                    INSERT INTO public.inventory_logs (tenant_id, item_id, type, quantity, reason, user_name)
-                    VALUES (v_tenant_id, v_inv_id, 'IN', r_item.quantity, 'Estorno Cancelamento', p_user_name);
+                    INSERT INTO public.inventory_logs (tenant_id, item_id, type, quantity, reason, user_name, user_id)
+                    VALUES (v_tenant_id, v_inv_id, 'IN', r_item.quantity, 'Estorno Cancelamento', p_user_name, v_user_id);
                 END IF;
             END IF;
         END LOOP;
