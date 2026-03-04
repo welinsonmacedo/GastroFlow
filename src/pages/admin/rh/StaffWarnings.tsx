@@ -13,6 +13,8 @@ import { useRestaurant } from '../../../context/RestaurantContext';
 import { replaceContractVariables } from '../../../utils/printContract';
 import { Button } from '../../../components/Button';
 import { AlertTriangle, User as LucideUser, Printer, Edit3, Eye, Trash2 } from 'lucide-react';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 export const StaffWarnings: React.FC = () => {
     const { state, addStaffWarning, deleteStaffWarning } = useStaff();

@@ -83,8 +83,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // IP Blocking Check (Server-side via Edge Function)
         const functionUrl = 'https://mxzlaggtufxeirgcgbhn.supabase.co/functions/v1/bright-responder';
         
+        const fetchWithRetry = async (url: string, options: RequestInit, retries = 3): Promise<Response> => {
+            for (let i = 0; i < retries; i++) {
+                try {
+                    return await fetch(url, options);
+                } catch (err) {
+                    if (i === retries - 1) throw err;
+                    await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
+                }
+            }
+            throw new Error('Failed after retries');
+        };
+
         try {
-            const ipResponse = await fetch(functionUrl, {
+            const ipResponse = await fetchWithRetry(functionUrl, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`

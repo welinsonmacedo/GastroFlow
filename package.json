@@ -7,6 +7,8 @@
     "@google/genai": "*",
     "@supabase/supabase-js": "^2.39.7",
     "dompurify": "^3.3.1",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^4.2.0",
     "lucide-react": "^0.344.0",
     "motion": "^12.34.3",
     "react": "18.2.0",
