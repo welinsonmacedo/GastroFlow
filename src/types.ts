@@ -226,7 +226,7 @@ export interface PayrollPreview {
     
     taxBreakdown: { name: string; value: number; type: TaxPayerType }[];
     benefitBreakdown: { name: string; value: number }[];
-    eventBreakdown: { name: string; value: number; type: 'CREDIT' | 'DEBIT' }[];
+    eventBreakdown: { name: string; value: number; type: 'CREDIT' | 'DEBIT' | 'INFO' }[];
 }
 
 // --- 13º Salário ---

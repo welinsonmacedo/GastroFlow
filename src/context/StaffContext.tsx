@@ -199,6 +199,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               timeTrackingMethod: settingsRes.data.time_tracking_method || 'PHYSICAL',
               overtimePolicy: settingsRes.data.overtime_policy || 'PAID_OVERTIME',
               deductDelaysFromOvertime: settingsRes.data.deduct_delays_from_overtime || false,
+              pointClosingDay: Number(settingsRes.data.point_closing_day || 30),
               absenceLogic: {
                   justified: settingsRes.data.absence_logic?.justified || { deduction: false, disciplinaryAction: false },
                   unjustified: settingsRes.data.absence_logic?.unjustified || { deduction: true, disciplinaryAction: true }
