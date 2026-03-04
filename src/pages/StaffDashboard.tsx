@@ -6,7 +6,7 @@ import { useRestaurant } from '../context/RestaurantContext';
 import { useAuth } from '../context/AuthProvider';
 import { 
     Users, FileText, 
-    LogOut, Grid, Timer, Settings
+    LogOut, Grid, Timer, Settings, Network
 } from 'lucide-react';
 import { Role } from '../types';
 
@@ -15,6 +15,7 @@ import { StaffEmployeesWrapper } from './admin/rh/StaffEmployeesWrapper';
 import { StaffPayrollWrapper } from './admin/rh/StaffPayrollWrapper';
 import { StaffAttendance } from './admin/rh/StaffAttendance';
 import { StaffSettings } from './admin/rh/StaffSettings';
+import { StaffIntegration } from './admin/rh/StaffIntegration';
 
 export const StaffDashboard: React.FC = () => {
   const { state: restState } = useRestaurant();
@@ -51,6 +52,12 @@ export const StaffDashboard: React.FC = () => {
         label: 'CONFIGURAÇÕES', 
         icon: Settings, 
         featureKeys: ['hr_config']
+    },
+    { 
+        path: '/rh/integration', 
+        label: 'E-SOCIAL', 
+        icon: Network, 
+        featureKeys: ['hr_config'] // Reusing hr_config or creating a new one. Let's use hr_config for now.
     },
   ];
 
@@ -143,6 +150,7 @@ export const StaffDashboard: React.FC = () => {
                     <Route path="/attendance" element={<StaffAttendance />} />
                     <Route path="/payroll" element={<StaffPayrollWrapper />} />
                     <Route path="/settings" element={<StaffSettings />} />
+                    <Route path="/integration" element={<StaffIntegration />} />
                     <Route path="*" element={<Navigate to="" replace />} />
                 </Routes>
             </div>

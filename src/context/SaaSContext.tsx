@@ -41,6 +41,7 @@ export interface GlobalSettings {
   loginBoxColor?: string;
   moduleIcons?: Record<string, string>;
   pwaRequired?: boolean;
+  esocialTemplates?: any;
 }
 
 export interface SaaSState {
