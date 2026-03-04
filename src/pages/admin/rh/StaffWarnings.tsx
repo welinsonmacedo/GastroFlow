@@ -82,18 +82,7 @@ export const StaffWarnings: React.FC = () => {
             const htmlContent = `
                 <html>
                     <head>
-                        <title>Advertência - ${selectedStaff?.name}</title>
-                        <style>
-                            body { font-family: 'Inter', sans-serif; padding: 50px; line-height: 1.6; color: #000; }
-                            .header { text-align: center; margin-bottom: 40px; border-bottom: 2px solid #000; padding-bottom: 20px; }
-                            .content { margin-bottom: 60px; text-align: justify; }
-                            .signatures { display: flex; justify-content: space-between; margin-top: 100px; }
-                            .sig-box { border-top: 1px solid #000; width: 250px; text-align: center; padding-top: 10px; font-size: 12px; }
-                            @media print { 
-                                @page { margin: 0; }
-                                body { padding: 20px; } 
-                            }
-                        </style>
+                  
                     </head>
                     <body>
                         
@@ -180,18 +169,7 @@ export const StaffWarnings: React.FC = () => {
         const htmlContent = `
             <html>
                 <head>
-                    <title>Advertência - ${staff?.name}</title>
-                    <style>
-                        body { font-family: 'Inter', sans-serif; padding: 50px; line-height: 1.6; color: #000; }
-                        .header { text-align: center; margin-bottom: 40px; border-bottom: 2px solid #000; padding-bottom: 20px; }
-                        .content { margin-bottom: 60px; text-align: justify; }
-                        .signatures { display: flex; justify-content: space-between; margin-top: 100px; }
-                        .sig-box { border-top: 1px solid #000; width: 250px; text-align: center; padding-top: 10px; font-size: 12px; }
-                        @media print { 
-                            @page { margin: 0; }
-                            body { padding: 20px; } 
-                        }
-                    </style>
+                
                 </head>
                 <body>
                     <div class="content">
@@ -239,80 +217,69 @@ export const StaffWarnings: React.FC = () => {
                 </div>
 
                 {activeTab === 'NEW' && (
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                        {/* Painel de Configuração */}
-                        <div className="lg:col-span-1 space-y-6">
-                            <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100">
-                                <h3 className="text-xs font-black text-slate-400 uppercase tracking-wider mb-4">Nova Advertência</h3>
-                                
-                                <div className="space-y-4">
-                                    <div>
-                                        <label className="block text-xs font-bold mb-1 text-slate-600">Colaborador *</label>
-                                        <div className="relative">
-                                            <LucideUser className="absolute left-3 top-2.5 text-gray-400" size={16} />
-                                            <select 
-                                                className="w-full border pl-9 p-2.5 rounded-xl text-sm bg-white"
-                                                value={selectedStaffId}
-                                                onChange={e => setSelectedStaffId(e.target.value)}
-                                            >
-                                                <option value="">Selecione o funcionário...</option>
-                                                {state.users.filter(u => u.status === 'ACTIVE').map(user => (
-                                                    <option key={user.id} value={user.id}>{user.name}</option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-xs font-bold mb-1 text-slate-600">Tipo de Advertência</label>
-                                        <div className="flex gap-2">
-                                            <button 
-                                                onClick={() => setWarningType('VERBAL')}
-                                                className={`flex-1 py-2 text-xs font-bold rounded-lg border transition-all ${warningType === 'VERBAL' ? 'bg-orange-500 text-white border-orange-600' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
-                                            >
-                                                Verbal
-                                            </button>
-                                            <button 
-                                                onClick={() => setWarningType('FORMAL')}
-                                                className={`flex-1 py-2 text-xs font-bold rounded-lg border transition-all ${warningType === 'FORMAL' ? 'bg-red-600 text-white border-red-700' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
-                                            >
-                                                Formal/Escrita
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-xs font-bold mb-1 text-slate-600">Modelo Base</label>
-                                        <select 
-                                            className="w-full border p-2.5 rounded-xl text-sm bg-white"
-                                            value={selectedTemplateId}
-                                            onChange={e => setSelectedTemplateId(e.target.value)}
-                                        >
-                                            <option value="">Selecione um modelo...</option>
-                                            {warningTemplates.map(t => (
-                                                <option key={t.id} value={t.id}>{t.name}</option>
-                                            ))}
-                                        </select>
-                                        {warningTemplates.length === 0 && (
-                                            <p className="text-[10px] text-orange-600 mt-1 font-bold">Nenhum modelo do tipo "Advertência" cadastrado.</p>
-                                        )}
-                                    </div>
-
-                                    <div className="pt-4">
-                                        <Button 
-                                            onClick={handleSaveAndPrint}
-                                            className="w-full bg-slate-800 hover:bg-slate-900 text-white py-3 rounded-xl flex items-center justify-center gap-2"
-                                            disabled={!selectedStaffId || !content || isSaving}
-                                        >
-                                            {isSaving ? 'Salvando...' : <><Printer size={18} /> Lançar e Imprimir</>}
-                                        </Button>
-                                    </div>
+                    <div className="space-y-6">
+                        {/* Painel de Configuração Inline */}
+                        <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                            <div>
+                                <label className="block text-xs font-bold mb-1 text-slate-600">Colaborador *</label>
+                                <div className="relative">
+                                    <LucideUser className="absolute left-3 top-2.5 text-gray-400" size={16} />
+                                    <select 
+                                        className="w-full border pl-9 p-2.5 rounded-xl text-sm bg-white"
+                                        value={selectedStaffId}
+                                        onChange={e => setSelectedStaffId(e.target.value)}
+                                    >
+                                        <option value="">Selecione...</option>
+                                        {state.users.filter(u => u.status === 'ACTIVE').map(user => (
+                                            <option key={user.id} value={user.id}>{user.name}</option>
+                                        ))}
+                                    </select>
                                 </div>
                             </div>
+
+                            <div>
+                                <label className="block text-xs font-bold mb-1 text-slate-600">Tipo</label>
+                                <div className="flex gap-2">
+                                    <button 
+                                        onClick={() => setWarningType('VERBAL')}
+                                        className={`flex-1 py-2.5 text-xs font-bold rounded-xl border transition-all ${warningType === 'VERBAL' ? 'bg-orange-500 text-white border-orange-600' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
+                                    >
+                                        Verbal
+                                    </button>
+                                    <button 
+                                        onClick={() => setWarningType('FORMAL')}
+                                        className={`flex-1 py-2.5 text-xs font-bold rounded-xl border transition-all ${warningType === 'FORMAL' ? 'bg-red-600 text-white border-red-700' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
+                                    >
+                                        Formal
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold mb-1 text-slate-600">Modelo Base</label>
+                                <select 
+                                    className="w-full border p-2.5 rounded-xl text-sm bg-white"
+                                    value={selectedTemplateId}
+                                    onChange={e => setSelectedTemplateId(e.target.value)}
+                                >
+                                    <option value="">Selecione um modelo...</option>
+                                    {warningTemplates.map(t => (
+                                        <option key={t.id} value={t.id}>{t.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <Button 
+                                onClick={handleSaveAndPrint}
+                                className="bg-slate-800 hover:bg-slate-900 text-white py-2.5 rounded-xl flex items-center justify-center gap-2"
+                                disabled={!selectedStaffId || !content || isSaving}
+                            >
+                                {isSaving ? 'Salvando...' : <><Printer size={18} /> Lançar e Imprimir</>}
+                            </Button>
                         </div>
 
-                        {/* Editor de Conteúdo */}
-                        <div className="lg:col-span-2 space-y-4">
+                        {/* Editor de Conteúdo Abaixo */}
+                        <div className="space-y-4">
                             <div className="flex items-center justify-between border-b pb-2">
                                 <div className="flex gap-4">
                                     <button 
@@ -322,8 +289,11 @@ export const StaffWarnings: React.FC = () => {
                                         <Edit3 size={14} className="inline mr-1"/> Editar Texto
                                     </button>
                                     <button 
-                                        onClick={() => setIsPreviewMode(true)}
-                                        className={`text-sm font-bold pb-2 border-b-2 transition-all ${isPreviewMode ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-400'}`}
+                                        onClick={() => {
+                                            if (selectedTemplateId) setIsPreviewMode(true);
+                                            else showAlert({ title: "Atenção", message: "Selecione um modelo para visualizar.", type: "WARNING" });
+                                        }}
+                                        className={`text-sm font-bold pb-2 border-b-2 transition-all ${isPreviewMode ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-400'} ${!selectedTemplateId ? 'opacity-50 cursor-not-allowed' : ''}`}
                                     >
                                         <Eye size={14} className="inline mr-1"/> Visualizar
                                     </button>
