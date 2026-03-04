@@ -306,6 +306,10 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               discountsValue: Number(t.discounts_value), totalValue: Number(t.total_value), status: t.status
           }));
 
+          const mappedPayrollEntries = (payrollEntriesRes.data || []).map((e: any) => ({
+              id: e.id, staffId: e.staff_id, month: e.month, overtimeHours: Number(e.overtime_hours), missingHours: Number(e.missing_hours)
+          }));
+
           const mappedWarnings = (warningsRes.data || []).map((w: any) => ({
               id: w.id, staffId: w.staff_id, type: w.type, content: w.content,
               createdAt: w.created_at, createdBy: w.created_by

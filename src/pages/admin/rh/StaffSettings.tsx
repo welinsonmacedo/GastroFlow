@@ -44,6 +44,7 @@ export const StaffSettings: React.FC = () => {
         timeTrackingMethod: 'PHYSICAL',
         overtimePolicy: 'PAID_OVERTIME',
         deductDelaysFromOvertime: false,
+        pointClosingDay: 30,
         absenceLogic: {
             justified: { deduction: false, disciplinaryAction: false },
             unjustified: { deduction: true, disciplinaryAction: true, dsrDeduction: true }
@@ -66,6 +67,7 @@ export const StaffSettings: React.FC = () => {
                 timeTrackingMethod: state.legalSettings.timeTrackingMethod || 'PHYSICAL',
                 overtimePolicy: state.legalSettings.overtimePolicy || 'PAID_OVERTIME',
                 deductDelaysFromOvertime: state.legalSettings.deductDelaysFromOvertime || false,
+                pointClosingDay: state.legalSettings.pointClosingDay || 30,
                 absenceLogic: {
                     justified: state.legalSettings.absenceLogic?.justified || { deduction: false, disciplinaryAction: false },
                     unjustified: state.legalSettings.absenceLogic?.unjustified ? { 
@@ -85,6 +87,7 @@ export const StaffSettings: React.FC = () => {
                 timeTrackingMethod: timeTrackingForm.timeTrackingMethod as any,
                 overtimePolicy: timeTrackingForm.overtimePolicy as any,
                 deductDelaysFromOvertime: timeTrackingForm.deductDelaysFromOvertime,
+                pointClosingDay: timeTrackingForm.pointClosingDay,
                 absenceLogic: timeTrackingForm.absenceLogic
             });
             showAlert({ title: "Sucesso", message: "Configurações de ponto atualizadas.", type: "SUCCESS" });
@@ -851,6 +854,21 @@ export const StaffSettings: React.FC = () => {
                                     </label>
                                     <p className="text-xs text-slate-500 ml-6">Se habilitado, atrasos no dia serão subtraídos do saldo de horas extras do mesmo dia.</p>
                                 </div>
+                                <div className="mt-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                                    <label className="text-sm font-bold text-slate-700 block mb-2">Dia de Fechamento do Ponto</label>
+                                    <input 
+                                        type="number" 
+                                        min="1" 
+                                        max="31" 
+                                        className="w-full border p-2 rounded-lg text-sm" 
+                                        value={timeTrackingForm.pointClosingDay} 
+                                        onChange={e => setTimeTrackingForm({...timeTrackingForm, pointClosingDay: Number(e.target.value)})} 
+                                    />
+                                    <p className="text-xs text-slate-500 mt-2">As horas extras só serão consideradas para a folha após este dia do mês.</p>
+                                </div>
+                                <Button onClick={handleSaveTimeTracking} className="w-full bg-blue-600 hover:bg-blue-700 text-white">
+                                    Salvar Configurações de Ponto
+                                </Button>
                             </div>
 
                             {/* Lógica de Faltas */}

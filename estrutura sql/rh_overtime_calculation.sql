@@ -23,8 +23,11 @@ BEGIN
     FOR v_time_entry IN 
         SELECT * FROM public.rh_time_entries 
         WHERE staff_id = p_staff_id 
-        AND EXTRACT(MONTH FROM entry_date) = p_month 
-        AND EXTRACT(YEAR FROM entry_date) = p_year
+        AND (
+            (EXTRACT(MONTH FROM entry_date) = p_month AND EXTRACT(YEAR FROM entry_date) = p_year AND EXTRACT(DAY FROM entry_date) <= COALESCE(v_settings.point_closing_day, 30))
+            OR
+            (EXTRACT(MONTH FROM entry_date) = (CASE WHEN p_month = 1 THEN 12 ELSE p_month - 1 END) AND EXTRACT(YEAR FROM entry_date) = (CASE WHEN p_month = 1 THEN p_year - 1 ELSE p_year END) AND EXTRACT(DAY FROM entry_date) > COALESCE(v_settings.point_closing_day, 30))
+        )
     LOOP
         -- Lógica simplificada de cálculo de horas extras
         IF v_time_entry.clock_in IS NOT NULL AND v_time_entry.clock_out IS NOT NULL THEN
