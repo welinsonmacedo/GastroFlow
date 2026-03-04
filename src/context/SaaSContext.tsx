@@ -649,7 +649,7 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
             p_plan_id: action.plan.id,
             p_key: action.plan.key,
             p_name: action.plan.name,
-            p_price: parseFloat(action.plan.price),
+            p_price: parseFloat(action.plan.price.replace(/[^\d,.]/g, '').replace(',', '.')),
             p_features: action.plan.features,
             p_limits: action.plan.limits,
             p_button_text: action.plan.button_text
