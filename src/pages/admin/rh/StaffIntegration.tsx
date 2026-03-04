@@ -1,40 +1,51 @@
 import React, { useState, useEffect } from 'react';
-import { useSaaS } from '../../../context/SaaSContext';
 import { useRestaurant } from '../../../context/RestaurantContext';
 import { Button } from '../../../components/Button';
 import { Network, Download, FileCode2, CheckCircle, AlertTriangle } from 'lucide-react';
+import { supabase } from '../../../lib/supabase';
 
 export const StaffIntegration: React.FC = () => {
-    const { state: saasState } = useSaaS();
     const { state: restState } = useRestaurant();
     const [templates, setTemplates] = useState<any[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        if (saasState.globalSettings?.esocialTemplates) {
+        const fetchTemplates = async () => {
             try {
-                const parsed = typeof saasState.globalSettings.esocialTemplates === 'string' 
-                    ? JSON.parse(saasState.globalSettings.esocialTemplates) 
-                    : saasState.globalSettings.esocialTemplates;
-                
-                if (Array.isArray(parsed)) {
-                    setTemplates(parsed);
-                } else {
-                    const arr = Object.entries(parsed).map(([code, data]: [string, any]) => ({
-                        id: data.id || Math.random().toString(36).substr(2, 9),
-                        code,
-                        name: data.name || code,
-                        xmlTemplate: data.xmlTemplate || data
-                    }));
-                    setTemplates(arr);
+                const { data, error } = await supabase
+                    .from('global_settings')
+                    .select('settings')
+                    .eq('id', 'default')
+                    .single();
+
+                if (error) throw error;
+
+                if (data?.settings?.esocialTemplates) {
+                    const parsed = typeof data.settings.esocialTemplates === 'string' 
+                        ? JSON.parse(data.settings.esocialTemplates) 
+                        : data.settings.esocialTemplates;
+                    
+                    if (Array.isArray(parsed)) {
+                        setTemplates(parsed);
+                    } else {
+                        const arr = Object.entries(parsed).map(([code, tData]: [string, any]) => ({
+                            id: tData.id || Math.random().toString(36).substr(2, 9),
+                            code,
+                            name: tData.name || code,
+                            xmlTemplate: tData.xmlTemplate || tData
+                        }));
+                        setTemplates(arr);
+                    }
                 }
             } catch (e) {
-                console.error("Failed to parse esocial templates", e);
-                setTemplates([]);
+                console.error("Failed to fetch esocial templates", e);
+            } finally {
+                setIsLoading(false);
             }
-        } else {
-            setTemplates([]);
-        }
-    }, [saasState.globalSettings?.esocialTemplates]);
+        };
+
+        fetchTemplates();
+    }, []);
 
     const handleDownloadXML = (template: any) => {
         // Here we would replace {{variables}} with actual data from the tenant
@@ -82,7 +93,12 @@ export const StaffIntegration: React.FC = () => {
                     </span>
                 </div>
 
-                {templates.length === 0 ? (
+                {isLoading ? (
+                    <div className="p-12 text-center text-gray-500">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                        <p>Carregando moldes...</p>
+                    </div>
+                ) : templates.length === 0 ? (
                     <div className="p-12 text-center text-gray-500 flex flex-col items-center">
                         <AlertTriangle size={48} className="text-orange-300 mb-4" />
                         <p className="font-bold text-gray-700">Nenhum molde configurado</p>
