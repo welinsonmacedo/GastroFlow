@@ -93,10 +93,7 @@ export const StaffWarnings: React.FC = () => {
                         </style>
                     </head>
                     <body>
-                        <div class="header">
-                            <h2>${company.restaurantName?.toUpperCase()}</h2>
-                            <p>${warningType === 'VERBAL' ? 'REGISTRO DE ADVERTÊNCIA VERBAL' : 'ADVERTÊNCIA DISCIPLINAR FORMAL'}</p>
-                        </div>
+                        
                         <div class="content">
                             ${cleanRendered}
                         </div>
