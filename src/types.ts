@@ -481,6 +481,7 @@ export interface User {
   allowedFeatures?: string[];
   
   // RH Fields
+  registrationNumber?: string;
   department?: string;
   hrJobRoleId?: string; // Link to HrJobRole
   hireDate?: Date;

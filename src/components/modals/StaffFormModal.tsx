@@ -78,10 +78,17 @@ export const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose,
         if (userToEdit) {
             setForm({ ...userToEdit, customRoleId: userToEdit.customRoleId || '' });
         } else {
+            const highestReg = state.users.reduce((max, u) => {
+                const reg = parseInt(u.registrationNumber || '0', 10);
+                return isNaN(reg) ? max : Math.max(max, reg);
+            }, 999);
+            const nextReg = (highestReg + 1).toString();
+
             setForm({ 
                 name: '', role: Role.WAITER, email: '', allowedRoutes: [], customRoleId: '',
                 department: '', phone: '', documentCpf: '', baseSalary: 0, contractType: 'CLT', workModel: '44H_WEEKLY',
-                addressState: '', bankAccountType: 'CORRENTE', shiftId: '', dependentsCount: 0
+                addressState: '', bankAccountType: 'CORRENTE', shiftId: '', dependentsCount: 0,
+                registrationNumber: nextReg
             });
         }
         setActiveTab('GENERAL');
@@ -220,6 +227,10 @@ export const StaffFormModal: React.FC<StaffFormModalProps> = ({ isOpen, onClose,
                             <div className="space-y-6 animate-fade-in">
                                 <h4 className="text-sm font-black text-slate-800 uppercase border-b pb-2 mb-4">Informações Gerais</h4>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="md:col-span-2">
+                                        <label className="block text-xs font-bold mb-1 text-slate-600">Matrícula</label>
+                                        <input readOnly className="w-full border p-2.5 rounded-xl text-sm bg-slate-50 font-mono text-blue-700 font-bold" value={form.registrationNumber || ''} />
+                                    </div>
                                     <div className="md:col-span-2">
                                         <label className="block text-xs font-bold mb-1 text-slate-600">Nome Completo *</label>
                                         <input required className="w-full border p-2.5 rounded-xl text-sm" placeholder="Ex: Maria Silva" value={form.name} onChange={e => setForm({...form, name: e.target.value})} />

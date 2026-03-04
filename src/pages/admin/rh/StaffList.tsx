@@ -65,6 +65,7 @@ export const StaffList: React.FC = () => {
                     <table className="w-full text-left text-sm">
                         <thead className="bg-slate-50 text-slate-500 font-bold uppercase text-xs border-b">
                             <tr>
+                                <th className="p-4">Matrícula</th>
                                 <th className="p-4">Colaborador</th>
                                 <th className="p-4">Cargo / Função</th>
                                 <th className="p-4">Departamento</th>
@@ -77,6 +78,9 @@ export const StaffList: React.FC = () => {
                         <tbody className="divide-y divide-slate-100">
                             {filteredUsers.map(user => (
                                 <tr key={user.id} className="hover:bg-slate-50 transition-colors group">
+                                    <td className="p-4 font-mono font-bold text-blue-600">
+                                        {user.registrationNumber || '-'}
+                                    </td>
                                     <td className="p-4">
                                         <div className="flex items-center gap-3">
                                             <div className="w-10 h-10 rounded-xl bg-pink-50 flex items-center justify-center text-pink-600 font-black text-sm shrink-0">
@@ -142,7 +146,7 @@ export const StaffList: React.FC = () => {
                             ))}
                             {staffState.users.length === 0 && (
                                 <tr>
-                                    <td colSpan={7} className="p-10 text-center text-gray-400">
+                                    <td colSpan={8} className="p-10 text-center text-gray-400">
                                         Nenhum colaborador encontrado.
                                     </td>
                                 </tr>

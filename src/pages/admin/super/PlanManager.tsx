@@ -25,14 +25,6 @@ const MODULES_CONFIG = [
         ]
     },
     {
-        id: 'TIMECLOCK' as SystemModule,
-        label: 'Bater Ponto',
-        icon: Clock,
-        features: [
-            { id: 'timeclock_access', label: 'Acesso ao Ponto' }
-        ]
-    },
-    {
         id: 'COMMERCE' as SystemModule,
         label: 'Varejo',
         icon: Store,
@@ -47,7 +39,9 @@ const MODULES_CONFIG = [
         icon: Briefcase,
         features: [
             { id: 'admin_overview', label: 'VISAO GERAL' },
-            { id: 'admin_monitoring', label: 'MONITORAMENTO' }
+            { id: 'admin_monitoring', label: 'MONITORAMENTO' },
+            { id: 'admin_products', label: 'PRODUTOS' },
+            { id: 'admin_tables', label: 'MESAS & QR CODES' }
         ]
     },
     {
@@ -71,9 +65,9 @@ const MODULES_CONFIG = [
         features: [
             { id: 'hr_staff', label: 'COLABORADORES' },
             { id: 'hr_timeclock', label: 'CONTROLE DE PONTO' },
-            { id: 'hr_schedule', label: 'ESCALAS & TURNOS' },
-            { id: 'hr_payroll', label: 'PRÉ-FOLHA' },
-            { id: 'hr_config', label: 'CONFIGURAÇÕES' }
+            { id: 'hr_payroll', label: 'FOLHA' },
+            { id: 'hr_config', label: 'CONFIGURAÇÕES' },
+            { id: 'hr_integration', label: 'E-SOCIAL' }
         ]
     },
     {
@@ -109,6 +103,14 @@ const MODULES_CONFIG = [
         icon: ShieldAlert,
         features: [
             { id: 'audit_logs', label: 'LOGS' }
+        ]
+    },
+    {
+        id: 'TIMECLOCK' as SystemModule,
+        label: 'Bater Ponto',
+        icon: Clock,
+        features: [
+            { id: 'timeclock_access', label: 'Acesso ao Ponto' }
         ]
     },
     {

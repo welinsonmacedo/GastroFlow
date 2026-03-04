@@ -168,6 +168,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               shiftId: u.shift_id, phone: u.phone, documentCpf: u.document_cpf, dependentsCount: u.dependents_count || 0,
               bankHoursBalance: Number(u.bank_hours_balance) || 0,
               // Extended Fields
+              registrationNumber: u.registration_number,
               birthDate: u.birth_date ? new Date(u.birth_date) : undefined,
               rgNumber: u.rg_number, rgIssuer: u.rg_issuer, rgState: u.rg_state,
               addressZip: u.address_zip, addressStreet: u.address_street, addressNumber: u.address_number,
@@ -569,6 +570,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               document_cpf: user.documentCpf,
               dependents_count: user.dependentsCount || 0,
               created_by: currentUser?.auth_user_id,
+              registration_number: user.registrationNumber,
               birth_date: user.birthDate ? new Date(user.birthDate).toISOString().split('T')[0] : null,
               rg_number: user.rgNumber,
               rg_issuer: user.rgIssuer,
@@ -622,6 +624,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           status: user.status, shift_id: user.shiftId || null, phone: user.phone, document_cpf: user.documentCpf,
           dependents_count: user.dependentsCount || 0,
           // Extended Fields
+          registration_number: user.registrationNumber,
           birth_date: user.birthDate ? new Date(user.birthDate).toISOString().split('T')[0] : null,
           rg_number: user.rgNumber, rg_issuer: user.rgIssuer, rg_state: user.rgState,
           address_zip: user.addressZip, address_street: user.addressStreet, address_number: user.addressNumber,

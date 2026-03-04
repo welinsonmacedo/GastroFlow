@@ -57,7 +57,7 @@ export const StaffDashboard: React.FC = () => {
         path: '/rh/integration', 
         label: 'E-SOCIAL', 
         icon: Network, 
-        featureKeys: ['hr_config'] // Reusing hr_config or creating a new one. Let's use hr_config for now.
+        featureKeys: ['hr_integration'] 
     },
   ];
 
