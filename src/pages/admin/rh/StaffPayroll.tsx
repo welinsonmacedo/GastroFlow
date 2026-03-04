@@ -6,18 +6,18 @@ import { useUI } from '../../../context/UIContext';
 import { useFinance } from '../../../context/FinanceContext';
 import { Button } from '../../../components/Button';
 import { PayrollPreview, ClosedPayroll, PayrollEventType } from '../../../types';
-import { FileText, Printer, Calculator, RefreshCcw, Eye, Lock, Plus, Download, AlertTriangle, List, Trash2, Unlock, CheckSquare } from 'lucide-react';
+import { FileText, Printer, Calculator, RefreshCcw, Eye, Lock, Plus, Download, AlertTriangle, List, Trash2, Unlock, CheckSquare, UploadCloud } from 'lucide-react';
 import { printHtml } from '../../../utils/printHelper';
 import { Modal } from '../../../components/Modal';
 
-export const StaffPayroll: React.FC = () => {
+export const StaffPayroll: React.FC<{ initialMonth?: number; initialYear?: number }> = ({ initialMonth, initialYear }) => {
     const { getPayroll, closePayroll, reopenPayroll, addPayrollEvent, deletePayrollEvent, generateRecurringEventsForMonth, state: staffState } = useStaff();
     const { state: restState } = useRestaurant(); 
     const { showAlert, showConfirm } = useUI();
     const { addExpense } = useFinance();
     
-    const [month, setMonth] = useState(new Date().getMonth());
-    const [year, setYear] = useState(new Date().getFullYear());
+    const [month, setMonth] = useState(initialMonth ?? new Date().getMonth());
+    const [year, setYear] = useState(initialYear ?? new Date().getFullYear());
     const [payrollData, setPayrollData] = useState<PayrollPreview[]>([]);
     const [closedInfo, setClosedInfo] = useState<ClosedPayroll | undefined>(undefined);
     const [isClosed, setIsClosed] = useState(false);
@@ -495,13 +495,20 @@ export const StaffPayroll: React.FC = () => {
                         </>
                     )}
                     {isClosed && (
-                        <Button onClick={handleReopenPayroll} className="bg-orange-600 hover:bg-orange-700 text-white shadow-sm">
-                            <Unlock size={16} className="mr-2"/> Reabrir Folha
-                        </Button>
+                        <>
+                            {restState.planLimits?.allowedFeatures?.includes('ESOCIAL') && (
+                                <Button onClick={() => showAlert({ title: "E-Social", message: "Funcionalidade em desenvolvimento.", type: "INFO" })} variant="secondary" className="border-green-200 text-green-700 hover:bg-green-50">
+                                    <UploadCloud size={16} className="mr-2"/> E-Social
+                                </Button>
+                            )}
+                            <Button onClick={handleReopenPayroll} className="bg-orange-600 hover:bg-orange-700 text-white shadow-sm">
+                                <Unlock size={16} className="mr-2"/> Reabrir Folha
+                            </Button>
+                        </>
                     )}
                     
                     <Button onClick={handleExportCSV} variant="secondary">
-                        <Download size={16} className="mr-2"/> Contabilidade
+                        <Download size={16} className="mr-2"/> Enviar Contabilidade
                     </Button>
                     <Button onClick={loadData} disabled={loading} variant="secondary" className="px-3">
                         <RefreshCcw size={18} className={loading ? "animate-spin" : ""}/>

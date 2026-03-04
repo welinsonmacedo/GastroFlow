@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
-import { FileText, Calendar, UserMinus, DollarSign } from 'lucide-react';
+import { FileText, Calendar, UserMinus, DollarSign, Archive } from 'lucide-react';
 import { StaffPayroll } from './StaffPayroll';
 import { StaffVacation } from './StaffVacation';
 import { StaffTermination } from './StaffTermination';
 import { StaffThirteenth } from './StaffThirteenth';
+import { ClosedPayrollsTab } from './ClosedPayrollsTab';
 
 export const StaffPayrollWrapper: React.FC = () => {
-    const [activeTab, setActiveTab] = useState<'PAYROLL' | 'VACATION' | 'TERMINATION' | 'THIRTEENTH'>('PAYROLL');
+    const [activeTab, setActiveTab] = useState<'PAYROLL' | 'VACATION' | 'TERMINATION' | 'THIRTEENTH' | 'CLOSED_PAYROLLS'>('PAYROLL');
 
     return (
         <div className="flex h-full animate-fade-in gap-6">
@@ -47,6 +48,18 @@ export const StaffPayrollWrapper: React.FC = () => {
                                 </button>
                             </div>
                         </div>
+
+                        <div>
+                            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 px-2">Histórico</h3>
+                            <div className="space-y-1">
+                                <button 
+                                    onClick={() => setActiveTab('CLOSED_PAYROLLS')} 
+                                    className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${activeTab === 'CLOSED_PAYROLLS' ? 'bg-pink-50 text-pink-700' : 'text-slate-600 hover:bg-slate-50'}`}
+                                >
+                                    <Archive size={16}/> Folhas Fechadas
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -57,6 +70,7 @@ export const StaffPayrollWrapper: React.FC = () => {
                 {activeTab === 'VACATION' && <StaffVacation />}
                 {activeTab === 'THIRTEENTH' && <StaffThirteenth />}
                 {activeTab === 'TERMINATION' && <StaffTermination />}
+                {activeTab === 'CLOSED_PAYROLLS' && <ClosedPayrollsTab />}
             </div>
         </div>
     );

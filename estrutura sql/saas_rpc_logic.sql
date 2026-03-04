@@ -218,8 +218,8 @@ BEGIN
 
     UPDATE public.plans
     SET name = p_name,
-        price = p_price,
-        features = p_features,
+        price = p_price::TEXT,
+        features = to_jsonb(p_features),
         limits = p_limits,
         button_text = p_button_text,
         updated_at = NOW()
@@ -271,9 +271,9 @@ BEGIN
     ) VALUES (
         p_key,
         p_name,
-        p_price,
+        p_price::TEXT,
         p_period,
-        p_features,
+        to_jsonb(p_features),
         p_limits,
         p_button_text,
         p_is_popular

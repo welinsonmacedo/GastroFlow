@@ -34,6 +34,7 @@ interface StaffState {
   vacationSchedules: VacationSchedule[];
   terminations: Termination[];
   warnings: StaffWarning[];
+  closedPayrolls: ClosedPayroll[];
   isLoading: boolean;
 }
 
@@ -125,7 +126,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [state, setState] = useState<StaffState>({ 
     users: [], shifts: [], timeEntries: [], roles: [], hrJobRoles: [], taxes: [], benefits: [],
     legalSettings: null, inssBrackets: [], irrfBrackets: [], payrollEvents: [], recurringEvents: [], eventTypes: [], contractTemplates: [], payrollEntries: [],
-    thirteenthPayments: [], vacationPeriods: [], vacationSchedules: [], terminations: [], warnings: [], isLoading: true 
+    thirteenthPayments: [], vacationPeriods: [], vacationSchedules: [], terminations: [], warnings: [], closedPayrolls: [], isLoading: true 
   });
 
   const fetchData = useCallback(async () => {
@@ -134,7 +135,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const [
           staffRes, shiftsRes, timeRes, rolesRes, taxesRes, benefitsRes,
           settingsRes, inssRes, irrfRes, eventsRes, recurringEventsRes, hrRolesRes, eventTypesRes, contractTemplatesRes,
-          thirteenthRes, vacationsRes, vacationSchedulesRes, terminationsRes, warningsRes, payrollEntriesRes
+          thirteenthRes, vacationsRes, vacationSchedulesRes, terminationsRes, warningsRes, payrollEntriesRes, closedPayrollsRes
       ] = await Promise.all([
           supabase.from('staff').select('*, custom_roles(name)').eq('tenant_id', tenantId).order('name'),
           supabase.from('rh_shifts').select('*').eq('tenant_id', tenantId),
@@ -155,7 +156,8 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           supabase.from('rh_vacation_schedules').select('*').eq('tenant_id', tenantId),
           supabase.from('rh_terminations').select('*').eq('tenant_id', tenantId),
           supabase.from('rh_staff_warnings').select('*').eq('tenant_id', tenantId).eq('is_active', true).order('created_at', { ascending: false }),
-          supabase.from('rh_payroll_entries').select('*').eq('tenant_id', tenantId)
+          supabase.from('rh_payroll_entries').select('*').eq('tenant_id', tenantId),
+          supabase.from('rh_closed_payrolls').select('*').eq('tenant_id', tenantId).order('year', { ascending: false }).order('month', { ascending: false })
       ]);
 
       if (staffRes.data) {
@@ -317,12 +319,18 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               createdAt: w.created_at, createdBy: w.created_by
           }));
 
+          const mappedClosedPayrolls = (closedPayrollsRes.data || []).map((c: any) => ({
+              id: c.id, month: c.month, year: c.year, totalCost: Number(c.total_cost),
+              totalNet: Number(c.total_net), employeeCount: c.employee_count,
+              closedAt: new Date(c.closed_at), closedBy: c.closed_by
+          }));
+
           setState({ 
             users: mappedUsers, shifts: mappedShifts, timeEntries: mappedTime, roles: mappedRoles, hrJobRoles: mappedHrRoles,
             taxes: mappedTaxes, benefits: mappedBenefits, legalSettings, inssBrackets, irrfBrackets, 
             payrollEvents: mappedEvents, recurringEvents: mappedRecurringEvents, eventTypes: mappedEventTypes, contractTemplates: mappedContractTemplates, payrollEntries: mappedPayrollEntries,
             thirteenthPayments: mappedThirteenth, vacationPeriods: mappedVacationPeriods, vacationSchedules: mappedVacationSchedules, terminations: mappedTerminations,
-            warnings: mappedWarnings,
+            warnings: mappedWarnings, closedPayrolls: mappedClosedPayrolls,
             isLoading: false 
           });
       }
@@ -345,6 +353,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               .on('postgres_changes', { event: '*', schema: 'public', table: 'rh_vacations', filter: `tenant_id=eq.${tenantId}` }, fetchData)
               .on('postgres_changes', { event: '*', schema: 'public', table: 'rh_vacation_schedules', filter: `tenant_id=eq.${tenantId}` }, fetchData)
               .on('postgres_changes', { event: '*', schema: 'public', table: 'rh_terminations', filter: `tenant_id=eq.${tenantId}` }, fetchData)
+              .on('postgres_changes', { event: '*', schema: 'public', table: 'rh_closed_payrolls', filter: `tenant_id=eq.${tenantId}` }, fetchData)
               .subscribe();
           return () => { supabase.removeChannel(channel); };
       }
