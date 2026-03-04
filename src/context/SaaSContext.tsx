@@ -645,7 +645,7 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     if (action.type === 'UPDATE_PLAN_DETAILS') {
-        const { error } = await supabase.rpc('update_plan_details', {
+        const { error } = await supabase.rpc('update_plan_details_by_saas_admin', {
             p_plan_id: action.plan.id,
             p_key: action.plan.key,
             p_name: action.plan.name,
