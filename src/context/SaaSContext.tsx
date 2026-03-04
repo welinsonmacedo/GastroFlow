@@ -649,17 +649,22 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
             p_plan_id: action.plan.id,
             p_key: action.plan.key,
             p_name: action.plan.name,
-            p_price: parseFloat(action.plan.price.replace(/[^\d,.]/g, '').replace(',', '.')),
+            p_price: action.plan.price,
+            p_period: action.plan.period,
             p_features: action.plan.features,
             p_limits: action.plan.limits,
-            p_button_text: action.plan.button_text
+            p_button_text: action.plan.button_text,
+            p_is_popular: action.plan.is_popular
         });
         
         if (!error) {
             dispatch(action);
             showAlert({ title: "Sucesso", message: "Plano atualizado e propagado para todos os clientes!", type: 'SUCCESS' });
         }
-        else showAlert({ title: "Erro", message: "Erro ao salvar plano.", type: 'ERROR' });
+        else {
+            console.error("RPC Error:", error);
+            showAlert({ title: "Erro", message: "Erro ao salvar plano: " + error.message, type: 'ERROR' });
+        }
         return;
     }
 
