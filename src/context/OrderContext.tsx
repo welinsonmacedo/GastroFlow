@@ -330,13 +330,29 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                   type_table_id: typeof action.tableId,
                   type_user_id: typeof user_id
               }));
-              const { error: openTableError } = await supabase.rpc('open_table', {
+              
+              let openTableError = null;
+              const { error: resError } = await supabase.rpc('open_table', {
                   p_tenant_id: tenantId,
                   p_table_id: action.tableId,
                   p_customer_name: sanitizeObject(action.customerName),
                   p_access_code: action.accessCode,
                   p_user_id: user_id || null
               });
+              openTableError = resError;
+
+              // Fallback for older database schema without p_user_id
+              if (openTableError && openTableError.code === 'PGRST202') {
+                  console.warn("RPC open_table (5 params) not found, trying 4 params fallback...");
+                  const { error: fallbackError } = await supabase.rpc('open_table', {
+                      p_tenant_id: tenantId,
+                      p_table_id: action.tableId,
+                      p_customer_name: sanitizeObject(action.customerName),
+                      p_access_code: action.accessCode
+                  });
+                  openTableError = fallbackError;
+              }
+
               if (openTableError) {
                   console.error("Erro RPC open_table:", openTableError);
                   throw openTableError;

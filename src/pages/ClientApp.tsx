@@ -6,6 +6,7 @@ import { useRestaurant } from '../context/RestaurantContext';
 import { useMenu } from '../context/MenuContext';
 import { useOrder } from '../context/OrderContext';
 import { useUI } from '../context/UIContext';
+import { useAuth } from '../context/AuthProvider';
 import { Button } from '../components/Button';
 import { TableStatus, Product, Order } from '../types';
 import { 
@@ -68,6 +69,7 @@ export const ClientApp: React.FC = () => {
     const { state: menuState } = useMenu();
     const { state: orderState, dispatch: orderDispatch, cancelOrder } = useOrder();
     const { showConfirm, showAlert } = useUI();
+    const { state: authState } = useAuth();
 
     const [cart, setCart] = useState<{ product: Product; quantity: number; notes: string; extras?: Product[] }[]>([]);
     const [view, setView] = useState<'MENU' | 'CART' | 'STATUS' | 'BILL'>('MENU');
@@ -87,6 +89,24 @@ export const ClientApp: React.FC = () => {
     const theme = state.theme;
     const graceMinutes = state.businessInfo?.orderGracePeriodMinutes || 0;
     const tableOrders = orderState.orders.filter(o => o.tableId === tableId && !o.isPaid && o.status !== 'CANCELLED');
+
+    const [isOpeningTable, setIsOpeningTable] = useState(false);
+
+    useEffect(() => {
+        if (table && table.status !== TableStatus.OCCUPIED && !isOpeningTable) {
+            setIsOpeningTable(true);
+            const customerName = authState.currentUser?.name || authState.currentUser?.email || 'Cliente';
+            orderDispatch({ 
+                type: 'OPEN_TABLE', 
+                tableId: table.id, 
+                customerName: customerName, 
+                accessCode: '' 
+            }).catch(err => {
+                console.error("Erro ao auto-abrir mesa:", err);
+                setIsOpeningTable(false);
+            });
+        }
+    }, [table?.status, table?.id, authState.currentUser, isOpeningTable, orderDispatch]);
 
     // --- Helpers de Estilo baseados no Tema ---
     const getRadiusClass = (radius?: string) => {
@@ -268,12 +288,11 @@ export const ClientApp: React.FC = () => {
             <div className={`flex flex-col items-center justify-center h-full p-6 ${fontClass}`} style={{ backgroundColor: theme.backgroundColor }}>
                 <div className={`bg-white p-10 shadow-2xl text-center max-w-sm w-full border border-gray-100 ${radiusClass}`}>
                     <div className="bg-blue-50 p-6 rounded-full inline-block mb-8 text-blue-600 shadow-inner">
-                        <ChefHat size={64} strokeWidth={1.5} />
+                        <Loader2 size={64} strokeWidth={1.5} className="animate-spin" />
                     </div>
                     <h1 className="text-3xl font-black mb-2 text-slate-800 uppercase tracking-tighter">{theme.restaurantName}</h1>
                     <h2 className="text-xl font-bold text-blue-600 mb-8 tracking-tight">Mesa #{table.number}</h2>
-                    <div className={`bg-red-50 text-red-600 py-3 font-black mb-8 animate-pulse border border-red-100 text-xs uppercase tracking-widest ${radiusClass}`}>Mesa Fechada</div>
-                    <Button onClick={handleCallWaiter} className={`w-full py-5 text-xl font-black shadow-2xl shadow-blue-200 ${radiusClass}`}>CHAMAR GARÇOM</Button>
+                    <div className={`bg-blue-50 text-blue-600 py-3 font-black mb-8 animate-pulse border border-blue-100 text-xs uppercase tracking-widest ${radiusClass}`}>Abrindo Mesa...</div>
                 </div>
             </div>
         );
