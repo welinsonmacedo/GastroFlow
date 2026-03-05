@@ -1,7 +1,7 @@
 
-import React, { PropsWithChildren } from 'react';
+import React, { PropsWithChildren, useEffect, useState } from 'react';
 // @ts-ignore
-import { BrowserRouter, Routes, Route, Navigate, Link } from 'react-router-dom';
+import { Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
 import { AlertCircle } from 'lucide-react';
 import { AuthProvider, useAuth } from './context/AuthProvider'; 
 import { RestaurantProvider, useRestaurant } from './context/RestaurantContext';
@@ -189,8 +189,6 @@ const TenantApp = () => {
                         <Route path="/login" element={<Login />} />
                         <Route path="/manual" element={<ManualPage />} />
                         
-                        <Route path="/client/login" element={<ClientLogin />} />
-                        <Route path="/client/history" element={<ClientHistory />} />
                         <Route path="/client/table/:tableId" element={<ClientRoute />} />
                         <Route path="/modules" element={<ModuleSelector />} />
                         
@@ -216,47 +214,68 @@ const TenantApp = () => {
 };
 
 const App: React.FC = () => {
-  const tenantSlug = getTenantSlug();
+  const location = useLocation();
+  const [tenantSlug, setTenantSlug] = useState<string | null>(getTenantSlug());
+
+  useEffect(() => {
+      setTenantSlug(getTenantSlug());
+  }, [location]);
 
   return (
-        <BrowserRouter>
-            <UIProvider>
-                <PwaGuard>
-                    <CookieConsent />
-                    <InstallPWA />
-                    {tenantSlug ? (
+        <UIProvider>
+            <PwaGuard>
+                <CookieConsent />
+                <InstallPWA />
+                <Routes>
+                    {/* Client Routes - Tenant Agnostic */}
+                    <Route path="/client/login" element={
                         <AuthProvider>
-                            <RestaurantProvider>
-                                <MenuProvider>
-                                    <OrderProvider>
-                                        <StaffProvider>
-                                            <InventoryProvider>
-                                                <FinanceProvider>
-                                                    <TenantApp />
-                                                </FinanceProvider>
-                                            </InventoryProvider>
-                                        </StaffProvider>
-                                    </OrderProvider>
-                                </MenuProvider>
-                            </RestaurantProvider>
+                            <ClientLogin />
                         </AuthProvider>
-                    ) : (
-                        <SaaSProvider>
-                            <Routes>
-                                <Route path="/" element={<Navigate to="/login-owner" replace />} />
-                                <Route path="/register" element={<RegisterRestaurant />} />
-                                <Route path="/login-owner" element={<OwnerLogin />} />
-                                <Route path="/privacy" element={<PrivacyPolicy />} />
-                                <Route path="/terms" element={<TermsOfService />} />
-                                <Route path="/sys-admin" element={<SaaSLogin />} /> 
-                                <Route path="/dashboard" element={<ProtectedSaaSRoute><SuperAdminDashboard /></ProtectedSaaSRoute>} /> 
-                                <Route path="*" element={<Navigate to="/" />} />
-                            </Routes>
-                        </SaaSProvider>
-                    )}
-                </PwaGuard>
-            </UIProvider>
-        </BrowserRouter>
+                    } />
+                    <Route path="/client/history" element={
+                        <AuthProvider>
+                            <ClientHistory />
+                        </AuthProvider>
+                    } />
+
+                    {/* Main Application Routes */}
+                    <Route path="/*" element={
+                        tenantSlug ? (
+                            <AuthProvider>
+                                <RestaurantProvider>
+                                    <MenuProvider>
+                                        <OrderProvider>
+                                            <StaffProvider>
+                                                <InventoryProvider>
+                                                    <FinanceProvider>
+                                                        <TenantApp />
+                                                    </FinanceProvider>
+                                                </InventoryProvider>
+                                            </StaffProvider>
+                                        </OrderProvider>
+                                    </MenuProvider>
+                                </RestaurantProvider>
+                            </AuthProvider>
+                        ) : (
+                            <SaaSProvider>
+                                <Routes>
+                                    <Route path="/" element={<Navigate to="/login-owner" replace />} />
+                                    
+                                    <Route path="/register" element={<RegisterRestaurant />} />
+                                    <Route path="/login-owner" element={<OwnerLogin />} />
+                                    <Route path="/privacy" element={<PrivacyPolicy />} />
+                                    <Route path="/terms" element={<TermsOfService />} />
+                                    <Route path="/sys-admin" element={<SaaSLogin />} /> 
+                                    <Route path="/dashboard" element={<ProtectedSaaSRoute><SuperAdminDashboard /></ProtectedSaaSRoute>} /> 
+                                    <Route path="*" element={<Navigate to="/" />} />
+                                </Routes>
+                            </SaaSProvider>
+                        )
+                    } />
+                </Routes>
+            </PwaGuard>
+        </UIProvider>
   );
 };
 

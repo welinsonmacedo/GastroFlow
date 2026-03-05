@@ -20,7 +20,7 @@ export const ClientLogin = () => {
     cpf: ''
   });
 
-  const redirectUrl = new URLSearchParams(location.search).get('redirect') || '/';
+  const redirectUrl = new URLSearchParams(location.search).get('redirect') || '/client/history';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

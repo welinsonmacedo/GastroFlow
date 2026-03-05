@@ -74,11 +74,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const loadUserFromSession = async () => {
     const slug = getTenantSlug();
-    if (!slug) {
-        setState(s => ({ ...s, isLoading: false }));
-        return;
-    }
-
+    
+    // Se não tiver slug, ainda tentamos carregar a sessão para ver se é um CLIENTE
+    // Mas se for STAFF, precisa do slug para validar o tenant
+    
     try {
         // IP Blocking Check (Server-side via Edge Function)
         const functionUrl = 'https://mxzlaggtufxeirgcgbhn.supabase.co/functions/v1/bright-responder';
@@ -110,9 +109,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
         } catch (fetchError) {
             console.error("IP Blocking check failed:", fetchError);
-            alert("Erro de conexão com o servidor de segurança. Por favor, recarregue a página.");
-            // Stop execution and wait for user to reload
-            return;
+            // Continue execution even if IP check fails, or handle gracefully
         }
 
         const { data: { session }, error } = await supabase.auth.getSession();
@@ -125,75 +122,78 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
 
         if (session?.user) {
-            const { data: tenant } = await supabase.from('tenants').select('id').eq('slug', slug).maybeSingle();
-            if (tenant) {
-                const { data: staffData } = await supabase
-                    .from('staff')
-                    .select('*, custom_roles(permissions)')
-                    .eq('auth_user_id', session.user.id)
-                    .eq('tenant_id', tenant.id)
-                    .maybeSingle();
+            // Primeiro verifica se é CLIENTE (independente de tenant)
+            const { data: clientData } = await supabase
+                .from('clients')
+                .select('*')
+                .eq('auth_user_id', session.user.id)
+                .maybeSingle();
 
-                if (staffData) {
-                    let allowedRoutes = staffData.allowed_routes || [];
-                    let allowedFeatures = [];
-                    
-                    // Se tiver cargo personalizado, sobrepõe com as permissões do cargo
-                    if (staffData.custom_roles?.permissions) {
-                        if (staffData.custom_roles.permissions.allowed_modules) {
-                            allowedRoutes = staffData.custom_roles.permissions.allowed_modules;
-                        }
-                        if (staffData.custom_roles.permissions.allowed_features) {
-                            allowedFeatures = staffData.custom_roles.permissions.allowed_features;
-                        }
-                    } else if (staffData.role === 'ADMIN') {
-                        // Admin vê tudo por padrão se não tiver restrição explícita
-                        allowedRoutes = ['RESTAURANT', 'SNACKBAR', 'DISTRIBUTOR', 'COMMERCE', 'MANAGER', 'CONFIG', 'FINANCE', 'INVENTORY', 'HR'];
-                        // Para admin, as features são controladas pelo plano (restState), 
-                        // mas vamos inicializar vazio para não restringir aqui
-                        allowedFeatures = []; 
-                    } else if (!staffData.custom_role_id && allowedRoutes.length === 0) {
-                        // Defaults para cargos padrão se não houver rotas definidas
-                        if (['WAITER', 'KITCHEN', 'CASHIER'].includes(staffData.role)) {
-                            allowedRoutes = ['RESTAURANT'];
-                            if (staffData.role === 'CASHIER') allowedRoutes.push('COMMERCE');
-                        }
-                    }
+            if (clientData) {
+                const user: User = {
+                    id: clientData.id,
+                    name: clientData.name,
+                    role: Role.CLIENT,
+                    tenant_id: '', // Cliente sem tenant específico no login global
+                    auth_user_id: session.user.id,
+                    email: session.user.email,
+                    phone: clientData.phone,
+                    documentCpf: clientData.cpf
+                };
+                setState({ currentUser: user, isAuthenticated: true, isLoading: false });
+                return;
+            }
 
-                    const user: User = {
-                        id: staffData.id,
-                        name: staffData.name,
-                        role: staffData.role,
-                        tenant_id: tenant.id, // Adicionado aqui
-                        auth_user_id: staffData.auth_user_id,
-                        email: staffData.email,
-                        customRoleId: staffData.custom_role_id,
-                        allowedRoutes: allowedRoutes,
-                        allowedFeatures: allowedFeatures
-                    };
-                    setState({ currentUser: user, isAuthenticated: true, isLoading: false });
-                    startHeartbeat(tenant.id, staffData.id);
-                    return;
-                } else {
-                    // Check if it is a Client
-                    const { data: clientData } = await supabase
-                        .from('clients')
-                        .select('*')
+            // Se não for cliente, e tiver slug, verifica STAFF
+            if (slug) {
+                const { data: tenant } = await supabase.from('tenants').select('id').eq('slug', slug).maybeSingle();
+                if (tenant) {
+                    const { data: staffData } = await supabase
+                        .from('staff')
+                        .select('*, custom_roles(permissions)')
                         .eq('auth_user_id', session.user.id)
+                        .eq('tenant_id', tenant.id)
                         .maybeSingle();
 
-                    if (clientData) {
+                    if (staffData) {
+                        let allowedRoutes = staffData.allowed_routes || [];
+                        let allowedFeatures = [];
+                        
+                        // Se tiver cargo personalizado, sobrepõe com as permissões do cargo
+                        if (staffData.custom_roles?.permissions) {
+                            if (staffData.custom_roles.permissions.allowed_modules) {
+                                allowedRoutes = staffData.custom_roles.permissions.allowed_modules;
+                            }
+                            if (staffData.custom_roles.permissions.allowed_features) {
+                                allowedFeatures = staffData.custom_roles.permissions.allowed_features;
+                            }
+                        } else if (staffData.role === 'ADMIN') {
+                            // Admin vê tudo por padrão se não tiver restrição explícita
+                            allowedRoutes = ['RESTAURANT', 'SNACKBAR', 'DISTRIBUTOR', 'COMMERCE', 'MANAGER', 'CONFIG', 'FINANCE', 'INVENTORY', 'HR'];
+                            // Para admin, as features são controladas pelo plano (restState), 
+                            // mas vamos inicializar vazio para não restringir aqui
+                            allowedFeatures = []; 
+                        } else if (!staffData.custom_role_id && allowedRoutes.length === 0) {
+                            // Defaults para cargos padrão se não houver rotas definidas
+                            if (['WAITER', 'KITCHEN', 'CASHIER'].includes(staffData.role)) {
+                                allowedRoutes = ['RESTAURANT'];
+                                if (staffData.role === 'CASHIER') allowedRoutes.push('COMMERCE');
+                            }
+                        }
+
                         const user: User = {
-                            id: clientData.id,
-                            name: clientData.name,
-                            role: Role.CLIENT,
-                            tenant_id: tenant.id,
-                            auth_user_id: session.user.id,
-                            email: session.user.email,
-                            phone: clientData.phone,
-                            documentCpf: clientData.cpf
+                            id: staffData.id,
+                            name: staffData.name,
+                            role: staffData.role,
+                            tenant_id: tenant.id, // Adicionado aqui
+                            auth_user_id: staffData.auth_user_id,
+                            email: staffData.email,
+                            customRoleId: staffData.custom_role_id,
+                            allowedRoutes: allowedRoutes,
+                            allowedFeatures: allowedFeatures
                         };
                         setState({ currentUser: user, isAuthenticated: true, isLoading: false });
+                        startHeartbeat(tenant.id, staffData.id);
                         return;
                     }
                 }

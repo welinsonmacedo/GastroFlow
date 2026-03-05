@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthProvider';
 import { supabase } from '../lib/supabase';
 import { motion } from 'motion/react';
@@ -39,7 +39,7 @@ export const ClientHistory = () => {
   const fetchHistory = async () => {
     try {
       const { data, error } = await supabase.rpc('get_client_order_history', {
-        p_client_id: authState.currentUser!.id
+        p_client_id: authState.currentUser!.auth_user_id
       });
 
       if (error) throw error;

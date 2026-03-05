@@ -28,7 +28,18 @@
     
     <title>Flux Eat</title>
     
-    <link rel="manifest" href="/manifest.json?v=2" />
+    <script>
+      (function() {
+        var link = document.createElement('link');
+        link.rel = 'manifest';
+        if (window.location.pathname.startsWith('/client')) {
+          link.href = '/manifest-client.json?v=2';
+        } else {
+          link.href = '/manifest.json?v=2';
+        }
+        document.head.appendChild(link);
+      })();
+    </script>
     <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/1996/1996068.png">
 
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">

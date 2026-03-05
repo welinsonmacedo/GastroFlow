@@ -100,6 +100,8 @@ export const PwaGuard: React.FC<{ children: React.ReactNode }> = ({ children }) 
       return <div className="fixed inset-0 bg-slate-900 flex items-center justify-center text-white">Verificando requisitos...</div>;
   }
 
+  const isClientRoute = location.pathname.startsWith('/client');
+
   // Tela de Bloqueio / Instalação
   return (
     <div className="fixed inset-0 z-[100] bg-slate-900 flex flex-col items-center justify-center p-6 text-white font-sans overflow-hidden">
@@ -115,7 +117,10 @@ export const PwaGuard: React.FC<{ children: React.ReactNode }> = ({ children }) 
         
         <h1 className="text-3xl font-black mb-4 tracking-tight">Instale o App</h1>
         <p className="text-slate-300 text-lg mb-8 leading-relaxed">
-          Para acessar o painel de gestão, cozinha, caixa ou <strong>fazer pedidos</strong>, é necessário utilizar a versão instalada do <strong>Flux Eat</strong>.
+          {isClientRoute 
+            ? <>Para <strong>fazer pedidos</strong> e acompanhar seu <strong>histórico</strong>, é necessário instalar o aplicativo.</>
+            : <>Para acessar o painel de gestão, cozinha, caixa ou <strong>fazer pedidos</strong>, é necessário utilizar a versão instalada do <strong>Flux Eat</strong>.</>
+          }
         </p>
 
         <div className="bg-white text-slate-800 rounded-2xl p-6 text-left shadow-lg">
