@@ -335,7 +335,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                   p_table_id: action.tableId,
                   p_customer_name: sanitizeObject(action.customerName),
                   p_access_code: action.accessCode,
-                  p_user_id: userId || null
+                  p_user_id: user_id || null
               });
               if (openTableError) {
                   console.error("Erro RPC open_table:", openTableError);
