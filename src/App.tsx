@@ -1,7 +1,7 @@
 
 import React, { PropsWithChildren, useEffect, useState } from 'react';
 // @ts-ignore
-import { Routes, Route, Navigate, Link, useLocation, Outlet } from 'react-router-dom';
+import { Routes, Route, Navigate, Link, useLocation, Outlet, useParams } from 'react-router-dom';
 import { AlertCircle } from 'lucide-react';
 import { AuthProvider, useAuth } from './context/AuthProvider'; 
 import { RestaurantProvider, useRestaurant } from './context/RestaurantContext';

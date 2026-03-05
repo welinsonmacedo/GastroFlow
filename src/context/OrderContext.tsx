@@ -326,9 +326,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                   p_table_id: action.tableId,
                   p_customer_name: sanitizeObject(action.customerName),
                   p_access_code: action.accessCode,
-                  p_user_id: user_id || null,
-                  type_table_id: typeof action.tableId,
-                  type_user_id: typeof user_id
+                  p_user_id: user_id || null
               }));
               
               let openTableError = null;
