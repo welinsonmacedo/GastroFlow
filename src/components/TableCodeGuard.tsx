@@ -5,10 +5,11 @@ import { supabase } from '../lib/supabase';
 
 interface TableCodeGuardProps {
   slug: string;
+  expectedTableId?: string;
   onAuthorized: (tenantId: string, tableId: string) => void;
 }
 
-export const TableCodeGuard: React.FC<TableCodeGuardProps> = ({ slug, onAuthorized }) => {
+export const TableCodeGuard: React.FC<TableCodeGuardProps> = ({ slug, expectedTableId, onAuthorized }) => {
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -40,6 +41,12 @@ export const TableCodeGuard: React.FC<TableCodeGuardProps> = ({ slug, onAuthoriz
 
       if (data && data.length > 0) {
         const { tenant_id, table_id } = data[0];
+
+        if (expectedTableId && table_id !== expectedTableId) {
+            setError('Este código pertence a outra mesa. Por favor, digite o código correto desta mesa.');
+            setLoading(false);
+            return;
+        }
 
         // 3. Criar a sessão na tabela table_sessions
         const { error: sessionError } = await supabase

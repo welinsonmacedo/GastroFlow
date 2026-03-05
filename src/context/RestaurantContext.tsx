@@ -94,7 +94,7 @@ const restaurantReducer = (state: RestaurantState, action: Action): RestaurantSt
     case 'TENANT_NOT_FOUND': return { ...state, isLoading: false, isValidTenant: false };
     case 'TENANT_INACTIVE': return { ...state, isLoading: false, isValidTenant: true, isInactiveTenant: true };
     case 'SET_AUTHORIZED': return { ...state, isAuthorized: true, tenantId: action.tenantId, tableId: action.tableId, isLoading: true };
-    case 'INIT_DATA': return { ...state, ...action.payload, isLoading: false, isValidTenant: true, isInactiveTenant: false, isAuthorized: true };
+    case 'INIT_DATA': return { ...state, ...action.payload, isLoading: false, isValidTenant: true, isInactiveTenant: false };
     case 'SET_ACTIVE_MODULE': return { ...state, activeModule: action.module };
     case 'UPDATE_THEME': return { ...state, theme: action.theme };
     case 'UPDATE_BUSINESS_INFO': return { ...state, businessInfo: action.info };
@@ -225,6 +225,8 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const storedModule = sessionStorage.getItem(`fluxeat_module_${tenant.id}`);
     const initialActiveModule = storedModule as SystemModule | null;
 
+    const isAuthorized = !!sessionStorage.getItem(`fluxeat_auth_${tenant.id}`);
+
     localDispatch({
         type: 'INIT_DATA',
         payload: {
@@ -236,7 +238,9 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             planLimits: fetchedLimits,
             allowedModules: tenant.allowed_modules || ['RESTAURANT'],
             allowedFeatures: tenant.allowed_features || [], // Carrega do banco
-            activeModule: initialActiveModule
+            activeModule: initialActiveModule,
+            isAuthorized: isAuthorized,
+            tableId: isAuthorized ? sessionStorage.getItem(`fluxeat_auth_${tenant.id}`) : null
         }
     });
     sessionStorage.setItem('fluxeat_tenant_slug', tenant.slug);

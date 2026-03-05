@@ -104,6 +104,7 @@ const ClientRoute = () => {
     const { state, authorize } = useRestaurant();
     const { state: authState } = useAuth();
     const slug = getTenantSlug();
+    const { tableId } = useParams();
     
     if (state.isLoading || authState.isLoading) return <div className="h-screen flex items-center justify-center">Carregando...</div>;
     
@@ -111,8 +112,8 @@ const ClientRoute = () => {
         return <Navigate to={`/client/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`} replace />;
     }
 
-    if (!state.isAuthorized) {
-        return <TableCodeGuard slug={slug || ''} onAuthorized={authorize} />;
+    if (!state.isAuthorized || state.tableId !== tableId) {
+        return <TableCodeGuard slug={slug || ''} expectedTableId={tableId} onAuthorized={authorize} />;
     }
     
     return <ClientApp />;

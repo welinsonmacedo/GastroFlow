@@ -26,8 +26,12 @@ export const Login: React.FC = () => {
 
   useEffect(() => {
     if (authState.currentUser) {
-        // Redireciona para o seletor de módulos ao logar
-        navigate('/modules');
+        if (authState.currentUser.role === 'CLIENT') {
+            navigate('/client/home');
+        } else {
+            // Redireciona para o seletor de módulos ao logar
+            navigate('/modules');
+        }
     }
   }, [authState.currentUser, navigate]);
 
