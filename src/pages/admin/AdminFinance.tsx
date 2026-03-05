@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRestaurant } from '../../context/RestaurantContext';
 import { useFinance } from '../../context/FinanceContext';
+import { useStaff } from '../../context/StaffContext';
 import { useUI } from '../../context/UIContext';
 import { Button } from '../../components/Button';
 import { Modal } from '../../components/Modal'; 
@@ -9,11 +10,12 @@ import { ExpenseFormModal } from '../../components/modals/ExpenseFormModal';
 import { CashBleedModal } from '../../components/modals/CashBleedModal';
 import { supabase } from '../../lib/supabase';
 import { Expense, CashSession, Transaction, CashMovement } from '../../types';
-import { Plus, CheckSquare, Trash2, Wallet, Banknote, ArrowDown, Repeat, Archive, User, ChevronRight, LayoutDashboard, List, DollarSign, Edit, Lock } from 'lucide-react';
+import { Plus, CheckSquare, Trash2, Wallet, Banknote, ArrowDown, Repeat, Archive, User, ChevronRight, LayoutDashboard, List, DollarSign, Edit, Lock, Settings } from 'lucide-react';
 
 export const AdminFinance: React.FC = () => {
   const { state: restState } = useRestaurant();
   const { state: finState, updateExpense, deleteExpense } = useFinance();
+  const { state: staffState, saveLegalSettings } = useStaff();
   const { showAlert } = useUI();
   
   // State for Tabs (Simplified to just Operational Finance)
@@ -28,6 +30,7 @@ export const AdminFinance: React.FC = () => {
   const [editingExpense, setEditingExpense] = useState<Partial<Expense> | null>(null);
   const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
   const [isBleedModalOpen, setIsBleedModalOpen] = useState(false);
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
 
   // States para Ações Sensíveis (Baixa e Exclusão)
   const [payModal, setPayModal] = useState<{ isOpen: boolean, expense: Expense | null }>({ isOpen: false, expense: null });
@@ -291,6 +294,10 @@ export const AdminFinance: React.FC = () => {
                     <h2 className="text-2xl font-bold text-gray-800">Fluxo de Caixa & Despesas</h2>
                     <p className="text-sm text-gray-500">Controle operacional do dinheiro.</p>
                 </div>
+                <Button variant="outline" onClick={() => setIsSettingsModalOpen(true)} className="flex items-center gap-2">
+                    <Settings size={18} />
+                    <span className="hidden md:inline">Configurações</span>
+                </Button>
             </div>
 
             <div className="flex overflow-x-auto gap-2">
@@ -626,6 +633,42 @@ export const AdminFinance: React.FC = () => {
             onClose={() => setIsBleedModalOpen(false)}
             userRole="Admin" 
         />
+
+        {/* Modal de Configurações Financeiras */}
+        <Modal isOpen={isSettingsModalOpen} onClose={() => setIsSettingsModalOpen(false)} title="Configurações Financeiras" variant="dialog" maxWidth="md">
+            <div className="space-y-6">
+                <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
+                    <h4 className="font-bold text-blue-800 mb-2 flex items-center gap-2">
+                        <User size={18} /> Integração com RH
+                    </h4>
+                    <p className="text-sm text-blue-600 mb-4">
+                        Configure como o módulo financeiro interage com a folha de pagamento.
+                    </p>
+                    
+                    <div className="bg-white p-4 rounded-lg border border-blue-100 flex items-center justify-between">
+                        <div>
+                            <p className="font-bold text-gray-800 text-sm">Lançar Folha como Despesa</p>
+                            <p className="text-xs text-gray-500 mt-1">Ao fechar uma folha no RH, criar automaticamente uma despesa a pagar.</p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <span className={`text-[10px] font-black uppercase tracking-wider ${staffState.legalSettings?.integrateFinance ? 'text-green-600' : 'text-gray-400'}`}>
+                                {staffState.legalSettings?.integrateFinance ? 'ATIVADO' : 'DESATIVADO'}
+                            </span>
+                            <button 
+                                onClick={() => saveLegalSettings({ integrateFinance: !staffState.legalSettings?.integrateFinance })}
+                                className={`w-12 h-6 rounded-full transition-colors relative ${staffState.legalSettings?.integrateFinance ? 'bg-green-500' : 'bg-gray-300'}`}
+                            >
+                                <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all shadow-sm ${staffState.legalSettings?.integrateFinance ? 'left-7' : 'left-1'}`} />
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div className="flex justify-end">
+                    <Button onClick={() => setIsSettingsModalOpen(false)}>Fechar</Button>
+                </div>
+            </div>
+        </Modal>
     </div>
   );
 };

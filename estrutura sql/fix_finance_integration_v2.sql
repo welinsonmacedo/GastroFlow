@@ -88,7 +88,6 @@ DECLARE
     v_item JSONB;
     v_integrate_finance BOOLEAN;
     v_expense_id UUID;
-    v_expense_category_id UUID;
 BEGIN
     -- Security Check
     IF NOT EXISTS (SELECT 1 FROM public.staff WHERE auth_user_id = auth.uid() AND tenant_id = p_tenant_id) THEN
@@ -113,25 +112,18 @@ BEGIN
 
     -- Create Expense if Integration Enabled
     IF v_integrate_finance IS TRUE THEN
-        -- Find or Create 'Pessoal' Category
-        SELECT id INTO v_expense_category_id FROM public.expense_categories WHERE tenant_id = p_tenant_id AND name = 'Pessoal' LIMIT 1;
-        
-        IF v_expense_category_id IS NULL THEN
-            INSERT INTO public.expense_categories (tenant_id, name) VALUES (p_tenant_id, 'Pessoal') RETURNING id INTO v_expense_category_id;
-        END IF;
-
-        -- Insert Expense
+        -- Insert Expense directly using 'Pessoal' as category string
         INSERT INTO public.expenses (
-            tenant_id, description, amount, category, due_date, is_paid, is_recurring, created_by
+            tenant_id, description, amount, category, due_date, is_paid, is_recurring, payment_method
         ) VALUES (
             p_tenant_id, 
             'Folha de Pagamento - ' || TO_CHAR(TO_DATE(p_month::TEXT || '/' || p_year::TEXT, 'MM/YYYY'), 'MM/YYYY'),
-            v_total_net, -- Usually we pay the net to employees, but cost is higher. Let's use Net for now as "Salaries Payable"
+            v_total_net, -- Usually we pay the net to employees
             'Pessoal',
-            (p_year || '-' || LPAD(p_month::TEXT, 2, '0') || '-05')::DATE + INTERVAL '1 month', -- Due 5th working day next month (approx)
+            (p_year || '-' || LPAD(p_month::TEXT, 2, '0') || '-05')::DATE + INTERVAL '1 month', -- Due 5th working day next month
             FALSE,
             FALSE,
-            auth.uid()
+            'BANK'
         ) RETURNING id INTO v_expense_id;
     END IF;
 
