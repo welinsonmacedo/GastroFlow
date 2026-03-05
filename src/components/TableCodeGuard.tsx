@@ -68,7 +68,11 @@ export const TableCodeGuard: React.FC<TableCodeGuardProps> = ({ slug, expectedTa
         const { error: sessionError } = await supabase
           .from('table_sessions')
           .insert([
-            { table_id: table_id, user_id: userId }
+            { 
+              table_id: table_id, 
+              user_id: userId,
+              expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+            }
           ]);
 
         if (sessionError) {
