@@ -15,6 +15,7 @@ interface AuthContextType {
   login: (user: User) => void;
   logout: () => Promise<void>;
   checkPermission: (allowedRoles: Role[]) => boolean;
+  refreshSession: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -251,7 +252,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ state, login, logout, checkPermission }}>
+    <AuthContext.Provider value={{ state, login, logout, checkPermission, refreshSession: loadUserFromSession }}>
       {children}
     </AuthContext.Provider>
   );

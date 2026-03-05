@@ -8,7 +8,7 @@ import { useAuth } from '../context/AuthProvider';
 import { Role } from '../types';
 
 export const ClientLogin = () => {
-  const { state: authState } = useAuth();
+  const { state: authState, refreshSession } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [isLogin, setIsLogin] = useState(true);
@@ -101,6 +101,7 @@ export const ClientLogin = () => {
         }
       }
 
+      await refreshSession();
       navigate(redirectUrl);
     } catch (err: any) {
       console.error('Erro de autenticação:', err);
