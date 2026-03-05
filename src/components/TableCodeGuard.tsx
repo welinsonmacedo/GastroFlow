@@ -86,8 +86,7 @@ export const TableCodeGuard: React.FC<TableCodeGuardProps> = ({ slug, expectedTa
           .insert([
             { 
               table_id: table_id, 
-              user_id: userId,
-              tenant_id: tenant_id
+              user_id: userId
             }
           ]);
 
