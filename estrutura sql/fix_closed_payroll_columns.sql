@@ -163,7 +163,7 @@ BEGIN
             'gross_total', gross_total,
             'net_total', net_total,
             'discounts', discounts,
-            'total_company_cost', COALESCE((details->>'totalCompanyCost')::NUMERIC, gross_total), -- Fallback
+            'total_company_cost', COALESCE(total_company_cost, gross_total),
             'overtime_50', COALESCE((details->>'overtime50')::NUMERIC, 0),
             'overtime_100', COALESCE((details->>'overtime100')::NUMERIC, 0),
             'night_shift_add', COALESCE((details->>'nightShiftAdd')::NUMERIC, 0),

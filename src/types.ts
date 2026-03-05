@@ -630,6 +630,7 @@ export interface Product {
   isVisible: boolean; 
   sortOrder: number;
   isExtra: boolean; 
+  stockQuantity?: number;
   linkedExtraIds?: string[];
   targetCategories?: string[];
 }

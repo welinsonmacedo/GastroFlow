@@ -394,6 +394,11 @@ export const ClientApp: React.FC = () => {
                                             >
                                                 <div className={`relative shrink-0 overflow-hidden bg-gray-50 ${radiusClass} ${isGrid ? 'w-full h-40' : 'w-24 h-24'}`}>
                                                     <img src={product.image} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt={product.name} />
+                                                    {product.stockQuantity !== undefined && product.stockQuantity <= 0 && (
+                                                        <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                                                            <span className="bg-red-600 text-white text-[10px] font-black uppercase px-2 py-1 rounded-lg shadow-lg">Esgotado</span>
+                                                        </div>
+                                                    )}
                                                 </div>
                                                 <div className={`flex-1 flex flex-col justify-between ${isGrid ? 'p-4 pt-2' : 'py-1 pr-1'}`}>
                                                     <div className="space-y-1">
@@ -432,6 +437,14 @@ export const ClientApp: React.FC = () => {
                                 <h2 className="text-2xl font-black text-slate-800 uppercase tracking-tighter">Seu Pedido</h2>
                                 <p className="text-[10px] font-bold uppercase tracking-widest" style={{ color: theme.primaryColor }}>Confira antes de pedir</p>
                             </div>
+                            {cart.length > 0 && (
+                                <button 
+                                    onClick={() => setCart([])}
+                                    className="text-red-500 hover:text-red-700 text-xs font-black uppercase flex items-center gap-1 p-2 bg-red-50 rounded-xl transition-all active:scale-95"
+                                >
+                                    <Trash2 size={14} /> Limpar
+                                </button>
+                            )}
                         </div>
                         <div className="p-6 flex-1 space-y-4">
                             {cart.length === 0 ? (
@@ -589,7 +602,12 @@ export const ClientApp: React.FC = () => {
                                     />
                                     <div className={`bg-gray-50 p-5 border border-gray-100 ${radiusClass}`}>
                                         <div className="flex justify-between items-center mb-4 pb-2 border-b border-gray-200">
-                                            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">#{order.id.slice(0, 4)}</span>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">#{order.id.slice(0, 4)}</span>
+                                                {order.status === 'READY' && (
+                                                    <span className="animate-bounce bg-emerald-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full">PRONTO!</span>
+                                                )}
+                                            </div>
                                             <span className="text-xs font-bold text-slate-500">{order.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                                         </div>
                                         <div className="space-y-3">
@@ -709,8 +727,16 @@ export const ClientApp: React.FC = () => {
                                 )}
                             </div>
                             <div className="p-6 border-t bg-gray-50 shrink-0">
-                                <Button onClick={handleAddToCart} className={`w-full py-5 text-xl font-black shadow-2xl shadow-blue-200 uppercase tracking-widest ${radiusClass}`} style={{ backgroundColor: theme.primaryColor }}>
-                                    Adicionar • R$ {((selectedProduct.price + selectedExtraIds.reduce((sum, id) => sum + (menuState.products.find(p => p.id === id)?.price || 0), 0)) * modalQuantity).toFixed(2)}
+                                <Button 
+                                    onClick={handleAddToCart} 
+                                    disabled={selectedProduct.stockQuantity !== undefined && selectedProduct.stockQuantity <= 0}
+                                    className={`w-full py-5 text-xl font-black shadow-2xl shadow-blue-200 uppercase tracking-widest ${radiusClass}`} 
+                                    style={{ backgroundColor: selectedProduct.stockQuantity !== undefined && selectedProduct.stockQuantity <= 0 ? '#94a3b8' : theme.primaryColor }}
+                                >
+                                    {selectedProduct.stockQuantity !== undefined && selectedProduct.stockQuantity <= 0 
+                                        ? 'Esgotado' 
+                                        : `Adicionar • R$ ${((selectedProduct.price + selectedExtraIds.reduce((sum, id) => sum + (menuState.products.find(p => p.id === id)?.price || 0), 0)) * modalQuantity).toFixed(2)}`
+                                    }
                                 </Button>
                             </div>
                         </div>

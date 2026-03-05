@@ -41,6 +41,7 @@ export const MenuProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isVisible: p.is_visible, 
         sortOrder: p.sort_order, 
         isExtra: p.is_extra || false, 
+        stockQuantity: p.stock_quantity,
         linkedExtraIds: p.linked_extra_ids || [],
         targetCategories: p.target_categories || [] 
       }));
