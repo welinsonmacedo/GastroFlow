@@ -3,7 +3,6 @@ import React, { useState, useEffect } from 'react';
 import { useStaff } from '../../../context/StaffContext';
 import { useRestaurant } from '../../../context/RestaurantContext'; 
 import { useUI } from '../../../context/UIContext';
-import { useFinance } from '../../../context/FinanceContext';
 import { Button } from '../../../components/Button';
 import { PayrollPreview, ClosedPayroll, PayrollEventType } from '../../../types';
 import { FileText, Printer, Calculator, RefreshCcw, Eye, Lock, Plus, Download, AlertTriangle, List, Trash2, Unlock, CheckSquare, UploadCloud } from 'lucide-react';
@@ -14,7 +13,6 @@ export const StaffPayroll: React.FC<{ initialMonth?: number; initialYear?: numbe
     const { getPayroll, closePayroll, reopenPayroll, addPayrollEvent, deletePayrollEvent, generateRecurringEventsForMonth, state: staffState } = useStaff();
     const { state: restState } = useRestaurant(); 
     const { showAlert, showConfirm } = useUI();
-    const { addExpense } = useFinance();
     
     const [month, setMonth] = useState(initialMonth ?? new Date().getMonth());
     const [year, setYear] = useState(initialYear ?? new Date().getFullYear());
@@ -85,71 +83,8 @@ export const StaffPayroll: React.FC<{ initialMonth?: number; initialYear?: numbe
     const handleClosePayroll = async () => {
         try {
             setLoading(true);
-            await closePayroll(month, year);
+            await closePayroll(month, year, sendToFinance, sendTaxesToFinance);
             
-            if (sendToFinance) {
-                for (const p of payrollData) {
-                    if (p.netTotal > 0) {
-                        // O vencimento será o 5º dia útil do mês seguinte, simplificando para dia 5
-                        const dueDate = new Date(year, month + 1, 5);
-                        await addExpense({
-                            id: Math.random().toString(36).substr(2, 9),
-                            description: `Salário ${p.staffName} - Ref: ${String(month + 1).padStart(2, '0')}/${year}`,
-                            amount: p.netTotal,
-                            category: 'Folha de Pagamento',
-                            dueDate: dueDate,
-                            isPaid: false,
-                            isRecurring: false
-                        });
-                    }
-                }
-            }
-
-            if (sendTaxesToFinance) {
-                const totalINSS = payrollData.reduce((acc, p) => acc + p.inssValue, 0);
-                const totalIRRF = payrollData.reduce((acc, p) => acc + p.irrfValue, 0);
-                const totalFGTS = payrollData.reduce((acc, p) => acc + p.fgtsValue, 0);
-
-                if (totalINSS > 0) {
-                    const dueDateINSS = new Date(year, month + 1, 20);
-                    await addExpense({
-                        id: Math.random().toString(36).substr(2, 9),
-                        description: `Guia INSS - Ref: ${String(month + 1).padStart(2, '0')}/${year}`,
-                        amount: totalINSS,
-                        category: 'Impostos Folha',
-                        dueDate: dueDateINSS,
-                        isPaid: false,
-                        isRecurring: false
-                    });
-                }
-
-                if (totalIRRF > 0) {
-                    const dueDateIRRF = new Date(year, month + 1, 20);
-                    await addExpense({
-                        id: Math.random().toString(36).substr(2, 9),
-                        description: `Guia IRRF - Ref: ${String(month + 1).padStart(2, '0')}/${year}`,
-                        amount: totalIRRF,
-                        category: 'Impostos Folha',
-                        dueDate: dueDateIRRF,
-                        isPaid: false,
-                        isRecurring: false
-                    });
-                }
-
-                if (totalFGTS > 0) {
-                    const dueDateFGTS = new Date(year, month + 1, 7);
-                    await addExpense({
-                        id: Math.random().toString(36).substr(2, 9),
-                        description: `Guia FGTS - Ref: ${String(month + 1).padStart(2, '0')}/${year}`,
-                        amount: totalFGTS,
-                        category: 'Impostos Folha',
-                        dueDate: dueDateFGTS,
-                        isPaid: false,
-                        isRecurring: false
-                    });
-                }
-            }
-
             await loadData();
             setIsCloseModalOpen(false);
             showAlert({ title: "Sucesso", message: `Folha fechada e arquivada.${sendToFinance || sendTaxesToFinance ? ' Despesas enviadas ao financeiro.' : ''}`, type: "SUCCESS" });
@@ -489,9 +424,21 @@ export const StaffPayroll: React.FC<{ initialMonth?: number; initialYear?: numbe
                             }} className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm">
                                 <Plus size={16} className="mr-2"/> Lançar Evento
                             </Button>
-                            <Button onClick={() => setIsCloseModalOpen(true)} className="bg-red-600 hover:bg-red-700 text-white shadow-sm">
-                                <Lock size={16} className="mr-2"/> Fechar
-                            </Button>
+                            {/* Só mostra opção de fechar se houver pontos enviados (payrollEntries) para este mês */}
+                            {staffState.payrollEntries.some(e => e.month === `${year}-${String(month + 1).padStart(2, '0')}`) ? (
+                                <Button onClick={() => setIsCloseModalOpen(true)} className="bg-red-600 hover:bg-red-700 text-white shadow-sm">
+                                    <Lock size={16} className="mr-2"/> Fechar
+                                </Button>
+                            ) : (
+                                <div className="group relative">
+                                    <Button disabled className="bg-gray-400 text-white cursor-not-allowed opacity-50">
+                                        <Lock size={16} className="mr-2"/> Fechar
+                                    </Button>
+                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1 bg-slate-800 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                                        Envie os pontos primeiro na aba "Fechamento de Ponto"
+                                    </div>
+                                </div>
+                            )}
                         </>
                     )}
                     {isClosed && (
@@ -501,9 +448,21 @@ export const StaffPayroll: React.FC<{ initialMonth?: number; initialYear?: numbe
                                     <UploadCloud size={16} className="mr-2"/> E-Social
                                 </Button>
                             )}
-                            <Button onClick={handleReopenPayroll} className="bg-orange-600 hover:bg-orange-700 text-white shadow-sm">
-                                <Unlock size={16} className="mr-2"/> Reabrir Folha
-                            </Button>
+                            {/* Só permite reabrir se não estiver paga e eSocial não enviado */}
+                            {(!closedInfo?.isPaid && !closedInfo?.esocialSent) ? (
+                                <Button onClick={handleReopenPayroll} className="bg-orange-600 hover:bg-orange-700 text-white shadow-sm">
+                                    <Unlock size={16} className="mr-2"/> Reabrir Folha
+                                </Button>
+                            ) : (
+                                <div className="group relative">
+                                    <Button disabled className="bg-gray-400 text-white cursor-not-allowed opacity-50">
+                                        <Lock size={16} className="mr-2"/> Reabertura Bloqueada
+                                    </Button>
+                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1 bg-slate-800 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                                        {closedInfo?.isPaid ? 'Folha já paga no financeiro' : 'Dados já enviados ao eSocial'}
+                                    </div>
+                                </div>
+                            )}
                         </>
                     )}
                     

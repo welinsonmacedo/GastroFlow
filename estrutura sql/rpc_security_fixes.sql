@@ -246,8 +246,8 @@ BEGIN
     END LOOP;
 
     -- Create Expense
-    INSERT INTO public.expenses (tenant_id, description, amount, category, due_date, status)
-    VALUES (p_tenant_id, v_expense_desc, (p_purchase_data->>'totalAmount')::NUMERIC, 'Fornecedor', (p_purchase_data->>'date')::DATE, 'PENDING');
+    INSERT INTO public.expenses (tenant_id, description, amount, category, due_date, is_paid)
+    VALUES (p_tenant_id, v_expense_desc, (p_purchase_data->>'totalAmount')::NUMERIC, 'Fornecedor', (p_purchase_data->>'date')::DATE, FALSE);
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 

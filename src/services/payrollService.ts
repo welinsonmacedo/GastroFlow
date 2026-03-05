@@ -89,7 +89,10 @@ export const payrollService = {
             totalNet: data.closed_info.total_net,
             employeeCount: data.closed_info.employee_count,
             closedAt: new Date(data.closed_info.closed_at),
-            closedBy: data.closed_info.closed_by
+            closedBy: data.closed_info.closed_by,
+            expenseId: data.closed_info.expense_id,
+            isPaid: data.closed_info.is_paid,
+            esocialSent: data.closed_info.esocial_sent
         } : undefined;
 
         return {

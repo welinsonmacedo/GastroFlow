@@ -319,6 +319,9 @@ export interface ClosedPayroll {
     employeeCount: number;
     closedAt: Date;
     closedBy: string;
+    expenseId?: string;
+    isPaid?: boolean;
+    esocialSent?: boolean;
 }
 
 export interface DeliveryMethodConfig {

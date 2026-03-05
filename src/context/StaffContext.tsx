@@ -109,7 +109,7 @@ interface StaffContextType {
   generateRecurringEventsForMonth: (month: number, year: number) => Promise<void>;
 
   getPayroll: (month: number, year: number) => Promise<{ payroll: PayrollPreview[], isClosed: boolean, closedInfo?: ClosedPayroll }>;
-  closePayroll: (month: number, year: number) => Promise<void>;
+  closePayroll: (month: number, year: number, integrateSalaries?: boolean, integrateTaxes?: boolean) => Promise<void>;
   reopenPayroll: (month: number, year: number) => Promise<void>;
   fetchData: () => Promise<void>;
 }
@@ -1012,7 +1012,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       return await payrollService.getPayrollPreview(month, year);
   };
 
-  const closePayroll = async (month: number, year: number) => {
+  const closePayroll = async (month: number, year: number, integrateSalaries: boolean = false, integrateTaxes: boolean = false) => {
       if (!tenantId) return;
       const { payroll, isClosed } = await getPayroll(month, year);
       if (isClosed) throw new Error("Esta folha já está fechada.");
@@ -1052,7 +1052,9 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           p_month: month,
           p_year: year,
           p_closed_by: userName,
-          p_items: itemsToInsert
+          p_items: itemsToInsert,
+          p_integrate_salaries: integrateSalaries,
+          p_integrate_taxes: integrateTaxes
       });
 
       if (error) throw error;
@@ -1061,14 +1063,23 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const reopenPayroll = async (month: number, year: number) => {
       if (!tenantId) return;
-      const { error } = await supabase.rpc('reopen_payroll', {
-          p_tenant_id: tenantId,
-          p_month: month,
-          p_year: year
-      });
-      if (error) throw error;
-      await logAudit(tenantId, currentUser?.id || '', currentUser?.name || '', 'HR', 'Reabertura de Folha', { month, year });
-      await fetchData();
+
+      try {
+          // O RPC agora cuida de deletar as despesas integradas (se não estiverem pagas)
+          const { error } = await supabase.rpc('reopen_payroll', {
+              p_tenant_id: tenantId,
+              p_month: month,
+              p_year: year
+          });
+
+          if (error) throw error;
+
+          await logAudit(tenantId, currentUser?.id || '', currentUser?.name || '', 'HR', 'Reabertura de Folha', { month, year });
+          await fetchData();
+      } catch (err) {
+          console.error('Erro no processo de reabertura de folha:', err);
+          throw err;
+      }
   };
 
   return (
