@@ -61,16 +61,25 @@ export const TableCodeGuard: React.FC<TableCodeGuardProps> = ({ slug, expectedTa
         }
 
         // Verificar se o table_id existe
+        console.log('Validando table_id:', table_id);
         const { data: tableData, error: tableError } = await supabase
           .from('restaurant_tables')
           .select('id')
           .eq('id', table_id)
           .single();
 
+        console.log('Resultado da validação:', { tableData, tableError });
+
         if (tableError || !tableData) {
           console.error('table_id inválido:', table_id, tableError);
           throw new Error('Mesa inválida.');
         }
+
+        console.log('Inserindo na table_sessions:', { 
+          table_id: table_id, 
+          user_id: userId,
+          expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+        });
 
         const { error: sessionError } = await supabase
           .from('table_sessions')
@@ -78,7 +87,7 @@ export const TableCodeGuard: React.FC<TableCodeGuardProps> = ({ slug, expectedTa
             { 
               table_id: table_id, 
               user_id: userId,
-              expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+              tenant_id: tenant_id
             }
           ]);
 
