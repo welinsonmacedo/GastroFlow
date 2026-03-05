@@ -37,6 +37,7 @@ import { TimeClock } from './pages/TimeClock'; // Nova Importação
 import { ClientLogin } from './pages/ClientLogin';
 import { ClientHistory } from './pages/ClientHistory';
 
+import { ClientHome } from './pages/ClientHome';
 import { InstallPWA } from './components/InstallPWA';
 import { PwaGuard } from './components/PwaGuard'; 
 import { CookieConsent } from './components/CookieConsent'; 
@@ -236,7 +237,8 @@ const App: React.FC = () => {
                     {/* Client Routes - Tenant Agnostic */}
                     <Route element={<ClientLayout />}>
                         <Route path="/client/login" element={<ClientLogin />} />
-                        <Route path="/client/history" element={<ClientHistory />} />
+                        <Route path="/client/home" element={<ClientHome />} />
+                        <Route path="/client/history" element={<Navigate to="/client/home" replace />} />
                     </Route>
 
                     {/* Main Application Routes */}

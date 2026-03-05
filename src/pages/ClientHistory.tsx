@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthProvider';
 import { supabase } from '../lib/supabase';
 import { motion } from 'motion/react';
-import { Clock, ChevronLeft, ShoppingBag, Calendar, DollarSign } from 'lucide-react';
+import { Clock, ChevronLeft, ShoppingBag, Calendar, DollarSign, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface HistoryOrder {
@@ -19,15 +19,15 @@ interface HistoryOrder {
   }[];
 }
 
-export const ClientHistory = () => {
+export const ClientHistory = ({ isEmbedded = false }: { isEmbedded?: boolean }) => {
   const { state: authState } = useAuth();
   const navigate = useNavigate();
   const [orders, setOrders] = useState<HistoryOrder[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!authState.isLoading && !authState.isAuthenticated) {
-      navigate('/client/login?redirect=/client/history');
+    if (!isEmbedded && !authState.isLoading && !authState.isAuthenticated) {
+      navigate('/client/login?redirect=/client/home');
       return;
     }
 
@@ -54,17 +54,19 @@ export const ClientHistory = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-zinc-950 flex items-center justify-center text-white">
-        Carregando...
+        <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-white pb-20">
+    <div className={`bg-zinc-950 text-white ${isEmbedded ? 'h-full' : 'min-h-screen pb-20'}`}>
       <header className="bg-zinc-900 p-4 sticky top-0 z-10 border-b border-zinc-800 flex items-center gap-4">
-        <button onClick={() => navigate(-1)} className="p-2 hover:bg-zinc-800 rounded-full">
-          <ChevronLeft />
-        </button>
+        {!isEmbedded && (
+          <button onClick={() => navigate(-1)} className="p-2 hover:bg-zinc-800 rounded-full">
+            <ChevronLeft />
+          </button>
+        )}
         <h1 className="text-lg font-bold flex items-center gap-2">
           <Clock className="w-5 h-5 text-emerald-500" />
           Histórico de Pedidos

@@ -23,7 +23,7 @@ export const ClientLogin = () => {
     cpf: ''
   });
 
-  const redirectUrl = new URLSearchParams(location.search).get('redirect') || '/client/history';
+  const redirectUrl = new URLSearchParams(location.search).get('redirect') || '/client/home';
 
   useEffect(() => {
     if (authState.isAuthenticated && authState.currentUser?.role === Role.CLIENT) {
