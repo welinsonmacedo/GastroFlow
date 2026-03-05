@@ -9,7 +9,7 @@ DECLARE
 BEGIN
     -- 1. Buscar Tenant pelo Slug
     SELECT id INTO v_tenant_id
-    FROM restaurants
+    FROM tenants
     WHERE slug = p_slug;
 
     IF v_tenant_id IS NULL THEN
@@ -19,9 +19,9 @@ BEGIN
     -- 2. Buscar Mesa pelo Código e Tenant
     RETURN QUERY
     SELECT 
-        t.tenant_id,
-        t.id as table_id,
-        t.number as table_number
+        t.tenant_id::UUID,
+        t.id::UUID as table_id,
+        t.number::TEXT as table_number
     FROM restaurant_tables t
     WHERE t.tenant_id = v_tenant_id
       AND t.access_code = p_code;
