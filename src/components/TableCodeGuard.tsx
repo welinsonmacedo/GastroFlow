@@ -64,7 +64,7 @@ export const TableCodeGuard: React.FC<TableCodeGuardProps> = ({ slug, expectedTa
       }
     } catch (err: any) {
       console.error('Erro na validação:', err);
-      setError('Ocorreu um erro ao validar o código. Tente novamente.');
+      setError(err.message || 'Ocorreu um erro ao validar o código. Tente novamente.');
     } finally {
       setLoading(false);
     }
