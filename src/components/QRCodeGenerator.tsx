@@ -1,5 +1,6 @@
 
 import React from 'react';
+import { AlertCircle } from 'lucide-react';
 import { getTenantSlug } from '../utils/tenant';
 import { useRestaurant } from '../context/RestaurantContext';
 
@@ -23,6 +24,15 @@ export const QRCodeGenerator: React.FC<QRCodeGeneratorProps> = ({ tableId, size 
   // Fallback final
   if (!currentSlug) currentSlug = getTenantSlug() || '';
   
+  if (!currentSlug) {
+      return (
+          <div className="flex flex-col items-center p-4 bg-red-50 border border-red-200 rounded-xl">
+              <AlertCircle className="text-red-500 mb-2" size={24} />
+              <p className="text-[10px] text-red-600 font-bold text-center">Slug não encontrado.<br/>Verifique a URL.</p>
+          </div>
+      );
+  }
+
   // Constrói a URL completa. 
   // IMPORTANTE: Adiciona ?restaurant=slug para garantir que o app carregue o contexto certo
   const targetUrl = `${window.location.origin}/client/table/${tableId}?restaurant=${currentSlug}`;

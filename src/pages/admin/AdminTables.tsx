@@ -5,6 +5,7 @@ import { useOrder } from '../../context/OrderContext';
 import { useUI } from '../../context/UIContext';
 import { Button } from '../../components/Button';
 import { QRCodeGenerator } from '../../components/QRCodeGenerator';
+import { getTenantSlug } from '../../utils/tenant';
 import { Plus, Printer, Trash2, Copy, Check, ExternalLink } from 'lucide-react';
 import { printHtml } from '../../utils/printHelper';
 
@@ -15,12 +16,17 @@ export const AdminTables: React.FC = () => {
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const getTableUrl = (tableId: string) => {
-      const slug = state.tenantSlug || ''; 
+      const slug = state.tenantSlug || getTenantSlug() || ''; 
+      if (!slug) return '';
       return `${window.location.origin}/client/table/${tableId}?restaurant=${slug}`;
   };
   
   const handleCopyLink = (tableId: string) => {
       const url = getTableUrl(tableId);
+      if (!url) {
+          showAlert({ title: "Erro", message: "Não foi possível identificar o slug do restaurante. Verifique a URL.", type: 'ERROR' });
+          return;
+      }
       navigator.clipboard.writeText(url).then(() => {
           setCopiedId(tableId);
           setTimeout(() => setCopiedId(null), 2000);

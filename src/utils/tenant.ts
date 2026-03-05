@@ -21,19 +21,33 @@ export const getTenantSlug = (): string | null => {
       return storedSlug;
   }
 
-  const host = window.location.hostname;
+  let host = window.location.hostname;
   
-  if (host.includes('localhost') || host === '127.0.0.1') {
+  if (host.startsWith('www.')) {
+      host = host.substring(4);
+  }
+
+  // Lista de domínios que NÃO devem ser tratados como subdomínios de tenant
+  const systemDomains = [
+    'localhost', 
+    '127.0.0.1', 
+    'vercel.app', 
+    'run.app', 
+    'web.app', 
+    'firebaseapp.com',
+    'netlify.app',
+    'github.io'
+  ];
+
+  if (systemDomains.some(domain => host.includes(domain))) {
       return null;
   }
   
-  if (host.includes('.vercel.app')) return null;
-
-  if (host.startsWith('www.')) return null;
-
   const parts = host.split('.');
   
-  if (parts.length >= 3) {
+  // Se for um domínio customizado (ex: restaurante.com ou restaurante.com.br)
+  // No momento o sistema usa o primeiro termo como slug.
+  if (parts.length >= 2) {
     return parts[0];
   }
 

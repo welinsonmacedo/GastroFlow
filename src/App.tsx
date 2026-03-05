@@ -1,7 +1,8 @@
 
 import React, { PropsWithChildren } from 'react';
 // @ts-ignore
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, Link } from 'react-router-dom';
+import { AlertCircle } from 'lucide-react';
 import { AuthProvider, useAuth } from './context/AuthProvider'; 
 import { RestaurantProvider, useRestaurant } from './context/RestaurantContext';
 import { InventoryProvider } from './context/InventoryContext'; 
@@ -110,7 +111,43 @@ const TenantApp = () => {
     }
 
     if (!state.isValidTenant) {
-        return <div className="h-screen flex items-center justify-center text-gray-500">Restaurante não encontrado. Verifique o link.</div>;
+        const slug = getTenantSlug();
+        const hostname = window.location.hostname;
+        const search = window.location.search;
+        
+        return (
+            <div className="h-screen flex flex-col items-center justify-center bg-gray-50 p-6 text-center">
+                <div className="bg-orange-100 p-6 rounded-full mb-6 text-orange-600 shadow-xl border border-orange-200">
+                    <AlertCircle size={64} />
+                </div>
+                <h1 className="text-3xl font-bold text-gray-800 mb-2">Restaurante não encontrado</h1>
+                <p className="text-gray-500 max-w-md">Não foi possível identificar o restaurante através deste link. Verifique se a URL está correta.</p>
+                
+                <div className="mt-6 p-6 bg-white rounded-2xl border border-gray-200 shadow-sm w-full max-w-md text-left space-y-4">
+                    <div>
+                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Slug Identificado</p>
+                        <p className="font-mono text-sm font-bold text-slate-700 bg-gray-50 p-2 rounded border">{slug || '(Nenhum)'}</p>
+                    </div>
+                    <div>
+                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Hostname</p>
+                        <p className="font-mono text-xs text-slate-500 truncate">{hostname}</p>
+                    </div>
+                    {search && (
+                        <div>
+                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Parâmetros</p>
+                            <p className="font-mono text-xs text-slate-500 truncate">{search}</p>
+                        </div>
+                    )}
+                </div>
+
+                <div className="mt-8 flex flex-col sm:flex-row gap-4 w-full max-w-md">
+                    <button onClick={() => window.location.reload()} className="flex-1 px-6 py-3 bg-slate-800 text-white rounded-xl font-bold text-sm hover:bg-slate-700 transition-colors shadow-lg">Tentar Novamente</button>
+                    <Link to="/login-owner" className="flex-1 px-6 py-3 bg-white text-slate-800 border-2 border-gray-100 rounded-xl font-bold text-sm hover:bg-gray-50 transition-colors">Área do Proprietário</Link>
+                </div>
+                
+                <p className="mt-8 text-[10px] text-gray-400 uppercase font-bold tracking-widest">Dica: O link deve conter ?restaurant=seu-slug</p>
+            </div>
+        );
     }
 
     return (
