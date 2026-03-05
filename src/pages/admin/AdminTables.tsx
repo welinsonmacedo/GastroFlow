@@ -41,7 +41,7 @@ export const AdminTables: React.FC = () => {
   
   const handlePrint = (tableId: string) => {
     const table = orderState.tables.find(t => t.id === tableId);
-    const tableNumber = table ? table.number : tableId.replace('t', '');
+    const tableNumber = table ? table.number : '??';
     const restaurantName = state.theme.restaurantName || 'Restaurante';
 
     const targetUrl = getTableUrl(tableId);

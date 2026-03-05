@@ -12,25 +12,47 @@ import { Utensils, Trash2, X, Minus, Plus, CheckSquare, Square, AlertCircle, Dol
 // --- Open Table Modal ---
 export const OpenTableModal: React.FC<{ isOpen: boolean, onClose: () => void, tableId: string | null }> = ({ isOpen, onClose, tableId }) => {
     const { dispatch } = useOrder();
+    const { showAlert } = useUI();
     const [customerName, setCustomerName] = useState('');
+    const [loading, setLoading] = useState(false);
 
-    const handleOpen = () => {
-        const code = Math.floor(1000 + Math.random() * 9000).toString();
-        dispatch({ type: 'OPEN_TABLE', tableId, customerName: customerName || 'Cliente', accessCode: code });
-        setCustomerName('');
-        onClose();
+    const handleOpen = async () => {
+        if (!tableId) return;
+        setLoading(true);
+        try {
+            const code = Math.floor(1000 + Math.random() * 9000).toString();
+            await dispatch({ type: 'OPEN_TABLE', tableId, customerName: customerName || 'Cliente', accessCode: code });
+            showAlert({ title: "Mesa Aberta", message: `Mesa aberta com sucesso! Código: ${code}`, type: 'SUCCESS' });
+            setCustomerName('');
+            onClose();
+        } catch (error) {
+            showAlert({ title: "Erro", message: "Não foi possível abrir a mesa.", type: 'ERROR' });
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title="Abrir Mesa" variant="dialog" maxWidth="sm" onSave={handleOpen}>
+        <Modal 
+            isOpen={isOpen} 
+            onClose={onClose} 
+            title="Abrir Mesa" 
+            variant="dialog" 
+            maxWidth="sm" 
+            onSave={handleOpen}
+            saveLabel={loading ? "Abrindo..." : "Abrir Mesa"}
+            disabled={loading}
+        >
             <div className="space-y-4">
+                <p className="text-xs text-gray-500 text-center mb-2 uppercase font-bold tracking-widest">Identificação do Cliente</p>
                 <input 
-                    className="w-full border-2 p-3 rounded-xl focus:border-blue-500 outline-none text-center font-bold" 
-                    placeholder="Nome do Cliente" 
+                    className="w-full border-2 p-4 rounded-2xl focus:border-blue-500 outline-none text-center font-black text-xl bg-gray-50" 
+                    placeholder="Ex: João Silva" 
                     value={customerName}
                     onChange={e => setCustomerName(e.target.value)}
                     autoFocus 
                 />
+                <p className="text-[10px] text-gray-400 text-center">Um código de acesso único será gerado automaticamente.</p>
             </div>
         </Modal>
     );

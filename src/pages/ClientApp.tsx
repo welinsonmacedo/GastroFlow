@@ -246,7 +246,7 @@ export const ClientApp: React.FC = () => {
         setView('STATUS');
     };
 
-    if (state.isLoading || menuState.isLoading) {
+    if (state.isLoading || menuState.isLoading || orderState.isLoading) {
         return (
             <div className={`h-full flex flex-col items-center justify-center bg-gray-50 text-gray-400 ${fontClass}`}>
                 <Loader2 className="animate-spin mb-4" size={48} style={{ color: theme.primaryColor }} />
@@ -276,34 +276,6 @@ export const ClientApp: React.FC = () => {
                     <h2 className="text-xl font-bold text-blue-600 mb-8 tracking-tight">Mesa #{table.number}</h2>
                     <div className={`bg-red-50 text-red-600 py-3 font-black mb-8 animate-pulse border border-red-100 text-xs uppercase tracking-widest ${radiusClass}`}>Mesa Fechada</div>
                     <Button onClick={handleCallWaiter} className={`w-full py-5 text-xl font-black shadow-2xl shadow-blue-200 ${radiusClass}`}>CHAMAR GARÇOM</Button>
-                </div>
-            </div>
-        );
-    }
-
-    if (table.accessCode && !isAuthenticated) {
-        return (
-            <div className={`flex flex-col items-center justify-center h-full p-6 ${fontClass}`} style={{ backgroundColor: theme.backgroundColor }}>
-                <div className={`bg-white p-10 shadow-2xl text-center max-w-sm w-full border border-gray-100 ${radiusClass}`}>
-                    <div className="bg-emerald-50 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-8 shadow-inner">
-                        <Lock size={40} className="text-emerald-500" />
-                    </div>
-                    <h2 className="text-2xl font-black mb-2 text-slate-800 uppercase tracking-tighter">Sua Mesa Digital</h2>
-                    <p className="text-gray-400 text-xs mb-8 font-medium">Insira o código gerado pelo garçom para começar.</p>
-                    <input 
-                        type="tel" 
-                        maxLength={4} 
-                        className={`text-center text-6xl tracking-[0.5em] w-full border-2 bg-gray-50 py-6 mb-8 font-mono font-black text-blue-600 focus:border-blue-500 outline-none transition-all shadow-inner ${radiusClass}`}
-                        value={accessPin} 
-                        onChange={e => setAccessPin(e.target.value)} 
-                        placeholder="0000" 
-                    />
-                    <Button 
-                        onClick={() => table.accessCode === accessPin ? setIsAuthenticated(true) : showAlert({ title: "Código Incorreto", message: "O código digitado não confere.", type: 'ERROR' })} 
-                        className={`w-full py-5 text-xl font-black shadow-xl shadow-emerald-200 ${radiusClass}`}
-                    >
-                        ACESSAR CARDÁPIO
-                    </Button>
                 </div>
             </div>
         );

@@ -44,7 +44,7 @@ export const QRCodeGenerator: React.FC<QRCodeGeneratorProps> = ({ tableId, size 
   return (
     <div className="flex flex-col items-center p-4 bg-white border rounded-xl shadow-sm">
       <div className="mb-2 font-mono text-xs text-gray-500 break-all text-center max-w-[200px]">
-        Mesa {tableId.replace('t', '')}
+        Mesa {tableId.slice(0, 8)}
       </div>
       <img 
         src={qrImageUrl} 

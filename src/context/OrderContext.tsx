@@ -12,13 +12,15 @@ interface OrderState {
   orders: Order[];
   serviceCalls: ServiceCall[];
   audioUnlocked: boolean;
+  isLoading: boolean;
 }
 
 type OrderAction = 
   | { type: 'SET_TABLES'; tables: Table[] }
   | { type: 'SET_ORDERS'; orders: Order[] }
   | { type: 'SET_CALLS'; calls: ServiceCall[] }
-  | { type: 'UNLOCK_AUDIO' };
+  | { type: 'UNLOCK_AUDIO' }
+  | { type: 'SET_LOADING'; isLoading: boolean };
 
 const orderReducer = (state: OrderState, action: OrderAction): OrderState => {
     switch (action.type) {
@@ -26,6 +28,7 @@ const orderReducer = (state: OrderState, action: OrderAction): OrderState => {
         case 'SET_ORDERS': return { ...state, orders: action.orders };
         case 'SET_CALLS': return { ...state, serviceCalls: action.calls };
         case 'UNLOCK_AUDIO': return { ...state, audioUnlocked: true };
+        case 'SET_LOADING': return { ...state, isLoading: action.isLoading };
         default: return state;
     }
 };
@@ -73,11 +76,12 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const { showAlert } = useUI();
 
   const [state, localDispatch] = useReducer(orderReducer, {
-      tables: [], orders: [], serviceCalls: [], audioUnlocked: false
+      tables: [], orders: [], serviceCalls: [], audioUnlocked: false, isLoading: true
   });
 
   const fetchData = useCallback(async () => {
       if (!tenantId) return;
+      localDispatch({ type: 'SET_LOADING', isLoading: true });
       const yesterday = new Date(); yesterday.setHours(yesterday.getHours() - 24);
 
       try {
@@ -87,7 +91,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               supabase.from('service_calls').select('*').eq('tenant_id', tenantId).eq('status', 'PENDING'),
               supabase.from('staff').select('id, name, allowed_routes').eq('tenant_id', tenantId)
           ]);
-
+          
           const staffMap: Record<string, {id: string, name: string}> = {};
           const openerMap: Record<string, string> = {};
           
@@ -146,6 +150,8 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           if (callsRes.data) localDispatch({ type: 'SET_CALLS', calls: callsRes.data.map((c: any) => ({ id: c.id, tableId: c.table_id, status: c.status, timestamp: new Date(c.created_at), reason: c.reason })) });
       } catch (e) {
           console.error("Erro ao buscar dados:", e);
+      } finally {
+          localDispatch({ type: 'SET_LOADING', isLoading: false });
       }
 
   }, [tenantId]);

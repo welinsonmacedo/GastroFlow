@@ -11,6 +11,8 @@ interface ModalProps {
   variant?: 'page' | 'dialog'; // 'page' = 100% Fullscreen, 'dialog' = Floating Window (98%)
   maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | '5xl' | 'full'; 
   onSave?: () => void; // Ação opcional para o botão de salvar no header
+  saveLabel?: string;
+  disabled?: boolean;
 }
 
 export const Modal: React.FC<ModalProps> = ({ 
@@ -20,7 +22,9 @@ export const Modal: React.FC<ModalProps> = ({
   children, 
   variant = 'page',
   maxWidth = 'md',
-  onSave
+  onSave,
+  saveLabel,
+  disabled
 }) => {
   const [mounted, setMounted] = useState(false);
 
@@ -81,14 +85,17 @@ export const Modal: React.FC<ModalProps> = ({
           {/* Controles da Janela (Window Controls) */}
           <div className="flex items-center gap-1">
              {/* Botão Salvar (Ação) */}
-             <button 
-                onClick={onSave}
-                className="w-8 h-6 flex items-center justify-center hover:bg-slate-300 text-slate-600 rounded transition-colors"
-                title="Salvar / Confirmar"
-                disabled={!onSave} // Desabilita visualmente se não houver função, ou remove se preferir
-             >
-                <Save size={14} strokeWidth={2.5} />
-             </button>
+             {onSave && (
+                <button 
+                    onClick={onSave}
+                    className={`h-6 flex items-center justify-center gap-1 px-2 hover:bg-slate-300 text-slate-600 rounded transition-colors ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    title={saveLabel || "Salvar / Confirmar"}
+                    disabled={disabled}
+                >
+                    <Save size={14} strokeWidth={2.5} />
+                    {saveLabel && <span className="text-[10px] font-bold uppercase">{saveLabel}</span>}
+                </button>
+             )}
              
              {/* Botão Fechar (Funcional) */}
              <button 
