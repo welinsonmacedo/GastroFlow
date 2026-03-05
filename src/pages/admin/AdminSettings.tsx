@@ -489,28 +489,30 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ view = 'BUSINESS' 
                     </div>
 
                     {/* Integração RH */}
-                    <div className="space-y-4 pt-6 border-t">
-                        <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2"><Users className="text-green-600"/> Integração com RH</h3>
-                        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <h4 className="font-bold text-gray-800">Integrar Folha de Pagamento</h4>
-                                    <p className="text-sm text-gray-500">Ao fechar uma folha de pagamento no RH, lançar automaticamente como despesa no financeiro.</p>
-                                </div>
-                                <div className="flex items-center gap-3">
-                                    <span className={`text-xs font-bold uppercase tracking-wider ${legalSettings?.integrateFinance ? 'text-green-600' : 'text-gray-400'}`}>
-                                        {legalSettings?.integrateFinance ? 'ATIVADO' : 'DESATIVADO'}
-                                    </span>
-                                    <button 
-                                        onClick={() => saveLegalSettings({ integrateFinance: !legalSettings?.integrateFinance })}
-                                        className={`w-12 h-6 rounded-full transition-colors relative ${legalSettings?.integrateFinance ? 'bg-green-500' : 'bg-gray-300'}`}
-                                    >
-                                        <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all shadow-sm ${legalSettings?.integrateFinance ? 'left-7' : 'left-1'}`} />
-                                    </button>
+                    {state.allowedModules?.includes('FINANCE') && (
+                        <div className="space-y-4 pt-6 border-t">
+                            <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2"><Users className="text-green-600"/> Integração com RH</h3>
+                            <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <h4 className="font-bold text-gray-800">Integrar Folha de Pagamento</h4>
+                                        <p className="text-sm text-gray-500">Ao fechar uma folha de pagamento no RH, lançar automaticamente como despesa no financeiro.</p>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <span className={`text-xs font-bold uppercase tracking-wider ${legalSettings?.integrateFinance ? 'text-green-600' : 'text-gray-400'}`}>
+                                            {legalSettings?.integrateFinance ? 'ATIVADO' : 'DESATIVADO'}
+                                        </span>
+                                        <button 
+                                            onClick={() => saveLegalSettings({ integrateFinance: !legalSettings?.integrateFinance })}
+                                            className={`w-12 h-6 rounded-full transition-colors relative ${legalSettings?.integrateFinance ? 'bg-green-500' : 'bg-gray-300'}`}
+                                        >
+                                            <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all shadow-sm ${legalSettings?.integrateFinance ? 'left-7' : 'left-1'}`} />
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    )}
                 </div>
             )}
             {/* --- TIME_CLOCK VIEW --- */}

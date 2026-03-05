@@ -637,32 +637,34 @@ export const AdminFinance: React.FC = () => {
         {/* Modal de Configurações Financeiras */}
         <Modal isOpen={isSettingsModalOpen} onClose={() => setIsSettingsModalOpen(false)} title="Configurações Financeiras" variant="dialog" maxWidth="md">
             <div className="space-y-6">
-                <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
-                    <h4 className="font-bold text-blue-800 mb-2 flex items-center gap-2">
-                        <User size={18} /> Integração com RH
-                    </h4>
-                    <p className="text-sm text-blue-600 mb-4">
-                        Configure como o módulo financeiro interage com a folha de pagamento.
-                    </p>
-                    
-                    <div className="bg-white p-4 rounded-lg border border-blue-100 flex items-center justify-between">
-                        <div>
-                            <p className="font-bold text-gray-800 text-sm">Lançar Folha como Despesa</p>
-                            <p className="text-xs text-gray-500 mt-1">Ao fechar uma folha no RH, criar automaticamente uma despesa a pagar.</p>
-                        </div>
-                        <div className="flex items-center gap-3">
-                            <span className={`text-[10px] font-black uppercase tracking-wider ${staffState.legalSettings?.integrateFinance ? 'text-green-600' : 'text-gray-400'}`}>
-                                {staffState.legalSettings?.integrateFinance ? 'ATIVADO' : 'DESATIVADO'}
-                            </span>
-                            <button 
-                                onClick={() => saveLegalSettings({ integrateFinance: !staffState.legalSettings?.integrateFinance })}
-                                className={`w-12 h-6 rounded-full transition-colors relative ${staffState.legalSettings?.integrateFinance ? 'bg-green-500' : 'bg-gray-300'}`}
-                            >
-                                <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all shadow-sm ${staffState.legalSettings?.integrateFinance ? 'left-7' : 'left-1'}`} />
-                            </button>
+                {restState.allowedModules?.includes('FINANCE') && (
+                    <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
+                        <h4 className="font-bold text-blue-800 mb-2 flex items-center gap-2">
+                            <User size={18} /> Integração com RH
+                        </h4>
+                        <p className="text-sm text-blue-600 mb-4">
+                            Configure como o módulo financeiro interage com a folha de pagamento.
+                        </p>
+                        
+                        <div className="bg-white p-4 rounded-lg border border-blue-100 flex items-center justify-between">
+                            <div>
+                                <p className="font-bold text-gray-800 text-sm">Lançar Folha como Despesa</p>
+                                <p className="text-xs text-gray-500 mt-1">Ao fechar uma folha no RH, criar automaticamente uma despesa a pagar.</p>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <span className={`text-[10px] font-black uppercase tracking-wider ${staffState.legalSettings?.integrateFinance ? 'text-green-600' : 'text-gray-400'}`}>
+                                    {staffState.legalSettings?.integrateFinance ? 'ATIVADO' : 'DESATIVADO'}
+                                </span>
+                                <button 
+                                    onClick={() => saveLegalSettings({ integrateFinance: !staffState.legalSettings?.integrateFinance })}
+                                    className={`w-12 h-6 rounded-full transition-colors relative ${staffState.legalSettings?.integrateFinance ? 'bg-green-500' : 'bg-gray-300'}`}
+                                >
+                                    <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all shadow-sm ${staffState.legalSettings?.integrateFinance ? 'left-7' : 'left-1'}`} />
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
+                )}
                 
                 <div className="flex justify-end">
                     <Button onClick={() => setIsSettingsModalOpen(false)}>Fechar</Button>
