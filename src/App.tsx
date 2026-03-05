@@ -14,6 +14,7 @@ import { SaaSProvider, useSaaS } from './context/SaaSContext';
 import { UIProvider } from './context/UIContext';
 import { isSupabaseConfigured } from './lib/supabase';
 import { ClientApp } from './pages/ClientApp';
+import { TableCodeGuard } from './components/TableCodeGuard';
 import { AdminDashboard } from './pages/AdminDashboard';
 import { FinanceDashboard } from './pages/FinanceDashboard'; 
 import { SettingsDashboard } from './pages/SettingsDashboard';
@@ -96,6 +97,19 @@ const ProtectedSaaSRoute = ({ children }: PropsWithChildren) => {
     return <>{children}</>;
 };
 
+const ClientRoute = () => {
+    const { state, authorize } = useRestaurant();
+    const slug = getTenantSlug();
+    
+    if (state.isLoading) return <div className="h-screen flex items-center justify-center">Carregando cardápio...</div>;
+    
+    if (!state.isAuthorized) {
+        return <TableCodeGuard slug={slug || ''} onAuthorized={authorize} />;
+    }
+    
+    return <ClientApp />;
+};
+
 const TenantApp = () => {
     const { state } = useRestaurant();
     
@@ -168,7 +182,7 @@ const TenantApp = () => {
                         <Route path="/login" element={<Login />} />
                         <Route path="/manual" element={<ManualPage />} />
                         
-                        <Route path="/client/table/:tableId" element={<ClientApp />} />
+                        <Route path="/client/table/:tableId" element={<ClientRoute />} />
                         <Route path="/modules" element={<ModuleSelector />} />
                         
                         {/* Rota para Bater Ponto - Acessível a todos logados */}

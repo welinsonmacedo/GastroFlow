@@ -3,7 +3,6 @@ import React, { createContext, useContext, useReducer, useEffect, useCallback } 
 import { RestaurantTheme, PlanLimits, RestaurantBusinessInfo, SystemModule } from '../types';
 import { getTenantSlug } from '../utils/tenant';
 import { supabase } from '../lib/supabase';
-import { TableCodeGuard } from '../components/TableCodeGuard';
 
 interface RestaurantState {
   isLoading: boolean;
@@ -142,11 +141,11 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     // Por enquanto, vamos assumir que se houver um token no sessionStorage, tentamos o carregamento
     
     const storedAuth = Object.keys(sessionStorage).find(key => key.startsWith('fluxeat_auth_'));
-    if (!storedAuth && !state.isAuthorized) {
-      localDispatch({ type: 'SET_LOADING', isLoading: false });
-      return;
-    }
-
+    
+    // Tenta carregar o restaurante sempre que houver um slug, 
+    // independente de estar autorizado para uma mesa ou não.
+    // O RLS cuidará de proteger os dados sensíveis.
+    
     const { data: tenant, error: tenantError } = await supabase
         .from('tenants')
         .select('id, slug, status, theme_config, business_info, plan, allowed_modules, allowed_features')
@@ -327,8 +326,6 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
           <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
         </div>
-      ) : !state.isAuthorized ? (
-        <TableCodeGuard slug={getTenantSlug() || ''} onAuthorized={authorize} />
       ) : (
         children
       )}
