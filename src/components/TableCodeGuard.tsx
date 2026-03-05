@@ -53,6 +53,13 @@ export const TableCodeGuard: React.FC<TableCodeGuardProps> = ({ slug, expectedTa
         // 3. Criar a sessão na tabela table_sessions
         console.log('Tentando inserir sessão:', { table_id: table_id, user_id: userId });
 
+        if (!table_id) {
+          throw new Error('table_id não encontrado.');
+        }
+        if (!userId) {
+          throw new Error('user_id não encontrado.');
+        }
+
         // Verificar se o table_id existe
         const { data: tableData, error: tableError } = await supabase
           .from('restaurant_tables')
@@ -70,8 +77,7 @@ export const TableCodeGuard: React.FC<TableCodeGuardProps> = ({ slug, expectedTa
           .insert([
             { 
               table_id: table_id, 
-              user_id: userId,
-              expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+              user_id: userId
             }
           ]);
 
