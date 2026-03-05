@@ -77,7 +77,8 @@ export const TableCodeGuard: React.FC<TableCodeGuardProps> = ({ slug, expectedTa
           .insert([
             { 
               table_id: table_id, 
-              user_id: userId
+              user_id: userId,
+              expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
             }
           ]);
 
