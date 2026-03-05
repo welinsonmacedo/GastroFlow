@@ -1,11 +1,14 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { motion } from 'motion/react';
 import { User, Lock, Phone, FileText, Mail, Loader2 } from 'lucide-react';
+import { useAuth } from '../context/AuthProvider';
+import { Role } from '../types';
 
 export const ClientLogin = () => {
+  const { state: authState } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [isLogin, setIsLogin] = useState(true);
@@ -22,6 +25,12 @@ export const ClientLogin = () => {
 
   const redirectUrl = new URLSearchParams(location.search).get('redirect') || '/client/history';
 
+  useEffect(() => {
+    if (authState.isAuthenticated && authState.currentUser?.role === Role.CLIENT) {
+      navigate(redirectUrl);
+    }
+  }, [authState.isAuthenticated, authState.currentUser, navigate, redirectUrl]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -29,11 +38,38 @@ export const ClientLogin = () => {
 
     try {
       if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({
+        const { data, error } = await supabase.auth.signInWithPassword({
           email: formData.email,
           password: formData.password
         });
         if (error) throw error;
+
+        if (data.user) {
+            const { data: client } = await supabase
+                .from('clients')
+                .select('id')
+                .eq('auth_user_id', data.user.id)
+                .maybeSingle();
+
+            if (!client) {
+                // Tenta criar perfil de cliente automaticamente
+                const name = data.user.user_metadata?.name || formData.email.split('@')[0];
+                
+                const { error: createError } = await supabase
+                    .from('clients')
+                    .insert({
+                        auth_user_id: data.user.id,
+                        name: name,
+                        email: formData.email
+                    });
+                
+                if (createError) {
+                    console.error("Erro ao criar perfil de cliente:", createError);
+                    await supabase.auth.signOut();
+                    throw new Error("Perfil de cliente incompleto. Por favor, faça o cadastro novamente preenchendo todos os dados.");
+                }
+            }
+        }
       } else {
         const { data: authData, error: authError } = await supabase.auth.signUp({
           email: formData.email,

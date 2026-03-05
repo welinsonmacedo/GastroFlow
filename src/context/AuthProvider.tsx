@@ -73,6 +73,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const loadUserFromSession = async () => {
+    setState(s => ({ ...s, isLoading: true }));
     const slug = getTenantSlug();
     
     // Se não tiver slug, ainda tentamos carregar a sessão para ver se é um CLIENTE
@@ -209,7 +210,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     loadUserFromSession();
     
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event: string) => {
-        if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
+        if (event === 'SIGNED_IN') {
+            await loadUserFromSession();
+        } else if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
             await stopHeartbeat();
             setState({ currentUser: null, isAuthenticated: false, isLoading: false });
         } else if (event === 'TOKEN_REFRESHED') {

@@ -1,7 +1,7 @@
 
 import React, { PropsWithChildren, useEffect, useState } from 'react';
 // @ts-ignore
-import { Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
+import { Routes, Route, Navigate, Link, useLocation, Outlet } from 'react-router-dom';
 import { AlertCircle } from 'lucide-react';
 import { AuthProvider, useAuth } from './context/AuthProvider'; 
 import { RestaurantProvider, useRestaurant } from './context/RestaurantContext';
@@ -213,6 +213,12 @@ const TenantApp = () => {
     );
 };
 
+const ClientLayout = () => (
+    <AuthProvider>
+        <Outlet />
+    </AuthProvider>
+);
+
 const App: React.FC = () => {
   const location = useLocation();
   const [tenantSlug, setTenantSlug] = useState<string | null>(getTenantSlug());
@@ -228,16 +234,10 @@ const App: React.FC = () => {
                 <InstallPWA />
                 <Routes>
                     {/* Client Routes - Tenant Agnostic */}
-                    <Route path="/client/login" element={
-                        <AuthProvider>
-                            <ClientLogin />
-                        </AuthProvider>
-                    } />
-                    <Route path="/client/history" element={
-                        <AuthProvider>
-                            <ClientHistory />
-                        </AuthProvider>
-                    } />
+                    <Route element={<ClientLayout />}>
+                        <Route path="/client/login" element={<ClientLogin />} />
+                        <Route path="/client/history" element={<ClientHistory />} />
+                    </Route>
 
                     {/* Main Application Routes */}
                     <Route path="/*" element={
