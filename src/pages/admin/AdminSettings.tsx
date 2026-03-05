@@ -2,8 +2,9 @@
 import React, { useState, useEffect } from 'react';
 import { useRestaurant } from '../../context/RestaurantContext';
 import { useUI } from '../../context/UIContext';
+import { useStaff } from '../../context/StaffContext';
 import { Button } from '../../components/Button';
-import { Building2, MapPin, Loader2, Share2, Clock, Lock, Save, ShieldCheck, Bike, Plus, Trash2, Edit, CreditCard, Tag, FileText, Bell } from 'lucide-react';
+import { Building2, MapPin, Loader2, Share2, Clock, Lock, Save, ShieldCheck, Bike, Plus, Trash2, Edit, CreditCard, Tag, FileText, Bell, Users } from 'lucide-react';
 import { RestaurantBusinessInfo, DeliveryMethodConfig, PaymentMethodConfig, ExpenseCategory, TaxRegime } from '../../types';
 import { Modal } from '../../components/Modal';
 
@@ -14,6 +15,8 @@ interface AdminSettingsProps {
 export const AdminSettings: React.FC<AdminSettingsProps> = ({ view = 'BUSINESS' }) => {
   const { state, dispatch } = useRestaurant();
   const { showAlert, showConfirm } = useUI();
+  const { state: staffState, saveLegalSettings } = useStaff();
+  const { legalSettings } = staffState;
   
   const [businessForm, setBusinessForm] = useState<RestaurantBusinessInfo>({
       address: { cep: '', street: '', number: '', neighborhood: '', city: '', state: '' },
@@ -482,6 +485,30 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ view = 'BUSINESS' 
                                     <button onClick={() => handleDeleteCategory(cat.id)} className="text-gray-400 hover:text-red-500"><Trash2 size={12}/></button>
                                 </div>
                             ))}
+                        </div>
+                    </div>
+
+                    {/* Integração RH */}
+                    <div className="space-y-4 pt-6 border-t">
+                        <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2"><Users className="text-green-600"/> Integração com RH</h3>
+                        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <h4 className="font-bold text-gray-800">Integrar Folha de Pagamento</h4>
+                                    <p className="text-sm text-gray-500">Ao fechar uma folha de pagamento no RH, lançar automaticamente como despesa no financeiro.</p>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <span className={`text-xs font-bold uppercase tracking-wider ${legalSettings?.integrateFinance ? 'text-green-600' : 'text-gray-400'}`}>
+                                        {legalSettings?.integrateFinance ? 'ATIVADO' : 'DESATIVADO'}
+                                    </span>
+                                    <button 
+                                        onClick={() => saveLegalSettings({ integrateFinance: !legalSettings?.integrateFinance })}
+                                        className={`w-12 h-6 rounded-full transition-colors relative ${legalSettings?.integrateFinance ? 'bg-green-500' : 'bg-gray-300'}`}
+                                    >
+                                        <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all shadow-sm ${legalSettings?.integrateFinance ? 'left-7' : 'left-1'}`} />
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>

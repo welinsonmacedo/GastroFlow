@@ -203,6 +203,7 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               overtimePolicy: settingsRes.data.overtime_policy || 'PAID_OVERTIME',
               deductDelaysFromOvertime: settingsRes.data.deduct_delays_from_overtime || false,
               pointClosingDay: Number(settingsRes.data.point_closing_day || 30),
+              integrateFinance: settingsRes.data.integrate_finance !== false,
               absenceLogic: {
                   justified: settingsRes.data.absence_logic?.justified || { deduction: false, disciplinaryAction: false },
                   unjustified: settingsRes.data.absence_logic?.unjustified || { deduction: true, disciplinaryAction: true }
@@ -802,7 +803,8 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           overtime_policy: settings.overtimePolicy,
           deduct_delays_from_overtime: settings.deductDelaysFromOvertime,
           point_closing_day: settings.pointClosingDay,
-          absence_logic: settings.absenceLogic
+          absence_logic: settings.absenceLogic,
+          integrate_finance: settings.integrateFinance
       };
       const { error } = await supabase.rpc('save_payroll_settings', {
           p_tenant_id: tenantId,

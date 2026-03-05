@@ -155,6 +155,7 @@ export interface RhPayrollSetting {
         unjustified: { deduction: boolean, disciplinaryAction: boolean, dsrDeduction: boolean };
     };
     pointClosingDay?: number;
+    integrateFinance?: boolean;
 }
 
 export interface RhInssBracket {
