@@ -316,14 +316,25 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           case 'UPDATE_ITEM_STATUS': await updateItemStatus(action.orderId, action.itemId, action.status); break;
           case 'ADD_TABLE': await addTable(); break;
           case 'DELETE_TABLE': await supabase.from('restaurant_tables').delete().eq('id', action.tableId).eq('tenant_id', tenantId); fetchData(); break;
-          case 'OPEN_TABLE': 
-              await supabase.rpc('open_table', {
+           case 'OPEN_TABLE': 
+              console.log("DEBUG: RPC open_table parameters:", {
                   p_tenant_id: tenantId,
                   p_table_id: action.tableId,
                   p_customer_name: sanitizeObject(action.customerName),
                   p_access_code: action.accessCode,
                   p_user_id: authState.currentUser?.id || null
               });
+              const { error: openTableError } = await supabase.rpc('open_table', {
+                  p_tenant_id: tenantId,
+                  p_table_id: action.tableId,
+                  p_customer_name: sanitizeObject(action.customerName),
+                  p_access_code: action.accessCode,
+                  p_user_id: authState.currentUser?.id || null
+              });
+              if (openTableError) {
+                  console.error("Erro RPC open_table:", openTableError);
+                  throw openTableError;
+              }
               fetchData(); 
               break;
           case 'CLOSE_TABLE': 
