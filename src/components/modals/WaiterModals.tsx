@@ -17,15 +17,19 @@ export const OpenTableModal: React.FC<{ isOpen: boolean, onClose: () => void, ta
     const [loading, setLoading] = useState(false);
 
     const handleOpen = async () => {
+        console.log("Tentando abrir mesa:", tableId, "Cliente:", customerName);
         if (!tableId) return;
         setLoading(true);
         try {
             const code = Math.floor(1000 + Math.random() * 9000).toString();
+            console.log("Código gerado:", code);
             await dispatch({ type: 'OPEN_TABLE', tableId, customerName: customerName || 'Cliente', accessCode: code });
+            console.log("Mesa aberta com sucesso!");
             showAlert({ title: "Mesa Aberta", message: `Mesa aberta com sucesso! Código: ${code}`, type: 'SUCCESS' });
             setCustomerName('');
             onClose();
         } catch (error) {
+            console.error("Erro ao abrir mesa:", error);
             showAlert({ title: "Erro", message: "Não foi possível abrir a mesa.", type: 'ERROR' });
         } finally {
             setLoading(false);

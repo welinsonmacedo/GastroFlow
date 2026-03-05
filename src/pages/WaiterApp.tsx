@@ -402,6 +402,7 @@ export const WaiterApp: React.FC = () => {
                                         {hasCall ? (isBill ? 'PEDINDO CONTA' : 'CHAMANDO!') : (table.status === TableStatus.AVAILABLE ? 'LIVRE' : 'OCUPADA')}
                                     </span>
                                     {table.status === TableStatus.OCCUPIED && (<div className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-lg text-[10px] font-mono font-bold flex items-center gap-1"><Lock size={8}/> {table.accessCode}</div>)}
+                                 {table.status === TableStatus.WAITING_PAYMENT && table.accessCode && (<div className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-lg text-[10px] font-mono font-bold flex items-center gap-1"><Lock size={8}/> {table.accessCode}</div>)}
                                 </div>
                                 <div className={`text-5xl font-black tracking-tighter ${hasCall ? 'text-black' : 'text-slate-900'}`}>{table.number}</div>
                                 {hasCall && (
