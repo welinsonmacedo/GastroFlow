@@ -59,8 +59,7 @@ export const ClientLogin = () => {
                     .from('clients')
                     .insert({
                         auth_user_id: data.user.id,
-                        name: name,
-                        email: formData.email
+                        name: name
                     });
                 
                 if (createError) {
@@ -84,21 +83,9 @@ export const ClientLogin = () => {
         });
 
         if (authError) throw authError;
-
-        if (authData.user) {
-          const { error: clientError } = await supabase
-            .from('clients')
-            .insert([
-              {
-                auth_user_id: authData.user.id,
-                name: formData.name,
-                phone: formData.phone,
-                cpf: formData.cpf
-              }
-            ]);
-
-          if (clientError) throw clientError;
-        }
+        
+        // A criação do perfil 'clients' agora é feita via Trigger no banco de dados
+        // (estrutura sql/fix_client_signup_trigger.sql) para evitar erro de RLS
       }
 
       await refreshSession();
