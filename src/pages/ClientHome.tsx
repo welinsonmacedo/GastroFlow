@@ -4,13 +4,14 @@ import { QRScanner } from '../components/QRScanner';
 import { Clock, QrCode, LogOut } from 'lucide-react';
 import { useAuth } from '../context/AuthProvider';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
+import { useUI } from '../context/UIContext';
 
 export const ClientHome = () => {
   const [activeTab, setActiveTab] = useState<'history' | 'scan'>('history');
   const [showScanner, setShowScanner] = useState(false);
   const { state: authState, signOut } = useAuth();
   const navigate = useNavigate();
+  const { showAlert } = useUI();
 
   useEffect(() => {
     if (!authState.isLoading && !authState.isAuthenticated) {
@@ -24,30 +25,43 @@ export const ClientHome = () => {
 
   const handleScanSuccess = (decodedText: string) => {
     setShowScanner(false);
-    // The decoded text is expected to be the full URL or just the table ID
-    // Example: https://app.com/client/table/123
-    // Or just: 123
     
-    let tableId = decodedText;
-    
-    // Check if it's a URL
     try {
       const url = new URL(decodedText);
-      // Extract table ID from URL path
-      // Assuming path is /client/table/:tableId
-      const parts = url.pathname.split('/');
-      const tableIndex = parts.indexOf('table');
-      if (tableIndex !== -1 && parts[tableIndex + 1]) {
-        tableId = parts[tableIndex + 1];
+      
+      // Check if origin matches current window origin
+      if (url.origin !== window.location.origin) {
+        showAlert({
+          title: 'QR Code Inválido',
+          message: 'Este QR Code não pertence ao nosso sistema. Por favor, escaneie um código válido.',
+          type: 'ERROR'
+        });
+        return;
       }
-    } catch (e) {
-      // Not a URL, assume it's the ID
-    }
 
-    if (tableId) {
-      navigate(`/client/table/${tableId}`);
-    } else {
-      alert('QR Code inválido. Tente novamente.');
+      // Check if path matches /client/table/:id
+      const path = url.pathname;
+      const tableMatch = path.match(/^\/client\/table\/([^/]+)$/);
+      
+      if (tableMatch && tableMatch[1]) {
+        // Valid table URL
+        // Navigate to the path + search params
+        navigate(path + url.search);
+      } else {
+        showAlert({
+            title: 'QR Code Inválido',
+            message: 'Este QR Code não corresponde a uma mesa válida.',
+            type: 'ERROR'
+        });
+      }
+
+    } catch (e) {
+      // Not a valid URL
+      showAlert({
+        title: 'QR Code Inválido',
+        message: 'O formato do QR Code não é reconhecido pelo sistema.',
+        type: 'ERROR'
+      });
     }
   };
 
