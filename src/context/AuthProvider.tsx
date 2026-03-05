@@ -174,6 +174,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     setState({ currentUser: user, isAuthenticated: true, isLoading: false });
                     startHeartbeat(tenant.id, staffData.id);
                     return;
+                } else {
+                    // Check if it is a Client
+                    const { data: clientData } = await supabase
+                        .from('clients')
+                        .select('*')
+                        .eq('auth_user_id', session.user.id)
+                        .maybeSingle();
+
+                    if (clientData) {
+                        const user: User = {
+                            id: clientData.id,
+                            name: clientData.name,
+                            role: Role.CLIENT,
+                            tenant_id: tenant.id,
+                            auth_user_id: session.user.id,
+                            email: session.user.email,
+                            phone: clientData.phone,
+                            documentCpf: clientData.cpf
+                        };
+                        setState({ currentUser: user, isAuthenticated: true, isLoading: false });
+                        return;
+                    }
                 }
             }
         }

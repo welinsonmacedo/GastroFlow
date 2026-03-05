@@ -9,10 +9,10 @@ import { useUI } from '../context/UIContext';
 import { Button } from '../components/Button';
 import { TableStatus, Product, Order } from '../types';
 import { 
-    ShoppingCart, ChefHat, Plus, Minus, X, Lock, 
+    ShoppingCart, ChefHat, Plus, Minus, X, 
     Receipt, Loader2, Bell, Search, 
     Zap, Clock, Trash2, ArrowRight, 
-    Activity, AlertCircle, Utensils, Home, CreditCard, Banknote, Shield
+    Activity, AlertCircle, Utensils, Home, CreditCard, Banknote, Shield, User as UserIcon
 } from 'lucide-react';
 import { Modal } from '../components/Modal';
 
@@ -71,8 +71,6 @@ export const ClientApp: React.FC = () => {
 
     const [cart, setCart] = useState<{ product: Product; quantity: number; notes: string; extras?: Product[] }[]>([]);
     const [view, setView] = useState<'MENU' | 'CART' | 'STATUS' | 'BILL'>('MENU');
-    const [accessPin, setAccessPin] = useState('');
-    const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [waiterCalled, setWaiterCalled] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -320,14 +318,22 @@ export const ClientApp: React.FC = () => {
                         </div>
                     </div>
                     
-                    {/* Botão Chamar Garçom (Sino) no Header */}
-                    <button 
-                        onClick={handleCallWaiter} 
-                        className={`p-3 bg-white border border-gray-100 shadow-sm text-blue-600 hover:bg-blue-50 active:scale-90 transition-all ${radiusClass} ${waiterCalled ? 'animate-pulse bg-blue-100 ring-2 ring-blue-200' : ''}`}
-                        title="Chamar Garçom"
-                    >
-                        <Bell size={20} fill={waiterCalled ? "currentColor" : "none"} />
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <Link 
+                            to="/client/history" 
+                            className={`p-3 bg-white border border-gray-100 shadow-sm text-slate-600 hover:bg-slate-50 active:scale-90 transition-all ${radiusClass}`}
+                            title="Meu Histórico"
+                        >
+                            <UserIcon size={20} />
+                        </Link>
+                        <button 
+                            onClick={handleCallWaiter} 
+                            className={`p-3 bg-white border border-gray-100 shadow-sm text-blue-600 hover:bg-blue-50 active:scale-90 transition-all ${radiusClass} ${waiterCalled ? 'animate-pulse bg-blue-100 ring-2 ring-blue-200' : ''}`}
+                            title="Chamar Garçom"
+                        >
+                            <Bell size={20} fill={waiterCalled ? "currentColor" : "none"} />
+                        </button>
+                    </div>
                 </div>
             </header>
 

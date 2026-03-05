@@ -44,7 +44,6 @@ export const PwaGuard: React.FC<{ children: React.ReactNode }> = ({ children }) 
     location.pathname === '/' || 
     location.pathname === '/login-owner' ||
     location.pathname === '/register' ||
-    location.pathname.startsWith('/client/') || 
     location.pathname === '/privacy' || 
     location.pathname === '/terms';
 
@@ -116,7 +115,7 @@ export const PwaGuard: React.FC<{ children: React.ReactNode }> = ({ children }) 
         
         <h1 className="text-3xl font-black mb-4 tracking-tight">Instale o App</h1>
         <p className="text-slate-300 text-lg mb-8 leading-relaxed">
-          Para acessar o painel de gestão, cozinha ou caixa, é necessário utilizar a versão instalada do <strong>Flux Eat</strong>.
+          Para acessar o painel de gestão, cozinha, caixa ou <strong>fazer pedidos</strong>, é necessário utilizar a versão instalada do <strong>Flux Eat</strong>.
         </p>
 
         <div className="bg-white text-slate-800 rounded-2xl p-6 text-left shadow-lg">
@@ -167,8 +166,8 @@ export const PwaGuard: React.FC<{ children: React.ReactNode }> = ({ children }) 
           </div>
         </div>
 
-        <div className="mt-8 opacity-50 text-xs">
-          <p>Se você é um cliente acessando o cardápio, use o link da mesa fornecido via QR Code.</p>
+        <div className="mt-8 opacity-50 text-xs text-center">
+          <p>Para uma melhor experiência, instale o aplicativo.</p>
         </div>
       </div>
     </div>

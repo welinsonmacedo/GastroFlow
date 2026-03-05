@@ -19,9 +19,16 @@ export const TableCodeGuard: React.FC<TableCodeGuardProps> = ({ slug, onAuthoriz
     setError(null);
 
     try {
-      // 1. Garantir que o usuário tenha uma identidade anônima no Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signInAnonymously();
-      if (authError) throw authError;
+      // 1. Garantir que o usuário esteja autenticado (seja anônimo ou cliente logado)
+      const { data: { session } } = await supabase.auth.getSession();
+      let userId = session?.user?.id;
+
+      if (!userId) {
+          // Se não estiver logado, tenta login anônimo (fallback, mas idealmente o ClientRoute já forçou login)
+          const { data: authData, error: authError } = await supabase.auth.signInAnonymously();
+          if (authError) throw authError;
+          userId = authData.user?.id;
+      }
 
       // 2. Chamar a RPC para validar o código
       const { data, error: rpcError } = await supabase.rpc('validate_table_code', {
@@ -38,7 +45,7 @@ export const TableCodeGuard: React.FC<TableCodeGuardProps> = ({ slug, onAuthoriz
         const { error: sessionError } = await supabase
           .from('table_sessions')
           .insert([
-            { table_id: table_id, user_id: authData.user?.id }
+            { table_id: table_id, user_id: userId }
           ]);
 
         if (sessionError) throw sessionError;

@@ -34,6 +34,8 @@ import { TermsOfService } from './pages/TermsOfService';
 import { ManualPage } from './pages/ManualPage';
 import { ModuleSelector } from './pages/ModuleSelector';
 import { TimeClock } from './pages/TimeClock'; // Nova Importação
+import { ClientLogin } from './pages/ClientLogin';
+import { ClientHistory } from './pages/ClientHistory';
 
 import { InstallPWA } from './components/InstallPWA';
 import { PwaGuard } from './components/PwaGuard'; 
@@ -99,10 +101,15 @@ const ProtectedSaaSRoute = ({ children }: PropsWithChildren) => {
 
 const ClientRoute = () => {
     const { state, authorize } = useRestaurant();
+    const { state: authState } = useAuth();
     const slug = getTenantSlug();
     
-    if (state.isLoading) return <div className="h-screen flex items-center justify-center">Carregando cardápio...</div>;
+    if (state.isLoading || authState.isLoading) return <div className="h-screen flex items-center justify-center">Carregando...</div>;
     
+    if (!authState.isAuthenticated) {
+        return <Navigate to={`/client/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`} replace />;
+    }
+
     if (!state.isAuthorized) {
         return <TableCodeGuard slug={slug || ''} onAuthorized={authorize} />;
     }
@@ -182,6 +189,8 @@ const TenantApp = () => {
                         <Route path="/login" element={<Login />} />
                         <Route path="/manual" element={<ManualPage />} />
                         
+                        <Route path="/client/login" element={<ClientLogin />} />
+                        <Route path="/client/history" element={<ClientHistory />} />
                         <Route path="/client/table/:tableId" element={<ClientRoute />} />
                         <Route path="/modules" element={<ModuleSelector />} />
                         
