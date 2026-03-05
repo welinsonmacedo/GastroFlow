@@ -123,9 +123,21 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const slug = getTenantSlug();
     if (!slug) { localDispatch({ type: 'SET_LOADING', isLoading: false }); return; }
 
-    const { data: tenant } = await supabase.from('tenants').select('id, slug, status, theme_config, business_info, plan, allowed_modules, allowed_features').eq('slug', slug).maybeSingle();
+    const { data: tenant, error: tenantError } = await supabase
+        .from('tenants')
+        .select('id, slug, status, theme_config, business_info, plan, allowed_modules, allowed_features')
+        .eq('slug', slug.trim().toLowerCase())
+        .maybeSingle();
     
-    if (!tenant) { localDispatch({ type: 'TENANT_NOT_FOUND' }); return; }
+    if (tenantError) {
+        console.error("Erro crítico ao buscar restaurante no banco:", tenantError);
+    }
+
+    if (!tenant) { 
+        console.warn(`Restaurante não encontrado para o slug: "${slug}"`);
+        localDispatch({ type: 'TENANT_NOT_FOUND' }); 
+        return; 
+    }
     if (tenant.status === 'INACTIVE') { localDispatch({ type: 'TENANT_INACTIVE' }); return; }
 
     // Fetch Global Settings

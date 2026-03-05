@@ -12,6 +12,7 @@ import { OrderProvider } from './context/OrderContext';
 import { StaffProvider } from './context/StaffContext'; 
 import { SaaSProvider, useSaaS } from './context/SaaSContext';
 import { UIProvider } from './context/UIContext';
+import { isSupabaseConfigured } from './lib/supabase';
 import { ClientApp } from './pages/ClientApp';
 import { AdminDashboard } from './pages/AdminDashboard';
 import { FinanceDashboard } from './pages/FinanceDashboard'; 
@@ -114,6 +115,7 @@ const TenantApp = () => {
         const slug = getTenantSlug();
         const hostname = window.location.hostname;
         const search = window.location.search;
+        const isConfigured = isSupabaseConfigured();
         
         return (
             <div className="h-screen flex flex-col items-center justify-center bg-gray-50 p-6 text-center">
@@ -121,9 +123,16 @@ const TenantApp = () => {
                     <AlertCircle size={64} />
                 </div>
                 <h1 className="text-3xl font-bold text-gray-800 mb-2">Restaurante não encontrado</h1>
-                <p className="text-gray-500 max-w-md">Não foi possível identificar o restaurante através deste link. Verifique se a URL está correta.</p>
+                <p className="text-gray-500 max-w-md">Não foi possível identificar o restaurante através deste link. Verifique se a URL está correta ou se o restaurante existe.</p>
                 
                 <div className="mt-6 p-6 bg-white rounded-2xl border border-gray-200 shadow-sm w-full max-w-md text-left space-y-4">
+                    <div className="flex justify-between items-center border-b pb-2 mb-2">
+                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Diagnóstico do Sistema</p>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isConfigured ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                            {isConfigured ? 'Supabase OK' : 'Supabase Desconectado'}
+                        </span>
+                    </div>
+                    
                     <div>
                         <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Slug Identificado</p>
                         <p className="font-mono text-sm font-bold text-slate-700 bg-gray-50 p-2 rounded border">{slug || '(Nenhum)'}</p>
@@ -134,8 +143,8 @@ const TenantApp = () => {
                     </div>
                     {search && (
                         <div>
-                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Parâmetros</p>
-                            <p className="font-mono text-xs text-slate-500 truncate">{search}</p>
+                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Parâmetros da URL</p>
+                            <p className="font-mono text-xs text-slate-500 break-all bg-gray-50 p-2 rounded border">{search}</p>
                         </div>
                     )}
                 </div>
