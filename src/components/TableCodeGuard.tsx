@@ -39,6 +39,8 @@ export const TableCodeGuard: React.FC<TableCodeGuardProps> = ({ slug, expectedTa
 
       if (rpcError) throw rpcError;
 
+      console.log('Dados da validação:', data);
+
       if (data && data.length > 0) {
         const { tenant_id, table_id } = data[0];
 
@@ -49,16 +51,30 @@ export const TableCodeGuard: React.FC<TableCodeGuardProps> = ({ slug, expectedTa
         }
 
         // 3. Criar a sessão na tabela table_sessions
-        const expiresAt = new Date();
-        expiresAt.setHours(expiresAt.getHours() + 2);
+        console.log('Tentando inserir sessão:', { table_id: table_id, user_id: userId });
+
+        // Verificar se o table_id existe
+        const { data: tableData, error: tableError } = await supabase
+          .from('restaurant_tables')
+          .select('id')
+          .eq('id', table_id)
+          .single();
+
+        if (tableError || !tableData) {
+          console.error('table_id inválido:', table_id, tableError);
+          throw new Error('Mesa inválida.');
+        }
 
         const { error: sessionError } = await supabase
           .from('table_sessions')
           .insert([
-            { table_id: table_id, user_id: userId, expires_at: expiresAt.toISOString() }
+            { table_id: table_id, user_id: userId }
           ]);
 
-        if (sessionError) throw sessionError;
+        if (sessionError) {
+          console.error('Erro ao inserir sessão:', sessionError);
+          throw sessionError;
+        }
 
         // 4. Notificar sucesso
         onAuthorized(tenant_id, table_id);
