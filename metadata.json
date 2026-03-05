@@ -1,5 +1,5 @@
 {
   "name": "Flux ",
   "description": "Sistema completo para gestão . Onde gestão e vendas acontecem sem parar.",
-  "requestFramePermissions": []
+  "requestFramePermissions": ["camera"]
 }
