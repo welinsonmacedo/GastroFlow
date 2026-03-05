@@ -317,7 +317,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           case 'ADD_TABLE': await addTable(); break;
           case 'DELETE_TABLE': await supabase.from('restaurant_tables').delete().eq('id', action.tableId).eq('tenant_id', tenantId); fetchData(); break;
            case 'OPEN_TABLE': 
-              const userId = Array.isArray(authState.currentUser?.id) 
+              const user_id = Array.isArray(authState.currentUser?.id) 
                   ? authState.currentUser.id[0] 
                   : authState.currentUser?.id;
 
@@ -326,7 +326,9 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                   p_table_id: action.tableId,
                   p_customer_name: sanitizeObject(action.customerName),
                   p_access_code: action.accessCode,
-                  p_user_id: userId || null
+                  p_user_id: user_id || null,
+                  type_table_id: typeof action.tableId,
+                  type_user_id: typeof user_id
               }));
               const { error: openTableError } = await supabase.rpc('open_table', {
                   p_tenant_id: tenantId,
