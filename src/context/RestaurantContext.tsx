@@ -133,6 +133,7 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   const init = useCallback(async () => {
     const slug = getTenantSlug();
+    console.log('RestaurantContext init - slug from getTenantSlug:', slug);
     if (!slug) { localDispatch({ type: 'SET_LOADING', isLoading: false }); return; }
 
     // Verificar se já existe autorização na sessão
@@ -151,6 +152,8 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         .select('id, slug, status, theme_config, business_info, plan, allowed_modules, allowed_features')
         .eq('slug', slug.trim().toLowerCase())
         .maybeSingle();
+    
+    console.log('RestaurantContext init - tenant found:', tenant);
     
     if (tenantError) {
         console.error("Erro crítico ao buscar restaurante no banco:", tenantError);
@@ -236,6 +239,7 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             activeModule: initialActiveModule
         }
     });
+    sessionStorage.setItem('fluxeat_tenant_slug', tenant.slug);
   }, []);
 
   useEffect(() => {
