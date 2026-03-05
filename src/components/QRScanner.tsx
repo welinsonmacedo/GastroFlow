@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
 import { Loader2, X } from 'lucide-react';
 
@@ -32,7 +32,7 @@ export const QRScanner = ({ onScanSuccess, onClose }: QRScannerProps) => {
               }).catch(console.error);
             }
           },
-          (errorMessage) => {
+          () => {
             // Ignore scan errors, they happen constantly when no QR code is in view
           }
         );

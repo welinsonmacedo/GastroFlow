@@ -96,15 +96,17 @@ export const ClientApp: React.FC = () => {
         if (table && table.status !== TableStatus.OCCUPIED && !isOpeningTable) {
             setIsOpeningTable(true);
             const customerName = authState.currentUser?.name || authState.currentUser?.email || 'Cliente';
-            orderDispatch({ 
-                type: 'OPEN_TABLE', 
-                tableId: table.id, 
-                customerName: customerName, 
-                accessCode: '' 
-            }).catch(err => {
+            try {
+                orderDispatch({ 
+                    type: 'OPEN_TABLE', 
+                    tableId: table.id, 
+                    customerName: customerName, 
+                    accessCode: '' 
+                });
+            } catch (err) {
                 console.error("Erro ao auto-abrir mesa:", err);
                 setIsOpeningTable(false);
-            });
+            }
         }
     }, [table?.status, table?.id, authState.currentUser, isOpeningTable, orderDispatch]);
 

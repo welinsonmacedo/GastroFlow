@@ -9,7 +9,7 @@ import { useUI } from '../context/UIContext';
 export const ClientHome = () => {
   const [activeTab, setActiveTab] = useState<'history' | 'scan'>('history');
   const [showScanner, setShowScanner] = useState(false);
-  const { state: authState, signOut } = useAuth();
+  const { state: authState, logout } = useAuth();
   const navigate = useNavigate();
   const { showAlert } = useUI();
 
@@ -66,7 +66,7 @@ export const ClientHome = () => {
   };
 
   const handleLogout = async () => {
-    await signOut();
+    await logout();
     navigate('/client/login');
   };
 

@@ -35,7 +35,6 @@ import { ManualPage } from './pages/ManualPage';
 import { ModuleSelector } from './pages/ModuleSelector';
 import { TimeClock } from './pages/TimeClock'; // Nova Importação
 import { ClientLogin } from './pages/ClientLogin';
-import { ClientHistory } from './pages/ClientHistory';
 
 import { ClientHome } from './pages/ClientHome';
 import { InstallPWA } from './components/InstallPWA';

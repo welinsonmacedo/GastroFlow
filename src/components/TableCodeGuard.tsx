@@ -75,10 +75,12 @@ export const TableCodeGuard: React.FC<TableCodeGuardProps> = ({ slug, expectedTa
           throw new Error('Mesa inválida.');
         }
 
+        const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+        
         console.log('Inserindo na table_sessions:', { 
           table_id: table_id, 
           user_id: userId,
-          expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+          expires_at: expiresAt
         });
 
         const { error: sessionError } = await supabase
@@ -86,7 +88,8 @@ export const TableCodeGuard: React.FC<TableCodeGuardProps> = ({ slug, expectedTa
           .insert([
             { 
               table_id: table_id, 
-              user_id: userId
+              user_id: userId,
+              expires_at: expiresAt
             }
           ]);
 
