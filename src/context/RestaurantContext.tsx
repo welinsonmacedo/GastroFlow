@@ -3,6 +3,7 @@ import React, { createContext, useContext, useReducer, useEffect, useCallback } 
 import { RestaurantTheme, PlanLimits, RestaurantBusinessInfo, SystemModule } from '../types';
 import { getTenantSlug } from '../utils/tenant';
 import { supabase } from '../lib/supabase';
+import { TableCodeGuard } from '../components/TableCodeGuard';
 
 interface RestaurantState {
   isLoading: boolean;
@@ -10,6 +11,8 @@ interface RestaurantState {
   tenantId: string | null;
   isValidTenant: boolean;
   isInactiveTenant: boolean;
+  isAuthorized: boolean;
+  tableId: string | null;
   planLimits: PlanLimits;
   allowedModules: SystemModule[];
   allowedFeatures: string[]; // Adicionado
@@ -24,6 +27,7 @@ type Action =
   | { type: 'INIT_DATA'; payload: Partial<RestaurantState> }
   | { type: 'TENANT_NOT_FOUND' }
   | { type: 'TENANT_INACTIVE' } 
+  | { type: 'SET_AUTHORIZED'; tenantId: string; tableId: string }
   | { type: 'SET_ACTIVE_MODULE'; module: SystemModule }
   | { type: 'UPDATE_THEME'; theme: RestaurantTheme }
   | { type: 'UPDATE_BUSINESS_INFO'; info: RestaurantBusinessInfo }
@@ -42,6 +46,8 @@ const initialState: RestaurantState = {
   tenantId: null,
   isValidTenant: false,
   isInactiveTenant: false,
+  isAuthorized: false,
+  tableId: null,
   planLimits: { 
       maxTables: -1, maxProducts: -1, maxStaff: -1, 
       allowKds: true, allowCashier: true, allowReports: true, 
@@ -88,7 +94,8 @@ const restaurantReducer = (state: RestaurantState, action: Action): RestaurantSt
     case 'SET_LOADING': return { ...state, isLoading: action.isLoading };
     case 'TENANT_NOT_FOUND': return { ...state, isLoading: false, isValidTenant: false };
     case 'TENANT_INACTIVE': return { ...state, isLoading: false, isValidTenant: true, isInactiveTenant: true };
-    case 'INIT_DATA': return { ...state, ...action.payload, isLoading: false, isValidTenant: true, isInactiveTenant: false };
+    case 'SET_AUTHORIZED': return { ...state, isAuthorized: true, tenantId: action.tenantId, tableId: action.tableId, isLoading: true };
+    case 'INIT_DATA': return { ...state, ...action.payload, isLoading: false, isValidTenant: true, isInactiveTenant: false, isAuthorized: true };
     case 'SET_ACTIVE_MODULE': return { ...state, activeModule: action.module };
     case 'UPDATE_THEME': return { ...state, theme: action.theme };
     case 'UPDATE_BUSINESS_INFO': return { ...state, businessInfo: action.info };
@@ -114,14 +121,31 @@ const RestaurantContext = createContext<{
   state: RestaurantState;
   dispatch: (action: any) => Promise<void>;
   setActiveModule: (module: SystemModule) => void;
+  authorize: (tenantId: string, tableId: string) => void;
 } | undefined>(undefined);
 
 export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, localDispatch] = useReducer(restaurantReducer, initialState);
 
+  const authorize = (tenantId: string, tableId: string) => {
+    sessionStorage.setItem(`fluxeat_auth_${tenantId}`, tableId);
+    localDispatch({ type: 'SET_AUTHORIZED', tenantId, tableId });
+  };
+
   const init = useCallback(async () => {
     const slug = getTenantSlug();
     if (!slug) { localDispatch({ type: 'SET_LOADING', isLoading: false }); return; }
+
+    // Verificar se já existe autorização na sessão
+    // Precisamos primeiro do tenantId para verificar a sessão específica
+    // Mas como o RLS bloqueia o tenant, vamos tentar carregar o tenantId de forma anônima via RPC se necessário
+    // Por enquanto, vamos assumir que se houver um token no sessionStorage, tentamos o carregamento
+    
+    const storedAuth = Object.keys(sessionStorage).find(key => key.startsWith('fluxeat_auth_'));
+    if (!storedAuth && !state.isAuthorized) {
+      localDispatch({ type: 'SET_LOADING', isLoading: false });
+      return;
+    }
 
     const { data: tenant, error: tenantError } = await supabase
         .from('tenants')
@@ -131,10 +155,24 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     
     if (tenantError) {
         console.error("Erro crítico ao buscar restaurante no banco:", tenantError);
+        if (tenantError.code === '401' || tenantError.status === 401) {
+            console.error("⚠️ ERRO DE AUTENTICAÇÃO (401): Suas chaves do Supabase podem estar incorretas ou o RLS não permite acesso público à tabela 'tenants'.");
+        }
     }
 
     if (!tenant) { 
-        console.warn(`Restaurante não encontrado para o slug: "${slug}"`);
+        console.warn(`Restaurante não encontrado ou acesso revogado (mesa fechada) para o slug: "${slug}"`);
+        
+        // Se achávamos que estávamos autorizados mas o tenant sumiu, 
+        // é porque a mesa foi fechada ou o código expirou.
+        if (state.isAuthorized || storedAuth) {
+            sessionStorage.removeItem(storedAuth || '');
+            localDispatch({ type: 'SET_LOADING', isLoading: false });
+            // Forçamos o recarregamento para mostrar o TableCodeGuard
+            window.location.reload(); 
+            return;
+        }
+
         localDispatch({ type: 'TENANT_NOT_FOUND' }); 
         return; 
     }
@@ -203,7 +241,7 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   useEffect(() => {
     init();
-  }, [init]);
+  }, [init, state.isAuthorized]);
 
   useEffect(() => {
       if (!state.tenantId) return;
@@ -283,7 +321,19 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   };
 
-  return <RestaurantContext.Provider value={{ state, dispatch, setActiveModule }}>{children}</RestaurantContext.Provider>;
+  return (
+    <RestaurantContext.Provider value={{ state, dispatch, setActiveModule, authorize }}>
+      {state.isLoading ? (
+        <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
+          <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+        </div>
+      ) : !state.isAuthorized ? (
+        <TableCodeGuard slug={getTenantSlug() || ''} onAuthorized={authorize} />
+      ) : (
+        children
+      )}
+    </RestaurantContext.Provider>
+  );
 };
 
 export const useRestaurant = () => {

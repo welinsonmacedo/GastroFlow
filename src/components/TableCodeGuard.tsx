@@ -1,0 +1,123 @@
+import React, { useState } from 'react';
+import { motion } from 'motion/react';
+import { KeyRound, Loader2, AlertCircle } from 'lucide-react';
+import { supabase } from '../lib/supabase';
+
+interface TableCodeGuardProps {
+  slug: string;
+  onAuthorized: (tenantId: string, tableId: string) => void;
+}
+
+export const TableCodeGuard: React.FC<TableCodeGuardProps> = ({ slug, onAuthorized }) => {
+  const [code, setCode] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+
+    try {
+      // 1. Garantir que o usuário tenha uma identidade anônima no Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signInAnonymously();
+      if (authError) throw authError;
+
+      // 2. Chamar a RPC para validar o código
+      const { data, error: rpcError } = await supabase.rpc('validate_table_code', {
+        p_slug: slug,
+        p_code: code
+      });
+
+      if (rpcError) throw rpcError;
+
+      if (data && data.length > 0) {
+        const { tenant_id, table_id } = data[0];
+
+        // 3. Criar a sessão na tabela table_sessions
+        const { error: sessionError } = await supabase
+          .from('table_sessions')
+          .insert([
+            { table_id: table_id, user_id: authData.user?.id }
+          ]);
+
+        if (sessionError) throw sessionError;
+
+        // 4. Notificar sucesso
+        onAuthorized(tenant_id, table_id);
+      } else {
+        setError('Código inválido ou mesa ainda não foi aberta pelo garçom.');
+      }
+    } catch (err: any) {
+      console.error('Erro na validação:', err);
+      setError('Ocorreu um erro ao validar o código. Tente novamente.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-4">
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="w-full max-w-md bg-zinc-900 border border-zinc-800 rounded-3xl p-8 shadow-2xl"
+      >
+        <div className="flex flex-col items-center text-center mb-8">
+          <div className="w-16 h-16 bg-emerald-500/10 rounded-full flex items-center justify-center mb-4">
+            <KeyRound className="w-8 h-8 text-emerald-500" />
+          </div>
+          <h1 className="text-2xl font-bold text-white mb-2">Acesso Restrito</h1>
+          <p className="text-zinc-400">
+            Para acessar o cardápio, digite o código da mesa fornecido pelo garçom.
+          </p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div>
+            <label htmlFor="code" className="block text-sm font-medium text-zinc-400 mb-2">
+              Código da Mesa
+            </label>
+            <input
+              id="code"
+              type="text"
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              placeholder="Ex: 1234"
+              className="w-full bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 text-white text-center text-2xl tracking-widest focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+              required
+              autoFocus
+            />
+          </div>
+
+          {error && (
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 flex items-start gap-3"
+            >
+              <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+              <p className="text-sm text-red-200">{error}</p>
+            </motion.div>
+          )}
+
+          <button
+            type="submit"
+            disabled={loading || !code}
+            className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 disabled:hover:bg-emerald-500 text-black font-bold py-4 rounded-xl transition-all flex items-center justify-center gap-2"
+          >
+            {loading ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : (
+              'Acessar Cardápio'
+            )}
+          </button>
+        </form>
+
+        <p className="mt-8 text-center text-xs text-zinc-500">
+          Ao acessar, você concorda com os termos de uso do estabelecimento.
+        </p>
+      </motion.div>
+    </div>
+  );
+};

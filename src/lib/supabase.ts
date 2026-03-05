@@ -15,8 +15,15 @@ const env: any = import.meta.env || {};
 const supabaseUrl = env.VITE_SUPABASE_URL || '';
 const supabaseAnonKey = env.VITE_SUPABASE_ANON_KEY || '';
 
+if (!supabaseUrl || !supabaseAnonKey || supabaseUrl.includes('Sua_Url') || supabaseAnonKey.includes('Sua_Chave')) {
+  console.error('⚠️ SUPABASE NÃO CONFIGURADO CORRETAMENTE!');
+  console.info('Verifique se as variáveis VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY estão definidas no ambiente.');
+} else {
+  console.log('✅ Supabase: Chaves detectadas. Iniciando cliente...');
+}
+
 export const isSupabaseConfigured = () => {
-  return Boolean(supabaseUrl && supabaseAnonKey);
+  return Boolean(supabaseUrl && supabaseAnonKey && !supabaseUrl.includes('Sua_Url'));
 };
 
 export const supabase: any = createClient(
