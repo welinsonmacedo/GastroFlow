@@ -181,8 +181,8 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       // Sanitização de Entrada
       const safeDeliveryInfo = params.deliveryInfo ? sanitizeObject(params.deliveryInfo) : null;
       const safeItems = params.items.map(i => ({
-          productId: i.productId,
-          inventoryItemId: i.inventoryItemId,
+          productId: i.productId || null,
+          inventoryItemId: i.inventoryItemId || null,
           quantity: i.quantity,
           notes: sanitizeObject(i.notes)
       }));
@@ -204,7 +204,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
       if (error) {
           console.error("Erro ao enviar pedido:", error);
-          showAlert({ title: "Erro", message: "Não foi possível enviar o pedido.", type: "ERROR" });
+          showAlert({ title: "Erro", message: `Não foi possível enviar o pedido: ${error.message || JSON.stringify(error)}`, type: "ERROR" });
       } else {
           fetchData();
       }
