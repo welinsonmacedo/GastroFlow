@@ -12,13 +12,9 @@ if (!supabaseUrl || !supabaseKey) {
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 async function run() {
+  const sql = fs.readFileSync('./estrutura sql/restaurant_rpc_logic.sql', 'utf8');
   const { data, error } = await supabase.rpc('exec_sql', {
-    sql: `
-      ALTER TABLE public.table_sessions
-        DROP CONSTRAINT IF EXISTS table_sessions_table_id_fkey;
-      ALTER TABLE public.table_sessions
-        ADD CONSTRAINT table_sessions_table_id_fkey FOREIGN KEY (table_id) REFERENCES public.restaurant_tables (id) ON DELETE CASCADE;
-    `
+    sql: sql
   });
   console.log({ data, error });
 }

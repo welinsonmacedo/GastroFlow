@@ -280,6 +280,7 @@ CREATE TABLE IF NOT EXISTS public.service_calls (
     table_id UUID REFERENCES public.restaurant_tables(id),
     type TEXT DEFAULT 'WAITER',
     status TEXT DEFAULT 'PENDING',
+    reason TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 

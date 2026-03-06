@@ -22,6 +22,12 @@ BEGIN
         access_code = NULL
     WHERE id = p_table_id AND tenant_id = p_tenant_id;
 
+    -- Cancel unpaid orders for this table
+    UPDATE public.orders
+    SET status = 'CANCELLED',
+        updated_at = NOW()
+    WHERE table_id = p_table_id AND tenant_id = p_tenant_id AND is_paid = false AND status != 'CANCELLED';
+
     -- Clear OPENER routes from staff
     v_route_to_remove := 'OPENER:' || p_table_id;
     
