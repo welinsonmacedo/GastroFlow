@@ -132,43 +132,81 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   const init = useCallback(async () => {
-    // Safety timeout to prevent infinite loading
+    console.log('RestaurantContext: Starting init...');
+    
+    // Safety timeout for the entire init process
     const timeoutId = setTimeout(() => {
-        console.warn("RestaurantContext init timed out - forcing loading false");
+        console.warn("RestaurantContext: init process timed out (15s)");
         localDispatch({ type: 'SET_LOADING', isLoading: false });
     }, 15000);
 
     try {
         const slug = getTenantSlug();
-        console.log('RestaurantContext init - slug from getTenantSlug:', slug);
+        console.log('RestaurantContext: slug identified:', slug);
+        
         if (!slug) { 
+            console.log('RestaurantContext: No slug found, stopping init.');
             clearTimeout(timeoutId);
             localDispatch({ type: 'SET_LOADING', isLoading: false }); 
             return; 
         }
 
-        // Verificar se já existe autorização na sessão
-        const storedAuth = Object.keys(sessionStorage).find(key => key.startsWith('fluxeat_auth_'));
-        
-        const { data: tenant, error: tenantError } = await supabase
-            .from('tenants')
-            .select('id, slug, status, theme_config, business_info, plan, allowed_modules, allowed_features')
-            .eq('slug', slug.trim().toLowerCase())
-            .maybeSingle();
-        
-        console.log('RestaurantContext init - tenant found:', tenant);
-        
-        if (tenantError) {
-            console.error("Erro crítico ao buscar restaurante no banco:", tenantError);
-            if (tenantError.code === '401' || tenantError.status === 401) {
-                console.error("⚠️ ERRO DE AUTENTICAÇÃO (401): Suas chaves do Supabase podem estar incorretas ou o RLS não permite acesso público à tabela 'tenants'.");
+        // Helper function for timed queries
+        const timedQuery = async (promise: Promise<any>, timeoutMs: number = 5000) => {
+            return Promise.race([
+                promise,
+                new Promise((_, reject) => setTimeout(() => reject(new Error('Query timeout')), timeoutMs))
+            ]);
+        };
+
+        // 0. Connection Test
+        console.log('RestaurantContext: Testing Supabase connection...');
+        try {
+            const { error: testError } = await timedQuery(supabase.from('tenants').select('id').limit(1), 3000);
+            if (testError) {
+                console.warn('RestaurantContext: Supabase connection test warning:', testError);
+            } else {
+                console.log('RestaurantContext: Supabase connection test successful.');
             }
+        } catch (e) {
+            console.error('RestaurantContext: Supabase connection test failed (timeout or error):', e);
         }
 
+        // 1. Tenant Query
+        console.log(`RestaurantContext: Querying tenants table for slug: "${slug.trim().toLowerCase()}"`);
+        
+        let tenant = null;
+        try {
+            const { data: tenants, error: tenantError } = await timedQuery(
+                supabase
+                    .from('tenants')
+                    .select('id, slug, status, theme_config, business_info, plan, allowed_modules, allowed_features')
+                    .eq('slug', slug.trim().toLowerCase())
+            );
+            
+            console.log('RestaurantContext: Tenant query response:', { 
+                count: tenants?.length, 
+                error: tenantError,
+                data: tenants ? 'Data received' : 'No data'
+            });
+            
+            if (tenantError) {
+                console.error("RestaurantContext: Error querying tenants:", tenantError);
+            }
+            
+            tenant = tenants && tenants.length > 0 ? tenants[0] : null;
+        } catch (e) {
+            console.error("RestaurantContext: Tenant query timed out or failed:", e);
+        }
+
+        console.log('RestaurantContext: Tenant object resolved:', tenant);
+
         if (!tenant) { 
-            console.warn(`Restaurante não encontrado ou acesso revogado (mesa fechada) para o slug: "${slug}"`);
+            console.warn(`RestaurantContext: Tenant not found or query failed for slug: "${slug}"`);
+            const storedAuth = Object.keys(sessionStorage).find(key => key.startsWith('fluxeat_auth_'));
             
             if (state.isAuthorized || storedAuth) {
+                console.log('RestaurantContext: Found stale auth, clearing and reloading...');
                 sessionStorage.removeItem(storedAuth || '');
                 clearTimeout(timeoutId);
                 localDispatch({ type: 'SET_LOADING', isLoading: false });
@@ -180,46 +218,59 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             localDispatch({ type: 'TENANT_NOT_FOUND' }); 
             return; 
         }
+
         if (tenant.status === 'INACTIVE') { 
+            console.log('RestaurantContext: Tenant is inactive.');
             clearTimeout(timeoutId);
             localDispatch({ type: 'TENANT_INACTIVE' }); 
             return; 
         }
 
-        // Fetch Global Settings
+        // 2. Fetch Global Settings
+        console.log('RestaurantContext: Fetching global settings...');
         let globalSettings = {};
         try {
-            const { data: configData, error: configError } = await supabase
-                .from('saas_config')
-                .select('global_settings')
-                .eq('id', 1)
-                .maybeSingle();
+            const { data: configData, error: configError } = await timedQuery(
+                supabase
+                    .from('saas_config')
+                    .select('global_settings')
+                    .eq('id', 1),
+                3000
+            );
             
-            if (configData?.global_settings && !configError) {
-                globalSettings = configData.global_settings;
+            console.log('RestaurantContext: Global settings response:', { configData, configError });
+            
+            if (configData && configData.length > 0 && !configError) {
+                globalSettings = configData[0].global_settings;
             } else {
                 const localSettings = localStorage.getItem('flux_saas_global_settings');
-                if (localSettings) {
-                    globalSettings = JSON.parse(localSettings);
-                }
+                if (localSettings) globalSettings = JSON.parse(localSettings);
             }
         } catch (e) {
-            console.warn("saas_config table might not exist yet:", e);
+            console.warn("RestaurantContext: saas_config fetch failed or timed out:", e);
             const localSettings = localStorage.getItem('flux_saas_global_settings');
-            if (localSettings) {
-                globalSettings = JSON.parse(localSettings);
-            }
+            if (localSettings) globalSettings = JSON.parse(localSettings);
         }
 
-        // Busca os limites do plano
+        // 3. Busca os limites do plano
+        console.log('RestaurantContext: Fetching plan limits for:', tenant.plan);
         let fetchedLimits = initialState.planLimits;
         if (tenant.plan) {
-            const { data: planData } = await supabase.from('plans').select('limits').eq('key', tenant.plan).maybeSingle();
-            if (planData && planData.limits) {
-                fetchedLimits = { ...initialState.planLimits, ...planData.limits };
+            try {
+                const { data: plans, error: planError } = await timedQuery(
+                    supabase.from('plans').select('limits').eq('key', tenant.plan),
+                    3000
+                );
+                console.log('RestaurantContext: Plan limits response:', { plans, planError });
+                if (plans && plans.length > 0) {
+                    fetchedLimits = { ...initialState.planLimits, ...plans[0].limits };
+                }
+            } catch (e) {
+                console.error("RestaurantContext: Error fetching plan limits:", e);
             }
         }
         
+        console.log('RestaurantContext: Preparing final data...');
         const mergedBusinessInfo = {
             ...initialState.businessInfo,
             ...(tenant.business_info || {}),
@@ -227,12 +278,11 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             expenseCategories: (tenant.business_info?.expenseCategories) || initialState.businessInfo.expenseCategories
         };
 
-        // Recupera módulo ativo da sessão se houver
         const storedModule = sessionStorage.getItem(`fluxeat_module_${tenant.id}`);
         const initialActiveModule = storedModule as SystemModule | null;
-
         const isAuthorized = !!sessionStorage.getItem(`fluxeat_auth_${tenant.id}`);
 
+        console.log('RestaurantContext: Dispatching INIT_DATA...');
         clearTimeout(timeoutId);
         localDispatch({
             type: 'INIT_DATA',
@@ -244,15 +294,16 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 businessInfo: mergedBusinessInfo,
                 planLimits: fetchedLimits,
                 allowedModules: tenant.allowed_modules || ['RESTAURANT'],
-                allowedFeatures: tenant.allowed_features || [], // Carrega do banco
+                allowedFeatures: tenant.allowed_features || [],
                 activeModule: initialActiveModule,
                 isAuthorized: isAuthorized,
                 tableId: isAuthorized ? sessionStorage.getItem(`fluxeat_auth_${tenant.id}`) : null
             }
         });
         sessionStorage.setItem('fluxeat_tenant_slug', tenant.slug);
+        console.log('RestaurantContext: Init completed successfully.');
     } catch (error) {
-        console.error("RestaurantContext init CRITICAL ERROR:", error);
+        console.error("RestaurantContext: CRITICAL ERROR during init:", error);
         clearTimeout(timeoutId);
         localDispatch({ type: 'SET_LOADING', isLoading: false });
     }

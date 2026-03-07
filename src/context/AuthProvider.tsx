@@ -74,11 +74,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const loadUserFromSession = async () => {
+    console.log('AuthProvider: Starting loadUserFromSession...');
     setState(s => ({ ...s, isLoading: true }));
-    const slug = getTenantSlug();
     
-    // Se não tiver slug, ainda tentamos carregar a sessão para ver se é um CLIENTE
-    // Mas se for STAFF, precisa do slug para validar o tenant
+    // Safety timeout for auth loading
+    const timeoutId = setTimeout(() => {
+        console.warn("AuthProvider: loadUserFromSession timed out (10s)");
+        setState(s => ({ ...s, isLoading: false }));
+    }, 10000);
+
+    const slug = getTenantSlug();
+    console.log('AuthProvider: slug identified:', slug);
     
     try {
         // IP Blocking Check (Server-side via Edge Function)
@@ -86,8 +92,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         const checkIp = async () => {
             try {
+                console.log('AuthProvider: Running IP check...');
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 2000); // 2 seconds timeout
+                const ipTimeout = setTimeout(() => controller.abort(), 2000);
                 const ipResponse = await fetch(functionUrl, {
                     method: 'POST',
                     headers: {
@@ -95,75 +102,90 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     },
                     signal: controller.signal
                 });
-                clearTimeout(timeoutId);
+                clearTimeout(ipTimeout);
                 
                 if (ipResponse && ipResponse.status === 403) {
+                    console.warn('AuthProvider: IP blocked, signing out...');
                     await supabase.auth.signOut();
                     window.location.href = '/blocked';
                 }
             } catch (err) {
-                // Silently continue execution if IP check fails or times out
+                console.log('AuthProvider: IP check skipped or failed:', err.message);
             }
         };
         
-        // Run IP check in background, don't await it
         checkIp();
 
-        const { data: { session }, error } = await supabase.auth.getSession();
+        console.log('AuthProvider: Fetching session...');
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        console.log('AuthProvider: Session response:', { hasSession: !!session, error: sessionError });
         
-        if (error) {
-            console.error("Session error:", error.message);
-            if (error.message.includes('Refresh Token') || error.message.includes('refresh_token')) {
+        if (sessionError) {
+            console.error("AuthProvider: Session error:", sessionError.message);
+            if (sessionError.message.includes('Refresh Token') || sessionError.message.includes('refresh_token')) {
                 await supabase.auth.signOut();
             }
+            clearTimeout(timeoutId);
             setState(s => ({ ...s, isLoading: false }));
             return;
         }
 
         if (!session?.user) {
+            console.log('AuthProvider: No active session found.');
+            clearTimeout(timeoutId);
             setState(s => ({ ...s, isLoading: false }));
             return;
         }
 
         if (session?.user) {
-            // Primeiro verifica se é CLIENTE (independente de tenant)
-            const { data: clientData } = await supabase
+            console.log('AuthProvider: User found in session:', session.user.id);
+            // Primeiro verifica se é CLIENTE
+            const { data: clientData, error: clientError } = await supabase
                 .from('clients')
                 .select('*')
                 .eq('auth_user_id', session.user.id)
                 .maybeSingle();
+
+            console.log('AuthProvider: Client query result:', { isClient: !!clientData, error: clientError });
 
             if (clientData) {
                 const user: User = {
                     id: clientData.id,
                     name: clientData.name,
                     role: Role.CLIENT,
-                    tenant_id: '', // Cliente sem tenant específico no login global
+                    tenant_id: '', 
                     auth_user_id: session.user.id,
                     email: session.user.email,
                     phone: clientData.phone,
                     documentCpf: clientData.cpf
                 };
+                console.log('AuthProvider: Authenticated as CLIENT.');
+                clearTimeout(timeoutId);
                 setState({ currentUser: user, isAuthenticated: true, isLoading: false });
                 return;
             }
 
             // Se não for cliente, e tiver slug, verifica STAFF
             if (slug) {
-                const { data: tenant } = await supabase.from('tenants').select('id').eq('slug', slug).maybeSingle();
+                console.log('AuthProvider: Querying tenant for slug:', slug);
+                const { data: tenant, error: tenantError } = await supabase.from('tenants').select('id').eq('slug', slug).maybeSingle();
+                console.log('AuthProvider: Tenant query result:', { tenantId: tenant?.id, error: tenantError });
+                
                 if (tenant) {
-                    const { data: staffData } = await supabase
+                    console.log('AuthProvider: Querying staff for user:', session.user.id);
+                    const { data: staffData, error: staffError } = await supabase
                         .from('staff')
                         .select('*, custom_roles(permissions)')
                         .eq('auth_user_id', session.user.id)
                         .eq('tenant_id', tenant.id)
                         .maybeSingle();
 
+                    console.log('AuthProvider: Staff query result:', { hasStaff: !!staffData, error: staffError });
+
                     if (staffData) {
                         let allowedRoutes = staffData.allowed_routes || [];
                         let allowedFeatures = [];
                         
-                        // Se tiver cargo personalizado, sobrepõe com as permissões do cargo
                         if (staffData.custom_roles?.permissions) {
                             if (staffData.custom_roles.permissions.allowed_modules) {
                                 allowedRoutes = staffData.custom_roles.permissions.allowed_modules;
@@ -172,13 +194,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                                 allowedFeatures = staffData.custom_roles.permissions.allowed_features;
                             }
                         } else if (staffData.role === 'ADMIN') {
-                            // Admin vê tudo por padrão se não tiver restrição explícita
                             allowedRoutes = ['RESTAURANT', 'SNACKBAR', 'DISTRIBUTOR', 'COMMERCE', 'MANAGER', 'CONFIG', 'FINANCE', 'INVENTORY', 'HR'];
-                            // Para admin, as features são controladas pelo plano (restState), 
-                            // mas vamos inicializar vazio para não restringir aqui
                             allowedFeatures = []; 
                         } else if (!staffData.custom_role_id && allowedRoutes.length === 0) {
-                            // Defaults para cargos padrão se não houver rotas definidas
                             if (['WAITER', 'KITCHEN', 'CASHIER'].includes(staffData.role)) {
                                 allowedRoutes = ['RESTAURANT'];
                                 if (staffData.role === 'CASHIER') allowedRoutes.push('COMMERCE');
@@ -189,23 +207,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                             id: staffData.id,
                             name: staffData.name,
                             role: staffData.role,
-                            tenant_id: tenant.id, // Adicionado aqui
+                            tenant_id: tenant.id,
                             auth_user_id: staffData.auth_user_id,
                             email: staffData.email,
                             customRoleId: staffData.custom_role_id,
                             allowedRoutes: allowedRoutes,
                             allowedFeatures: allowedFeatures
                         };
+                        console.log('AuthProvider: Authenticated as STAFF.');
+                        clearTimeout(timeoutId);
                         setState({ currentUser: user, isAuthenticated: true, isLoading: false });
                         startHeartbeat(tenant.id, staffData.id);
                         return;
+                    } else {
+                        console.warn('AuthProvider: User is in session but not found in staff table for this tenant.');
                     }
+                } else {
+                    console.warn('AuthProvider: Tenant not found for slug:', slug);
                 }
+            } else {
+                console.log('AuthProvider: No slug provided, cannot verify staff access.');
             }
         }
     } catch (error) {
-        console.error("Auth Load Error", error);
+        console.error("AuthProvider: CRITICAL ERROR during loadUserFromSession:", error);
     }
+    clearTimeout(timeoutId);
     setState(s => ({ ...s, isLoading: false }));
   };
 
