@@ -5,12 +5,12 @@ import { useRestaurant } from '../../../context/RestaurantContext';
 import { useUI } from '../../../context/UIContext';
 import { Button } from '../../../components/Button';
 import { PayrollPreview, ClosedPayroll, PayrollEventType } from '../../../types';
-import { FileText, Printer, Calculator, RefreshCcw, Eye, Lock, Plus, Download, AlertTriangle, List, Trash2, Unlock, CheckSquare, UploadCloud } from 'lucide-react';
+import { FileText, Printer, Calculator, RefreshCcw, Eye, Lock, Plus, Download, AlertTriangle, List, Trash2, Unlock, CheckSquare, UploadCloud, Edit2 } from 'lucide-react';
 import { printHtml } from '../../../utils/printHelper';
 import { Modal } from '../../../components/Modal';
 
 export const StaffPayroll: React.FC<{ initialMonth?: number; initialYear?: number }> = ({ initialMonth, initialYear }) => {
-    const { getPayroll, closePayroll, reopenPayroll, addPayrollEvent, deletePayrollEvent, generateRecurringEventsForMonth, state: staffState } = useStaff();
+    const { getPayroll, closePayroll, reopenPayroll, addPayrollEvent, deletePayrollEvent, generateRecurringEventsForMonth, state: staffState, updatePayrollEvent } = useStaff();
     const { state: restState } = useRestaurant(); 
     const { showAlert, showConfirm } = useUI();
     
@@ -27,6 +27,7 @@ export const StaffPayroll: React.FC<{ initialMonth?: number; initialYear?: numbe
     // Modal Eventos
     const [isEventModalOpen, setIsEventModalOpen] = useState(false);
     const [eventForm, setEventForm] = useState({ staffId: '', type: '', value: 0, description: '' });
+    const [editingEventId, setEditingEventId] = useState<string | null>(null);
 
     // Helper to get employee details for the selected slip
     const selectedEmployee = selectedSlip ? staffState.users.find(u => u.id === selectedSlip.staffId) : null;
@@ -158,18 +159,32 @@ export const StaffPayroll: React.FC<{ initialMonth?: number; initialYear?: numbe
                 }
             }
 
-            await addPayrollEvent({ 
-                staffId: eventForm.staffId, 
-                month, year, 
-                type: eventForm.type as PayrollEventType, 
-                value: Number(eventForm.value), 
-                description: finalDesc 
-            });
-            showAlert({ title: "Lançado", message: "Evento adicionado à pré-folha.", type: "SUCCESS" });
+            if (editingEventId) {
+                await updatePayrollEvent({ 
+                    id: editingEventId,
+                    staffId: eventForm.staffId, 
+                    month, year, 
+                    type: eventForm.type as PayrollEventType, 
+                    value: Number(eventForm.value), 
+                    description: finalDesc 
+                });
+                showAlert({ title: "Atualizado", message: "Evento atualizado na pré-folha.", type: "SUCCESS" });
+            } else {
+                await addPayrollEvent({ 
+                    staffId: eventForm.staffId, 
+                    month, year, 
+                    type: eventForm.type as PayrollEventType, 
+                    value: Number(eventForm.value), 
+                    description: finalDesc 
+                });
+                showAlert({ title: "Lançado", message: "Evento adicionado à pré-folha.", type: "SUCCESS" });
+            }
+            
             setIsEventModalOpen(false);
+            setEditingEventId(null);
             loadData();
         } catch (e) {
-            showAlert({ title: "Erro", message: "Falha ao lançar evento.", type: "ERROR" });
+            showAlert({ title: "Erro", message: "Falha ao salvar evento.", type: "ERROR" });
         }
     };
 
@@ -416,6 +431,7 @@ export const StaffPayroll: React.FC<{ initialMonth?: number; initialYear?: numbe
                                 setEventForm({ staffId: '', type: staffState.eventTypes.length > 0 ? staffState.eventTypes[0].id : '', value: 0, description: '' }); 
                                 setCalcMode('MANUAL');
                                 setCalcQty(0);
+                                setEditingEventId(null);
                                 setIsEventModalOpen(true); 
                                 // Resetar estados de falta
                                 setIsJustified(false);
@@ -534,7 +550,7 @@ export const StaffPayroll: React.FC<{ initialMonth?: number; initialYear?: numbe
             </div>
 
             {/* Modal de Lançamento de Eventos (LAYOUT OTIMIZADO) */}
-            <Modal isOpen={isEventModalOpen} onClose={() => setIsEventModalOpen(false)} title="Lançamento Variável" variant="page" onSave={handleAddEvent}>
+            <Modal isOpen={isEventModalOpen} onClose={() => setIsEventModalOpen(false)} title={editingEventId ? "Editar Evento" : "Lançamento Variável"} variant="page" onSave={handleAddEvent}>
                 <div className="max-w-7xl mx-auto space-y-6 pt-6">
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
                         
@@ -896,9 +912,20 @@ export const StaffPayroll: React.FC<{ initialMonth?: number; initialYear?: numbe
                                                 {isDeduction ? '-' : '+'} {evtType?.calculationType === 'PERCENTAGE' ? `${ev.value}%` : `R$ ${(ev.value || 0).toFixed(2)}`}
                                             </div>
                                             {!isClosed && (
-                                                <button onClick={() => handleDeleteEvent(ev.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors">
-                                                    <Trash2 size={16}/>
-                                                </button>
+                                                <div className="flex items-center gap-1">
+                                                    <button onClick={() => {
+                                                        setEventForm({ staffId: ev.staffId, type: ev.type, value: ev.value, description: ev.description || '' });
+                                                        setEditingEventId(ev.id);
+                                                        setCalcMode('MANUAL');
+                                                        setIsEventsListModalOpen(false);
+                                                        setIsEventModalOpen(true);
+                                                    }} className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg transition-colors" title="Editar Evento">
+                                                        <Edit2 size={16}/>
+                                                    </button>
+                                                    <button onClick={() => handleDeleteEvent(ev.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Excluir Evento">
+                                                        <Trash2 size={16}/>
+                                                    </button>
+                                                </div>
                                             )}
                                         </div>
                                     </div>

@@ -905,6 +905,9 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const addPayrollEvent = async (event: Partial<PayrollEvent>) => {
       if(!tenantId || !currentUser) return;
 
+      const isClosed = state.closedPayrolls.some(cp => cp.month === event.month && cp.year === event.year);
+      if (isClosed) throw new Error("A folha deste mês já está fechada. Não é possível adicionar eventos.");
+
       if (event.type === 'ADVANCE') {
           const user = state.users.find(u => u.id === event.staffId);
           if (user && user.baseSalary) {
@@ -928,6 +931,9 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const updatePayrollEvent = async (event: PayrollEvent) => {
       if(!tenantId || !currentUser) return;
 
+      const isClosed = state.closedPayrolls.some(cp => cp.month === event.month && cp.year === event.year);
+      if (isClosed) throw new Error("A folha deste mês já está fechada. Não é possível editar eventos.");
+
       const { error } = await supabase.from('rh_payroll_events').update({
           type: event.type, description: event.description, value: event.value
       }).eq('id', event.id);
@@ -938,6 +944,11 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
   
   const deletePayrollEvent = async (id: string) => {
+      const event = state.payrollEvents.find(e => e.id === id);
+      if (event) {
+          const isClosed = state.closedPayrolls.some(cp => cp.month === event.month && cp.year === event.year);
+          if (isClosed) throw new Error("A folha deste mês já está fechada. Não é possível excluir eventos.");
+      }
       await supabase.from('rh_payroll_events').delete().eq('id', id);
       fetchData();
   };
@@ -971,6 +982,9 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const generateRecurringEventsForMonth = async (month: number, year: number) => {
       if(!tenantId || !currentUser) return;
       
+      const isClosed = state.closedPayrolls.some(cp => cp.month === month && cp.year === year);
+      if (isClosed) throw new Error("A folha deste mês já está fechada. Não é possível gerar eventos recorrentes.");
+
       try {
           const { data, error } = await supabase.rpc('generate_recurring_events', {
               p_month: month,
@@ -991,12 +1005,29 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const deletePayrollEntry = async (id: string) => {
+      const entry = state.payrollEntries.find(e => e.id === id);
+      if (entry && entry.month) {
+          const [yearStr, monthStr] = entry.month.split('-');
+          const pYear = parseInt(yearStr, 10);
+          const pMonth = parseInt(monthStr, 10) - 1;
+          const isClosed = state.closedPayrolls.some(cp => cp.month === pMonth && cp.year === pYear);
+          if (isClosed) throw new Error("A folha deste mês já está fechada. Não é possível remover dados.");
+      }
       await supabase.from('rh_payroll_entries').delete().eq('id', id);
       fetchData();
   };
 
   const addPayrollEntry = async (entry: Partial<PayrollEntry>) => {
       if (!tenantId) return;
+
+      if (entry.month) {
+          const [yearStr, monthStr] = entry.month.split('-');
+          const pYear = parseInt(yearStr, 10);
+          const pMonth = parseInt(monthStr, 10) - 1;
+          const isClosed = state.closedPayrolls.some(cp => cp.month === pMonth && cp.year === pYear);
+          if (isClosed) throw new Error("A folha deste mês já está fechada. Não é possível enviar dados.");
+      }
+
       const { error } = await supabase.from('rh_payroll_entries').insert({
           tenant_id: tenantId,
           staff_id: entry.staffId,

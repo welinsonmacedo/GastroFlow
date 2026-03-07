@@ -40,6 +40,11 @@ export const SendToPayrollTab: React.FC = () => {
         return isCurrentMonth || isPrevMonth;
     };
 
+    const [yearStr, monthStr] = filterMonth.split('-');
+    const pYear = parseInt(yearStr, 10);
+    const pMonth = parseInt(monthStr, 10) - 1;
+    const isPayrollClosed = staffState.closedPayrolls.some(cp => cp.month === pMonth && cp.year === pYear);
+
     useEffect(() => {
         if (!selectedStaffId) {
             setMonthlyEntries([]);
@@ -156,11 +161,19 @@ export const SendToPayrollTab: React.FC = () => {
                                 </div>
                             </div>
                             <div className="flex justify-end gap-2">
-                                <Button onClick={() => setIsSummaryModalOpen(true)} variant="secondary"><Edit size={16} className="mr-2"/> Editar Resumo</Button>
-                                {existingEntry ? (
-                                    <Button onClick={async () => { await deletePayrollEntry(existingEntry.id); showAlert({ title: 'Sucesso', message: 'Dados removidos da pré-folha.', type: 'SUCCESS' }); }} variant="danger">Voltar para Edição</Button>
+                                {isPayrollClosed ? (
+                                    <div className="text-sm text-red-500 font-bold flex items-center bg-red-50 px-4 py-2 rounded-xl">
+                                        Folha fechada. Não é possível alterar.
+                                    </div>
                                 ) : (
-                                    <Button onClick={handleSendToPayroll} className="bg-green-600 hover:bg-green-700"><ArrowRight size={16} className="mr-2"/> Enviar para Pré-Folha</Button>
+                                    <>
+                                        <Button onClick={() => setIsSummaryModalOpen(true)} variant="secondary"><Edit size={16} className="mr-2"/> Editar Resumo</Button>
+                                        {existingEntry ? (
+                                            <Button onClick={async () => { await deletePayrollEntry(existingEntry.id); showAlert({ title: 'Sucesso', message: 'Dados removidos da pré-folha.', type: 'SUCCESS' }); }} variant="danger">Voltar para Edição</Button>
+                                        ) : (
+                                            <Button onClick={handleSendToPayroll} className="bg-green-600 hover:bg-green-700"><ArrowRight size={16} className="mr-2"/> Enviar para Pré-Folha</Button>
+                                        )}
+                                    </>
                                 )}
                             </div>
                         </div>
