@@ -213,12 +213,6 @@ const TenantApp = () => {
     );
 };
 
-const ClientLayout = () => (
-    <AuthProvider>
-        <Outlet />
-    </AuthProvider>
-);
-
 const App: React.FC = () => {
   const location = useLocation();
   const [tenantSlug, setTenantSlug] = useState<string | null>(getTenantSlug());
@@ -229,22 +223,20 @@ const App: React.FC = () => {
 
   return (
         <UIProvider>
-            <PwaGuard>
-                <CookieConsent />
-                <InstallPWA />
-                <Routes>
-                    {/* Client Routes - Tenant Agnostic */}
-                    <Route element={<ClientLayout />}>
-                        <Route path="/client/login" element={<ClientLogin />} />
-                        <Route path="/client/home" element={<ClientHome />} />
-                        <Route path="/client/history" element={<Navigate to="/client/home" replace />} />
-                    </Route>
+            <AuthProvider>
+                <RestaurantProvider>
+                    <PwaGuard>
+                        <CookieConsent />
+                        <InstallPWA />
+                        <Routes>
+                            {/* Client Routes - Tenant Agnostic */}
+                            <Route path="/client/login" element={<ClientLogin />} />
+                            <Route path="/client/home" element={<ClientHome />} />
+                            <Route path="/client/history" element={<Navigate to="/client/home" replace />} />
 
-                    {/* Main Application Routes */}
-                    <Route path="/*" element={
-                        <AuthProvider>
-                            {tenantSlug ? (
-                                <RestaurantProvider>
+                            {/* Main Application Routes */}
+                            <Route path="/*" element={
+                                tenantSlug ? (
                                     <MenuProvider>
                                         <OrderProvider>
                                             <StaffProvider>
@@ -256,25 +248,25 @@ const App: React.FC = () => {
                                             </StaffProvider>
                                         </OrderProvider>
                                     </MenuProvider>
-                                </RestaurantProvider>
-                            ) : (
-                                <SaaSProvider>
-                                    <Routes>
-                                        <Route path="/" element={<Navigate to="/login" replace />} />
-                                        <Route path="/login" element={<Login />} />
-                                        <Route path="/register" element={<RegisterRestaurant />} />
-                                        <Route path="/privacy" element={<PrivacyPolicy />} />
-                                        <Route path="/terms" element={<TermsOfService />} />
-                                        <Route path="/sys-admin" element={<SaaSLogin />} /> 
-                                        <Route path="/dashboard" element={<ProtectedSaaSRoute><SuperAdminDashboard /></ProtectedSaaSRoute>} /> 
-                                        <Route path="*" element={<Navigate to="/login" />} />
-                                    </Routes>
-                                </SaaSProvider>
-                            )}
-                        </AuthProvider>
-                    } />
-                </Routes>
-            </PwaGuard>
+                                ) : (
+                                    <SaaSProvider>
+                                        <Routes>
+                                            <Route path="/" element={<Navigate to="/login" replace />} />
+                                            <Route path="/login" element={<Login />} />
+                                            <Route path="/register" element={<RegisterRestaurant />} />
+                                            <Route path="/privacy" element={<PrivacyPolicy />} />
+                                            <Route path="/terms" element={<TermsOfService />} />
+                                            <Route path="/sys-admin" element={<SaaSLogin />} /> 
+                                            <Route path="/dashboard" element={<ProtectedSaaSRoute><SuperAdminDashboard /></ProtectedSaaSRoute>} /> 
+                                            <Route path="*" element={<Navigate to="/login" />} />
+                                        </Routes>
+                                    </SaaSProvider>
+                                )
+                            } />
+                        </Routes>
+                    </PwaGuard>
+                </RestaurantProvider>
+            </AuthProvider>
         </UIProvider>
   );
 };

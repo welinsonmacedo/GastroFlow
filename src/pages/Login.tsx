@@ -181,8 +181,9 @@ export const Login: React.FC = () => {
 
   if (authState.isLoading) return <div>Carregando...</div>;
 
-  const bgUrl = restState.theme.loginBgUrl || restState.globalSettings.loginBgUrl;
-  const boxColor = restState.theme.loginBoxColor || restState.globalSettings.loginBoxColor || '#ffffff';
+  const bgUrl = restState.isValidTenant ? (restState.theme.loginBgUrl || restState.globalSettings.loginBgUrl) : null;
+  const boxColor = restState.isValidTenant ? (restState.theme.loginBoxColor || restState.globalSettings.loginBoxColor || '#ffffff') : '#ffffff';
+  const restaurantName = restState.isValidTenant ? restState.theme.restaurantName : 'FluxEat';
 
   return (
     <div 
@@ -198,7 +199,7 @@ export const Login: React.FC = () => {
         style={{ backgroundColor: boxColor }}
       >
         <div className="flex flex-col items-center mb-6">
-            <h1 className="text-2xl font-bold text-gray-800">{restState.theme.restaurantName}</h1>
+            <h1 className="text-2xl font-bold text-gray-800">{restaurantName}</h1>
             <p className="text-gray-500 text-sm">{isRegistering ? 'Criar Senha' : ''}</p>
         </div>
         {successMessage && <div className="bg-green-100 text-green-700 p-3 rounded mb-4 text-sm">{successMessage}</div>}
