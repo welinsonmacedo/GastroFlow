@@ -84,34 +84,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // IP Blocking Check (Server-side via Edge Function)
         const functionUrl = 'https://mxzlaggtufxeirgcgbhn.supabase.co/functions/v1/bright-responder';
         
-        const fetchWithRetry = async (url: string, options: RequestInit, retries = 3): Promise<Response | null> => {
-            for (let i = 0; i < retries; i++) {
-                try {
-                    return await fetch(url, options);
-                } catch (err) {
-                    if (i === retries - 1) return null;
-                    await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
+        const checkIp = async () => {
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 2000); // 2 seconds timeout
+                const ipResponse = await fetch(functionUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
+                    },
+                    signal: controller.signal
+                });
+                clearTimeout(timeoutId);
+                
+                if (ipResponse && ipResponse.status === 403) {
+                    await supabase.auth.signOut();
+                    window.location.href = '/blocked';
                 }
+            } catch (err) {
+                // Silently continue execution if IP check fails or times out
             }
-            return null;
         };
-
-        try {
-            const ipResponse = await fetchWithRetry(functionUrl, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
-                }
-            });
-            
-            if (ipResponse && ipResponse.status === 403) {
-                await supabase.auth.signOut();
-                window.location.href = '/blocked';
-                return;
-            }
-        } catch (fetchError) {
-            // Silently continue execution even if IP check fails
-        }
+        
+        // Run IP check in background, don't await it
+        checkIp();
 
         const { data: { session }, error } = await supabase.auth.getSession();
         
