@@ -116,6 +116,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             if (error.message.includes('Refresh Token') || error.message.includes('refresh_token')) {
                 await supabase.auth.signOut();
             }
+            setState(s => ({ ...s, isLoading: false }));
+            return;
+        }
+
+        if (!session?.user) {
+            setState(s => ({ ...s, isLoading: false }));
+            return;
         }
 
         if (session?.user) {
@@ -237,7 +244,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await stopHeartbeat(); 
     await supabase.auth.signOut();
     setState({ currentUser: null, isAuthenticated: false, isLoading: false });
-    window.location.href = '/login';
+    
+    // Preserve the tenant slug in the URL when logging out
+    const slug = getTenantSlug();
+    if (slug) {
+        window.location.href = `/login?restaurant=${slug}`;
+    } else {
+        window.location.href = '/login';
+    }
   };
 
   const checkPermission = (allowedRoles: Role[]) => {
