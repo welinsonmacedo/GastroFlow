@@ -29,6 +29,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const sessionLogId = useRef<string | null>(null);
   const heartbeatInterval = useRef<any>(null);
+  const isFetchingSession = useRef(false);
 
   const startHeartbeat = async (tenantId: string, staffId: string) => {
       try {
@@ -74,6 +75,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const loadUserFromSession = async () => {
+    if (isFetchingSession.current) {
+        console.log('AuthProvider: loadUserFromSession already running, skipping.');
+        return;
+    }
+    isFetchingSession.current = true;
+
     console.log('AuthProvider: Starting loadUserFromSession...');
     setState(s => ({ ...s, isLoading: true }));
     
@@ -81,6 +88,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const timeoutId = setTimeout(() => {
         console.warn("AuthProvider: loadUserFromSession timed out (10s)");
         setState(s => ({ ...s, isLoading: false }));
+        isFetchingSession.current = false;
     }, 10000);
 
     const slug = getTenantSlug();
@@ -117,7 +125,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         checkIp();
 
         console.log('AuthProvider: Fetching session...');
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        // Use Promise.race to prevent getSession from hanging indefinitely
+        const sessionPromise = supabase.auth.getSession();
+        const timeoutPromise = new Promise<{data: {session: null}, error: Error}>((_, reject) => {
+            setTimeout(() => reject(new Error('Session fetch timeout')), 5000);
+        });
+
+        let sessionData;
+        try {
+            sessionData = await Promise.race([sessionPromise, timeoutPromise]);
+        } catch (err: any) {
+            console.warn('AuthProvider: getSession timed out or failed:', err.message);
+            // If it times out, we assume no session and clear the state
+            clearTimeout(timeoutId);
+            setState(s => ({ ...s, isLoading: false }));
+            isFetchingSession.current = false;
+            return;
+        }
+
+        const { data: { session }, error: sessionError } = sessionData;
         console.log('AuthProvider: Session response:', { hasSession: !!session, error: sessionError });
         
         if (sessionError) {
@@ -127,6 +154,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
             clearTimeout(timeoutId);
             setState(s => ({ ...s, isLoading: false }));
+            isFetchingSession.current = false;
             return;
         }
 
@@ -134,6 +162,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             console.log('AuthProvider: No active session found.');
             clearTimeout(timeoutId);
             setState(s => ({ ...s, isLoading: false }));
+            isFetchingSession.current = false;
             return;
         }
 
@@ -162,6 +191,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 console.log('AuthProvider: Authenticated as CLIENT.');
                 clearTimeout(timeoutId);
                 setState({ currentUser: user, isAuthenticated: true, isLoading: false });
+                isFetchingSession.current = false;
                 return;
             }
 
@@ -194,6 +224,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 // Se logou sem slug mas encontrou um, redireciona para manter consistência
                 if (!slug && actualSlug) {
                     window.location.href = `/?restaurant=${actualSlug}`;
+                    isFetchingSession.current = false;
                     return;
                 }
 
@@ -232,6 +263,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 clearTimeout(timeoutId);
                 setState({ currentUser: user, isAuthenticated: true, isLoading: false });
                 startHeartbeat(actualTenantId, staffData.id);
+                isFetchingSession.current = false;
                 return;
             } else {
                 // Fallback para Owner Legado
@@ -245,6 +277,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 if (tenantData) {
                     console.log('AuthProvider: Authenticated as LEGACY OWNER.');
                     window.location.href = `/?restaurant=${tenantData.slug}`;
+                    isFetchingSession.current = false;
                     return;
                 }
                 console.warn('AuthProvider: User is in session but not found in staff or tenants table.');
@@ -255,6 +288,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     clearTimeout(timeoutId);
     setState(s => ({ ...s, isLoading: false }));
+    isFetchingSession.current = false;
   };
 
   useEffect(() => {
