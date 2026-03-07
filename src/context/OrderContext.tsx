@@ -358,7 +358,15 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               fetchData(); 
               break;
           case 'CLOSE_TABLE': 
-              await supabase.rpc('close_table', { p_tenant_id: tenantId, p_table_id: action.tableId });
+              if (!action.tableId) {
+                  console.error("Erro: tableId não fornecido para CLOSE_TABLE");
+                  break;
+              }
+              const { error: closeError } = await supabase.rpc('close_table', { p_tenant_id: tenantId, p_table_id: action.tableId });
+              if (closeError) {
+                  console.error("Erro RPC close_table:", closeError);
+                  throw closeError;
+              }
               fetchData(); 
               break;
           case 'CALL_WAITER': 
