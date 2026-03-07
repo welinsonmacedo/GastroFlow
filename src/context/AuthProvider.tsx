@@ -84,16 +84,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // IP Blocking Check (Server-side via Edge Function)
         const functionUrl = 'https://mxzlaggtufxeirgcgbhn.supabase.co/functions/v1/bright-responder';
         
-        const fetchWithRetry = async (url: string, options: RequestInit, retries = 3): Promise<Response> => {
+        const fetchWithRetry = async (url: string, options: RequestInit, retries = 3): Promise<Response | null> => {
             for (let i = 0; i < retries; i++) {
                 try {
                     return await fetch(url, options);
                 } catch (err) {
-                    if (i === retries - 1) throw err;
+                    if (i === retries - 1) return null;
                     await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
                 }
             }
-            throw new Error('Failed after retries');
+            return null;
         };
 
         try {
@@ -104,14 +104,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 }
             });
             
-            if (ipResponse.status === 403) {
+            if (ipResponse && ipResponse.status === 403) {
                 await supabase.auth.signOut();
                 window.location.href = '/blocked';
                 return;
             }
         } catch (fetchError) {
-            console.error("IP Blocking check failed:", fetchError);
-            // Continue execution even if IP check fails, or handle gracefully
+            // Silently continue execution even if IP check fails
         }
 
         const { data: { session }, error } = await supabase.auth.getSession();
