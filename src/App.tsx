@@ -132,7 +132,9 @@ const TenantApp = () => {
         );
     }
 
-    if (!state.isValidTenant) {
+    const isLoginPage = window.location.pathname === '/login';
+
+    if (!state.isValidTenant && !isLoginPage) {
         const slug = getTenantSlug();
         const hostname = window.location.hostname;
         const search = window.location.search;
