@@ -28,7 +28,6 @@ import { SuperAdminDashboard } from './pages/SuperAdminDashboard';
 import { Login } from './pages/Login';
 import { SaaSLogin } from './pages/SaaSLogin';
 import { RegisterRestaurant } from './pages/RegisterRestaurant';
-import { OwnerLogin } from './pages/OwnerLogin';
 import { PrivacyPolicy } from './pages/PrivacyPolicy';
 import { TermsOfService } from './pages/TermsOfService';
 import { ManualPage } from './pages/ManualPage';
@@ -173,7 +172,7 @@ const TenantApp = () => {
 
                 <div className="mt-8 flex flex-col sm:flex-row gap-4 w-full max-w-md">
                     <button onClick={() => window.location.reload()} className="flex-1 px-6 py-3 bg-slate-800 text-white rounded-xl font-bold text-sm hover:bg-slate-700 transition-colors shadow-lg">Tentar Novamente</button>
-                    <Link to="/login-owner" className="flex-1 px-6 py-3 bg-white text-slate-800 border-2 border-gray-100 rounded-xl font-bold text-sm hover:bg-gray-50 transition-colors">Área do Proprietário</Link>
+                    <Link to="/login" className="flex-1 px-6 py-3 bg-white text-slate-800 border-2 border-gray-100 rounded-xl font-bold text-sm hover:bg-gray-50 transition-colors">Área do Proprietário</Link>
                 </div>
                 
                 <p className="mt-8 text-[10px] text-gray-400 uppercase font-bold tracking-widest">Dica: O link deve conter ?restaurant=seu-slug</p>
@@ -243,8 +242,8 @@ const App: React.FC = () => {
 
                     {/* Main Application Routes */}
                     <Route path="/*" element={
-                        tenantSlug ? (
-                            <AuthProvider>
+                        <AuthProvider>
+                            {tenantSlug ? (
                                 <RestaurantProvider>
                                     <MenuProvider>
                                         <OrderProvider>
@@ -258,22 +257,21 @@ const App: React.FC = () => {
                                         </OrderProvider>
                                     </MenuProvider>
                                 </RestaurantProvider>
-                            </AuthProvider>
-                        ) : (
-                            <SaaSProvider>
-                                <Routes>
-                                    <Route path="/" element={<Navigate to="/login-owner" replace />} />
-                                    
-                                    <Route path="/register" element={<RegisterRestaurant />} />
-                                    <Route path="/login-owner" element={<OwnerLogin />} />
-                                    <Route path="/privacy" element={<PrivacyPolicy />} />
-                                    <Route path="/terms" element={<TermsOfService />} />
-                                    <Route path="/sys-admin" element={<SaaSLogin />} /> 
-                                    <Route path="/dashboard" element={<ProtectedSaaSRoute><SuperAdminDashboard /></ProtectedSaaSRoute>} /> 
-                                    <Route path="*" element={<Navigate to="/" />} />
-                                </Routes>
-                            </SaaSProvider>
-                        )
+                            ) : (
+                                <SaaSProvider>
+                                    <Routes>
+                                        <Route path="/" element={<Navigate to="/login" replace />} />
+                                        <Route path="/login" element={<Login />} />
+                                        <Route path="/register" element={<RegisterRestaurant />} />
+                                        <Route path="/privacy" element={<PrivacyPolicy />} />
+                                        <Route path="/terms" element={<TermsOfService />} />
+                                        <Route path="/sys-admin" element={<SaaSLogin />} /> 
+                                        <Route path="/dashboard" element={<ProtectedSaaSRoute><SuperAdminDashboard /></ProtectedSaaSRoute>} /> 
+                                        <Route path="*" element={<Navigate to="/login" />} />
+                                    </Routes>
+                                </SaaSProvider>
+                            )}
+                        </AuthProvider>
                     } />
                 </Routes>
             </PwaGuard>

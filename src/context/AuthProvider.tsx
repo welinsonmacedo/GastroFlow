@@ -109,7 +109,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     await supabase.auth.signOut();
                     window.location.href = '/blocked';
                 }
-            } catch (err) {
+            } catch (err: any) {
                 console.log('AuthProvider: IP check skipped or failed:', err.message);
             }
         };
@@ -165,68 +165,89 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 return;
             }
 
-            // Se não for cliente, e tiver slug, verifica STAFF
+            // Se não for cliente, verifica STAFF
+            console.log('AuthProvider: Querying staff for user:', session.user.id);
+            
+            let staffQuery = supabase
+                .from('staff')
+                .select('*, tenants(id, slug, name), custom_roles(permissions)')
+                .eq('auth_user_id', session.user.id);
+            
+            // Se tiver slug, filtra pelo tenant específico para garantir segurança
             if (slug) {
-                console.log('AuthProvider: Querying tenant for slug:', slug);
-                const { data: tenant, error: tenantError } = await supabase.from('tenants').select('id').eq('slug', slug).maybeSingle();
-                console.log('AuthProvider: Tenant query result:', { tenantId: tenant?.id, error: tenantError });
-                
+                const { data: tenant } = await supabase.from('tenants').select('id').eq('slug', slug).maybeSingle();
                 if (tenant) {
-                    console.log('AuthProvider: Querying staff for user:', session.user.id);
-                    const { data: staffData, error: staffError } = await supabase
-                        .from('staff')
-                        .select('*, custom_roles(permissions)')
-                        .eq('auth_user_id', session.user.id)
-                        .eq('tenant_id', tenant.id)
-                        .maybeSingle();
-
-                    console.log('AuthProvider: Staff query result:', { hasStaff: !!staffData, error: staffError });
-
-                    if (staffData) {
-                        let allowedRoutes = staffData.allowed_routes || [];
-                        let allowedFeatures = [];
-                        
-                        if (staffData.custom_roles?.permissions) {
-                            if (staffData.custom_roles.permissions.allowed_modules) {
-                                allowedRoutes = staffData.custom_roles.permissions.allowed_modules;
-                            }
-                            if (staffData.custom_roles.permissions.allowed_features) {
-                                allowedFeatures = staffData.custom_roles.permissions.allowed_features;
-                            }
-                        } else if (staffData.role === 'ADMIN') {
-                            allowedRoutes = ['RESTAURANT', 'SNACKBAR', 'DISTRIBUTOR', 'COMMERCE', 'MANAGER', 'CONFIG', 'FINANCE', 'INVENTORY', 'HR'];
-                            allowedFeatures = []; 
-                        } else if (!staffData.custom_role_id && allowedRoutes.length === 0) {
-                            if (['WAITER', 'KITCHEN', 'CASHIER'].includes(staffData.role)) {
-                                allowedRoutes = ['RESTAURANT'];
-                                if (staffData.role === 'CASHIER') allowedRoutes.push('COMMERCE');
-                            }
-                        }
-
-                        const user: User = {
-                            id: staffData.id,
-                            name: staffData.name,
-                            role: staffData.role,
-                            tenant_id: tenant.id,
-                            auth_user_id: staffData.auth_user_id,
-                            email: staffData.email,
-                            customRoleId: staffData.custom_role_id,
-                            allowedRoutes: allowedRoutes,
-                            allowedFeatures: allowedFeatures
-                        };
-                        console.log('AuthProvider: Authenticated as STAFF.');
-                        clearTimeout(timeoutId);
-                        setState({ currentUser: user, isAuthenticated: true, isLoading: false });
-                        startHeartbeat(tenant.id, staffData.id);
-                        return;
-                    } else {
-                        console.warn('AuthProvider: User is in session but not found in staff table for this tenant.');
-                    }
-                } else {
-                    console.warn('AuthProvider: Tenant not found for slug:', slug);
+                    staffQuery = staffQuery.eq('tenant_id', tenant.id);
                 }
+            }
+
+            const { data: staffData, error: staffError } = await staffQuery.maybeSingle();
+            console.log('AuthProvider: Staff query result:', { hasStaff: !!staffData, error: staffError });
+
+            if (staffData) {
+                const t = staffData.tenants;
+                // @ts-ignore
+                const actualTenantId = Array.isArray(t) ? t[0]?.id : t?.id;
+                // @ts-ignore
+                const actualSlug = Array.isArray(t) ? t[0]?.slug : t?.slug;
+
+                // Se logou sem slug mas encontrou um, redireciona para manter consistência
+                if (!slug && actualSlug) {
+                    window.location.href = `/?restaurant=${actualSlug}`;
+                    return;
+                }
+
+                let allowedRoutes = staffData.allowed_routes || [];
+                let allowedFeatures = [];
+                
+                if (staffData.custom_roles?.permissions) {
+                    if (staffData.custom_roles.permissions.allowed_modules) {
+                        allowedRoutes = staffData.custom_roles.permissions.allowed_modules;
+                    }
+                    if (staffData.custom_roles.permissions.allowed_features) {
+                        allowedFeatures = staffData.custom_roles.permissions.allowed_features;
+                    }
+                } else if (staffData.role === 'ADMIN') {
+                    allowedRoutes = ['RESTAURANT', 'SNACKBAR', 'DISTRIBUTOR', 'COMMERCE', 'MANAGER', 'CONFIG', 'FINANCE', 'INVENTORY', 'HR'];
+                    allowedFeatures = []; 
+                } else if (!staffData.custom_role_id && allowedRoutes.length === 0) {
+                    if (['WAITER', 'KITCHEN', 'CASHIER'].includes(staffData.role)) {
+                        allowedRoutes = ['RESTAURANT'];
+                        if (staffData.role === 'CASHIER') allowedRoutes.push('COMMERCE');
+                    }
+                }
+
+                const user: User = {
+                    id: staffData.id,
+                    name: staffData.name,
+                    role: staffData.role,
+                    tenant_id: actualTenantId,
+                    auth_user_id: staffData.auth_user_id,
+                    email: staffData.email,
+                    customRoleId: staffData.custom_role_id,
+                    allowedRoutes: allowedRoutes,
+                    allowedFeatures: allowedFeatures
+                };
+                console.log('AuthProvider: Authenticated as STAFF.');
+                clearTimeout(timeoutId);
+                setState({ currentUser: user, isAuthenticated: true, isLoading: false });
+                startHeartbeat(actualTenantId, staffData.id);
+                return;
             } else {
-                console.log('AuthProvider: No slug provided, cannot verify staff access.');
+                // Fallback para Owner Legado
+                const { data: tenantData } = await supabase
+                    .from('tenants')
+                    .select('id, slug, name')
+                    .eq('owner_auth_id', session.user.id)
+                    .limit(1)
+                    .maybeSingle();
+                
+                if (tenantData) {
+                    console.log('AuthProvider: Authenticated as LEGACY OWNER.');
+                    window.location.href = `/?restaurant=${tenantData.slug}`;
+                    return;
+                }
+                console.warn('AuthProvider: User is in session but not found in staff or tenants table.');
             }
         }
     } catch (error) {

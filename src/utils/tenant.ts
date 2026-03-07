@@ -3,7 +3,7 @@ export const getTenantSlug = (): string | null => {
   const path = window.location.pathname;
   console.log('getTenantSlug - path:', path);
 
-  const saasRoutes = ['/sys-admin', '/dashboard', '/register', '/login-owner'];
+  const saasRoutes = ['/sys-admin', '/dashboard', '/register', '/login'];
   
   if (saasRoutes.some(route => path.startsWith(route))) {
       console.log('getTenantSlug - saas route detected, returning null');

@@ -260,7 +260,7 @@ export const RegisterRestaurant: React.FC = () => {
                     </Button>
                     
                     <p className="text-center text-sm text-gray-500">
-                        Já tem uma conta? <Link to="/login-owner" className="text-blue-600 hover:underline">Fazer Login</Link>
+                        Já tem uma conta? <Link to="/login" className="text-blue-600 hover:underline">Fazer Login</Link>
                     </p>
                 </form>
             </div>
