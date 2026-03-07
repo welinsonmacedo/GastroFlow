@@ -114,8 +114,8 @@ export const StaffRecurringEvents: React.FC = () => {
                                     <td className="p-4 text-slate-600">{evt.description}</td>
                                     <td className="p-4 text-right font-mono font-bold text-slate-800">
                                         {state.eventTypes.find(t => t.id === evt.type)?.calculationType === 'PERCENTAGE' 
-                                            ? `${evt.value.toFixed(2)}%` 
-                                            : `R$ ${evt.value.toFixed(2)}`}
+                                            ? `${(evt.value || 0).toFixed(2)}%` 
+                                            : `R$ ${(evt.value || 0).toFixed(2)}`}
                                     </td>
                                     <td className="p-4 text-center">
                                         <span className={`px-2 py-1 rounded text-xs font-bold ${evt.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>

@@ -192,7 +192,7 @@ export const StaffPayroll: React.FC<{ initialMonth?: number; initialYear?: numbe
         payrollData.forEach(p => {
             const employee = staffState.users.find(u => u.id === p.staffId);
             const role = employee?.role || '-';
-            csv += `${p.staffName};${role};${p.baseSalary.toFixed(2)};${p.overtime50.toFixed(2)};${p.overtime100.toFixed(2)};${p.nightShiftAdd.toFixed(2)};${p.eventsValue.toFixed(2)};${p.grossTotal.toFixed(2)};${p.inssValue.toFixed(2)};${p.irrfValue.toFixed(2)};${(p.discounts - p.inssValue - p.irrfValue).toFixed(2)};${p.netTotal.toFixed(2)};${p.totalCompanyCost.toFixed(2)}\n`;
+            csv += `${p.staffName};${role};${(p.baseSalary || 0).toFixed(2)};${(p.overtime50 || 0).toFixed(2)};${(p.overtime100 || 0).toFixed(2)};${(p.nightShiftAdd || 0).toFixed(2)};${(p.eventsValue || 0).toFixed(2)};${(p.grossTotal || 0).toFixed(2)};${(p.inssValue || 0).toFixed(2)};${(p.irrfValue || 0).toFixed(2)};${((p.discounts || 0) - (p.inssValue || 0) - (p.irrfValue || 0)).toFixed(2)};${(p.netTotal || 0).toFixed(2)};${(p.totalCompanyCost || 0).toFixed(2)}\n`;
         });
         const encodedUri = encodeURI("data:text/csv;charset=utf-8," + csv);
         const link = document.createElement("a");
@@ -203,7 +203,7 @@ export const StaffPayroll: React.FC<{ initialMonth?: number; initialYear?: numbe
     };
 
     const handlePrintSlip = (slip: PayrollPreview) => {
-        const employeeTaxes = slip.taxBreakdown.filter(t => t.type !== 'EMPLOYER');
+        const employeeTaxes = (slip.taxBreakdown || []).filter(t => t.type !== 'EMPLOYER');
         const employee = staffState.users.find(u => u.id === slip.staffId);
         const company = restState.businessInfo;
         const theme = restState.theme;
@@ -290,7 +290,7 @@ export const StaffPayroll: React.FC<{ initialMonth?: number; initialYear?: numbe
                             <div class="col-code">001</div>
                             <div class="col-desc">SALÁRIO BASE</div>
                             <div class="col-ref">${baseHours}h</div>
-                            <div class="col-val">${slip.baseSalary.toFixed(2)}</div>
+                            <div class="col-val">${(slip.baseSalary || 0).toFixed(2)}</div>
                             <div class="col-val"></div>
                         </div>
 
@@ -300,36 +300,36 @@ export const StaffPayroll: React.FC<{ initialMonth?: number; initialYear?: numbe
                             <div class="col-code">002</div>
                             <div class="col-desc">HORAS EXTRAS</div>
                             <div class="col-ref"></div>
-                            <div class="col-val">${overtimeTotal.toFixed(2)}</div>
+                            <div class="col-val">${(overtimeTotal || 0).toFixed(2)}</div>
                             <div class="col-val"></div>
                         </div>` : ''}
 
                         <!-- Benefícios e Eventos -->
-                        ${slip.benefitBreakdown.map((b, i) => `
+                        ${(slip.benefitBreakdown || []).map((b, i) => `
                         <div class="table-row">
                             <div class="col-code">${100+i}</div>
                             <div class="col-desc">${b.name.toUpperCase()}</div>
                             <div class="col-ref"></div>
-                            <div class="col-val">${b.value.toFixed(2)}</div>
+                            <div class="col-val">${(b.value || 0).toFixed(2)}</div>
                             <div class="col-val"></div>
                         </div>`).join('')}
 
-                        ${slip.eventBreakdown.filter(e => e.type === 'CREDIT').map((e, i) => `
+                        ${(slip.eventBreakdown || []).filter(e => e.type === 'CREDIT').map((e, i) => `
                         <div class="table-row">
                             <div class="col-code">${200+i}</div>
                             <div class="col-desc">${e.name.toUpperCase()}</div>
                             <div class="col-ref"></div>
-                            <div class="col-val">${e.value.toFixed(2)}</div>
+                            <div class="col-val">${(e.value || 0).toFixed(2)}</div>
                             <div class="col-val"></div>
                         </div>`).join('')}
 
-                        ${slip.eventBreakdown.filter(e => e.type === 'DEBIT').map((e, i) => `
+                        ${(slip.eventBreakdown || []).filter(e => e.type === 'DEBIT').map((e, i) => `
                         <div class="table-row">
                             <div class="col-code">${500+i}</div>
                             <div class="col-desc">${e.name.toUpperCase()}</div>
                             <div class="col-ref"></div>
                             <div class="col-val"></div>
-                            <div class="col-val">${e.value.toFixed(2)}</div>
+                            <div class="col-val">${(e.value || 0).toFixed(2)}</div>
                         </div>`).join('')}
 
                         <!-- Descontos Impostos -->
@@ -339,24 +339,24 @@ export const StaffPayroll: React.FC<{ initialMonth?: number; initialYear?: numbe
                             <div class="col-desc">${t.name.toUpperCase()}</div>
                             <div class="col-ref"></div>
                             <div class="col-val"></div>
-                            <div class="col-val">${t.value.toFixed(2)}</div>
+                            <div class="col-val">${(t.value || 0).toFixed(2)}</div>
                         </div>`).join('')}
                     </div>
 
                     <!-- TOTAIS -->
                     <div class="totals">
-                        <div class="total-box"><div class="label">Total Vencimentos</div><div class="val">${slip.grossTotal.toFixed(2)}</div></div>
-                        <div class="total-box"><div class="label">Total Descontos</div><div class="val">${slip.discounts.toFixed(2)}</div></div>
-                        <div class="total-box" style="border: 1px solid #000; padding: 0 10px; background: #fff;"><div class="label">Líquido a Receber</div><div class="val">R$ ${slip.netTotal.toFixed(2)}</div></div>
+                        <div class="total-box"><div class="label">Total Vencimentos</div><div class="val">${(slip.grossTotal || 0).toFixed(2)}</div></div>
+                        <div class="total-box"><div class="label">Total Descontos</div><div class="val">${(slip.discounts || 0).toFixed(2)}</div></div>
+                        <div class="total-box" style="border: 1px solid #000; padding: 0 10px; background: #fff;"><div class="label">Líquido a Receber</div><div class="val">R$ ${(slip.netTotal || 0).toFixed(2)}</div></div>
                     </div>
 
                     <!-- RODAPÉ BASES -->
                     <div class="footer">
                         <div class="footer-grid">
-                            <div class="field"><label>Salário Base</label><span>${slip.baseSalary.toFixed(2)}</span></div>
-                            <div class="field"><label>Base Calc. INSS</label><span>${slip.grossTotal.toFixed(2)}</span></div>
-                            <div class="field"><label>Base Calc. FGTS</label><span>${slip.grossTotal.toFixed(2)}</span></div>
-                            <div class="field"><label>FGTS do Mês (8%)</label><span>${slip.fgtsValue.toFixed(2)}</span></div>
+                            <div class="field"><label>Salário Base</label><span>${(slip.baseSalary || 0).toFixed(2)}</span></div>
+                            <div class="field"><label>Base Calc. INSS</label><span>${(slip.grossTotal || 0).toFixed(2)}</span></div>
+                            <div class="field"><label>Base Calc. FGTS</label><span>${(slip.grossTotal || 0).toFixed(2)}</span></div>
+                            <div class="field"><label>FGTS do Mês (8%)</label><span>${(slip.fgtsValue || 0).toFixed(2)}</span></div>
                         </div>
                     </div>
                 </div>
@@ -477,9 +477,9 @@ export const StaffPayroll: React.FC<{ initialMonth?: number; initialYear?: numbe
 
             {/* KPIs */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200"><p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Total Bruto</p><p className="text-2xl font-black text-slate-800">R$ {totalBruto.toFixed(2)}</p></div>
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200"><p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Líquido a Pagar</p><p className="text-2xl font-black text-emerald-600">R$ {totalLiquido.toFixed(2)}</p></div>
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200"><p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Custo Total Empresa</p><p className="text-2xl font-black text-slate-900">R$ {totalCustoEmpresa.toFixed(2)}</p></div>
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200"><p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Total Bruto</p><p className="text-2xl font-black text-slate-800">R$ {(totalBruto || 0).toFixed(2)}</p></div>
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200"><p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Líquido a Pagar</p><p className="text-2xl font-black text-emerald-600">R$ {(totalLiquido || 0).toFixed(2)}</p></div>
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200"><p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Custo Total Empresa</p><p className="text-2xl font-black text-slate-900">R$ {(totalCustoEmpresa || 0).toFixed(2)}</p></div>
             </div>
 
             {/* Tabela Detalhada */}
@@ -504,22 +504,22 @@ export const StaffPayroll: React.FC<{ initialMonth?: number; initialYear?: numbe
                                     <td className="p-4">
                                         <div className="font-bold text-slate-800">{p.staffName}</div>
                                         <div className="text-[10px] text-slate-400 font-mono">
-                                            {p.hoursWorked.toFixed(1)}h Trab. | Banco: {p.bankOfHoursBalance > 0 ? '+' : ''}{p.bankOfHoursBalance.toFixed(1)}h
+                                            {(p.hoursWorked || 0).toFixed(1)}h Trab. | Banco: {p.bankOfHoursBalance > 0 ? '+' : ''}{(p.bankOfHoursBalance || 0).toFixed(1)}h
                                         </div>
                                     </td>
-                                    <td className="p-4 text-right">R$ {p.baseSalary.toFixed(2)}</td>
+                                    <td className="p-4 text-right">R$ {(p.baseSalary || 0).toFixed(2)}</td>
                                     <td className="p-4 text-right text-blue-600">
-                                        R$ {(p.overtime50 + p.overtime100 + p.nightShiftAdd + p.addictionals).toFixed(2)}
+                                        R$ {((p.overtime50 || 0) + (p.overtime100 || 0) + (p.nightShiftAdd || 0) + (p.addictionals || 0)).toFixed(2)}
                                         <div className="text-[9px] text-gray-400">
-                                            {p.nightShiftAdd > 0 && `(Not: ${p.nightShiftAdd.toFixed(2)})`}
+                                            {p.nightShiftAdd > 0 && `(Not: ${(p.nightShiftAdd || 0).toFixed(2)})`}
                                         </div>
                                     </td>
                                     <td className="p-4 text-right text-orange-600">
-                                        {p.eventsValue !== 0 ? `R$ ${p.eventsValue.toFixed(2)}` : '-'}
+                                        {p.eventsValue !== 0 ? `R$ ${(p.eventsValue || 0).toFixed(2)}` : '-'}
                                     </td>
-                                    <td className="p-4 text-right font-bold">R$ {p.grossTotal.toFixed(2)}</td>
-                                    <td className="p-4 text-right text-red-500">- R$ {p.discounts.toFixed(2)}</td>
-                                    <td className="p-4 text-right font-black text-emerald-600 bg-emerald-50">R$ {p.netTotal.toFixed(2)}</td>
+                                    <td className="p-4 text-right font-bold">R$ {(p.grossTotal || 0).toFixed(2)}</td>
+                                    <td className="p-4 text-right text-red-500">- R$ {(p.discounts || 0).toFixed(2)}</td>
+                                    <td className="p-4 text-right font-black text-emerald-600 bg-emerald-50">R$ {(p.netTotal || 0).toFixed(2)}</td>
                                     <td className="p-4 text-center">
                                         <div className="flex justify-center gap-1">
                                             <button onClick={() => { setSelectedStaffForEvents(p); setIsEventsListModalOpen(true); }} className="p-2 text-slate-600 hover:bg-slate-100 rounded-lg" title="Ver Eventos Lançados"><List size={18}/></button>
@@ -580,7 +580,7 @@ export const StaffPayroll: React.FC<{ initialMonth?: number; initialYear?: numbe
                                                 <Calculator size={18}/> Calculadora Automática
                                             </h4>
                                             <div className="text-xs bg-white px-3 py-1 rounded-lg border text-slate-500 font-mono">
-                                                Base: R$ {getSelectedUserSalary().toFixed(2)}
+                                                Base: R$ {(getSelectedUserSalary() || 0).toFixed(2)}
                                             </div>
                                         </div>
                                         
@@ -704,7 +704,7 @@ export const StaffPayroll: React.FC<{ initialMonth?: number; initialYear?: numbe
                                         <div className="col-span-1 text-center">001</div>
                                         <div className="col-span-5">SALÁRIO BASE</div>
                                         <div className="col-span-2 text-center">{selectedBaseHours}h</div>
-                                        <div className="col-span-2 text-right">{selectedSlip.baseSalary.toFixed(2)}</div>
+                                        <div className="col-span-2 text-right">{(selectedSlip.baseSalary || 0).toFixed(2)}</div>
                                         <div className="col-span-2 text-right"></div>
                                     </div>
                                     {selectedSlip.overtime50 > 0 && (
@@ -712,7 +712,7 @@ export const StaffPayroll: React.FC<{ initialMonth?: number; initialYear?: numbe
                                             <div className="col-span-1 text-center">002</div>
                                             <div className="col-span-5">HORAS EXTRAS 50%</div>
                                             <div className="col-span-2 text-center"></div>
-                                            <div className="col-span-2 text-right">{selectedSlip.overtime50.toFixed(2)}</div>
+                                            <div className="col-span-2 text-right">{(selectedSlip.overtime50 || 0).toFixed(2)}</div>
                                             <div className="col-span-2 text-right"></div>
                                         </div>
                                     )}
@@ -721,53 +721,53 @@ export const StaffPayroll: React.FC<{ initialMonth?: number; initialYear?: numbe
                                             <div className="col-span-1 text-center">003</div>
                                             <div className="col-span-5">HORAS EXTRAS 100%</div>
                                             <div className="col-span-2 text-center"></div>
-                                            <div className="col-span-2 text-right">{selectedSlip.overtime100.toFixed(2)}</div>
+                                            <div className="col-span-2 text-right">{(selectedSlip.overtime100 || 0).toFixed(2)}</div>
                                             <div className="col-span-2 text-right"></div>
                                         </div>
                                     )}
-                                    {selectedSlip.eventBreakdown.filter(e => e.name.toUpperCase().includes('DSR')).map((evt, i) => (
+                                    {selectedSlip.eventBreakdown && selectedSlip.eventBreakdown.filter(e => e.name.toUpperCase().includes('DSR')).map((evt, i) => (
                                         <div key={`dsr-${i}`} className="grid grid-cols-12">
                                             <div className="col-span-1 text-center">{600+i}</div>
                                             <div className="col-span-5">{evt.name.toUpperCase()}</div>
                                             <div className="col-span-2 text-center"></div>
-                                            <div className="col-span-2 text-right">{evt.value.toFixed(2)}</div>
+                                            <div className="col-span-2 text-right">{(evt.value || 0).toFixed(2)}</div>
                                             <div className="col-span-2 text-right"></div>
                                         </div>
                                     ))}
-                                    {selectedSlip.benefitBreakdown.map((ben, i) => (
+                                    {(selectedSlip.benefitBreakdown || []).map((ben, i) => (
                                         <div key={`ben-${i}`} className="grid grid-cols-12">
                                             <div className="col-span-1 text-center">{100+i}</div>
                                             <div className="col-span-5">{ben.name.toUpperCase()}</div>
                                             <div className="col-span-2 text-center"></div>
-                                            <div className="col-span-2 text-right">{ben.value.toFixed(2)}</div>
+                                            <div className="col-span-2 text-right">{(ben.value || 0).toFixed(2)}</div>
                                             <div className="col-span-2 text-right"></div>
                                         </div>
                                     ))}
-                                    {selectedSlip.eventBreakdown.filter(e => e.type === 'CREDIT').map((evt, i) => (
+                                    {(selectedSlip.eventBreakdown || []).filter(e => e.type === 'CREDIT').map((evt, i) => (
                                         <div key={`evt-c-${i}`} className="grid grid-cols-12">
                                             <div className="col-span-1 text-center">{200+i}</div>
                                             <div className="col-span-5">{evt.name.toUpperCase()}</div>
                                             <div className="col-span-2 text-center"></div>
-                                            <div className="col-span-2 text-right">{evt.value.toFixed(2)}</div>
+                                            <div className="col-span-2 text-right">{(evt.value || 0).toFixed(2)}</div>
                                             <div className="col-span-2 text-right"></div>
                                         </div>
                                     ))}
-                                    {selectedSlip.eventBreakdown.filter(e => e.type === 'DEBIT').map((evt, i) => (
+                                    {(selectedSlip.eventBreakdown || []).filter(e => e.type === 'DEBIT').map((evt, i) => (
                                         <div key={`evt-d-${i}`} className="grid grid-cols-12">
                                             <div className="col-span-1 text-center">{500+i}</div>
                                             <div className="col-span-5">{evt.name.toUpperCase()}</div>
                                             <div className="col-span-2 text-center"></div>
                                             <div className="col-span-2 text-right"></div>
-                                            <div className="col-span-2 text-right">{evt.value.toFixed(2)}</div>
+                                            <div className="col-span-2 text-right">{(evt.value || 0).toFixed(2)}</div>
                                         </div>
                                     ))}
-                                    {selectedSlip.taxBreakdown.filter(t => t.type !== 'EMPLOYER').map((tax, i) => (
+                                    {(selectedSlip.taxBreakdown || []).filter(t => t.type !== 'EMPLOYER').map((tax, i) => (
                                         <div key={`tax-${i}`} className="grid grid-cols-12">
                                             <div className="col-span-1 text-center">{900+i}</div>
                                             <div className="col-span-5">{tax.name.toUpperCase()}</div>
                                             <div className="col-span-2 text-center"></div>
                                             <div className="col-span-2 text-right"></div>
-                                            <div className="col-span-2 text-right">{tax.value.toFixed(2)}</div>
+                                            <div className="col-span-2 text-right">{(tax.value || 0).toFixed(2)}</div>
                                         </div>
                                     ))}
                                 </div>
@@ -778,15 +778,15 @@ export const StaffPayroll: React.FC<{ initialMonth?: number; initialYear?: numbe
                                 <div className="col-span-6 font-bold text-xs"></div>
                                 <div className="col-span-2 text-right">
                                     <div className="text-[9px] uppercase">Total Vencimentos</div>
-                                    <div className="font-bold">{selectedSlip.grossTotal.toFixed(2)}</div>
+                                    <div className="font-bold">{(selectedSlip.grossTotal || 0).toFixed(2)}</div>
                                 </div>
                                 <div className="col-span-2 text-right">
                                     <div className="text-[9px] uppercase">Total Descontos</div>
-                                    <div className="font-bold">{selectedSlip.discounts.toFixed(2)}</div>
+                                    <div className="font-bold">{(selectedSlip.discounts || 0).toFixed(2)}</div>
                                 </div>
                                 <div className="col-span-2 text-right border border-black bg-white p-1 ml-2">
                                     <div className="text-[9px] uppercase font-bold">Líquido a Receber</div>
-                                    <div className="font-black text-sm">R$ {selectedSlip.netTotal.toFixed(2)}</div>
+                                    <div className="font-black text-sm">R$ {(selectedSlip.netTotal || 0).toFixed(2)}</div>
                                 </div>
                             </div>
 
@@ -794,19 +794,19 @@ export const StaffPayroll: React.FC<{ initialMonth?: number; initialYear?: numbe
                             <div className="border-t border-black p-2 grid grid-cols-4 gap-4 bg-white text-[10px]">
                                 <div>
                                     <div className="font-bold text-gray-500 uppercase">Sal. Contrib. INSS</div>
-                                    <div className="font-bold">{selectedSlip.grossTotal.toFixed(2)}</div>
+                                    <div className="font-bold">{(selectedSlip.grossTotal || 0).toFixed(2)}</div>
                                 </div>
                                 <div>
                                     <div className="font-bold text-gray-500 uppercase">Base Calc. FGTS</div>
-                                    <div className="font-bold">{selectedSlip.grossTotal.toFixed(2)}</div>
+                                    <div className="font-bold">{(selectedSlip.grossTotal || 0).toFixed(2)}</div>
                                 </div>
                                 <div>
                                     <div className="font-bold text-gray-500 uppercase">FGTS do Mês</div>
-                                    <div className="font-bold">{selectedSlip.fgtsValue.toFixed(2)}</div>
+                                    <div className="font-bold">{(selectedSlip.fgtsValue || 0).toFixed(2)}</div>
                                 </div>
                                 <div>
                                     <div className="font-bold text-gray-500 uppercase">Base Calc. IRRF</div>
-                                    <div className="font-bold">{(selectedSlip.grossTotal - selectedSlip.inssValue).toFixed(2)}</div>
+                                    <div className="font-bold">{((selectedSlip.grossTotal || 0) - (selectedSlip.inssValue || 0)).toFixed(2)}</div>
                                 </div>
                             </div>
                         </div>
@@ -893,7 +893,7 @@ export const StaffPayroll: React.FC<{ initialMonth?: number; initialYear?: numbe
                                         </div>
                                         <div className="flex items-center gap-4">
                                             <div className={`font-black ${isDeduction ? 'text-red-600' : 'text-emerald-600'}`}>
-                                                {isDeduction ? '-' : '+'} {evtType?.calculationType === 'PERCENTAGE' ? `${ev.value}%` : `R$ ${ev.value.toFixed(2)}`}
+                                                {isDeduction ? '-' : '+'} {evtType?.calculationType === 'PERCENTAGE' ? `${ev.value}%` : `R$ ${(ev.value || 0).toFixed(2)}`}
                                             </div>
                                             {!isClosed && (
                                                 <button onClick={() => handleDeleteEvent(ev.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors">

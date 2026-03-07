@@ -207,20 +207,20 @@ export const DailyLogTab: React.FC = () => {
                         <div class="summary-grid">
                             <div class="summary-item">
                                 <strong>Total Horas Mensal</strong>
-                                ${totalWorked.toFixed(2)}h
+                                ${(totalWorked || 0).toFixed(2)}h
                             </div>
                             <div class="summary-item">
                                 <strong>Total Horas Extras</strong>
-                                ${finalOvertime.toFixed(2)}h
+                                ${(finalOvertime || 0).toFixed(2)}h
                             </div>
                             <div class="summary-item">
                                 <strong>Total Faltas/Atrasos</strong>
-                                ${finalMissing.toFixed(2)}h
+                                ${(finalMissing || 0).toFixed(2)}h
                             </div>
                             ${staffState.legalSettings?.overtimePolicy === 'BANK_OF_HOURS' ? `
                                 <div class="summary-item">
                                     <strong>Saldo Banco (Mês)</strong>
-                                    ${(finalOvertime - finalMissing).toFixed(2)}h
+                                    ${((finalOvertime || 0) - (finalMissing || 0)).toFixed(2)}h
                                 </div>
                                 <div class="summary-item">
                                     <strong>Saldo Acumulado</strong>
@@ -310,19 +310,19 @@ export const DailyLogTab: React.FC = () => {
                             <div className="flex items-center gap-6">
                                 <div className="text-right hidden md:block">
                                     <p className="text-[10px] uppercase font-bold text-slate-400">Horas Totais</p>
-                                    <p className="font-mono font-bold text-slate-700">{totalHours.toFixed(1)}h</p>
+                                    <p className="font-mono font-bold text-slate-700">{(totalHours || 0).toFixed(1)}h</p>
                                 </div>
                                 <div className="text-right hidden md:block">
                                     <p className="text-[10px] uppercase font-bold text-green-600">Extras</p>
-                                    <p className="font-mono font-bold text-green-700">+{overtime.toFixed(1)}h</p>
+                                    <p className="font-mono font-bold text-green-700">+{(overtime || 0).toFixed(1)}h</p>
                                 </div>
                                 <div className="text-right hidden md:block">
                                     <p className="text-[10px] uppercase font-bold text-red-500">Faltas</p>
-                                    <p className="font-mono font-bold text-red-600">-{missing.toFixed(1)}h</p>
+                                    <p className="font-mono font-bold text-red-600">-{(missing || 0).toFixed(1)}h</p>
                                 </div>
                                 <div className="text-right hidden md:block">
                                     <p className="text-[10px] uppercase font-bold text-blue-500">Banco</p>
-                                    <p className="font-mono font-bold text-blue-600">{bankBalance.toFixed(1)}h</p>
+                                    <p className="font-mono font-bold text-blue-600">{(bankBalance || 0).toFixed(1)}h</p>
                                 </div>
                                 <button 
                                     onClick={(e) => {
@@ -357,9 +357,10 @@ export const DailyLogTab: React.FC = () => {
                                             <tr><td colSpan={7} className="p-4 text-center text-gray-400 italic">Sem registros neste mês.</td></tr>
                                         ) : (
                                             entries.map(entry => {
-                                                const hours = entry.clockIn && entry.clockOut 
-                                                    ? ((new Date(entry.clockOut).getTime() - new Date(entry.clockIn).getTime()) / 3600000).toFixed(1) 
-                                                    : '-';
+                                                const hoursValue = entry.clockIn && entry.clockOut 
+                                                    ? ((new Date(entry.clockOut).getTime() - new Date(entry.clockIn).getTime()) / 3600000)
+                                                    : null;
+                                                const hours = (hoursValue !== null && hoursValue !== undefined) ? hoursValue.toFixed(1) : '-';
                                                 
                                                 return (
                                                     <tr key={entry.id} className="hover:bg-white transition-colors">

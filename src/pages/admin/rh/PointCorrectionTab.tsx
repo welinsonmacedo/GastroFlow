@@ -111,7 +111,7 @@ export const PointCorrectionTab: React.FC = () => {
                                         ) : (
                                             entries.map(entry => {
                                                 const hours = entry.clockIn && entry.clockOut 
-                                                    ? ((new Date(entry.clockOut).getTime() - new Date(entry.clockIn).getTime()) / 3600000).toFixed(1) 
+                                                    ? (((new Date(entry.clockOut).getTime() - new Date(entry.clockIn).getTime()) / 3600000) || 0).toFixed(1) 
                                                     : '-';
                                                 
                                                 return (

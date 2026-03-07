@@ -291,10 +291,10 @@ export const StaffVacation: React.FC = () => {
                                     <AlertCircle size={14}/> Memória de Cálculo
                                 </p>
                                 <ul className="list-disc pl-4 text-xs text-blue-700 space-y-1">
-                                    <li>Salário Base: R$ {preview.baseValue.toFixed(2)}</li>
-                                    <li>1/3 Constitucional: R$ {preview.oneThirdValue.toFixed(2)} (33.33% do valor)</li>
+                                    <li>Salário Base: R$ {(preview.baseValue || 0).toFixed(2)}</li>
+                                    <li>1/3 Constitucional: R$ {(preview.oneThirdValue || 0).toFixed(2)} (33.33% do valor)</li>
                                     {preview.soldValue > 0 && (
-                                        <li>Abono Pecuniário: R$ {preview.soldValue.toFixed(2)} (Venda de {soldDays} dias)</li>
+                                        <li>Abono Pecuniário: R$ {(preview.soldValue || 0).toFixed(2)} (Venda de {soldDays} dias)</li>
                                     )}
                                     <li>INSS/IRRF: Calculados sobre o total bruto.</li>
                                 </ul>
@@ -367,7 +367,7 @@ export const StaffVacation: React.FC = () => {
 
                             <div className="border-t border-blue-200 my-2 pt-2 flex justify-between text-lg font-bold text-blue-800">
                                 <span>Total Líquido Estimado:</span>
-                                <span>R$ {preview.totalNet.toFixed(2)}</span>
+                                <span>R$ {(preview.totalNet || 0).toFixed(2)}</span>
                             </div>
                         </div>
                     )}
@@ -419,7 +419,7 @@ export const StaffVacation: React.FC = () => {
                                         <td className="p-3">{new Date(vacation.endDate).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}</td>
                                         <td className="p-3">{vacation.daysCount}</td>
                                         <td className="p-3">{vacation.soldDays > 0 ? `${vacation.soldDays} dias` : '-'}</td>
-                                        <td className="p-3 text-right font-bold">R$ {vacation.totalNet.toFixed(2)}</td>
+                                        <td className="p-3 text-right font-bold">R$ {(vacation.totalNet || 0).toFixed(2)}</td>
                                         <td className="p-3 text-right">
                                             <button onClick={() => handleDelete(vacation.id)} className="text-red-500 hover:text-red-700">
                                                 <Trash2 size={16} />

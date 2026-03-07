@@ -57,7 +57,7 @@ export const ClosedPayrollsTab: React.FC = () => {
                             </div>
                             <div className="flex justify-between text-sm items-center">
                                 <span className="text-gray-500 flex items-center gap-2"><DollarSign size={14}/> Custo Total</span>
-                                <span className="font-bold text-slate-900">R$ {payroll.totalCost.toFixed(2)}</span>
+                                <span className="font-bold text-slate-900">R$ {(payroll.totalCost || 0).toFixed(2)}</span>
                             </div>
                             <div className="flex justify-between text-sm items-center pt-2 border-t border-slate-200">
                                 <span className="text-gray-500 text-xs">Fechado em</span>

@@ -141,7 +141,7 @@ export const StaffTermination: React.FC = () => {
                                             {term.noticePeriodType === 'INDEMNIFIED' ? 'Indenizado' : 'Trabalhado'}
                                         </td>
                                         <td className="p-4 text-right font-bold text-gray-800">
-                                            R$ {term.totalValue.toFixed(2)}
+                                            R$ {(term.totalValue || 0).toFixed(2)}
                                         </td>
                                         <td className="p-4 text-center">
                                             <span className={`px-2 py-1 rounded text-xs font-bold ${
@@ -337,7 +337,7 @@ export const StaffTermination: React.FC = () => {
 
                             <div className="border-t border-red-200 my-2 pt-2 flex justify-between text-lg font-bold text-red-800">
                                 <span>Total Rescisório:</span>
-                                <span>R$ {preview.totalValue.toFixed(2)}</span>
+                                <span>R$ {(preview.totalValue || 0).toFixed(2)}</span>
                             </div>
                         </div>
                     )}

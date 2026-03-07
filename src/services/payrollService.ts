@@ -76,9 +76,9 @@ export const payrollService = {
             inssValue: p.inss_value,
             irrfValue: p.irrf_value,
             fgtsValue: p.fgts_value,
-            taxBreakdown: p.tax_breakdown,
-            benefitBreakdown: p.benefit_breakdown,
-            eventBreakdown: p.event_breakdown
+            taxBreakdown: p.tax_breakdown || [],
+            benefitBreakdown: p.benefit_breakdown || [],
+            eventBreakdown: p.event_breakdown || []
         }));
 
         const closedInfo = data.closed_info ? {

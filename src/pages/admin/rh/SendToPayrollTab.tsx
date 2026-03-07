@@ -144,15 +144,15 @@ export const SendToPayrollTab: React.FC = () => {
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div className="bg-green-50 p-4 rounded-xl border border-green-200">
                                     <h4 className="font-bold text-green-800">Horas Extras (Mês)</h4>
-                                    <p className="text-2xl font-black text-green-600">{summary.overtime.toFixed(1)}h</p>
+                                    <p className="text-2xl font-black text-green-600">{(summary.overtime || 0).toFixed(1)}h</p>
                                 </div>
                                 <div className="bg-red-50 p-4 rounded-xl border border-red-200">
                                     <h4 className="font-bold text-red-800">Horas Faltantes (Mês)</h4>
-                                    <p className="text-2xl font-black text-red-600">{summary.missingHours.toFixed(1)}h</p>
+                                    <p className="text-2xl font-black text-red-600">{(summary.missingHours || 0).toFixed(1)}h</p>
                                 </div>
                                 <div className="bg-blue-50 p-4 rounded-xl border border-blue-200">
                                     <h4 className="font-bold text-blue-800">Banco de Horas (Saldo)</h4>
-                                    <p className="text-2xl font-black text-blue-600">{summary.bankHours.toFixed(1)}h</p>
+                                    <p className="text-2xl font-black text-blue-600">{(summary.bankHours || 0).toFixed(1)}h</p>
                                 </div>
                             </div>
                             <div className="flex justify-end gap-2">
@@ -191,7 +191,7 @@ export const SendToPayrollTab: React.FC = () => {
                                             if (entry.breakStart && entry.breakEnd) {
                                                 h -= (new Date(entry.breakEnd).getTime() - new Date(entry.breakStart).getTime()) / 3600000;
                                             }
-                                            hours = h.toFixed(1);
+                                            hours = (h || 0).toFixed(1);
                                         }
                                         return (
                                             <tr key={entry.id}>

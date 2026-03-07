@@ -441,7 +441,7 @@ export const StaffSettings: React.FC = () => {
                                         {state.inssBrackets.map((b) => (
                                             <tr key={b.id}>
                                                 <td className="p-3">
-                                                    R$ {b.minValue.toFixed(2)} até {b.maxValue ? `R$ ${b.maxValue.toFixed(2)}` : '...'}
+                                                    R$ {(b.minValue || 0).toFixed(2)} até {b.maxValue ? `R$ ${(b.maxValue || 0).toFixed(2)}` : '...'}
                                                 </td>
                                                 <td className="p-3 text-right font-bold">{b.rate}%</td>
                                             </tr>
@@ -451,7 +451,7 @@ export const StaffSettings: React.FC = () => {
                                 </table>
                             </div>
                             <div className="mt-4 text-xs text-gray-500 bg-gray-50 p-3 rounded-lg">
-                                <strong>Teto INSS:</strong> R$ {state.legalSettings?.inssCeiling.toFixed(2) || '0.00'}
+                                <strong>Teto INSS:</strong> R$ {(state.legalSettings?.inssCeiling || 0).toFixed(2)}
                             </div>
                         </div>
 
@@ -467,10 +467,10 @@ export const StaffSettings: React.FC = () => {
                                         {state.irrfBrackets.map((b) => (
                                             <tr key={b.id}>
                                                 <td className="p-3">
-                                                    {b.minValue === 0 ? 'Até' : `De R$ ${b.minValue.toFixed(2)}`} {b.maxValue ? `até R$ ${b.maxValue.toFixed(2)}` : 'em diante'}
+                                                    {b.minValue === 0 ? 'Até' : `De R$ ${(b.minValue || 0).toFixed(2)}`} {b.maxValue ? `até R$ ${(b.maxValue || 0).toFixed(2)}` : 'em diante'}
                                                 </td>
                                                 <td className="p-3 text-right font-bold">{b.rate === 0 ? 'Isento' : `${b.rate}%`}</td>
-                                                <td className="p-3 text-right text-gray-500">R$ {b.deduction.toFixed(2)}</td>
+                                                <td className="p-3 text-right text-gray-500">R$ {(b.deduction || 0).toFixed(2)}</td>
                                             </tr>
                                         ))}
                                          {state.irrfBrackets.length === 0 && <tr><td colSpan={3} className="p-4 text-center text-gray-400">Nenhuma tabela carregada.</td></tr>}
@@ -478,8 +478,8 @@ export const StaffSettings: React.FC = () => {
                                 </table>
                             </div>
                             <div className="mt-4 text-xs text-gray-500 bg-gray-50 p-3 rounded-lg flex justify-between">
-                                <span><strong>Dedução p/ Dependente:</strong> R$ {state.legalSettings?.irrfDependentDeduction.toFixed(2) || '0.00'}</span>
-                                <span><strong>Salário Mínimo:</strong> R$ {state.legalSettings?.minWage.toFixed(2) || '0.00'}</span>
+                                <span><strong>Dedução p/ Dependente:</strong> R$ {(state.legalSettings?.irrfDependentDeduction || 0).toFixed(2)}</span>
+                                <span><strong>Salário Mínimo:</strong> R$ {(state.legalSettings?.minWage || 0).toFixed(2)}</span>
                             </div>
                         </div>
                     </div>
@@ -516,7 +516,7 @@ export const StaffSettings: React.FC = () => {
                                         <tr key={role.id} className="hover:bg-gray-50">
                                             <td className="p-4 font-bold text-gray-800">{role.title}</td>
                                             <td className="p-4 text-gray-600 font-mono">{role.cboCode}</td>
-                                            <td className="p-4 text-gray-600">R$ {role.baseSalary?.toFixed(2) || '0.00'}</td>
+                                            <td className="p-4 text-gray-600">R$ {(role.baseSalary || 0).toFixed(2)}</td>
                                             <td className="p-4">
                                                 {customRole ? (
                                                     <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-md text-xs font-bold">{customRole.name}</span>

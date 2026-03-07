@@ -123,7 +123,7 @@ export const StaffThirteenth: React.FC = () => {
                                             {first ? (
                                                 <div className="flex flex-col items-center gap-1 group">
                                                     <span className="font-bold text-green-600">
-                                                        R$ {first.value.toFixed(2)}
+                                                        R$ {(first.value || 0).toFixed(2)}
                                                     </span>
                                                     <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                                         <button 
@@ -151,10 +151,10 @@ export const StaffThirteenth: React.FC = () => {
                                             {second ? (
                                                 <div className="flex flex-col items-center gap-1 group">
                                                     <span className="font-bold text-green-600">
-                                                        R$ {second.netValue.toFixed(2)}
+                                                        R$ {(second.netValue || 0).toFixed(2)}
                                                     </span>
                                                     <div className="text-[10px] text-gray-400">
-                                                        Desc: R$ {(second.inssValue + second.irrfValue).toFixed(2)}
+                                                        Desc: R$ {((second.inssValue || 0) + (second.irrfValue || 0)).toFixed(2)}
                                                     </div>
                                                     <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                                         <button 
@@ -178,7 +178,7 @@ export const StaffThirteenth: React.FC = () => {
                                         </td>
 
                                         <td className="p-4 text-right font-bold text-gray-800">
-                                            R$ {totalPaid.toFixed(2)}
+                                            R$ {(totalPaid || 0).toFixed(2)}
                                         </td>
                                     </tr>
                                 );
@@ -202,9 +202,9 @@ export const StaffThirteenth: React.FC = () => {
                                 <AlertCircle size={16}/> Memória de Cálculo:
                             </p>
                             <ul className="list-disc pl-4 space-y-1">
-                                <li>Salário Base: R$ {previewPayment.referenceSalary.toFixed(2)}</li>
+                                <li>Salário Base: R$ {(previewPayment.referenceSalary || 0).toFixed(2)}</li>
                                 <li>Meses Trabalhados: {previewPayment.monthsWorked}/12</li>
-                                <li>Valor Proporcional: R$ {((previewPayment.referenceSalary / 12) * previewPayment.monthsWorked).toFixed(2)}</li>
+                                <li>Valor Proporcional: R$ {(((previewPayment.referenceSalary || 0) / 12) * (previewPayment.monthsWorked || 0)).toFixed(2)}</li>
                                 {previewPayment.installment === 1 ? (
                                     <li>1ª Parcela: 50% do valor proporcional (sem descontos).</li>
                                 ) : (
@@ -252,7 +252,7 @@ export const StaffThirteenth: React.FC = () => {
                         <div className="pt-4 border-t border-gray-100 flex justify-between items-center">
                             <span className="text-gray-600 font-medium">Líquido a Pagar:</span>
                             <span className="text-xl font-bold text-green-600">
-                                R$ {previewPayment.netValue.toFixed(2)}
+                                R$ {(previewPayment.netValue || 0).toFixed(2)}
                             </span>
                         </div>
 
