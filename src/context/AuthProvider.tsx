@@ -241,8 +241,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = async () => {
-    await stopHeartbeat(); 
-    await supabase.auth.signOut();
+    try {
+        await stopHeartbeat(); 
+    } catch (e) {
+        console.warn("Error stopping heartbeat on logout:", e);
+    }
+
+    try {
+        await supabase.auth.signOut();
+    } catch (e) {
+        console.warn("Error signing out:", e);
+    }
+    
     setState({ currentUser: null, isAuthenticated: false, isLoading: false });
     
     // Preserve the tenant slug in the URL when logging out

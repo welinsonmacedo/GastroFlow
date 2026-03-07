@@ -132,118 +132,130 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   const init = useCallback(async () => {
-    const slug = getTenantSlug();
-    console.log('RestaurantContext init - slug from getTenantSlug:', slug);
-    if (!slug) { localDispatch({ type: 'SET_LOADING', isLoading: false }); return; }
+    // Safety timeout to prevent infinite loading
+    const timeoutId = setTimeout(() => {
+        console.warn("RestaurantContext init timed out - forcing loading false");
+        localDispatch({ type: 'SET_LOADING', isLoading: false });
+    }, 15000);
 
-    // Verificar se já existe autorização na sessão
-    // Precisamos primeiro do tenantId para verificar a sessão específica
-    // Mas como o RLS bloqueia o tenant, vamos tentar carregar o tenantId de forma anônima via RPC se necessário
-    // Por enquanto, vamos assumir que se houver um token no sessionStorage, tentamos o carregamento
-    
-    const storedAuth = Object.keys(sessionStorage).find(key => key.startsWith('fluxeat_auth_'));
-    
-    // Tenta carregar o restaurante sempre que houver um slug, 
-    // independente de estar autorizado para uma mesa ou não.
-    // O RLS cuidará de proteger os dados sensíveis.
-    
-    const { data: tenant, error: tenantError } = await supabase
-        .from('tenants')
-        .select('id, slug, status, theme_config, business_info, plan, allowed_modules, allowed_features')
-        .eq('slug', slug.trim().toLowerCase())
-        .maybeSingle();
-    
-    console.log('RestaurantContext init - tenant found:', tenant);
-    
-    if (tenantError) {
-        console.error("Erro crítico ao buscar restaurante no banco:", tenantError);
-        if (tenantError.code === '401' || tenantError.status === 401) {
-            console.error("⚠️ ERRO DE AUTENTICAÇÃO (401): Suas chaves do Supabase podem estar incorretas ou o RLS não permite acesso público à tabela 'tenants'.");
-        }
-    }
-
-    if (!tenant) { 
-        console.warn(`Restaurante não encontrado ou acesso revogado (mesa fechada) para o slug: "${slug}"`);
-        
-        // Se achávamos que estávamos autorizados mas o tenant sumiu, 
-        // é porque a mesa foi fechada ou o código expirou.
-        if (state.isAuthorized || storedAuth) {
-            sessionStorage.removeItem(storedAuth || '');
-            localDispatch({ type: 'SET_LOADING', isLoading: false });
-            // Forçamos o recarregamento para mostrar o TableCodeGuard
-            window.location.reload(); 
-            return;
-        }
-
-        localDispatch({ type: 'TENANT_NOT_FOUND' }); 
-        return; 
-    }
-    if (tenant.status === 'INACTIVE') { localDispatch({ type: 'TENANT_INACTIVE' }); return; }
-
-    // Fetch Global Settings
-    let globalSettings = {};
     try {
-        const { data: configData, error: configError } = await supabase
-            .from('saas_config')
-            .select('global_settings')
-            .eq('id', 1)
+        const slug = getTenantSlug();
+        console.log('RestaurantContext init - slug from getTenantSlug:', slug);
+        if (!slug) { 
+            clearTimeout(timeoutId);
+            localDispatch({ type: 'SET_LOADING', isLoading: false }); 
+            return; 
+        }
+
+        // Verificar se já existe autorização na sessão
+        const storedAuth = Object.keys(sessionStorage).find(key => key.startsWith('fluxeat_auth_'));
+        
+        const { data: tenant, error: tenantError } = await supabase
+            .from('tenants')
+            .select('id, slug, status, theme_config, business_info, plan, allowed_modules, allowed_features')
+            .eq('slug', slug.trim().toLowerCase())
             .maybeSingle();
         
-        if (configData?.global_settings && !configError) {
-            globalSettings = configData.global_settings;
-        } else {
+        console.log('RestaurantContext init - tenant found:', tenant);
+        
+        if (tenantError) {
+            console.error("Erro crítico ao buscar restaurante no banco:", tenantError);
+            if (tenantError.code === '401' || tenantError.status === 401) {
+                console.error("⚠️ ERRO DE AUTENTICAÇÃO (401): Suas chaves do Supabase podem estar incorretas ou o RLS não permite acesso público à tabela 'tenants'.");
+            }
+        }
+
+        if (!tenant) { 
+            console.warn(`Restaurante não encontrado ou acesso revogado (mesa fechada) para o slug: "${slug}"`);
+            
+            if (state.isAuthorized || storedAuth) {
+                sessionStorage.removeItem(storedAuth || '');
+                clearTimeout(timeoutId);
+                localDispatch({ type: 'SET_LOADING', isLoading: false });
+                window.location.reload(); 
+                return;
+            }
+
+            clearTimeout(timeoutId);
+            localDispatch({ type: 'TENANT_NOT_FOUND' }); 
+            return; 
+        }
+        if (tenant.status === 'INACTIVE') { 
+            clearTimeout(timeoutId);
+            localDispatch({ type: 'TENANT_INACTIVE' }); 
+            return; 
+        }
+
+        // Fetch Global Settings
+        let globalSettings = {};
+        try {
+            const { data: configData, error: configError } = await supabase
+                .from('saas_config')
+                .select('global_settings')
+                .eq('id', 1)
+                .maybeSingle();
+            
+            if (configData?.global_settings && !configError) {
+                globalSettings = configData.global_settings;
+            } else {
+                const localSettings = localStorage.getItem('flux_saas_global_settings');
+                if (localSettings) {
+                    globalSettings = JSON.parse(localSettings);
+                }
+            }
+        } catch (e) {
+            console.warn("saas_config table might not exist yet:", e);
             const localSettings = localStorage.getItem('flux_saas_global_settings');
             if (localSettings) {
                 globalSettings = JSON.parse(localSettings);
             }
         }
-    } catch (e) {
-        console.warn("saas_config table might not exist yet:", e);
-        const localSettings = localStorage.getItem('flux_saas_global_settings');
-        if (localSettings) {
-            globalSettings = JSON.parse(localSettings);
+
+        // Busca os limites do plano
+        let fetchedLimits = initialState.planLimits;
+        if (tenant.plan) {
+            const { data: planData } = await supabase.from('plans').select('limits').eq('key', tenant.plan).maybeSingle();
+            if (planData && planData.limits) {
+                fetchedLimits = { ...initialState.planLimits, ...planData.limits };
+            }
         }
+        
+        const mergedBusinessInfo = {
+            ...initialState.businessInfo,
+            ...(tenant.business_info || {}),
+            paymentMethods: (tenant.business_info?.paymentMethods) || initialState.businessInfo.paymentMethods,
+            expenseCategories: (tenant.business_info?.expenseCategories) || initialState.businessInfo.expenseCategories
+        };
+
+        // Recupera módulo ativo da sessão se houver
+        const storedModule = sessionStorage.getItem(`fluxeat_module_${tenant.id}`);
+        const initialActiveModule = storedModule as SystemModule | null;
+
+        const isAuthorized = !!sessionStorage.getItem(`fluxeat_auth_${tenant.id}`);
+
+        clearTimeout(timeoutId);
+        localDispatch({
+            type: 'INIT_DATA',
+            payload: {
+                tenantId: tenant.id,
+                tenantSlug: tenant.slug,
+                theme: tenant.theme_config || initialState.theme,
+                globalSettings: globalSettings,
+                businessInfo: mergedBusinessInfo,
+                planLimits: fetchedLimits,
+                allowedModules: tenant.allowed_modules || ['RESTAURANT'],
+                allowedFeatures: tenant.allowed_features || [], // Carrega do banco
+                activeModule: initialActiveModule,
+                isAuthorized: isAuthorized,
+                tableId: isAuthorized ? sessionStorage.getItem(`fluxeat_auth_${tenant.id}`) : null
+            }
+        });
+        sessionStorage.setItem('fluxeat_tenant_slug', tenant.slug);
+    } catch (error) {
+        console.error("RestaurantContext init CRITICAL ERROR:", error);
+        clearTimeout(timeoutId);
+        localDispatch({ type: 'SET_LOADING', isLoading: false });
     }
-
-    // Busca os limites do plano
-    let fetchedLimits = initialState.planLimits;
-    if (tenant.plan) {
-        const { data: planData } = await supabase.from('plans').select('limits').eq('key', tenant.plan).maybeSingle();
-        if (planData && planData.limits) {
-            fetchedLimits = { ...initialState.planLimits, ...planData.limits };
-        }
-    }
-    
-    const mergedBusinessInfo = {
-        ...initialState.businessInfo,
-        ...(tenant.business_info || {}),
-        paymentMethods: (tenant.business_info?.paymentMethods) || initialState.businessInfo.paymentMethods,
-        expenseCategories: (tenant.business_info?.expenseCategories) || initialState.businessInfo.expenseCategories
-    };
-
-    // Recupera módulo ativo da sessão se houver
-    const storedModule = sessionStorage.getItem(`fluxeat_module_${tenant.id}`);
-    const initialActiveModule = storedModule as SystemModule | null;
-
-    const isAuthorized = !!sessionStorage.getItem(`fluxeat_auth_${tenant.id}`);
-
-    localDispatch({
-        type: 'INIT_DATA',
-        payload: {
-            tenantId: tenant.id,
-            tenantSlug: tenant.slug,
-            theme: tenant.theme_config || initialState.theme,
-            globalSettings: globalSettings,
-            businessInfo: mergedBusinessInfo,
-            planLimits: fetchedLimits,
-            allowedModules: tenant.allowed_modules || ['RESTAURANT'],
-            allowedFeatures: tenant.allowed_features || [], // Carrega do banco
-            activeModule: initialActiveModule,
-            isAuthorized: isAuthorized,
-            tableId: isAuthorized ? sessionStorage.getItem(`fluxeat_auth_${tenant.id}`) : null
-        }
-    });
-    sessionStorage.setItem('fluxeat_tenant_slug', tenant.slug);
   }, []);
 
   useEffect(() => {
