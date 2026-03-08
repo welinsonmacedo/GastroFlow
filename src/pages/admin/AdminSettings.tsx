@@ -5,7 +5,7 @@ import { useUI } from '../../context/UIContext';
 import { useStaff } from '../../context/StaffContext';
 import { Button } from '../../components/Button';
 import { Building2, MapPin, Loader2, Share2, Clock, Lock, Save, ShieldCheck, Bike, Plus, Trash2, Edit, CreditCard, Tag, FileText, Bell, Users } from 'lucide-react';
-import { RestaurantBusinessInfo, DeliveryMethodConfig, PaymentMethodConfig, ExpenseCategory, TaxRegime } from '../../types';
+import { RestaurantBusinessInfo, DeliveryMethodConfig, PaymentMethodConfig, ExpenseCategory, TaxRegime, DsrConfig } from '../../types';
 import { Modal } from '../../components/Modal';
 
 interface AdminSettingsProps {
@@ -29,6 +29,14 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ view = 'BUSINESS' 
       timeClock: { validationType: 'NONE', maxDailyPunches: 4, maxDistanceMeters: 100, restaurantLocation: { lat: 0, lng: 0 } },
       ...state.businessInfo
   });
+  
+  const [dsrForm, setDsrForm] = useState<DsrConfig>({
+      calculateOnOvertime: true,
+      rateType: 'CALCULATED',
+      includeInThirteenth: true,
+      includeInVacation: true
+  });
+
   const [loadingCep, setLoadingCep] = useState(false);
 
   // Modais States
@@ -60,8 +68,19 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ view = 'BUSINESS' 
       }
   }, [state.businessInfo]);
 
+  useEffect(() => {
+      if (legalSettings?.dsrConfig) {
+          setDsrForm(legalSettings.dsrConfig);
+      }
+  }, [legalSettings]);
+
   const handleSaveBusiness = async () => {
-      await dispatch({ type: 'UPDATE_BUSINESS_INFO', info: businessForm });
+      if (view === 'TIME_CLOCK') {
+          await dispatch({ type: 'UPDATE_BUSINESS_INFO', info: businessForm });
+          await saveLegalSettings({ dsrConfig: dsrForm });
+      } else {
+          await dispatch({ type: 'UPDATE_BUSINESS_INFO', info: businessForm });
+      }
       showAlert({ title: 'Sucesso', message: 'Dados atualizados!', type: 'SUCCESS' });
   };
   
@@ -613,6 +632,70 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ view = 'BUSINESS' 
                                 <p className="text-[10px] text-gray-500 mt-1">Número máximo de batidas permitidas por dia (Padrão: 4 = Entrada, Saída Almoço, Volta Almoço, Saída).</p>
                             </div>
                         )}
+
+                        {/* DSR Configuration */}
+                        <div className="mt-8 border-t pt-8">
+                            <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                                <FileText className="text-purple-600" size={20} />
+                                Configuração de DSR (Descanso Semanal Remunerado)
+                            </h3>
+                            <div className="bg-purple-50 p-6 rounded-xl border border-purple-100 space-y-4">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <label className="font-bold text-gray-700">Calcular DSR sobre Horas Extras</label>
+                                        <p className="text-xs text-gray-500">Adiciona o valor do DSR proporcional às horas extras realizadas.</p>
+                                    </div>
+                                    <input 
+                                        type="checkbox" 
+                                        className="w-5 h-5 text-purple-600 rounded focus:ring-purple-500"
+                                        checked={dsrForm.calculateOnOvertime}
+                                        onChange={e => setDsrForm({...dsrForm, calculateOnOvertime: e.target.checked})}
+                                    />
+                                </div>
+                                
+                                {dsrForm.calculateOnOvertime && (
+                                    <div className="pl-4 border-l-2 border-purple-200 mt-2 space-y-3">
+                                        <div>
+                                            <label className="block text-xs font-bold text-purple-700 mb-1">Tipo de Cálculo</label>
+                                            <select 
+                                                className="w-full border p-2 rounded-lg bg-white"
+                                                value={dsrForm.rateType}
+                                                onChange={e => setDsrForm({...dsrForm, rateType: e.target.value as any})}
+                                            >
+                                                <option value="CALCULATED">Proporcional (Domingos e Feriados / Dias Úteis)</option>
+                                                <option value="FIXED">Fixo (1/6 - 16,66%)</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className="flex items-center justify-between pt-2 border-t border-purple-200">
+                                    <div>
+                                        <label className="font-bold text-gray-700">Refletir no 13º Salário</label>
+                                        <p className="text-xs text-gray-500">Considerar média de DSR no cálculo do 13º.</p>
+                                    </div>
+                                    <input 
+                                        type="checkbox" 
+                                        className="w-5 h-5 text-purple-600 rounded focus:ring-purple-500"
+                                        checked={dsrForm.includeInThirteenth}
+                                        onChange={e => setDsrForm({...dsrForm, includeInThirteenth: e.target.checked})}
+                                    />
+                                </div>
+
+                                <div className="flex items-center justify-between pt-2 border-t border-purple-200">
+                                    <div>
+                                        <label className="font-bold text-gray-700">Refletir nas Férias</label>
+                                        <p className="text-xs text-gray-500">Considerar média de DSR no cálculo das Férias.</p>
+                                    </div>
+                                    <input 
+                                        type="checkbox" 
+                                        className="w-5 h-5 text-purple-600 rounded focus:ring-purple-500"
+                                        checked={dsrForm.includeInVacation}
+                                        onChange={e => setDsrForm({...dsrForm, includeInVacation: e.target.checked})}
+                                    />
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}

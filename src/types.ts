@@ -154,8 +154,17 @@ export interface RhPayrollSetting {
         justified: { deduction: boolean, disciplinaryAction: boolean };
         unjustified: { deduction: boolean, disciplinaryAction: boolean, dsrDeduction: boolean };
     };
+    dsrConfig?: DsrConfig;
     pointClosingDay?: number;
     integrateFinance?: boolean;
+}
+
+export interface DsrConfig {
+    calculateOnOvertime: boolean;
+    rateType: 'FIXED' | 'CALCULATED';
+    fixedRate?: number;
+    includeInThirteenth: boolean;
+    includeInVacation: boolean;
 }
 
 export interface RhInssBracket {

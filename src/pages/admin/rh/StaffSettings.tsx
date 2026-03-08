@@ -48,6 +48,12 @@ export const StaffSettings: React.FC = () => {
         absenceLogic: {
             justified: { deduction: false, disciplinaryAction: false },
             unjustified: { deduction: true, disciplinaryAction: true, dsrDeduction: true }
+        },
+        dsrConfig: {
+            calculateOnOvertime: true,
+            rateType: 'CALCULATED',
+            includeInThirteenth: true,
+            includeInVacation: true
         }
     });
 
@@ -74,6 +80,12 @@ export const StaffSettings: React.FC = () => {
                         ...state.legalSettings.absenceLogic.unjustified, 
                         dsrDeduction: state.legalSettings.absenceLogic.unjustified.dsrDeduction ?? true 
                     } : { deduction: true, disciplinaryAction: true, dsrDeduction: true }
+                },
+                dsrConfig: state.legalSettings.dsrConfig || {
+                    calculateOnOvertime: true,
+                    rateType: 'CALCULATED',
+                    includeInThirteenth: true,
+                    includeInVacation: true
                 }
             });
         }
@@ -88,7 +100,8 @@ export const StaffSettings: React.FC = () => {
                 overtimePolicy: timeTrackingForm.overtimePolicy as any,
                 deductDelaysFromOvertime: timeTrackingForm.deductDelaysFromOvertime,
                 pointClosingDay: timeTrackingForm.pointClosingDay,
-                absenceLogic: timeTrackingForm.absenceLogic
+                absenceLogic: timeTrackingForm.absenceLogic,
+                dsrConfig: timeTrackingForm.dsrConfig as any
             });
             showAlert({ title: "Sucesso", message: "Configurações de ponto atualizadas.", type: "SUCCESS" });
         } catch (error: any) {
@@ -959,6 +972,71 @@ export const StaffSettings: React.FC = () => {
                                                 <span className="text-sm text-slate-700 italic">Descontar DSR da Semana</span>
                                             </label>
                                         </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Configuração de DSR */}
+                            <div className="md:col-span-2 space-y-4 pt-4 border-t">
+                                <h4 className="text-sm font-bold text-slate-800 border-b pb-2">Descanso Semanal Remunerado (DSR)</h4>
+                                <div className="bg-purple-50 p-4 rounded-xl border border-purple-100 grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="space-y-3">
+                                        <label className="flex items-center gap-2">
+                                            <input 
+                                                type="checkbox" 
+                                                checked={timeTrackingForm.dsrConfig?.calculateOnOvertime}
+                                                onChange={e => setTimeTrackingForm({
+                                                    ...timeTrackingForm, 
+                                                    dsrConfig: { ...timeTrackingForm.dsrConfig!, calculateOnOvertime: e.target.checked }
+                                                })}
+                                                className="rounded text-purple-600"
+                                            />
+                                            <span className="text-sm font-bold text-slate-700">Calcular DSR sobre Horas Extras</span>
+                                        </label>
+                                        
+                                        {timeTrackingForm.dsrConfig?.calculateOnOvertime && (
+                                            <div className="pl-6">
+                                                <label className="block text-xs font-bold text-purple-700 mb-1">Tipo de Cálculo</label>
+                                                <select 
+                                                    className="w-full border p-2 rounded-lg bg-white text-sm"
+                                                    value={timeTrackingForm.dsrConfig?.rateType}
+                                                    onChange={e => setTimeTrackingForm({
+                                                        ...timeTrackingForm, 
+                                                        dsrConfig: { ...timeTrackingForm.dsrConfig!, rateType: e.target.value as any }
+                                                    })}
+                                                >
+                                                    <option value="CALCULATED">Proporcional (Domingos/Feriados ÷ Dias Úteis)</option>
+                                                    <option value="FIXED">Fixo (1/6 - 16,66%)</option>
+                                                </select>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className="space-y-3">
+                                        <label className="flex items-center gap-2">
+                                            <input 
+                                                type="checkbox" 
+                                                checked={timeTrackingForm.dsrConfig?.includeInThirteenth}
+                                                onChange={e => setTimeTrackingForm({
+                                                    ...timeTrackingForm, 
+                                                    dsrConfig: { ...timeTrackingForm.dsrConfig!, includeInThirteenth: e.target.checked }
+                                                })}
+                                                className="rounded text-purple-600"
+                                            />
+                                            <span className="text-sm text-slate-700">Refletir média de DSR no 13º Salário</span>
+                                        </label>
+                                        <label className="flex items-center gap-2">
+                                            <input 
+                                                type="checkbox" 
+                                                checked={timeTrackingForm.dsrConfig?.includeInVacation}
+                                                onChange={e => setTimeTrackingForm({
+                                                    ...timeTrackingForm, 
+                                                    dsrConfig: { ...timeTrackingForm.dsrConfig!, includeInVacation: e.target.checked }
+                                                })}
+                                                className="rounded text-purple-600"
+                                            />
+                                            <span className="text-sm text-slate-700">Refletir média de DSR nas Férias</span>
+                                        </label>
                                     </div>
                                 </div>
                             </div>
