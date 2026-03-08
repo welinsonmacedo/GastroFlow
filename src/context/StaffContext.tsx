@@ -261,11 +261,11 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
           const mappedEvents = (eventsRes.data || []).map((e: any) => ({
               id: e.id, staffId: e.staff_id, month: e.month, year: e.year,
-              type: e.type, description: e.description, value: Number(e.value)
+              type: e.type || e.event_type_id, description: e.description, value: Number(e.value)
           }));
 
           const mappedRecurringEvents = (recurringEventsRes.data || []).map((e: any) => ({
-              id: e.id, staffId: e.staff_id, type: e.type, description: e.description, 
+              id: e.id, staffId: e.staff_id, type: e.type || e.event_type_id, description: e.description, 
               value: Number(e.value), isActive: e.is_active
           }));
 
@@ -993,16 +993,53 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (isClosed) throw new Error("A folha deste mês já está fechada. Não é possível gerar eventos recorrentes.");
 
       try {
-          const { data, error } = await supabase.rpc('generate_recurring_events', {
-              p_month: month,
-              p_year: year,
-              p_created_by: currentUser.id
-          });
+          let count = 0;
+          const recurringEvents = state.recurringEvents.filter(re => re.isActive);
 
-          if (error) throw error;
+          for (const re of recurringEvents) {
+              // Check if event already exists
+              const exists = state.payrollEvents.some(pe => 
+                  pe.staffId === re.staffId && 
+                  pe.type === re.type && 
+                  pe.month === month && 
+                  pe.year === year
+              );
 
-          if (data > 0) {
-              await logAudit(tenantId, currentUser.id, currentUser.name, 'HR', 'Geração de Eventos Recorrentes', { count: data, month, year });
+              if (!exists) {
+                  const staff = state.users.find(u => u.id === re.staffId);
+                  const eventType = state.eventTypes.find(et => et.id === re.type);
+                  
+                  if (staff && eventType) {
+                      let value = re.value;
+                      if (eventType.calculationType === 'PERCENTAGE') {
+                          value = ((staff.baseSalary || 0) * re.value) / 100;
+                      }
+
+                      const description = re.description || eventType.name;
+
+                      // Insert directly
+                      const { error } = await supabase.from('rh_payroll_events').insert({
+                          tenant_id: tenantId,
+                          staff_id: re.staffId,
+                          month: month,
+                          year: year,
+                          type: re.type,
+                          description: description,
+                          value: Number(value.toFixed(2)),
+                          created_by: currentUser.auth_user_id
+                      });
+
+                      if (error) {
+                          console.error("Error inserting recurring event:", error);
+                      } else {
+                          count++;
+                      }
+                  }
+              }
+          }
+
+          if (count > 0) {
+              await logAudit(tenantId, currentUser.id, currentUser.name, 'HR', 'Geração de Eventos Recorrentes', { count, month, year });
               fetchData();
           }
       } catch (error) {
