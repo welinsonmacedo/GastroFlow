@@ -320,7 +320,7 @@ export const StaffPayroll: React.FC<{ initialMonth?: number; initialYear?: numbe
                         </div>` : ''}
 
                         <!-- Benefícios e Eventos -->
-                        ${(slip.benefitBreakdown || []).map((b, i) => `
+                        ${(slip.benefitBreakdown || []).filter(b => b.value > 0).map((b, i) => `
                         <div class="table-row">
                             <div class="col-code">${100+i}</div>
                             <div class="col-desc">${b.name.toUpperCase()}</div>
@@ -329,7 +329,7 @@ export const StaffPayroll: React.FC<{ initialMonth?: number; initialYear?: numbe
                             <div class="col-val"></div>
                         </div>`).join('')}
 
-                        ${(slip.eventBreakdown || []).filter(e => e.name.toUpperCase().includes('DSR')).map((e, i) => `
+                        ${(slip.eventBreakdown || []).filter(e => e.name.toUpperCase().includes('DSR') && e.value > 0).map((e, i) => `
                         <div class="table-row">
                             <div class="col-code">${600+i}</div>
                             <div class="col-desc">${e.name.toUpperCase()}</div>
@@ -338,7 +338,7 @@ export const StaffPayroll: React.FC<{ initialMonth?: number; initialYear?: numbe
                             <div className="col-val"></div>
                         </div>`).join('')}
 
-                        ${(slip.eventBreakdown || []).filter(e => e.type === 'CREDIT' && !e.name.toUpperCase().includes('DSR')).map((e, i) => `
+                        ${(slip.eventBreakdown || []).filter(e => e.type === 'CREDIT' && !e.name.toUpperCase().includes('DSR') && e.value > 0).map((e, i) => `
                         <div class="table-row">
                             <div class="col-code">${200+i}</div>
                             <div class="col-desc">${e.name.toUpperCase()}</div>
@@ -347,7 +347,7 @@ export const StaffPayroll: React.FC<{ initialMonth?: number; initialYear?: numbe
                             <div class="col-val"></div>
                         </div>`).join('')}
 
-                        ${(slip.eventBreakdown || []).filter(e => e.type === 'DEBIT' && !e.name.toUpperCase().includes('DSR')).map((e, i) => `
+                        ${(slip.eventBreakdown || []).filter(e => e.type === 'DEBIT' && !e.name.toUpperCase().includes('DSR') && e.value > 0).map((e, i) => `
                         <div class="table-row">
                             <div class="col-code">${500+i}</div>
                             <div class="col-desc">${e.name.toUpperCase()}</div>
@@ -357,7 +357,7 @@ export const StaffPayroll: React.FC<{ initialMonth?: number; initialYear?: numbe
                         </div>`).join('')}
 
                         <!-- Descontos Impostos -->
-                        ${employeeTaxes.map((t, i) => `
+                        ${employeeTaxes.filter(t => t.value > 0).map((t, i) => `
                         <div class="table-row">
                             <div class="col-code">${900+i}</div>
                             <div class="col-desc">${t.name.toUpperCase()}</div>
@@ -750,7 +750,7 @@ export const StaffPayroll: React.FC<{ initialMonth?: number; initialYear?: numbe
                                             <div className="col-span-2 text-right"></div>
                                         </div>
                                     )}
-                                    {selectedSlip.eventBreakdown && selectedSlip.eventBreakdown.filter(e => e.name.toUpperCase().includes('DSR')).map((evt, i) => (
+                                    {selectedSlip.eventBreakdown && selectedSlip.eventBreakdown.filter(e => e.name.toUpperCase().includes('DSR') && e.value > 0).map((evt, i) => (
                                         <div key={`dsr-${i}`} className="grid grid-cols-12">
                                             <div className="col-span-1 text-center">{600+i}</div>
                                             <div className="col-span-5">{evt.name.toUpperCase()}</div>
@@ -759,7 +759,7 @@ export const StaffPayroll: React.FC<{ initialMonth?: number; initialYear?: numbe
                                             <div className="col-span-2 text-right"></div>
                                         </div>
                                     ))}
-                                    {(selectedSlip.benefitBreakdown || []).map((ben, i) => (
+                                    {(selectedSlip.benefitBreakdown || []).filter(ben => ben.value > 0).map((ben, i) => (
                                         <div key={`ben-${i}`} className="grid grid-cols-12">
                                             <div className="col-span-1 text-center">{100+i}</div>
                                             <div className="col-span-5">{ben.name.toUpperCase()}</div>
@@ -768,7 +768,7 @@ export const StaffPayroll: React.FC<{ initialMonth?: number; initialYear?: numbe
                                             <div className="col-span-2 text-right"></div>
                                         </div>
                                     ))}
-                                    {(selectedSlip.eventBreakdown || []).filter(e => e.type === 'CREDIT' && !e.name.toUpperCase().includes('DSR')).map((evt, i) => (
+                                    {(selectedSlip.eventBreakdown || []).filter(e => e.type === 'CREDIT' && !e.name.toUpperCase().includes('DSR') && e.value > 0).map((evt, i) => (
                                         <div key={`evt-c-${i}`} className="grid grid-cols-12">
                                             <div className="col-span-1 text-center">{200+i}</div>
                                             <div className="col-span-5">{evt.name.toUpperCase()}</div>
@@ -777,7 +777,7 @@ export const StaffPayroll: React.FC<{ initialMonth?: number; initialYear?: numbe
                                             <div className="col-span-2 text-right"></div>
                                         </div>
                                     ))}
-                                    {(selectedSlip.eventBreakdown || []).filter(e => e.type === 'DEBIT' && !e.name.toUpperCase().includes('DSR')).map((evt, i) => (
+                                    {(selectedSlip.eventBreakdown || []).filter(e => e.type === 'DEBIT' && !e.name.toUpperCase().includes('DSR') && e.value > 0).map((evt, i) => (
                                         <div key={`evt-d-${i}`} className="grid grid-cols-12">
                                             <div className="col-span-1 text-center">{500+i}</div>
                                             <div className="col-span-5">{evt.name.toUpperCase()}</div>
@@ -786,7 +786,7 @@ export const StaffPayroll: React.FC<{ initialMonth?: number; initialYear?: numbe
                                             <div className="col-span-2 text-right">{(evt.value || 0).toFixed(2)}</div>
                                         </div>
                                     ))}
-                                    {(selectedSlip.taxBreakdown || []).filter(t => t.type !== 'EMPLOYER').map((tax, i) => (
+                                    {(selectedSlip.taxBreakdown || []).filter(t => t.type !== 'EMPLOYER' && t.value > 0).map((tax, i) => (
                                         <div key={`tax-${i}`} className="grid grid-cols-12">
                                             <div className="col-span-1 text-center">{900+i}</div>
                                             <div className="col-span-5">{tax.name.toUpperCase()}</div>
