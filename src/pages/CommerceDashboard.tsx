@@ -1,12 +1,12 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 // @ts-ignore
 import { Routes, Route, Navigate, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useRestaurant } from '../context/RestaurantContext';
 import { useAuth } from '../context/AuthProvider';
 import { 
     ShoppingCart,
-    LogOut, Grid, Store, Lock, History
+    LogOut, Grid, Store, Lock, History, Menu, ChevronUp
 } from 'lucide-react';
 import { Role } from '../types';
 
@@ -20,6 +20,8 @@ export const CommerceDashboard: React.FC = () => {
   const { planLimits, allowedFeatures } = restState;
   const location = useLocation();
   const navigate = useNavigate();
+
+  const [isHeaderVisible, setIsHeaderVisible] = useState(false);
 
   const userRole = authState.currentUser?.role;
 
@@ -97,75 +99,95 @@ export const CommerceDashboard: React.FC = () => {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50 overflow-hidden font-sans">
+    <div className="flex flex-col h-screen bg-gray-50 overflow-hidden font-sans relative">
         
+        {/* Toggle Button when Header is Hidden */}
+        {!isHeaderVisible && (
+            <button 
+                onClick={() => setIsHeaderVisible(true)}
+                className="absolute top-2 right-2 z-[60] bg-indigo-600 text-white p-2 rounded-full shadow-lg hover:bg-indigo-700 transition-all opacity-50 hover:opacity-100"
+                title="Mostrar Menu"
+            >
+                <Menu size={20} />
+            </button>
+        )}
+
         {/* TOP BAR / HEADER */}
-        <header className="bg-indigo-700 text-white shadow-lg shrink-0 z-30">
-            <div className="max-w-[1920px] mx-auto">
-                
-                {/* Linha Superior */}
-                <div className="px-6 py-4 flex justify-between items-center border-b border-indigo-600">
-                    <div className="flex items-center gap-4">
-                        <div className="bg-white/10 p-2 rounded-xl backdrop-blur-md border border-white/10">
-                            {restState.theme.logoUrl ? (
-                                <img src={restState.theme.logoUrl} className="h-8 w-8 object-contain" />
-                            ) : (
-                                <Store size={24} />
-                            )}
-                        </div>
-                        <div>
-                            <h1 className="font-bold text-lg leading-none tracking-tight">{restState.theme.restaurantName}</h1>
-                            <div className="flex items-center gap-2 mt-1">
-                                <span className="text-[10px] font-bold bg-white/20 px-2 py-0.5 rounded text-white uppercase tracking-widest">
-                                    Varejo / Comércio
-                                </span>
-                                <span className="text-[10px] text-indigo-100">
-                                    {authState.currentUser?.name}
-                                </span>
+        {isHeaderVisible && (
+            <header className="bg-indigo-700 text-white shadow-lg shrink-0 z-30 animate-fade-in-down">
+                <div className="max-w-[1920px] mx-auto">
+                    
+                    {/* Linha Superior */}
+                    <div className="px-6 py-4 flex justify-between items-center border-b border-indigo-600">
+                        <div className="flex items-center gap-4">
+                            <div className="bg-white/10 p-2 rounded-xl backdrop-blur-md border border-white/10">
+                                {restState.theme.logoUrl ? (
+                                    <img src={restState.theme.logoUrl} className="h-8 w-8 object-contain" />
+                                ) : (
+                                    <Store size={24} />
+                                )}
+                            </div>
+                            <div>
+                                <h1 className="font-bold text-lg leading-none tracking-tight">{restState.theme.restaurantName}</h1>
+                                <div className="flex items-center gap-2 mt-1">
+                                    <span className="text-[10px] font-bold bg-white/20 px-2 py-0.5 rounded text-white uppercase tracking-widest">
+                                        Varejo / Comércio
+                                    </span>
+                                    <span className="text-[10px] text-indigo-100">
+                                        {authState.currentUser?.name}
+                                    </span>
+                                </div>
                             </div>
                         </div>
-                    </div>
 
-                    <div className="flex items-center gap-3">
-                        <button 
-                            onClick={handleExitToModules}
-                            className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider bg-indigo-800 hover:bg-indigo-600 transition-colors border border-indigo-600"
-                        >
-                            <Grid size={16} /> Módulos
-                        </button>
-                        <button 
-                            onClick={logout}
-                            className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider bg-red-500/20 text-red-100 hover:bg-red-500 hover:text-white transition-colors border border-red-500/20 hover:border-red-500"
-                        >
-                            <LogOut size={16} /> Sair
-                        </button>
-                    </div>
-                </div>
-
-                {/* Linha Inferior */}
-                <div className="px-6 flex gap-1 overflow-x-auto scrollbar-hide pt-2">
-                    {visibleTabs.map(tab => {
-                        const isActive = location.pathname.startsWith(tab.path);
-                        
-                        return (
-                            <Link 
-                                key={tab.path}
-                                to={tab.path}
-                                className={`
-                                    flex items-center gap-2 px-5 py-3 text-sm font-bold border-b-2 transition-all whitespace-nowrap
-                                    ${isActive 
-                                        ? 'border-white text-white bg-white/10 rounded-t-lg' 
-                                        : 'border-transparent text-indigo-200 hover:text-white hover:bg-white/5 rounded-t-lg'}
-                                `}
+                        <div className="flex items-center gap-3">
+                            <button 
+                                onClick={handleExitToModules}
+                                className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider bg-indigo-800 hover:bg-indigo-600 transition-colors border border-indigo-600"
                             >
-                                <tab.icon size={18} className={isActive ? 'text-white' : 'text-indigo-300'} />
-                                {tab.label}
-                            </Link>
-                        );
-                    })}
+                                <Grid size={16} /> Módulos
+                            </button>
+                            <button 
+                                onClick={logout}
+                                className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider bg-red-500/20 text-red-100 hover:bg-red-500 hover:text-white transition-colors border border-red-500/20 hover:border-red-500"
+                            >
+                                <LogOut size={16} /> Sair
+                            </button>
+                            <button 
+                                onClick={() => setIsHeaderVisible(false)}
+                                className="ml-2 p-2 rounded-lg bg-indigo-800 hover:bg-indigo-600 text-white transition-colors"
+                                title="Ocultar Menu"
+                            >
+                                <ChevronUp size={20} />
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Linha Inferior */}
+                    <div className="px-6 flex gap-1 overflow-x-auto scrollbar-hide pt-2">
+                        {visibleTabs.map(tab => {
+                            const isActive = location.pathname.startsWith(tab.path);
+                            
+                            return (
+                                <Link 
+                                    key={tab.path}
+                                    to={tab.path}
+                                    className={`
+                                        flex items-center gap-2 px-5 py-3 text-sm font-bold border-b-2 transition-all whitespace-nowrap
+                                        ${isActive 
+                                            ? 'border-white text-white bg-white/10 rounded-t-lg' 
+                                            : 'border-transparent text-indigo-200 hover:text-white hover:bg-white/5 rounded-t-lg'}
+                                    `}
+                                >
+                                    <tab.icon size={18} className={isActive ? 'text-white' : 'text-indigo-300'} />
+                                    {tab.label}
+                                </Link>
+                            );
+                        })}
+                    </div>
                 </div>
-            </div>
-        </header>
+            </header>
+        )}
 
         {/* CONTEÚDO PRINCIPAL */}
         <main className="flex-1 overflow-hidden bg-gray-50 relative">
