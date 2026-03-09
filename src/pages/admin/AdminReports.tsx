@@ -74,7 +74,7 @@ export const AdminReports: React.FC = () => {
                 setSummary({ totalIn, totalOut, balance: totalIn - totalOut });
             }
             else if (activeTab === 'INVENTORY') {
-                const { data: logs, error } = await supabase.from('inventory_logs').select('*, inventory_items(name, unit)').eq('tenant_id', state.tenantId).gte('created_at', start).lte('created_at', end).order('created_at', { ascending: false });
+                const { data: logs, error } = await supabase.from('inventory_logs').select('*, inventory_items!item_id(name, unit)').eq('tenant_id', state.tenantId).gte('created_at', start).lte('created_at', end).order('created_at', { ascending: false });
                 if (error) throw error;
                 const formattedLogs = logs?.map((l: any) => ({ ...l, quantity: Number(l.quantity) || 0, itemName: l.inventory_items?.name || 'Item Removido', unit: l.inventory_items?.unit || '-' }));
                 setData(formattedLogs || []);
