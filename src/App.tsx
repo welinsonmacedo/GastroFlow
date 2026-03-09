@@ -1,5 +1,6 @@
 
 import React, { PropsWithChildren, useEffect, useState } from 'react';
+import socket from '@/core/socket';
 // @ts-ignore
 import { Routes, Route, Navigate, Link, useLocation, Outlet, useParams } from 'react-router-dom';
 import { AlertCircle } from 'lucide-react';
@@ -26,6 +27,8 @@ import { StaffDashboard } from './pages/StaffDashboard';
 import { AuditDashboard } from './pages/AuditDashboard';
 import { SuperAdminDashboard } from './pages/SuperAdminDashboard';
 
+import { WaiterPanel } from './components/WaiterPanel';
+import { KitchenPanel } from './components/KitchenPanel';
 import { Login } from './pages/Login';
 import { SaaSLogin } from './pages/SaaSLogin';
 import { RegisterRestaurant } from './pages/RegisterRestaurant';
@@ -190,6 +193,8 @@ const TenantApp = () => {
                     <Routes>
                         <Route path="/" element={<Navigate to={`/login${window.location.search}`} replace />} />
                         <Route path="/login" element={<Login />} />
+                        <Route path="/waiter" element={<WaiterPanel />} />
+                        <Route path="/kitchen" element={<KitchenPanel />} />
                         <Route path="/manual" element={<ManualPage />} />
                         
                         <Route path="/client/table/:tableId" element={<ClientRoute />} />
@@ -219,6 +224,21 @@ const TenantApp = () => {
 const App: React.FC = () => {
   const location = useLocation();
   const [tenantSlug, setTenantSlug] = useState<string | null>(getTenantSlug());
+
+  useEffect(() => {
+    socket.on("connect", () => {
+      console.log("Connected to server", socket.id);
+    });
+    
+    socket.on("test-event", (data) => {
+      console.log("Received test event", data);
+    });
+
+    return () => {
+      socket.off("connect");
+      socket.off("test-event");
+    };
+  }, []);
 
   useEffect(() => {
       setTenantSlug(getTenantSlug());
