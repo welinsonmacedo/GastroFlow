@@ -37,9 +37,13 @@ BEGIN
     IF v_item_type = 'COMPOSITE' THEN
         FOR r_recipe IN SELECT ingredient_item_id, quantity FROM inventory_recipes WHERE parent_item_id = v_linked_item_id LOOP
             UPDATE inventory_items SET quantity = quantity - (r_recipe.quantity * NEW.quantity) WHERE id = r_recipe.ingredient_item_id;
+            INSERT INTO public.inventory_logs (tenant_id, item_id, type, quantity, reason, user_name)
+            VALUES (NEW.tenant_id, r_recipe.ingredient_item_id, 'OUT', r_recipe.quantity * NEW.quantity, 'Venda Pedido', 'Sistema');
         END LOOP;
     ELSE
         UPDATE inventory_items SET quantity = quantity - NEW.quantity WHERE id = v_linked_item_id;
+        INSERT INTO public.inventory_logs (tenant_id, item_id, type, quantity, reason, user_name)
+        VALUES (NEW.tenant_id, v_linked_item_id, 'OUT', NEW.quantity, 'Venda Pedido', 'Sistema');
     END IF;
 
     RETURN NEW;

@@ -6,7 +6,7 @@ import { supabase } from '@/core/api/supabaseClient';
 import { Button } from '../../components/Button';
 import { 
     FileText, Download, Printer, Calendar, 
-    ArrowUpCircle, ArrowDownCircle, Package, RefreshCcw, 
+    ArrowUpCircle, ArrowDownCircle, RefreshCcw, 
     Search, ListPlus 
 } from 'lucide-react';
 import { printHtml, getReportStyles } from '@/core/print/printHelper';
@@ -206,9 +206,6 @@ export const AdminReports: React.FC = () => {
                         </button>
                         <button onClick={() => setActiveTab('FINANCE')} className={`px-4 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 ${activeTab === 'FINANCE' ? 'bg-purple-600 text-white shadow-md' : 'text-gray-500 hover:text-gray-700'}`}>
                             <RefreshCcw size={14}/> Mov. Financeira
-                        </button>
-                        <button onClick={() => { setActiveTab('INVENTORY'); setIsDetailed(false); }} className={`px-4 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 ${activeTab === 'INVENTORY' ? 'bg-orange-500 text-white shadow-md' : 'text-gray-500 hover:text-gray-700'}`}>
-                            <Package size={14}/> Estoque
                         </button>
                     </div>
 
