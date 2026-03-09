@@ -5,7 +5,7 @@
   "type": "module",
   "dependencies": {
     "@google/genai": "*",
-    "@supabase/supabase-js": "^2.39.7",
+    "@supabase/supabase-js": "^2.99.0",
     "dompurify": "^3.3.1",
     "html2canvas": "^1.4.1",
     "html5-qrcode": "^2.3.8",
