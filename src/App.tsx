@@ -29,6 +29,10 @@ import { SuperAdminDashboard } from './pages/SuperAdminDashboard';
 
 import { WaiterPanel } from './components/WaiterPanel';
 import { KitchenPanel } from './components/KitchenPanel';
+import { InventoryPanel } from './components/inventory/InventoryPanel';
+import { FinancePanel } from './components/finance/FinancePanel';
+import { HRPanel } from './components/hr/HRPanel';
+import { CashierPanel } from './components/cashier/CashierPanel';
 import { Login } from './pages/Login';
 import { SaaSLogin } from './pages/SaaSLogin';
 import { RegisterRestaurant } from './pages/RegisterRestaurant';
@@ -195,6 +199,10 @@ const TenantApp = () => {
                         <Route path="/login" element={<Login />} />
                         <Route path="/waiter" element={<WaiterPanel />} />
                         <Route path="/kitchen" element={<KitchenPanel />} />
+                        <Route path="/inventory-realtime" element={<InventoryPanel />} />
+                        <Route path="/finance-realtime" element={<FinancePanel />} />
+                        <Route path="/hr-realtime" element={<HRPanel />} />
+                        <Route path="/cashier-realtime" element={<CashierPanel />} />
                         <Route path="/manual" element={<ManualPage />} />
                         
                         <Route path="/client/table/:tableId" element={<ClientRoute />} />
