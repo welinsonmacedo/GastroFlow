@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../../../lib/supabase';
-import { Ticket } from '../../../types';
+import { supabase } from '@/core/api/supabaseClient';
+import { Ticket } from '@/types';
 import { MessageCircle, Clock, CheckCircle, XCircle, Send, Search, Circle } from 'lucide-react';
 import { Button } from '../../../components/Button';
-import { useUI } from '../../../context/UIContext';
+import { useUI } from '@/core/context/UIContext';
 import { GlobalLoading } from '../../../components/GlobalLoading';
 
 export const AdminTickets: React.FC = () => {

@@ -3,16 +3,16 @@ import React, { PropsWithChildren, useEffect, useState } from 'react';
 // @ts-ignore
 import { Routes, Route, Navigate, Link, useLocation, Outlet, useParams } from 'react-router-dom';
 import { AlertCircle } from 'lucide-react';
-import { AuthProvider, useAuth } from './context/AuthProvider'; 
-import { RestaurantProvider, useRestaurant } from './context/RestaurantContext';
-import { InventoryProvider } from './context/InventoryContext'; 
-import { FinanceProvider } from './context/FinanceContext'; 
-import { MenuProvider } from './context/MenuContext'; 
-import { OrderProvider } from './context/OrderContext'; 
-import { StaffProvider } from './context/StaffContext'; 
-import { SaaSProvider, useSaaS } from './context/SaaSContext';
-import { UIProvider } from './context/UIContext';
-import { isSupabaseConfigured } from './lib/supabase';
+import { AuthProvider, useAuth } from '@/core/context/AuthProvider'; 
+import { RestaurantProvider, useRestaurant } from '@/core/context/RestaurantContext';
+import { InventoryProvider } from '@/core/context/InventoryContext'; 
+import { FinanceProvider } from '@/core/context/FinanceContext'; 
+import { MenuProvider } from '@/core/context/MenuContext'; 
+import { OrderProvider } from '@/core/context/OrderContext'; 
+import { StaffProvider } from '@/core/context/StaffContext'; 
+import { SaaSProvider, useSaaS } from '@/core/context/SaaSContext';
+import { UIProvider } from '@/core/context/UIContext';
+import { isSupabaseConfigured } from './core/api/supabaseClient';
 import { GlobalLoading } from './components/GlobalLoading';
 import { ClientApp } from './pages/ClientApp';
 import { TableCodeGuard } from './components/TableCodeGuard';
@@ -41,8 +41,8 @@ import { InstallPWA } from './components/InstallPWA';
 import { PwaGuard } from './components/PwaGuard'; 
 import { CookieConsent } from './components/CookieConsent'; 
 import { Lock } from 'lucide-react';
-import { Role } from './types';
-import { getTenantSlug } from './utils/tenant';
+import { Role } from '@/types';
+import { getTenantSlug } from './core/tenant/tenantResolver';
 
 interface ProtectedRouteProps {
     allowedRoles?: Role[];

@@ -1,16 +1,16 @@
 
 import React, { useState, useEffect } from 'react';
-import { useRestaurant } from '../../context/RestaurantContext';
-import { useInventory } from '../../context/InventoryContext';
-import { useOrder } from '../../context/OrderContext';
-import { useUI } from '../../context/UIContext';
-import { DeliveryInfo, DeliveryMethodConfig, InventoryItem, OrderStatus } from '../../types';
+import { useRestaurant } from '@/core/context/RestaurantContext';
+import { useInventory } from '@/core/context/InventoryContext';
+import { useOrder } from '@/core/context/OrderContext';
+import { useUI } from '@/core/context/UIContext';
+import { DeliveryInfo, DeliveryMethodConfig, InventoryItem, OrderStatus } from '@/types';
 import { Button } from '../Button';
 import { Search, User, Trash2, Printer, CheckCircle, MapPin, Loader2, Clock, Bike } from 'lucide-react';
 import { AddToCartModal } from '../modals/AddToCartModal';
 import { DispatchModal } from '../modals/DispatchModal';
 import { PaymentConferenceModal } from '../modals/PaymentConferenceModal';
-import { printHtml, getReceiptStyles } from '../../utils/printHelper';
+import { printHtml, getReceiptStyles } from '@/core/print/printHelper';
 
 export const CashierDeliveryView: React.FC = () => {
     const { state: restState } = useRestaurant();

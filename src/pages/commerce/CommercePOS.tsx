@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { useInventory } from '../../context/InventoryContext';
-import { useOrder } from '../../context/OrderContext';
-import { useFinance } from '../../context/FinanceContext';
-import { useRestaurant } from '../../context/RestaurantContext';
-import { useUI } from '../../context/UIContext';
-import { useAuth } from '../../context/AuthProvider';
-import { InventoryItem } from '../../types';
+import { useInventory } from '@/core/context/InventoryContext';
+import { useOrder } from '@/core/context/OrderContext';
+import { useFinance } from '@/core/context/FinanceContext';
+import { useRestaurant } from '@/core/context/RestaurantContext';
+import { useUI } from '@/core/context/UIContext';
+import { useAuth } from '@/core/context/AuthProvider';
+import { InventoryItem } from '@/types';
 import { 
     ShoppingCart, Trash2, Package, Banknote, Zap, CreditCard, 
     ScanLine, Plus, Minus, Lock, Wallet, LogOut, Loader2, ArrowDown, AlertTriangle

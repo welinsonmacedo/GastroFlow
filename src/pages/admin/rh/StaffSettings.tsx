@@ -3,15 +3,15 @@ import React, { useState, useRef } from 'react';
 import ReactQuill, { Quill } from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 import DOMPurify from 'dompurify';
-import { useStaff } from '../../../context/StaffContext';
+import { useStaff } from '@/core/context/StaffContext';
 
 // Register inline styles for Quill to ensure proper printing
 const AlignStyle = Quill.import('attributors/style/align');
 Quill.register(AlignStyle, true);
-import { useUI } from '../../../context/UIContext';
-import { useRestaurant } from '../../../context/RestaurantContext';
+import { useUI } from '@/core/context/UIContext';
+import { useRestaurant } from '@/core/context/RestaurantContext';
 import { Button } from '../../../components/Button';
-import { HrJobRole, EventType, ContractTemplate, ContractTemplateType } from '../../../types';
+import { HrJobRole, EventType, ContractTemplate, ContractTemplateType } from '@/types';
 import { Plus, Trash2, Settings, RefreshCcw, FileText, Scale, Calculator, Edit3, Calendar, Eye, Printer, Clock, UserCheck, ListChecks, RefreshCw, FileSignature } from 'lucide-react';
 import { LegalSettingsModal } from '../../../components/modals/LegalSettingsModal';
 import { HrJobRoleModal } from '../../../components/modals/HrJobRoleModal';

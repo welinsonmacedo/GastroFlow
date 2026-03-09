@@ -1,9 +1,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { Modal } from '../Modal';
-import { InventoryItem } from '../../types';
+import { InventoryItem } from '@/types';
 import { Minus, Plus, Square, CheckSquare } from 'lucide-react';
-import { useInventory } from '../../context/InventoryContext';
+import { useInventory } from '@/core/context/InventoryContext';
 
 interface AddToCartModalProps {
     isOpen: boolean;

@@ -1,14 +1,14 @@
 
 import React, { useState } from 'react';
-import { useStaff } from '../../context/StaffContext';
-import { useRestaurant } from '../../context/RestaurantContext';
-import { useUI } from '../../context/UIContext';
+import { useStaff } from '@/core/context/StaffContext';
+import { useRestaurant } from '@/core/context/RestaurantContext';
+import { useUI } from '@/core/context/UIContext';
 import { Button } from '../../components/Button';
 import { StaffFormModal } from '../../components/modals/StaffFormModal';
 import { RoleFormModal } from '../../components/modals/RoleFormModal';
 import { TableAssignmentModal } from '../../components/modals/TableAssignmentModal';
-import { User, CustomRole } from '../../types';
-import { getTenantSlug } from '../../utils/tenant';
+import { User, CustomRole } from '@/types';
+import { getTenantSlug } from '@/core/tenant/tenantResolver';
 import { Edit, Trash2, Check, Link as LinkIcon, CheckSquare, Users, Info, Shield, Plus } from 'lucide-react';
 // @ts-ignore
 import { useNavigate } from 'react-router-dom';

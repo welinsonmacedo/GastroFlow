@@ -2,13 +2,13 @@
 import React, { useEffect } from 'react';
 // @ts-ignore
 import { Routes, Route, Navigate, Link, useLocation, useNavigate } from 'react-router-dom';
-import { useRestaurant } from '../context/RestaurantContext';
-import { useAuth } from '../context/AuthProvider';
+import { useRestaurant } from '@/core/context/RestaurantContext';
+import { useAuth } from '@/core/context/AuthProvider';
 import { 
     Users, FileText, 
     LogOut, Grid, Timer, Settings, Network
 } from 'lucide-react';
-import { Role } from '../types';
+import { Role } from '@/types';
 
 // Sub-páginas RH
 import { StaffEmployeesWrapper } from './admin/rh/StaffEmployeesWrapper';

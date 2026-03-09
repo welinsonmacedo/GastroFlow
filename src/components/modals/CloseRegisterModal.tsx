@@ -1,8 +1,8 @@
 
 import React, { useState } from 'react';
 import { Modal } from '../Modal';
-import { useFinance } from '../../context/FinanceContext';
-import { useUI } from '../../context/UIContext';
+import { useFinance } from '@/core/context/FinanceContext';
+import { useUI } from '@/core/context/UIContext';
 
 interface CloseRegisterModalProps {
   isOpen: boolean;

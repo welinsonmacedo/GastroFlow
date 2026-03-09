@@ -1,9 +1,9 @@
 
 import React, { useState } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase } from '@/core/api/supabaseClient';
 // @ts-ignore
 import { useNavigate, Link } from 'react-router-dom';
-import { ChefHat, ArrowLeft, Loader2, CheckCircle, Store, Mail, Lock, User as UserIcon, AlertCircle } from 'lucide-react';
+import { ChefHat, ArrowLeft, CheckCircle, Store, Mail, Lock, User as UserIcon, AlertCircle } from 'lucide-react';
 import { Button } from '../components/Button';
 import { GlobalLoading } from '../components/GlobalLoading';
 

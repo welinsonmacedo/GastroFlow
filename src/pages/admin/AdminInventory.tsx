@@ -6,7 +6,7 @@ import { InventoryEntryView } from './inventory/InventoryEntryView';
 import { InventoryCountView } from './inventory/InventoryCountView';
 import { InventorySuppliersView } from './inventory/InventorySuppliersView';
 import { InventoryLogsView } from './inventory/InventoryLogsView';
-import { Package, Truck, FileText, ArrowDownToLine, ClipboardList, Plus } from 'lucide-react';
+import { Package, Truck, FileText, ArrowDownToLine, ClipboardList } from 'lucide-react';
 
 export type InventoryView = 'ITEMS' | 'SUPPLIERS' | 'LOGS' | 'ENTRY' | 'COUNT' | 'NEW_ITEM';
 

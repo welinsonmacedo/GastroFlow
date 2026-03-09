@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { useStaff } from '../../../context/StaffContext';
-import { useUI } from '../../../context/UIContext';
+import { useStaff } from '@/core/context/StaffContext';
+import { useUI } from '@/core/context/UIContext';
 import { Button } from '../../../components/Button';
-import { TimeEntry } from '../../../types';
+import { TimeEntry } from '@/types';
 import { ArrowRight, Edit } from 'lucide-react';
 import { SummaryModal } from '../../../components/modals/SummaryModal';
 

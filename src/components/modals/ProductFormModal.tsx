@@ -1,14 +1,14 @@
 
 import React, { useState, useEffect } from 'react';
 import { Modal } from '../Modal';
-import { useMenu } from '../../context/MenuContext';
-import { useRestaurant } from '../../context/RestaurantContext';
+import { useMenu } from '@/core/context/MenuContext';
+import { useRestaurant } from '@/core/context/RestaurantContext';
 
-import { useInventory } from '../../context/InventoryContext';
-import { useUI } from '../../context/UIContext';
-import { Product, ProductType } from '../../types';
+import { useInventory } from '@/core/context/InventoryContext';
+import { useUI } from '@/core/context/UIContext';
+import { Product, ProductType } from '@/types';
 import { Archive, FileText, Sparkles, Loader2 } from 'lucide-react';
-import { generateProductDescription } from '../../services/geminiService';
+import { generateProductDescription } from '@/core/services/geminiService';
 
 interface ProductFormModalProps {
   isOpen: boolean;

@@ -1,10 +1,10 @@
 import React, { useState, useRef } from 'react';
 import { Modal } from '../Modal';
-import { useStaff } from '../../context/StaffContext';
-import { useUI } from '../../context/UIContext';
+import { useStaff } from '@/core/context/StaffContext';
+import { useUI } from '@/core/context/UIContext';
 import { Button } from '../Button';
 import { FileText, CheckCircle, AlertTriangle, X } from 'lucide-react';
-import { TimeEntry } from '../../types';
+import { TimeEntry } from '@/types';
 
 export interface ImportAFDModalProps {
     isOpen: boolean;

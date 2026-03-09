@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
-import { useSaaS } from '../context/SaaSContext';
-import { useUI } from '../context/UIContext';
-import { RestaurantTenant } from '../types';
+import { useSaaS } from '@/core/context/SaaSContext';
+import { useUI } from '@/core/context/UIContext';
+import { RestaurantTenant } from '@/types';
 import { Button } from '../components/Button';
 import { SaaSTenantCreateModal, SaaSEditTenantModal, SaaSTenantLinksModal, ImageUploadField } from '../components/modals/SaaSModals';
 import { Building2, DollarSign, Activity, Settings, Search, LogOut, Plus, List, Edit, FileText, Printer, ChevronDown, Edit3, RotateCcw, ShieldAlert, MessageCircle, Box, ImageIcon, Link as LinkIcon, Lock, Smartphone, Network } from 'lucide-react';
@@ -14,7 +14,7 @@ import { AdminSecurity } from './admin/AdminSecurity';
 import { AdminTickets } from './admin/super/AdminTickets';
 import { AdminBlockedIPs } from './admin/super/AdminBlockedIPs';
 import { AdminIntegration } from './admin/super/AdminIntegration';
-import { logSecurityIncident } from '../utils/security';
+import { logSecurityIncident } from '@/core/security/security';
 
 type ViewMode = 'RESTAURANTS' | 'FINANCIAL' | 'PLANS' | 'SETTINGS' | 'CONTRACTS' | 'SECURITY' | 'TICKETS' | 'BLOCKED_IPS' | 'INTEGRATION';
 

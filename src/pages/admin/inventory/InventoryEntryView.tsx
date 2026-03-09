@@ -1,9 +1,9 @@
 
 import React, { useState } from 'react';
-import { useInventory } from '../../../context/InventoryContext';
-import { useUI } from '../../../context/UIContext';
+import { useInventory } from '@/core/context/InventoryContext';
+import { useUI } from '@/core/context/UIContext';
 import { Button } from '../../../components/Button';
-import { PurchaseItemInput } from '../../../types';
+import { PurchaseItemInput } from '@/types';
 import { FileText, Plus, Trash2, ShoppingCart, Save, Calculator } from 'lucide-react';
 
 export const InventoryEntryView: React.FC = () => {

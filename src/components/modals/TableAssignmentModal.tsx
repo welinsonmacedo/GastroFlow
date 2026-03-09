@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Modal } from '../Modal';
-import { useOrder } from '../../context/OrderContext';
-import { User } from '../../types';
+import { useOrder } from '@/core/context/OrderContext';
+import { User } from '@/types';
 import { Button } from '../Button';
 import { Search, CheckCircle, AlertCircle } from 'lucide-react';
 

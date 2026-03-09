@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Modal } from '../Modal';
 import { Button } from '../Button';
-import { useStaff } from '../../context/StaffContext';
-import { useRestaurant } from '../../context/RestaurantContext';
-import { Order } from '../../types';
+import { useStaff } from '@/core/context/StaffContext';
+import { useRestaurant } from '@/core/context/RestaurantContext';
+import { Order } from '@/types';
 import { User, Bike, MapPin } from 'lucide-react';
 
 interface DispatchModalProps {

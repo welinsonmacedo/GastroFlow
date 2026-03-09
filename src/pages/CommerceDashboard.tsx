@@ -2,13 +2,13 @@
 import React, { useEffect, useState } from 'react';
 // @ts-ignore
 import { Routes, Route, Navigate, Link, useLocation, useNavigate } from 'react-router-dom';
-import { useRestaurant } from '../context/RestaurantContext';
-import { useAuth } from '../context/AuthProvider';
+import { useRestaurant } from '@/core/context/RestaurantContext';
+import { useAuth } from '@/core/context/AuthProvider';
 import { 
     ShoppingCart,
     LogOut, Grid, Store, Lock, History, Menu, ChevronUp
 } from 'lucide-react';
-import { Role } from '../types';
+import { Role } from '@/types';
 
 // Importando Sub-páginas
 import { CommercePOS } from './commerce/CommercePOS';

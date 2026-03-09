@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
-import { useInventory } from '../../../context/InventoryContext';
-import { useUI } from '../../../context/UIContext';
+import { useInventory } from '@/core/context/InventoryContext';
+import { useUI } from '@/core/context/UIContext';
 import { Button } from '../../../components/Button';
 import { Search } from 'lucide-react';
 

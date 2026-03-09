@@ -1,7 +1,7 @@
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { InventoryItem, InventoryRecipeItem, InventoryLog, Supplier, PurchaseEntry, InventoryType } from '../types';
-import { supabase, logAudit } from '../lib/supabase';
+import { supabase, logAudit } from '../core/api/supabaseClient';
 import { useRestaurant } from './RestaurantContext'; 
 import { useAuth } from './AuthProvider';
 

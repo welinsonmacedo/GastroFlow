@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
-import { Product } from '../../types';
-import { useMenu } from '../../context/MenuContext';
+import { Product } from '@/types';
+import { useMenu } from '@/core/context/MenuContext';
 import { Button } from '../Button';
 import { X, Minus, Plus, Zap, Utensils, CheckSquare } from 'lucide-react';
 

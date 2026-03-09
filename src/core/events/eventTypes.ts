@@ -1,23 +1,16 @@
-export enum AppEvents {
-  ORDER_CREATED = 'order.created',
-  ORDER_STATUS_CHANGED = 'order.status_changed',
-  PAYMENT_COMPLETED = 'payment.completed',
-  TABLE_CLOSED = 'table.closed',
-  INVENTORY_LOW = 'inventory.low_stock',
-  EMPLOYEE_CLOCK_IN = 'employee.clock_in',
-  EMPLOYEE_CLOCK_OUT = 'employee.clock_out',
-  AUTH_SESSION_EXPIRED = 'auth.session_expired',
-}
+export type EventType = 
+  | 'ORDER_CREATED'
+  | 'ORDER_UPDATED'
+  | 'ORDER_PAID'
+  | 'STOCK_LOW'
+  | 'USER_LOGGED_IN'
+  | 'USER_LOGGED_OUT';
 
-export interface OrderCreatedPayload {
-  orderId: string;
-  tableId: string;
-  total: number;
-  tenantId: string;
-}
-
-export interface PaymentCompletedPayload {
-  orderId: string;
-  amount: number;
-  method: string;
+export interface EventPayloads {
+  'ORDER_CREATED': { orderId: string; tableId?: string; total: number };
+  'ORDER_UPDATED': { orderId: string; status: string };
+  'ORDER_PAID': { orderId: string; amount: number; method: string };
+  'STOCK_LOW': { productId: string; productName: string; currentStock: number };
+  'USER_LOGGED_IN': { userId: string; role: string };
+  'USER_LOGGED_OUT': { userId: string };
 }

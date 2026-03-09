@@ -1,13 +1,13 @@
 
 import React, { useState } from 'react';
-import { useRestaurant } from '../../context/RestaurantContext';
-import { useOrder } from '../../context/OrderContext';
-import { useUI } from '../../context/UIContext';
+import { useRestaurant } from '@/core/context/RestaurantContext';
+import { useOrder } from '@/core/context/OrderContext';
+import { useUI } from '@/core/context/UIContext';
 import { Button } from '../../components/Button';
 import { QRCodeGenerator } from '../../components/QRCodeGenerator';
-import { getTenantSlug } from '../../utils/tenant';
+import { getTenantSlug } from '@/core/tenant/tenantResolver';
 import { Plus, Printer, Trash2, Copy, Check, ExternalLink } from 'lucide-react';
-import { printHtml } from '../../utils/printHelper';
+import { printHtml } from '@/core/print/printHelper';
 
 export const AdminTables: React.FC = () => {
   const { state } = useRestaurant();

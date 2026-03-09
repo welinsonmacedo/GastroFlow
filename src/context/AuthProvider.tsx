@@ -1,8 +1,8 @@
 
 import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { User, Role } from '../types';
-import { supabase } from '../lib/supabase';
-import { getTenantSlug } from '../utils/tenant';
+import { supabase } from '../core/api/supabaseClient';
+import { getTenantSlug } from '../core/tenant/tenantResolver';
 
 interface AuthState {
   currentUser: User | null;

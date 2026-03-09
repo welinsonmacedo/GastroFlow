@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 // @ts-ignore
 import { Link } from 'react-router-dom';
-import { useRestaurant } from '../context/RestaurantContext';
+import { useRestaurant } from '@/core/context/RestaurantContext';
 import { 
   Coffee, DollarSign, Settings, 
   ArrowRight, CheckCircle, Bell, QrCode, 

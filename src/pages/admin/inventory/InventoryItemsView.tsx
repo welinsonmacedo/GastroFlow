@@ -1,9 +1,9 @@
 
 import React, { useState } from 'react';
-import { useInventory } from '../../../context/InventoryContext';
-import { useRestaurant } from '../../../context/RestaurantContext';
-import { useUI } from '../../../context/UIContext';
-import { InventoryItem } from '../../../types';
+import { useInventory } from '@/core/context/InventoryContext';
+import { useRestaurant } from '@/core/context/RestaurantContext';
+import { useUI } from '@/core/context/UIContext';
+import { InventoryItem } from '@/types';
 import { Archive, AlertTriangle, Plus, ArrowDown, Edit, Search, Trash2, Package, ShoppingBag, Layers, ScanLine } from 'lucide-react';
 import { InventoryItemModal } from '../../../components/modals/InventoryItemModal';
 import { StockAdjustmentModal } from '../../../components/modals/StockAdjustmentModal';

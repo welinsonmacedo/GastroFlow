@@ -1,15 +1,14 @@
 
 import React, { useState, useEffect } from 'react';
 import { GlobalLoading } from '../components/GlobalLoading';
-import { useAuth } from '../context/AuthProvider'; // Use AuthProvider
-import { useRestaurant } from '../context/RestaurantContext';
+import { useAuth } from '@/core/context/AuthProvider'; // Use AuthProvider
+import { useRestaurant } from '@/core/context/RestaurantContext';
 // @ts-ignore
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { Loader2 } from 'lucide-react';
 
-import { supabase } from '../lib/supabase';
+import { supabase } from '@/core/api/supabaseClient';
 import { Button } from '../components/Button';
-import { getTenantSlug } from '../utils/tenant';
+import { getTenantSlug } from '@/core/tenant/tenantResolver';
 
 export const Login: React.FC = () => {
   const { state: authState, login } = useAuth(); // Auth

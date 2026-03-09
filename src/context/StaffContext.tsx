@@ -7,7 +7,7 @@ import {
     PayrollEvent, PayrollEntry, HrJobRole, RecurringEvent, EventType, ContractTemplate,
     ThirteenthPayment, VacationPeriod, VacationSchedule, Termination, StaffWarning
 } from '../types';
-import { supabase, logAudit } from '../lib/supabase';
+import { supabase, logAudit } from '../core/api/supabaseClient';
 import { useRestaurant } from './RestaurantContext';
 import { useAuth } from './AuthProvider'; 
 

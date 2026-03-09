@@ -1,8 +1,8 @@
 
 import React, { createContext, useContext, useReducer, useEffect, useCallback } from 'react';
 import { RestaurantTheme, PlanLimits, RestaurantBusinessInfo, SystemModule } from '../types';
-import { getTenantSlug } from '../utils/tenant';
-import { supabase } from '../lib/supabase';
+import { getTenantSlug } from '../core/tenant/tenantResolver';
+import { supabase } from '../core/api/supabaseClient';
 
 interface RestaurantState {
   isLoading: boolean;

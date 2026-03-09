@@ -1,10 +1,10 @@
 
 import React, { useEffect, useState } from 'react';
-import { supabase } from '../../lib/supabase';
-import { SecurityIncident } from '../../types';
+import { supabase } from '@/core/api/supabaseClient';
+import { SecurityIncident } from '@/types';
 import { ShieldAlert, ShieldCheck, Activity, Search, RefreshCcw, Lock } from 'lucide-react';
 import { Button } from '../../components/Button';
-import { logSecurityIncident } from '../../utils/security';
+import { logSecurityIncident } from '@/core/security/security';
 
 export const AdminSecurity: React.FC = () => {
     const [incidents, setIncidents] = useState<SecurityIncident[]>([]);

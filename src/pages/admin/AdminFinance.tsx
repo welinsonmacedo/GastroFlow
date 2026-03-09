@@ -1,15 +1,15 @@
 
 import React, { useState, useEffect } from 'react';
-import { useRestaurant } from '../../context/RestaurantContext';
-import { useFinance } from '../../context/FinanceContext';
-import { useStaff } from '../../context/StaffContext';
-import { useUI } from '../../context/UIContext';
+import { useRestaurant } from '@/core/context/RestaurantContext';
+import { useFinance } from '@/core/context/FinanceContext';
+import { useStaff } from '@/core/context/StaffContext';
+import { useUI } from '@/core/context/UIContext';
 import { Button } from '../../components/Button';
 import { Modal } from '../../components/Modal'; 
 import { ExpenseFormModal } from '../../components/modals/ExpenseFormModal';
 import { CashBleedModal } from '../../components/modals/CashBleedModal';
-import { supabase } from '../../lib/supabase';
-import { Expense, CashSession, Transaction, CashMovement } from '../../types';
+import { supabase } from '@/core/api/supabaseClient';
+import { Expense, CashSession, Transaction, CashMovement } from '@/types';
 import { Plus, CheckSquare, Trash2, Wallet, Banknote, ArrowDown, Repeat, Archive, User, ChevronRight, LayoutDashboard, List, DollarSign, Edit, Lock, Settings } from 'lucide-react';
 import { GlobalLoading } from '../../components/GlobalLoading';
 

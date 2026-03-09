@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { supabase } from '../../lib/supabase';
-import { useRestaurant } from '../../context/RestaurantContext';
-import { useInventory } from '../../context/InventoryContext';
+import { supabase } from '@/core/api/supabaseClient';
+import { useRestaurant } from '@/core/context/RestaurantContext';
+import { useInventory } from '@/core/context/InventoryContext';
 import { Button } from '../../components/Button';
 import { PlusCircle, ArrowLeft, Trash2, Edit, Printer } from 'lucide-react';
 import { PurchaseOrderView } from '../../components/admin/PurchaseOrderView';
-import { PurchaseOrder, SuggestionItem } from '../../types';
-import { usePurchaseOrders } from '../../hooks/usePurchaseOrders';
+import { PurchaseOrder, SuggestionItem } from '@/types';
+import { usePurchaseOrders } from '@/core/hooks/usePurchaseOrders';
 import { GlobalLoading } from '../../components/GlobalLoading';
 
 export const AdminPurchaseOrders: React.FC = () => {

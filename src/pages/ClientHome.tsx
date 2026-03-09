@@ -3,9 +3,9 @@ import { ClientHistory } from './ClientHistory';
 import { QRScanner } from '../components/QRScanner';
 import { Clock, QrCode, LogOut } from 'lucide-react';
 import { GlobalLoading } from '../components/GlobalLoading';
-import { useAuth } from '../context/AuthProvider';
+import { useAuth } from '@/core/context/AuthProvider';
 import { useNavigate } from 'react-router-dom';
-import { useUI } from '../context/UIContext';
+import { useUI } from '@/core/context/UIContext';
 
 export const ClientHome = () => {
   const [activeTab, setActiveTab] = useState<'history' | 'scan'>('history');

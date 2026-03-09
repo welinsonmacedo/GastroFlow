@@ -1,10 +1,10 @@
 
 import React, { useState } from 'react';
-import { useMenu } from '../../context/MenuContext'; 
-import { useUI } from '../../context/UIContext';
+import { useMenu } from '@/core/context/MenuContext'; 
+import { useUI } from '@/core/context/UIContext';
 import { Button } from '../../components/Button';
 import { ProductFormModal } from '../../components/modals/ProductFormModal';
-import { Product } from '../../types';
+import { Product } from '@/types';
 import { Plus, GripVertical, Eye, EyeOff, Trash2, Tag, Search, Utensils, Edit } from 'lucide-react';
 
 export const AdminProducts: React.FC = () => {

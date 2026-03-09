@@ -1,7 +1,7 @@
 
 import { useEffect, useState } from 'react';
-import { useAuth } from '../context/AuthProvider';
-import { supabase } from '../lib/supabase';
+import { useAuth } from '@/core/context/AuthProvider';
+import { supabase } from '@/core/api/supabaseClient';
 import { motion } from 'motion/react';
 import { Clock, ChevronLeft, ShoppingBag, Calendar, DollarSign } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';

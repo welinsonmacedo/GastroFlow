@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { useStaff } from '../../../context/StaffContext';
+import { useStaff } from '@/core/context/StaffContext';
 import { 
     UserMinus, Search, FileText, CheckCircle, Trash2, AlertCircle 
 } from 'lucide-react';
-import { Termination, TerminationReason, NoticePeriodType } from '../../../types';
+import { Termination, TerminationReason, NoticePeriodType } from '@/types';
 import { Modal } from '../../../components/Modal';
 
 export const StaffTermination: React.FC = () => {

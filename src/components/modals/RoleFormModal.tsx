@@ -1,11 +1,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { Modal } from '../Modal';
-import { CustomRole, SystemModule } from '../../types';
+import { CustomRole, SystemModule } from '@/types';
 import { PERMISSIONS_SCHEMA } from '../../constants';
-import { useStaff } from '../../context/StaffContext';
-import { useUI } from '../../context/UIContext';
-import { useRestaurant } from '../../context/RestaurantContext';
+import { useStaff } from '@/core/context/StaffContext';
+import { useUI } from '@/core/context/UIContext';
+import { useRestaurant } from '@/core/context/RestaurantContext';
 import { Shield, ChevronDown, ChevronRight, Check } from 'lucide-react';
 
 interface RoleFormModalProps {

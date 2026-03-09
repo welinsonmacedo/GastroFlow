@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Modal } from '../Modal';
 import { Button } from '../Button';
-import { useStaff } from '../../context/StaffContext';
-import { useUI } from '../../context/UIContext';
-import { HrJobRole } from '../../types';
+import { useStaff } from '@/core/context/StaffContext';
+import { useUI } from '@/core/context/UIContext';
+import { HrJobRole } from '@/types';
 
 interface Props {
     isOpen: boolean;

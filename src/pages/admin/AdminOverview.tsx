@@ -1,9 +1,9 @@
 
 import React from 'react';
-import { useRestaurant } from '../../context/RestaurantContext';
-import { useInventory } from '../../context/InventoryContext';
-import { useFinance } from '../../context/FinanceContext';
-import { useOrder } from '../../context/OrderContext';
+import { useRestaurant } from '@/core/context/RestaurantContext';
+import { useInventory } from '@/core/context/InventoryContext';
+import { useFinance } from '@/core/context/FinanceContext';
+import { useOrder } from '@/core/context/OrderContext';
 import { StatCard } from '../../components/StatCard';
 import { DollarSign, AlertTriangle, ShoppingBag, TrendingUp } from 'lucide-react';
 

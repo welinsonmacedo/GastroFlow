@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Modal } from '../Modal';
 import { Button } from '../Button';
-import { useRestaurant } from '../../context/RestaurantContext';
-import { Order } from '../../types';
+import { useRestaurant } from '@/core/context/RestaurantContext';
+import { Order } from '@/types';
 import { CreditCard, DollarSign, Smartphone } from 'lucide-react';
 
 interface PaymentConferenceModalProps {

@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { Modal } from '../Modal';
-import { useInventory } from '../../context/InventoryContext';
-import { useUI } from '../../context/UIContext';
+import { useInventory } from '@/core/context/InventoryContext';
+import { useUI } from '@/core/context/UIContext';
 import { Info, Search, Package, ShoppingBag } from 'lucide-react';
 
 interface InventoryCountModalProps {

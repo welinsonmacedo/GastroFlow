@@ -1,4 +1,4 @@
-import { supabase } from '../lib/supabase';
+import { supabase } from '../core/api/supabaseClient';
 import { ThirteenthPayment, VacationSchedule, Termination, PayrollPreview, ClosedPayroll } from '../types';
 
 export const payrollService = {

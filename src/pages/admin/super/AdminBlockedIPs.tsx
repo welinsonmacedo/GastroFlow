@@ -1,9 +1,9 @@
 
 import React, { useEffect, useState } from 'react';
-import { supabase } from '../../../lib/supabase';
+import { supabase } from '@/core/api/supabaseClient';
 import { ShieldAlert, Trash2, RefreshCcw, Search, Globe } from 'lucide-react';
 import { Button } from '../../../components/Button';
-import { useUI } from '../../../context/UIContext';
+import { useUI } from '@/core/context/UIContext';
 
 interface BlockedIP {
     ip: string;

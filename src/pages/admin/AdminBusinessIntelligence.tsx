@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
-import { useFinance } from '../../context/FinanceContext';
-import { useOrder } from '../../context/OrderContext';
+import { useFinance } from '@/core/context/FinanceContext';
+import { useOrder } from '@/core/context/OrderContext';
 import { 
     AlertTriangle, Target, 
     ArrowUpRight, ArrowDownRight, BarChart3, 

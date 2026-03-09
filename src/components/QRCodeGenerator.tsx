@@ -1,8 +1,8 @@
 
 import React from 'react';
 import { AlertCircle } from 'lucide-react';
-import { getTenantSlug } from '../utils/tenant';
-import { useRestaurant } from '../context/RestaurantContext';
+import { getTenantSlug } from '@/core/tenant/tenantResolver';
+import { useRestaurant } from '@/core/context/RestaurantContext';
 
 interface QRCodeGeneratorProps {
   tableId: string;

@@ -1,11 +1,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
+import { supabase } from '@/core/api/supabaseClient';
 import { motion } from 'motion/react';
 import { User, Lock, Phone, FileText, Mail } from 'lucide-react';
-import { useAuth } from '../context/AuthProvider';
-import { Role } from '../types';
+import { useAuth } from '@/core/context/AuthProvider';
+import { Role } from '@/types';
 import { GlobalLoading } from '../components/GlobalLoading';
 
 export const ClientLogin = () => {

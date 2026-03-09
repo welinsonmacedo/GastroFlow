@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { useRestaurant } from '../../../context/RestaurantContext';
+import { useRestaurant } from '@/core/context/RestaurantContext';
 import { Button } from '../../../components/Button';
 import { Network, Download, FileCode2, CheckCircle, AlertTriangle } from 'lucide-react';
-import { supabase } from '../../../lib/supabase';
+import { supabase } from '@/core/api/supabaseClient';
 import { GlobalLoading } from '../../../components/GlobalLoading';
 
 export const StaffIntegration: React.FC = () => {

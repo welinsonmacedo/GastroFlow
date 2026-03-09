@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '../Button';
 import { ArrowLeft, Save, X, PlusCircle, CheckCircle, Truck, FileText, Link as LinkIcon } from 'lucide-react';
-import { InventoryItem, SuggestionItem, Expense } from '../../types';
-import { usePurchaseOrders } from '../../hooks/usePurchaseOrders';
-import { supabase } from '../../lib/supabase';
-import { useRestaurant } from '../../context/RestaurantContext';
+import { InventoryItem, SuggestionItem, Expense } from '@/types';
+import { usePurchaseOrders } from '@/core/hooks/usePurchaseOrders';
+import { supabase } from '@/core/api/supabaseClient';
+import { useRestaurant } from '@/core/context/RestaurantContext';
 
 interface PurchaseOrderViewProps {
     order: { 

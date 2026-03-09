@@ -1,7 +1,7 @@
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { Transaction, CashSession, CashMovement, Expense } from '../types';
-import { supabase } from '../lib/supabase';
+import { supabase } from '../core/api/supabaseClient';
 import { useRestaurant } from './RestaurantContext';
 import { useAuth } from './AuthProvider';
 

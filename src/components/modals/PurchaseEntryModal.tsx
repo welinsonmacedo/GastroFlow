@@ -2,9 +2,9 @@
 import React, { useState } from 'react';
 import { Modal } from '../Modal';
 import { Button } from '../Button';
-import { useInventory } from '../../context/InventoryContext';
-import { useUI } from '../../context/UIContext';
-import { PurchaseItemInput } from '../../types';
+import { useInventory } from '@/core/context/InventoryContext';
+import { useUI } from '@/core/context/UIContext';
+import { PurchaseItemInput } from '@/types';
 import { Plus, Trash2, Calculator } from 'lucide-react';
 
 interface PurchaseEntryModalProps {

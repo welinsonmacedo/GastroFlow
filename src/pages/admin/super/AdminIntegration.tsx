@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useSaaS } from '../../../context/SaaSContext';
-import { useUI } from '../../../context/UIContext';
+import { useSaaS } from '@/core/context/SaaSContext';
+import { useUI } from '@/core/context/UIContext';
 import { Button } from '../../../components/Button';
 import { Plus, Edit, Trash2, FileCode2, Save, X } from 'lucide-react';
 

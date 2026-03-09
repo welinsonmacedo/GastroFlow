@@ -1,13 +1,13 @@
 
 import React, { useState } from 'react';
-import { useRestaurant } from '../../../context/RestaurantContext';
-import { useInventory } from '../../../context/InventoryContext';
-import { useUI } from '../../../context/UIContext';
+import { useRestaurant } from '@/core/context/RestaurantContext';
+import { useInventory } from '@/core/context/InventoryContext';
+import { useUI } from '@/core/context/UIContext';
 import { Button } from '../../../components/Button';
-import { InventoryItem } from '../../../types';
+import { InventoryItem } from '@/types';
 import { ImageUploader } from '../../../components/ImageUploader';
 import { PlusCircle, Layers, Plus, X, ScanLine, Tag, DollarSign, Package, FileText, Sparkles, Loader2 } from 'lucide-react';
-import { generateProductDescription } from '../../../services/geminiService';
+import { generateProductDescription } from '@/core/services/geminiService';
 
 export const InventoryNewItemView: React.FC<{ onCancel?: () => void }> = ({ onCancel }) => {
   const { state: invState, addInventoryItem } = useInventory();

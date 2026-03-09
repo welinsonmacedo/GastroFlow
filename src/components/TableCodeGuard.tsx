@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { KeyRound, Loader2, AlertCircle } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { supabase } from '@/core/api/supabaseClient';
 
 interface TableCodeGuardProps {
   slug: string;

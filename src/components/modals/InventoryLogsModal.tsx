@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Modal } from '../Modal';
-import { useInventory } from '../../context/InventoryContext';
+import { useInventory } from '@/core/context/InventoryContext';
 
 interface InventoryLogsModalProps {
   isOpen: boolean;

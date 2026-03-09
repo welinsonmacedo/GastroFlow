@@ -1,11 +1,11 @@
 
 import React, { createContext, useContext, useEffect, useReducer, useCallback } from 'react';
 import { Table, Order, ServiceCall, OrderStatus, OrderType, DeliveryInfo } from '../types';
-import { supabase } from '../lib/supabase';
+import { supabase } from '../core/api/supabaseClient';
 import { useRestaurant } from './RestaurantContext';
 import { useUI } from './UIContext';
 import { useAuth } from './AuthProvider';
-import { sanitizeObject } from '../utils/security'; // Importando segurança
+import { sanitizeObject } from '../core/security/security'; // Importando segurança
 
 interface OrderState {
   tables: Table[];

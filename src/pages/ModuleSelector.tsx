@@ -2,9 +2,9 @@
 import React from 'react';
 // @ts-ignore
 import { useNavigate } from 'react-router-dom';
-import { useRestaurant } from '../context/RestaurantContext';
-import { useAuth } from '../context/AuthProvider';
-import { SystemModule } from '../types';
+import { useRestaurant } from '@/core/context/RestaurantContext';
+import { useAuth } from '@/core/context/AuthProvider';
+import { SystemModule } from '@/types';
 import { PERMISSIONS_SCHEMA } from '../constants';
 import { ChefHat, Coffee, Truck, ArrowRight, LogOut, Grid, Briefcase, Settings, DollarSign, Store, Package, Users, Clock, LifeBuoy, ShieldCheck } from 'lucide-react';
 import { Button } from '../components/Button';

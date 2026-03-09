@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { useInventory } from '../../../context/InventoryContext';
+import { useInventory } from '@/core/context/InventoryContext';
 import { ClipboardList } from 'lucide-react';
 
 export const InventoryLogsView: React.FC = () => {

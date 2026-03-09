@@ -1,8 +1,8 @@
 
 import React, { useState } from 'react';
 import { Modal } from '../Modal';
-import { useInventory } from '../../context/InventoryContext';
-import { useUI } from '../../context/UIContext';
+import { useInventory } from '@/core/context/InventoryContext';
+import { useUI } from '@/core/context/UIContext';
 
 interface StockAdjustmentModalProps {
   isOpen: boolean;

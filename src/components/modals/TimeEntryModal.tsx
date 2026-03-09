@@ -2,9 +2,9 @@
 import React, { useState, useEffect } from 'react';
 import { Modal } from '../Modal';
 import { Button } from '../Button';
-import { useStaff } from '../../context/StaffContext';
-import { useUI } from '../../context/UIContext';
-import { TimeEntry } from '../../types';
+import { useStaff } from '@/core/context/StaffContext';
+import { useUI } from '@/core/context/UIContext';
+import { TimeEntry } from '@/types';
 import { Calendar, AlertCircle, User as UserIcon } from 'lucide-react';
 
 interface TimeEntryModalProps {

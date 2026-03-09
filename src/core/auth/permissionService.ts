@@ -1,18 +1,37 @@
-import { AppRole, UserPermissions } from './roleTypes';
+import { AppRole } from './roleTypes';
 
-const rolePermissions: Record<AppRole, UserPermissions> = {
-  SUPER_ADMIN: { canCreateOrder: true, canVoidOrder: true, canProcessPayment: true, canManageInventory: true, canManageStaff: true },
-  ADMIN: { canCreateOrder: true, canVoidOrder: true, canProcessPayment: true, canManageInventory: true, canManageStaff: true },
-  MANAGER: { canCreateOrder: true, canVoidOrder: true, canProcessPayment: true, canManageInventory: true, canManageStaff: true },
-  WAITER: { canCreateOrder: true, canVoidOrder: false, canProcessPayment: false, canManageInventory: false, canManageStaff: false },
-  CASHIER: { canCreateOrder: true, canVoidOrder: true, canProcessPayment: true, canManageInventory: false, canManageStaff: false },
-  KITCHEN: { canCreateOrder: false, canVoidOrder: false, canProcessPayment: false, canManageInventory: true, canManageStaff: false },
+const roleHierarchy: Record<AppRole, number> = {
+  'SUPER_ADMIN': 100,
+  'ADMIN': 50,
+  'MANAGER': 40,
+  'CASHIER': 30,
+  'KITCHEN': 20,
+  'WAITER': 10,
 };
 
-export const getPermissionsForRole = (role: AppRole): UserPermissions => {
-  return rolePermissions[role];
+export const hasPermission = (userRole: AppRole | undefined | null, requiredRole: AppRole): boolean => {
+  if (!userRole) return false;
+  
+  const userLevel = roleHierarchy[userRole] || 0;
+  const requiredLevel = roleHierarchy[requiredRole] || 0;
+  
+  return userLevel >= requiredLevel;
 };
 
-export const hasPermission = (role: AppRole, permission: keyof UserPermissions): boolean => {
-  return rolePermissions[role][permission];
+export const canAccessModule = (userRole: AppRole | undefined | null, module: 'FINANCE' | 'KITCHEN' | 'ORDERS' | 'SETTINGS'): boolean => {
+  if (!userRole) return false;
+  if (userRole === 'SUPER_ADMIN' || userRole === 'ADMIN') return true;
+
+  switch (module) {
+    case 'FINANCE':
+      return userRole === 'MANAGER' || userRole === 'CASHIER';
+    case 'KITCHEN':
+      return userRole === 'KITCHEN' || userRole === 'MANAGER';
+    case 'ORDERS':
+      return userRole === 'WAITER' || userRole === 'MANAGER' || userRole === 'CASHIER';
+    case 'SETTINGS':
+      return userRole === 'MANAGER';
+    default:
+      return false;
+  }
 };

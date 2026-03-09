@@ -1,9 +1,9 @@
 
 import React, { useState } from 'react';
-import { useFinance } from '../../context/FinanceContext';
+import { useFinance } from '@/core/context/FinanceContext';
 import { Button } from '../../components/Button';
 import { RefreshCcw, Eye, XCircle, Lock } from 'lucide-react';
-import { useUI } from '../../context/UIContext';
+import { useUI } from '@/core/context/UIContext';
 import { Modal } from '../../components/Modal';
 
 export const CommerceHistoryView: React.FC = () => {

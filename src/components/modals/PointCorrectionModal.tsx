@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Modal } from '../Modal';
-import { useStaff } from '../../context/StaffContext';
-import { useUI } from '../../context/UIContext';
-import { useRestaurant } from '../../context/RestaurantContext';
+import { useStaff } from '@/core/context/StaffContext';
+import { useUI } from '@/core/context/UIContext';
+import { useRestaurant } from '@/core/context/RestaurantContext';
 import { Button } from '../Button';
-import { TimeEntry } from '../../types';
-import { printContract } from '../../utils/printContract';
+import { TimeEntry } from '@/types';
+import { printContract } from '@/core/print/printContract';
 import { Printer, AlertTriangle } from 'lucide-react';
 
 interface PointCorrectionModalProps {

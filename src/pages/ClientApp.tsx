@@ -2,13 +2,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
 // @ts-ignore
 import { useParams, Link } from 'react-router-dom';
-import { useRestaurant } from '../context/RestaurantContext';
-import { useMenu } from '../context/MenuContext';
-import { useOrder } from '../context/OrderContext';
-import { useUI } from '../context/UIContext';
-import { useAuth } from '../context/AuthProvider';
+import { useRestaurant } from '@/core/context/RestaurantContext';
+import { useMenu } from '@/core/context/MenuContext';
+import { useOrder } from '@/core/context/OrderContext';
+import { useUI } from '@/core/context/UIContext';
+import { useAuth } from '@/core/context/AuthProvider';
 import { Button } from '../components/Button';
-import { TableStatus, Product, Order } from '../types';
+import { TableStatus, Product, Order } from '@/types';
 import { 
     ShoppingCart, ChefHat, Plus, Minus, X, 
     Receipt, Loader2, Bell, Search, 

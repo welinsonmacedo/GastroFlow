@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { useStaff } from '../../../context/StaffContext';
-import { useUI } from '../../../context/UIContext';
-import { RecurringEvent, PayrollEventType } from '../../../types';
+import { useStaff } from '@/core/context/StaffContext';
+import { useUI } from '@/core/context/UIContext';
+import { RecurringEvent, PayrollEventType } from '@/types';
 import { Plus, Trash2, Edit2 } from 'lucide-react';
 import { Button } from '../../../components/Button';
 import { Modal } from '../../../components/Modal';

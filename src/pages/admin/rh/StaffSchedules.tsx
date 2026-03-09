@@ -1,9 +1,9 @@
 
 import React, { useState } from 'react';
-import { useStaff } from '../../../context/StaffContext';
-import { useUI } from '../../../context/UIContext';
+import { useStaff } from '@/core/context/StaffContext';
+import { useUI } from '@/core/context/UIContext';
 import { Button } from '../../../components/Button';
-import { Shift } from '../../../types';
+import { Shift } from '@/types';
 import { Plus, Trash2, Users, ArrowRight } from 'lucide-react';
 import { Modal } from '../../../components/Modal';
 

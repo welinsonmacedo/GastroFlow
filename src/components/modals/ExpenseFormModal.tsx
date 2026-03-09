@@ -1,10 +1,10 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Modal } from '../Modal';
-import { useFinance } from '../../context/FinanceContext';
-import { useRestaurant } from '../../context/RestaurantContext'; // Para categorias dinâmicas
-import { useUI } from '../../context/UIContext';
-import { Expense } from '../../types';
+import { useFinance } from '@/core/context/FinanceContext';
+import { useRestaurant } from '@/core/context/RestaurantContext'; // Para categorias dinâmicas
+import { useUI } from '@/core/context/UIContext';
+import { Expense } from '@/types';
 
 interface ExpenseFormModalProps {
   isOpen: boolean;

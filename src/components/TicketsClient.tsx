@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
-import { useRestaurant } from '../context/RestaurantContext';
-import { Ticket } from '../types';
+import { supabase } from '@/core/api/supabaseClient';
+import { useRestaurant } from '@/core/context/RestaurantContext';
+import { Ticket } from '@/types';
 import { Plus, MessageCircle, Clock, CheckCircle, XCircle, Send, Circle } from 'lucide-react';
 import { Button } from './Button';
 import { Modal } from './Modal';
-import { useUI } from '../context/UIContext';
+import { useUI } from '@/core/context/UIContext';
 import { GlobalLoading } from './GlobalLoading';
 
 export const TicketsClient: React.FC = () => {

@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { useRestaurant } from '../../context/RestaurantContext';
-import { supabase } from '../../lib/supabase';
+import { useRestaurant } from '@/core/context/RestaurantContext';
+import { supabase } from '@/core/api/supabaseClient';
 import { Button } from '../../components/Button';
 import { Printer, Download, FileText, Mail, Phone, RefreshCcw, ArrowRight, Filter } from 'lucide-react';
 

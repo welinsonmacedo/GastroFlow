@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../context/AuthProvider';
-import { useStaff } from '../context/StaffContext';
-import { useRestaurant } from '../context/RestaurantContext';
+import { useAuth } from '@/core/context/AuthProvider';
+import { useStaff } from '@/core/context/StaffContext';
+import { useRestaurant } from '@/core/context/RestaurantContext';
 import { PlayCircle, PauseCircle, StopCircle, LogOut, ArrowLeft, History, CheckCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { GlobalLoading } from '../components/GlobalLoading';

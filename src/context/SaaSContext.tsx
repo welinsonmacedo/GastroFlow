@@ -1,7 +1,7 @@
 
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
 import { RestaurantTenant, PlanType, Plan, SystemModule } from '../types';
-import { supabase } from '../lib/supabase';
+import { supabase } from '../core/api/supabaseClient';
 import { createClient } from '@supabase/supabase-js';
 import { useUI } from './UIContext';
 

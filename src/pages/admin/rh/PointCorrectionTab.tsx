@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { useStaff } from '../../../context/StaffContext';
-import { TimeEntry } from '../../../types';
+import { useStaff } from '@/core/context/StaffContext';
+import { TimeEntry } from '@/types';
 import { Search, Calendar, FileSignature, ChevronDown, ChevronUp } from 'lucide-react';
 import { PointCorrectionModal } from '../../../components/modals/PointCorrectionModal';
 

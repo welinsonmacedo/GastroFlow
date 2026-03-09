@@ -1,16 +1,16 @@
 
 import { GoogleGenAI } from "@google/genai";
+import { environment } from "../core/config/environment";
+import { logger } from "../core/logger/logger";
 
-// Em projetos Vite, usamos import.meta.env. O process.env é fallback para outros ambientes.
-// @ts-ignore
-const apiKey = import.meta.env.VITE_API_KEY || process.env.API_KEY || '';
+const apiKey = environment.geminiApiKey || '';
 
 const ai = new GoogleGenAI({ apiKey });
 
 export const generateProductDescription = async (productName: string, category: string): Promise<string> => {
   try {
     if (!apiKey) {
-      console.warn("Gemini API Key is missing. Check your .env file.");
+      logger.warn("Gemini API Key is missing. Check your .env file.");
       return "Descrição indisponível (Chave de API não configurada).";
     }
 
@@ -27,7 +27,8 @@ export const generateProductDescription = async (productName: string, category: 
 
     return response.text?.trim() || "Comida fresca e deliciosa preparada diariamente.";
   } catch (error) {
-    console.error("Gemini API Error:", error);
+    logger.error("Gemini API Error:", error);
     return "Descrição automática indisponível.";
   }
 };
+

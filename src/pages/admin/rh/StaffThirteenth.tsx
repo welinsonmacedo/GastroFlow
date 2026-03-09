@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { useStaff } from '../../../context/StaffContext';
+import { useStaff } from '@/core/context/StaffContext';
 import { 
     Search, AlertCircle, Trash2 
 } from 'lucide-react';
-import { ThirteenthPayment } from '../../../types';
+import { ThirteenthPayment } from '@/types';
 import { Modal } from '../../../components/Modal';
 
 export const StaffThirteenth: React.FC = () => {

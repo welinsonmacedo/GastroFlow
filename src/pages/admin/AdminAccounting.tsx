@@ -1,9 +1,9 @@
 
 import React, { useState, useCallback, useEffect } from 'react';
-import { useRestaurant } from '../../context/RestaurantContext';
-import { useUI } from '../../context/UIContext';
+import { useRestaurant } from '@/core/context/RestaurantContext';
+import { useUI } from '@/core/context/UIContext';
 import { Button } from '../../components/Button';
-import { supabase } from '../../lib/supabase';
+import { supabase } from '@/core/api/supabaseClient';
 import { DREReportPrint } from '../../components/reports/DREReportPrint';
 import { 
     Loader2, RefreshCcw, Printer, Settings, 

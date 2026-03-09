@@ -1,8 +1,8 @@
 
 import React, { useState } from 'react';
-import { useRestaurant } from '../../context/RestaurantContext';
-import { useMenu } from '../../context/MenuContext';
-import { useUI } from '../../context/UIContext';
+import { useRestaurant } from '@/core/context/RestaurantContext';
+import { useMenu } from '@/core/context/MenuContext';
+import { useUI } from '@/core/context/UIContext';
 import { Button } from '../../components/Button';
 import { ImageUploader } from '../../components/ImageUploader';
 import { Image as ImageIcon, Smartphone, ChefHat, Search, ShoppingCart, Plus, Save, LayoutGrid, List, Square } from 'lucide-react';

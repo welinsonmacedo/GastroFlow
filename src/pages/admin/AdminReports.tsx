@@ -1,15 +1,15 @@
 
 import React, { useState, useEffect } from 'react';
-import { useRestaurant } from '../../context/RestaurantContext';
-import { useUI } from '../../context/UIContext';
-import { supabase } from '../../lib/supabase';
+import { useRestaurant } from '@/core/context/RestaurantContext';
+import { useUI } from '@/core/context/UIContext';
+import { supabase } from '@/core/api/supabaseClient';
 import { Button } from '../../components/Button';
 import { 
     FileText, Download, Printer, Calendar, 
     ArrowUpCircle, ArrowDownCircle, Package, RefreshCcw, 
     Search, ListPlus 
 } from 'lucide-react';
-import { printHtml, getReportStyles } from '../../utils/printHelper';
+import { printHtml, getReportStyles } from '@/core/print/printHelper';
 
 type ReportTab = 'REVENUE' | 'EXPENSES' | 'FINANCE' | 'INVENTORY';
 

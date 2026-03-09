@@ -2,11 +2,11 @@
 import React, { useState, useEffect } from 'react';
 import { Modal } from '../Modal';
 import { Button } from '../Button';
-import { useOrder } from '../../context/OrderContext';
-import { useMenu } from '../../context/MenuContext';
-import { useAuth } from '../../context/AuthProvider';
-import { useUI } from '../../context/UIContext';
-import { Product, Order, OrderStatus } from '../../types';
+import { useOrder } from '@/core/context/OrderContext';
+import { useMenu } from '@/core/context/MenuContext';
+import { useAuth } from '@/core/context/AuthProvider';
+import { useUI } from '@/core/context/UIContext';
+import { Product, Order, OrderStatus } from '@/types';
 import { Utensils, Trash2, X, Minus, Plus, CheckSquare, Square, AlertCircle, DollarSign, CreditCard, Zap, Split, CheckCircle2 } from 'lucide-react';
 
 // --- Open Table Modal ---

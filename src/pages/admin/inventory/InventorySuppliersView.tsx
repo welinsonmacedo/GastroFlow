@@ -1,11 +1,11 @@
 
 import React, { useState } from 'react';
-import { useInventory } from '../../../context/InventoryContext';
-import { useUI } from '../../../context/UIContext';
+import { useInventory } from '@/core/context/InventoryContext';
+import { useUI } from '@/core/context/UIContext';
 import { Button } from '../../../components/Button';
 import { Truck, Plus, Trash2, Edit } from 'lucide-react';
 import { SupplierModal } from './SupplierModal';
-import { Supplier } from '../../../types';
+import { Supplier } from '@/types';
 
 export const InventorySuppliersView: React.FC = () => {
     const { state: invState, addSupplier, updateSupplier, deleteSupplier } = useInventory();

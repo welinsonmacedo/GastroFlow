@@ -1,13 +1,13 @@
 
 import React, { useState, useEffect } from 'react';
 import { Modal } from '../Modal';
-import { useStaff } from '../../context/StaffContext';
-import { useUI } from '../../context/UIContext';
-import { useRestaurant } from '../../context/RestaurantContext';
-import { User, Role, ContractType, WorkModel } from '../../types';
+import { useStaff } from '@/core/context/StaffContext';
+import { useUI } from '@/core/context/UIContext';
+import { useRestaurant } from '@/core/context/RestaurantContext';
+import { User, Role, ContractType, WorkModel } from '@/types';
 import { Shield, Mail, User as UserIcon, Briefcase, Clock, MapPin, DollarSign, HeartPulse, FileText, Printer, FileSignature, RefreshCcw } from 'lucide-react';
-import { printStaffSheet } from '../../utils/printStaffSheet';
-import { printContractHtml, replaceContractVariables } from '../../utils/printContract';
+import { printStaffSheet } from '@/core/print/printStaffSheet';
+import { printContractHtml, replaceContractVariables } from '@/core/print/printContract';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 

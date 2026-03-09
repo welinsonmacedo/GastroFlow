@@ -2,12 +2,12 @@
 import React, { useState, useEffect } from 'react';
 import { Modal } from '../Modal';
 import { ImageUploader } from '../ImageUploader';
-import { useRestaurant } from '../../context/RestaurantContext';
-import { useInventory } from '../../context/InventoryContext';
-import { useUI } from '../../context/UIContext';
-import { InventoryItem, InventoryType } from '../../types';
+import { useRestaurant } from '@/core/context/RestaurantContext';
+import { useInventory } from '@/core/context/InventoryContext';
+import { useUI } from '@/core/context/UIContext';
+import { InventoryItem, InventoryType } from '@/types';
 import { Layers, CheckSquare, Square, Plus, X, Tag, ScanLine, FileText, Sparkles, Loader2 } from 'lucide-react';
-import { generateProductDescription } from '../../services/geminiService';
+import { generateProductDescription } from '@/core/services/geminiService';
 import { Button } from '../Button'; // Ainda necessário para botões internos como Adicionar Insumo
 
 interface InventoryItemModalProps {

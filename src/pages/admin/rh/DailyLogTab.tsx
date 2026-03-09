@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { useStaff } from '../../../context/StaffContext';
-import { useRestaurant } from '../../../context/RestaurantContext';
+import { useStaff } from '@/core/context/StaffContext';
+import { useRestaurant } from '@/core/context/RestaurantContext';
 import { Button } from '../../../components/Button';
-import { TimeEntry } from '../../../types';
+import { TimeEntry } from '@/types';
 import { Search, Calendar, Plus, Upload, ChevronDown, ChevronUp, Printer } from 'lucide-react';
 import { TimeEntryModal } from '../../../components/modals/TimeEntryModal';
 import { SummaryModal } from '../../../components/modals/SummaryModal';

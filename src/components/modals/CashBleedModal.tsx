@@ -1,9 +1,9 @@
 
 import React, { useState } from 'react';
 import { Modal } from '../Modal';
-import { useFinance } from '../../context/FinanceContext';
-import { useUI } from '../../context/UIContext';
-import { Expense } from '../../types';
+import { useFinance } from '@/core/context/FinanceContext';
+import { useUI } from '@/core/context/UIContext';
+import { Expense } from '@/types';
 
 interface CashBleedModalProps {
   isOpen: boolean;

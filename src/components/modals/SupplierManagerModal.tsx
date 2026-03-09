@@ -2,9 +2,9 @@
 import React, { useState } from 'react';
 import { Modal } from '../Modal';
 
-import { useInventory } from '../../context/InventoryContext';
-import { useUI } from '../../context/UIContext';
-import { Supplier } from '../../types';
+import { useInventory } from '@/core/context/InventoryContext';
+import { useUI } from '@/core/context/UIContext';
+import { Supplier } from '@/types';
 import { MapPin, Phone, User as UserIcon, FileText, Loader2, Trash2 } from 'lucide-react';
 
 interface SupplierManagerModalProps {

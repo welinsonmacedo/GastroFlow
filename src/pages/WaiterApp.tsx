@@ -1,17 +1,17 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { useRestaurant } from '../context/RestaurantContext';
-import { useMenu } from '../context/MenuContext';
-import { useOrder } from '../context/OrderContext';
-import { useInventory } from '../context/InventoryContext';
-import { useUI } from '../context/UIContext';
-import { useAuth } from '../context/AuthProvider';
-import { TableStatus, Product, OrderStatus, ProductType } from '../types';
+import { useRestaurant } from '@/core/context/RestaurantContext';
+import { useMenu } from '@/core/context/MenuContext';
+import { useOrder } from '@/core/context/OrderContext';
+import { useInventory } from '@/core/context/InventoryContext';
+import { useUI } from '@/core/context/UIContext';
+import { useAuth } from '@/core/context/AuthProvider';
+import { TableStatus, Product, OrderStatus, ProductType } from '@/types';
 import { Button } from '../components/Button';
 import { WaiterProductModal, OpenTableModal, TableActionsModal } from '../components/modals/WaiterModals';
 import { Bell, Search, ShoppingCart, ArrowLeft, Utensils, Trash2, Clock, CheckCircle, ChevronUp, ChevronDown, Zap, RefreshCcw, Lock, List, Grid, History, AlertTriangle, PackageX, CheckCheck, Check, Plus, CreditCard, Volume2 } from 'lucide-react';
 import { Modal } from '../components/Modal';
-import { playNotificationSound, unlockAudioContext } from '../utils/audio';
+import { playNotificationSound, unlockAudioContext } from '@/core/audio/audio';
 
 export const WaiterApp: React.FC = () => {
   const { state: restState } = useRestaurant();

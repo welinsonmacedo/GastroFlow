@@ -1,12 +1,12 @@
 
 import React, { useState } from 'react';
-import { useFinance } from '../context/FinanceContext';
-import { useOrder } from '../context/OrderContext';
-import { useUI } from '../context/UIContext';
-import { useAuth } from '../context/AuthProvider';
-import { TableStatus } from '../types'; 
+import { useFinance } from '@/core/context/FinanceContext';
+import { useOrder } from '@/core/context/OrderContext';
+import { useUI } from '@/core/context/UIContext';
+import { useAuth } from '@/core/context/AuthProvider';
+import { TableStatus } from '@/types'; 
 import { Button } from '../components/Button';
-import { History, ShoppingCart, Wallet, Receipt, Lock, RefreshCcw, LogOut, LayoutGrid, Bike, User, Eye, XCircle, Banknote, Zap, CreditCard, Split, CheckSquare, Loader2 } from 'lucide-react';
+import { History, ShoppingCart, Wallet, Receipt, Lock, RefreshCcw, LogOut, LayoutGrid, Bike, User, Eye, XCircle, Banknote, Zap, CreditCard, Split, CheckSquare } from 'lucide-react';
 import { CloseRegisterModal } from '../components/modals/CloseRegisterModal';
 import { CashBleedModal } from '../components/modals/CashBleedModal';
 import { Modal } from '../components/Modal';

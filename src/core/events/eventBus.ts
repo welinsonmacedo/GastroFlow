@@ -1,18 +1,38 @@
-type EventCallback<T = any> = (payload: T) => void;
+import { EventType, EventPayloads } from './eventTypes';
+import { logger } from '../logger/logger';
 
-export class EventBus {
-  private static events: Record<string, EventCallback[]> = {};
+type EventCallback<T extends EventType> = (payload: EventPayloads[T]) => void;
 
-  static subscribe<T>(event: string, callback: EventCallback<T>): () => void {
-    if (!this.events[event]) this.events[event] = [];
-    this.events[event].push(callback as EventCallback);
-    return () => {
-      this.events[event] = this.events[event].filter((cb) => cb !== callback);
-    };
+class EventBus {
+  private listeners: { [K in EventType]?: EventCallback<K>[] } = {};
+
+  on<T extends EventType>(event: T, callback: EventCallback<T>) {
+    if (!this.listeners[event]) {
+      this.listeners[event] = [];
+    }
+    this.listeners[event]!.push(callback);
+    
+    // Retorna função de unsubscribe
+    return () => this.off(event, callback);
   }
 
-  static publish<T>(event: string, payload: T): void {
-    if (!this.events[event]) return;
-    this.events[event].forEach((callback) => callback(payload));
+  off<T extends EventType>(event: T, callback: EventCallback<T>) {
+    if (!this.listeners[event]) return;
+    this.listeners[event] = this.listeners[event]!.filter(cb => cb !== callback) as any;
+  }
+
+  emit<T extends EventType>(event: T, payload: EventPayloads[T]) {
+    logger.debug(`[EventBus] Emitting ${event}`, payload);
+    if (!this.listeners[event]) return;
+    
+    this.listeners[event]!.forEach(callback => {
+      try {
+        callback(payload);
+      } catch (error) {
+        logger.error(`[EventBus] Error in listener for ${event}`, error);
+      }
+    });
   }
 }
+
+export const eventBus = new EventBus();

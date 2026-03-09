@@ -2,8 +2,8 @@
 import React from 'react';
 // @ts-ignore
 import { Routes, Route, Navigate, Link, useLocation, useNavigate } from 'react-router-dom';
-import { useRestaurant } from '../context/RestaurantContext';
-import { useAuth } from '../context/AuthProvider';
+import { useRestaurant } from '@/core/context/RestaurantContext';
+import { useAuth } from '@/core/context/AuthProvider';
 import { 
     Palette, Users, SlidersHorizontal, LogOut, Grid, ChefHat, 
     Building2, Bike, DollarSign, ShieldCheck, Clock

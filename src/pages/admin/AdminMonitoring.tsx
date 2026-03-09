@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
-import { useRestaurant } from '../../context/RestaurantContext';
-import { supabase } from '../../lib/supabase';
-import { SystemAccessLog } from '../../types';
+import { useRestaurant } from '@/core/context/RestaurantContext';
+import { supabase } from '@/core/api/supabaseClient';
+import { SystemAccessLog } from '@/types';
 import { User, Clock, Monitor, RefreshCcw, Activity } from 'lucide-react';
 import { Button } from '../../components/Button';
 

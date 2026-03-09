@@ -1,13 +1,13 @@
 
 import React, { useEffect, useRef, useState } from 'react';
-import { useRestaurant } from '../context/RestaurantContext';
-import { useMenu } from '../context/MenuContext';
-import { useOrder } from '../context/OrderContext';
-import { useUI } from '../context/UIContext';
-import { OrderStatus, ProductType, OrderItem } from '../types';
+import { useRestaurant } from '@/core/context/RestaurantContext';
+import { useMenu } from '@/core/context/MenuContext';
+import { useOrder } from '@/core/context/OrderContext';
+import { useUI } from '@/core/context/UIContext';
+import { OrderStatus, ProductType, OrderItem } from '@/types';
 import { Clock, ChefHat, CheckCircle, AlertTriangle, Volume2, Plus, Printer, RefreshCcw, Bike, ArrowRight } from 'lucide-react';
-import { printHtml, getReceiptStyles } from '../utils/printHelper';
-import { playNotificationSound, unlockAudioContext } from '../utils/audio';
+import { printHtml, getReceiptStyles } from '@/core/print/printHelper';
+import { playNotificationSound, unlockAudioContext } from '@/core/audio/audio';
 
 export const KitchenDisplay: React.FC = () => {
   const { state: restState } = useRestaurant();

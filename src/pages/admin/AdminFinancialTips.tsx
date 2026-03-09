@@ -1,8 +1,8 @@
 
 import React, { useEffect, useState } from 'react';
-import { useFinance } from '../../context/FinanceContext';
-import { useRestaurant } from '../../context/RestaurantContext';
-import { supabase } from '../../lib/supabase';
+import { useFinance } from '@/core/context/FinanceContext';
+import { useRestaurant } from '@/core/context/RestaurantContext';
+import { supabase } from '@/core/api/supabaseClient';
 import { Lightbulb, TrendingUp, DollarSign, Target, AlertCircle } from 'lucide-react';
 
 export const AdminFinancialTips: React.FC = () => {

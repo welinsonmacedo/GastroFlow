@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { useStaff } from '../../../context/StaffContext';
+import { useStaff } from '@/core/context/StaffContext';
 import { 
     Search, Plus, Trash2, AlertTriangle, History, AlertCircle 
 } from 'lucide-react';
-import { VacationSchedule } from '../../../types';
+import { VacationSchedule } from '@/types';
 import { Modal } from '../../../components/Modal';
 
 export const StaffVacation: React.FC = () => {

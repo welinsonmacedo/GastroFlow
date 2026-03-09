@@ -2,10 +2,10 @@
 import React, { useState, useEffect } from 'react';
 // @ts-ignore
 import { useNavigate } from 'react-router-dom';
-import { useSaaS } from '../context/SaaSContext';
+import { useSaaS } from '@/core/context/SaaSContext';
 import { Activity, Lock, AlertCircle, Wifi, WifiOff, Loader2 } from 'lucide-react';
-import { supabase, isSupabaseConfigured } from '../lib/supabase';
-import { logSecurityIncident } from '../utils/security';
+import { supabase, isSupabaseConfigured } from '@/core/api/supabaseClient';
+import { logSecurityIncident } from '@/core/security/security';
 import { GlobalLoading } from '../components/GlobalLoading';
 
 export const SaaSLogin: React.FC = () => {

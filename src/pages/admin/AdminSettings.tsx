@@ -1,11 +1,11 @@
 
 import React, { useState, useEffect } from 'react';
-import { useRestaurant } from '../../context/RestaurantContext';
-import { useUI } from '../../context/UIContext';
-import { useStaff } from '../../context/StaffContext';
+import { useRestaurant } from '@/core/context/RestaurantContext';
+import { useUI } from '@/core/context/UIContext';
+import { useStaff } from '@/core/context/StaffContext';
 import { Button } from '../../components/Button';
 import { Building2, MapPin, Loader2, Share2, Clock, Lock, Save, ShieldCheck, Bike, Plus, Trash2, Edit, CreditCard, Tag, FileText, Bell, Users } from 'lucide-react';
-import { RestaurantBusinessInfo, DeliveryMethodConfig, PaymentMethodConfig, ExpenseCategory, TaxRegime, DsrConfig } from '../../types';
+import { RestaurantBusinessInfo, DeliveryMethodConfig, PaymentMethodConfig, ExpenseCategory, TaxRegime, DsrConfig } from '@/types';
 import { Modal } from '../../components/Modal';
 
 interface AdminSettingsProps {

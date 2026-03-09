@@ -1,12 +1,12 @@
 
 import React, { useState, useEffect } from 'react';
-import { useStaff } from '../../../context/StaffContext';
-import { useRestaurant } from '../../../context/RestaurantContext'; 
-import { useUI } from '../../../context/UIContext';
+import { useStaff } from '@/core/context/StaffContext';
+import { useRestaurant } from '@/core/context/RestaurantContext'; 
+import { useUI } from '@/core/context/UIContext';
 import { Button } from '../../../components/Button';
-import { PayrollPreview, ClosedPayroll, PayrollEventType } from '../../../types';
+import { PayrollPreview, ClosedPayroll, PayrollEventType } from '@/types';
 import { FileText, Printer, Calculator, RefreshCcw, Eye, Lock, Plus, Download, AlertTriangle, List, Trash2, Unlock, CheckSquare, UploadCloud, Edit2 } from 'lucide-react';
-import { printHtml } from '../../../utils/printHelper';
+import { printHtml } from '@/core/print/printHelper';
 import { Modal } from '../../../components/Modal';
 
 export const StaffPayroll: React.FC<{ initialMonth?: number; initialYear?: number }> = ({ initialMonth, initialYear }) => {

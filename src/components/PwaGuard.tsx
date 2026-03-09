@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 // @ts-ignore
 import { useLocation } from 'react-router-dom';
 import { Download, Smartphone, Share, PlusSquare, Monitor } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { supabase } from '@/core/api/supabaseClient';
 
 export const PwaGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();

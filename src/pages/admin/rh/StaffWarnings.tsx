@@ -3,14 +3,14 @@ import React, { useState, useEffect } from 'react';
 import ReactQuill, { Quill } from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 import DOMPurify from 'dompurify';
-import { useStaff } from '../../../context/StaffContext';
+import { useStaff } from '@/core/context/StaffContext';
 
 // Register inline styles for Quill to ensure proper printing
 const AlignStyle = Quill.import('attributors/style/align');
 Quill.register(AlignStyle, true);
-import { useUI } from '../../../context/UIContext';
-import { useRestaurant } from '../../../context/RestaurantContext';
-import { replaceContractVariables } from '../../../utils/printContract';
+import { useUI } from '@/core/context/UIContext';
+import { useRestaurant } from '@/core/context/RestaurantContext';
+import { replaceContractVariables } from '@/core/print/printContract';
 import { Button } from '../../../components/Button';
 import { AlertTriangle, User as LucideUser, Printer, Edit3, Eye, Trash2 } from 'lucide-react';
 

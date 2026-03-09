@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useStaff } from '../../../context/StaffContext';
+import { useStaff } from '@/core/context/StaffContext';
 import { FileText, ArrowLeft, Eye, Calendar, Users, DollarSign } from 'lucide-react';
 import { StaffPayroll } from './StaffPayroll';
 

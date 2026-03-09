@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
-import { useSaaS } from '../../../context/SaaSContext';
-import { Plan, SystemModule, PlanLimits } from '../../../types';
+import { useSaaS } from '@/core/context/SaaSContext';
+import { Plan, SystemModule, PlanLimits } from '@/types';
 import { Button } from '../../../components/Button';
 import { Modal } from '../../../components/Modal';
 import { 
     Plus, Edit, Trash2, ChefHat, DollarSign, Package, Users, Store, 
     Settings, ShieldAlert, Briefcase, Clock, HelpCircle
 } from 'lucide-react';
-import { logSecurityIncident } from '../../../utils/security';
+import { logSecurityIncident } from '@/core/security/security';
 
 const MODULES_CONFIG = [
     {

@@ -2,12 +2,12 @@
 import React, { useState, useEffect } from 'react';
 import { Modal } from '../Modal';
 import { Button } from '../Button';
-import { useSaaS } from '../../context/SaaSContext';
-import { RestaurantTenant, PlanType } from '../../types';
+import { useSaaS } from '@/core/context/SaaSContext';
+import { RestaurantTenant, PlanType } from '@/types';
 import { Check, Copy, Palette, Layout, Image as ImageIcon, Box, Upload, Link as LinkIcon, Loader2 } from 'lucide-react';
 import { PERMISSIONS_SCHEMA } from '../../constants';
-import { uploadImage } from '../../context/SaaSContext';
-import { logSecurityIncident } from '../../utils/security';
+import { uploadImage } from '@/core/context/SaaSContext';
+import { logSecurityIncident } from '@/core/security/security';
 
 export const ImageUploadField = ({ 
     label, 

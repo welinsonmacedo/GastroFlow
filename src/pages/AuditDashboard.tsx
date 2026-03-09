@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { useRestaurant } from '../context/RestaurantContext';
-import { useAuth } from '../context/AuthProvider';
-import { supabase } from '../lib/supabase';
+import { useRestaurant } from '@/core/context/RestaurantContext';
+import { useAuth } from '@/core/context/AuthProvider';
+import { supabase } from '@/core/api/supabaseClient';
 import { 
     Shield, Search, Printer, Calendar, 
     Activity, Grid, LogOut, FileText,
