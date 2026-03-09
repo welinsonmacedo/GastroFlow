@@ -13,6 +13,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
 import { Modal } from '../components/Modal';
 import DOMPurify from 'dompurify';
+import { GlobalLoading } from '../components/GlobalLoading';
 
 interface AuditLogEntry {
     id: string;
@@ -197,10 +198,7 @@ export const AuditDashboard: React.FC = () => {
                                         {loading ? (
                                             <tr>
                                                 <td colSpan={5} className="px-6 py-20 text-center">
-                                                    <div className="flex flex-col items-center gap-3">
-                                                        <Activity className="animate-spin text-slate-300" size={40} />
-                                                        <p className="text-slate-400 font-bold text-sm">Carregando logs...</p>
-                                                    </div>
+                                                    <GlobalLoading message="Carregando logs..." />
                                                 </td>
                                             </tr>
                                         ) : filteredLogs.length === 0 ? (

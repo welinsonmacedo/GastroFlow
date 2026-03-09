@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+import { GlobalLoading } from '../components/GlobalLoading';
 import { useAuth } from '../context/AuthProvider'; // Use AuthProvider
 import { useRestaurant } from '../context/RestaurantContext';
 // @ts-ignore
@@ -179,7 +180,7 @@ export const Login: React.FC = () => {
       }
   };
 
-  if (authState.isLoading) return <div>Carregando...</div>;
+  if (authState.isLoading) return <GlobalLoading message="Verificando autenticação..." />;
 
   const bgUrl = restState.isValidTenant ? (restState.theme.loginBgUrl || restState.globalSettings.loginBgUrl) : null;
   const boxColor = restState.isValidTenant ? (restState.theme.loginBoxColor || restState.globalSettings.loginBoxColor || '#ffffff') : '#ffffff';
@@ -208,10 +209,11 @@ export const Login: React.FC = () => {
             <input type="password" className="w-full border p-3 rounded" placeholder="Senha" value={password} onChange={e=>setPassword(e.target.value)} required />
             {isRegistering && <input type="password" className="w-full border p-3 rounded" placeholder="Confirmar Senha" value={confirmPassword} onChange={e=>setConfirmPassword(e.target.value)} required />}
             {error && <div className="text-red-500 text-sm">{error}</div>}
-            <Button type="submit" disabled={loading} className="w-full py-3">{loading ? <Loader2 className="animate-spin mx-auto"/> : 'Entrar'}</Button>
+            <Button type="submit" disabled={loading} className="w-full py-3">Entrar</Button>
             
         </form>
       </div>
+      {loading && <GlobalLoading message="Autenticando..." />}
     </div>
   );
 };

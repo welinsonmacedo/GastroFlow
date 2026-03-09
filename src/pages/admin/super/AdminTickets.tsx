@@ -4,6 +4,7 @@ import { Ticket } from '../../../types';
 import { MessageCircle, Clock, CheckCircle, XCircle, Send, Search, Circle } from 'lucide-react';
 import { Button } from '../../../components/Button';
 import { useUI } from '../../../context/UIContext';
+import { GlobalLoading } from '../../../components/GlobalLoading';
 
 export const AdminTickets: React.FC = () => {
     const { showAlert } = useUI();
@@ -207,9 +208,9 @@ export const AdminTickets: React.FC = () => {
 
             <div className="flex-1 flex overflow-hidden">
                 {/* Ticket List */}
-                <div className="w-1/3 border-r border-slate-200 bg-white overflow-y-auto custom-scrollbar">
+                <div className="w-1/3 border-r border-slate-200 bg-white overflow-y-auto custom-scrollbar relative">
                     {loading ? (
-                        <div className="p-10 text-center text-slate-400">Carregando...</div>
+                        <GlobalLoading message="Carregando chamados..." />
                     ) : filteredTickets.length === 0 ? (
                         <div className="p-10 text-center text-slate-400">Nenhum chamado encontrado.</div>
                     ) : (

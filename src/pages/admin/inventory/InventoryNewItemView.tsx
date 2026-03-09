@@ -9,7 +9,7 @@ import { ImageUploader } from '../../../components/ImageUploader';
 import { PlusCircle, Layers, Plus, X, ScanLine, Tag, DollarSign, Package, FileText, Sparkles, Loader2 } from 'lucide-react';
 import { generateProductDescription } from '../../../services/geminiService';
 
-export const InventoryNewItemView: React.FC = () => {
+export const InventoryNewItemView: React.FC<{ onCancel?: () => void }> = ({ onCancel }) => {
   const { state: invState, addInventoryItem } = useInventory();
   const { state: restaurantState } = useRestaurant();
   const { planLimits } = restaurantState;
@@ -312,8 +312,11 @@ export const InventoryNewItemView: React.FC = () => {
                   </div>
               </div>
               
-              <div className="pt-4 mt-auto border-t">
-                  <Button type="submit" className="w-full py-4 text-lg shadow-lg font-bold">Salvar Item no Estoque</Button>
+              <div className="pt-4 mt-auto border-t flex gap-4">
+                  {onCancel && (
+                      <Button type="button" variant="secondary" onClick={onCancel} className="w-1/3 py-4 text-lg shadow-sm font-bold">Cancelar</Button>
+                  )}
+                  <Button type="submit" className="flex-1 py-4 text-lg shadow-lg font-bold">Salvar Item no Estoque</Button>
               </div>
           </form>
       </div>

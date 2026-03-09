@@ -8,7 +8,7 @@ import { Archive, AlertTriangle, Plus, ArrowDown, Edit, Search, Trash2, Package,
 import { InventoryItemModal } from '../../../components/modals/InventoryItemModal';
 import { StockAdjustmentModal } from '../../../components/modals/StockAdjustmentModal';
 
-export const InventoryItemsView: React.FC = () => {
+export const InventoryItemsView: React.FC<{ onNewItem?: () => void }> = ({ onNewItem }) => {
     const { state: invState, deleteInventoryItem } = useInventory();
     const { state: restaurantState } = useRestaurant();
     const { planLimits } = restaurantState;
@@ -79,6 +79,11 @@ export const InventoryItemsView: React.FC = () => {
                         <Search className="absolute left-3 top-2.5 text-gray-400" size={18} />
                         <input type="text" placeholder="Buscar item ou código..." className="w-full pl-10 pr-4 py-2 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all bg-gray-50 focus:bg-white" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
                     </div>
+                    {onNewItem && (
+                        <button onClick={onNewItem} className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-xl text-xs font-bold hover:bg-blue-700 transition-colors shadow-sm whitespace-nowrap">
+                            <Plus size={16} /> Novo Item
+                        </button>
+                    )}
                 </div>
             </div>
 

@@ -10,6 +10,7 @@ import { History, ShoppingCart, Wallet, Receipt, Lock, RefreshCcw, LogOut, Layou
 import { CloseRegisterModal } from '../components/modals/CloseRegisterModal';
 import { CashBleedModal } from '../components/modals/CashBleedModal';
 import { Modal } from '../components/Modal';
+import { GlobalLoading } from '../components/GlobalLoading';
 
 // Sub-Componentes
 import { CashierDeliveryView } from '../components/cashier/CashierDeliveryView';
@@ -144,9 +145,10 @@ export const CashierDashboard: React.FC = () => {
                               <input type="number" step="0.01" className="border-2 border-gray-100 p-6 rounded-3xl w-full text-center text-4xl font-black text-blue-600 focus:outline-none focus:border-blue-500 transition-all shadow-inner bg-gray-50" placeholder="0.00" value={openRegisterAmount} onChange={e => setOpenRegisterAmount(e.target.value)} autoFocus required disabled={openingLoading}/>
                           </div>
                       </div>
-                      <Button type="submit" disabled={openingLoading} className="w-full py-5 text-xl font-black rounded-3xl shadow-2xl shadow-blue-200">{openingLoading ? <Loader2 className="animate-spin" /> : 'ABRIR CAIXA AGORA'}</Button>
+                      <Button type="submit" disabled={openingLoading} className="w-full py-5 text-xl font-black rounded-3xl shadow-2xl shadow-blue-200">ABRIR CAIXA AGORA</Button>
                   </form>
               </div>
+              {openingLoading && <GlobalLoading message="Abrindo caixa..." />}
           </div>
       );
   }

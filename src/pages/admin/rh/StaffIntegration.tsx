@@ -3,6 +3,7 @@ import { useRestaurant } from '../../../context/RestaurantContext';
 import { Button } from '../../../components/Button';
 import { Network, Download, FileCode2, CheckCircle, AlertTriangle } from 'lucide-react';
 import { supabase } from '../../../lib/supabase';
+import { GlobalLoading } from '../../../components/GlobalLoading';
 
 export const StaffIntegration: React.FC = () => {
     const { state: restState } = useRestaurant();
@@ -94,10 +95,7 @@ export const StaffIntegration: React.FC = () => {
                 </div>
 
                 {isLoading ? (
-                    <div className="p-12 text-center text-gray-500">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                        <p>Carregando moldes...</p>
-                    </div>
+                    <GlobalLoading message="Carregando moldes..." />
                 ) : templates.length === 0 ? (
                     <div className="p-12 text-center text-gray-500 flex flex-col items-center">
                         <AlertTriangle size={48} className="text-orange-300 mb-4" />

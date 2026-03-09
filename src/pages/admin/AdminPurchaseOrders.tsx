@@ -7,6 +7,7 @@ import { PlusCircle, ArrowLeft, Trash2, Edit, Printer } from 'lucide-react';
 import { PurchaseOrderView } from '../../components/admin/PurchaseOrderView';
 import { PurchaseOrder, SuggestionItem } from '../../types';
 import { usePurchaseOrders } from '../../hooks/usePurchaseOrders';
+import { GlobalLoading } from '../../components/GlobalLoading';
 
 export const AdminPurchaseOrders: React.FC = () => {
     const { state: restState } = useRestaurant();
@@ -249,7 +250,7 @@ export const AdminPurchaseOrders: React.FC = () => {
     }
 
     if (loading) {
-        return <div className="p-4">Carregando ordens de pedido...</div>;
+        return <GlobalLoading message="Carregando ordens de pedido..." />;
     }
 
     return (

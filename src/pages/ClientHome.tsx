@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { ClientHistory } from './ClientHistory';
 import { QRScanner } from '../components/QRScanner';
 import { Clock, QrCode, LogOut } from 'lucide-react';
+import { GlobalLoading } from '../components/GlobalLoading';
 import { useAuth } from '../context/AuthProvider';
 import { useNavigate } from 'react-router-dom';
 import { useUI } from '../context/UIContext';
@@ -20,7 +21,7 @@ export const ClientHome = () => {
   }, [authState.isLoading, authState.isAuthenticated, navigate]);
 
   if (authState.isLoading) {
-    return <div className="min-h-screen bg-zinc-950 flex items-center justify-center text-white">Carregando...</div>;
+    return <GlobalLoading message="Carregando..." />;
   }
 
   const handleScanSuccess = (decodedText: string) => {

@@ -11,6 +11,7 @@ import { CashBleedModal } from '../../components/modals/CashBleedModal';
 import { supabase } from '../../lib/supabase';
 import { Expense, CashSession, Transaction, CashMovement } from '../../types';
 import { Plus, CheckSquare, Trash2, Wallet, Banknote, ArrowDown, Repeat, Archive, User, ChevronRight, LayoutDashboard, List, DollarSign, Edit, Lock, Settings } from 'lucide-react';
+import { GlobalLoading } from '../../components/GlobalLoading';
 
 export const AdminFinance: React.FC = () => {
   const { state: restState } = useRestaurant();
@@ -370,7 +371,7 @@ export const AdminFinance: React.FC = () => {
                             </thead>
                             <tbody className="divide-y text-sm">
                                 {loadingSessions ? (
-                                    <tr><td colSpan={7} className="p-8 text-center text-gray-400">Carregando histórico...</td></tr>
+                                    <tr><td colSpan={7} className="p-8 text-center"><GlobalLoading message="Carregando histórico..." /></td></tr>
                                 ) : sessionsHistory.length === 0 ? (
                                     <tr><td colSpan={7} className="p-8 text-center text-gray-400">Nenhum caixa registrado.</td></tr>
                                 ) : (

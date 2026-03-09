@@ -16,6 +16,7 @@ import {
     Activity, AlertCircle, Utensils, Home, CreditCard, Banknote, Shield, User as UserIcon
 } from 'lucide-react';
 import { Modal } from '../components/Modal';
+import { GlobalLoading } from '../components/GlobalLoading';
 
 const OrderGraceTimer: React.FC<{ order: Order; graceMinutes: number; onCancel: (id: string) => void }> = ({ order, graceMinutes, onCancel }) => {
     const [timeLeft, setTimeLeft] = useState(0);
@@ -267,12 +268,7 @@ export const ClientApp: React.FC = () => {
     };
 
     if (state.isLoading || menuState.isLoading || orderState.isLoading) {
-        return (
-            <div className={`h-full flex flex-col items-center justify-center bg-gray-50 text-gray-400 ${fontClass}`}>
-                <Loader2 className="animate-spin mb-4" size={48} style={{ color: theme.primaryColor }} />
-                <p className="font-black uppercase tracking-widest text-xs">Preparando Experiência...</p>
-            </div>
-        );
+        return <GlobalLoading message="Preparando Experiência..." />;
     }
 
     if (!table) {

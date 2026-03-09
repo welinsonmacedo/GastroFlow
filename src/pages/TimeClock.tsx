@@ -3,9 +3,9 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthProvider';
 import { useStaff } from '../context/StaffContext';
 import { useRestaurant } from '../context/RestaurantContext';
-import { PlayCircle, PauseCircle, StopCircle, LogOut, ArrowLeft, History } from 'lucide-react';
-// @ts-ignore
+import { PlayCircle, PauseCircle, StopCircle, LogOut, ArrowLeft, History, CheckCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { GlobalLoading } from '../components/GlobalLoading';
 
 export const TimeClock: React.FC = () => {
     const { state: authState, logout } = useAuth();
@@ -106,6 +106,7 @@ export const TimeClock: React.FC = () => {
 
     return (
         <div className="min-h-screen bg-slate-900 text-white flex flex-col font-sans relative overflow-hidden">
+            {loading && <GlobalLoading message="Registrando ponto..." />}
             {/* Background Effects */}
             <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-blue-600 rounded-full blur-[150px] opacity-20 -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
             <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-purple-600 rounded-full blur-[150px] opacity-20 translate-y-1/2 -translate-x-1/2 pointer-events-none"></div>
@@ -246,5 +247,4 @@ export const TimeClock: React.FC = () => {
     );
 };
 
-// Icon import helper if missing
-import { CheckCircle } from 'lucide-react';
+

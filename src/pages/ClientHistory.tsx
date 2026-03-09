@@ -3,8 +3,9 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthProvider';
 import { supabase } from '../lib/supabase';
 import { motion } from 'motion/react';
-import { Clock, ChevronLeft, ShoppingBag, Calendar, DollarSign, Loader2 } from 'lucide-react';
+import { Clock, ChevronLeft, ShoppingBag, Calendar, DollarSign } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { GlobalLoading } from '../components/GlobalLoading';
 
 interface HistoryOrder {
   id: string;
@@ -52,11 +53,7 @@ export const ClientHistory = ({ isEmbedded = false }: { isEmbedded?: boolean }) 
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-zinc-950 flex items-center justify-center text-white">
-        <Loader2 className="w-8 h-8 animate-spin text-emerald-500" />
-      </div>
-    );
+    return <GlobalLoading message="Carregando histórico..." />;
   }
 
   return (

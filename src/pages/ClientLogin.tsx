@@ -3,9 +3,10 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { motion } from 'motion/react';
-import { User, Lock, Phone, FileText, Mail, Loader2 } from 'lucide-react';
+import { User, Lock, Phone, FileText, Mail } from 'lucide-react';
 import { useAuth } from '../context/AuthProvider';
 import { Role } from '../types';
+import { GlobalLoading } from '../components/GlobalLoading';
 
 export const ClientLogin = () => {
   const { state: authState, refreshSession } = useAuth();
@@ -208,7 +209,7 @@ export const ClientLogin = () => {
             disabled={loading}
             className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-black font-bold py-4 rounded-xl transition-all flex items-center justify-center gap-2"
           >
-            {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : (isLogin ? 'Entrar' : 'Cadastrar')}
+            {isLogin ? 'Entrar' : 'Cadastrar'}
           </button>
         </form>
 
@@ -221,6 +222,7 @@ export const ClientLogin = () => {
           </button>
         </div>
       </motion.div>
+      {loading && <GlobalLoading message={isLogin ? 'Entrando...' : 'Criando conta...'} />}
     </div>
   );
 };

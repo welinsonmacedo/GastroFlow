@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase';
 import { useNavigate, Link } from 'react-router-dom';
 import { ChefHat, ArrowLeft, Loader2, CheckCircle, Store, Mail, Lock, User as UserIcon, AlertCircle } from 'lucide-react';
 import { Button } from '../components/Button';
+import { GlobalLoading } from '../components/GlobalLoading';
 
 export const RegisterRestaurant: React.FC = () => {
     const [step, setStep] = useState<1 | 2>(1);
@@ -256,7 +257,7 @@ export const RegisterRestaurant: React.FC = () => {
                     )}
 
                     <Button type="submit" disabled={loading} className="w-full py-4 text-lg mt-2">
-                        {loading ? <Loader2 className="animate-spin" /> : 'Criar Conta e Restaurante'}
+                        Criar Conta e Restaurante
                     </Button>
                     
                     <p className="text-center text-sm text-gray-500">
@@ -264,6 +265,7 @@ export const RegisterRestaurant: React.FC = () => {
                     </p>
                 </form>
             </div>
+            {loading && <GlobalLoading message="Criando seu restaurante..." />}
         </div>
     );
 };

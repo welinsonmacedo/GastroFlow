@@ -6,6 +6,7 @@ import { useSaaS } from '../context/SaaSContext';
 import { Activity, Lock, AlertCircle, Wifi, WifiOff, Loader2 } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { logSecurityIncident } from '../utils/security';
+import { GlobalLoading } from '../components/GlobalLoading';
 
 export const SaaSLogin: React.FC = () => {
   const navigate = useNavigate();
@@ -202,10 +203,11 @@ export const SaaSLogin: React.FC = () => {
                 disabled={loading}
                 className="w-full bg-slate-900 text-white py-3 rounded-lg font-bold hover:bg-slate-800 transition-all transform hover:-translate-y-0.5 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex justify-center"
             >
-                {loading ? <Loader2 className="animate-spin" /> : 'Acessar Painel'}
+                Acessar Painel
             </button>
         </form>
       </div>
+      {loading && <GlobalLoading message="Autenticando..." />}
     </div>
   );
 };

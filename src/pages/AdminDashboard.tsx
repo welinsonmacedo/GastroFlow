@@ -6,7 +6,7 @@ import { useRestaurant } from '../context/RestaurantContext';
 import { useAuth } from '../context/AuthProvider';
 import { 
     LayoutDashboard, Utensils, QrCode, Activity,
-    LogOut, Grid, ChefHat, BookOpen
+    LogOut, Grid, ChefHat, BookOpen, Package
 } from 'lucide-react';
 
 // Importando Sub-páginas
@@ -14,6 +14,7 @@ import { AdminOverview } from './admin/AdminOverview';
 import { AdminProducts } from './admin/AdminProducts';
 import { AdminTables } from './admin/AdminTables';
 import { AdminMonitoring } from './admin/AdminMonitoring';
+import { AdminInventory } from './admin/AdminInventory';
 
 export const AdminDashboard: React.FC = () => {
   const { state: restState } = useRestaurant();
@@ -27,6 +28,7 @@ export const AdminDashboard: React.FC = () => {
     { path: '/admin', label: 'VISAO GERAL', icon: LayoutDashboard, exact: true, featureKeys: ['admin_overview'] },
     { path: '/admin/monitoring', label: 'MONITORAMENTO', icon: Activity, featureKeys: ['admin_monitoring'] }, 
     { path: '/admin/products', label: 'PRODUTOS', icon: Utensils, featureKeys: ['admin_products'] },
+    { path: '/admin/inventory', label: 'ESTOQUE', icon: Package, featureKeys: ['admin_inventory'] },
     { path: '/admin/tables', label: 'MESAS & QR CODES', icon: QrCode, featureKeys: ['admin_tables'], required: 'allowTableMgmt' },
   ];
 
@@ -143,6 +145,7 @@ export const AdminDashboard: React.FC = () => {
                     <Route path="/" element={<AdminOverview />} />
                     <Route path="monitoring" element={<AdminMonitoring />} />
                     <Route path="products" element={<AdminProducts />} />
+                    <Route path="inventory" element={<AdminInventory />} />
                     <Route path="tables" element={<AdminTables />} />
                     
                     {/* Fallback */}

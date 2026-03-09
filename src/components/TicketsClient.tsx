@@ -6,6 +6,7 @@ import { Plus, MessageCircle, Clock, CheckCircle, XCircle, Send, Circle } from '
 import { Button } from './Button';
 import { Modal } from './Modal';
 import { useUI } from '../context/UIContext';
+import { GlobalLoading } from './GlobalLoading';
 
 export const TicketsClient: React.FC = () => {
     const { state } = useRestaurant();
@@ -186,7 +187,7 @@ export const TicketsClient: React.FC = () => {
             </header>
 
             {loading ? (
-                <div className="text-center py-10 text-gray-400">Carregando chamados...</div>
+                <GlobalLoading message="Carregando chamados..." />
             ) : tickets.length === 0 ? (
                 <div className="bg-white p-10 rounded-2xl border border-gray-200 text-center shadow-sm">
                     <MessageCircle size={48} className="mx-auto text-gray-300 mb-4" />

@@ -13,6 +13,7 @@ import { StaffProvider } from './context/StaffContext';
 import { SaaSProvider, useSaaS } from './context/SaaSContext';
 import { UIProvider } from './context/UIContext';
 import { isSupabaseConfigured } from './lib/supabase';
+import { GlobalLoading } from './components/GlobalLoading';
 import { ClientApp } from './pages/ClientApp';
 import { TableCodeGuard } from './components/TableCodeGuard';
 import { AdminDashboard } from './pages/AdminDashboard';
@@ -53,7 +54,7 @@ const ProtectedRestaurantRoute = ({ children, allowedRoles, requiredRoute, requi
     const { state: authState, checkPermission } = useAuth();
     const { state: restState } = useRestaurant();
     
-    if (authState.isLoading || restState.isLoading) return <div className="h-screen flex items-center justify-center font-bold text-gray-500">Carregando...</div>;
+    if (authState.isLoading || restState.isLoading) return <GlobalLoading message="Verificando acessos..." />;
 
     if (!authState.isAuthenticated || !authState.currentUser) {
         return <Navigate to={`/login${window.location.search}`} replace />;
@@ -104,7 +105,7 @@ const ClientRoute = () => {
     const slug = getTenantSlug();
     const { tableId } = useParams();
     
-    if (state.isLoading || authState.isLoading) return <div className="h-screen flex items-center justify-center">Carregando...</div>;
+    if (state.isLoading || authState.isLoading) return <GlobalLoading message="Carregando cardápio..." />;
     
     if (!authState.isAuthenticated) {
         return <Navigate to={`/client/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`} replace />;
@@ -120,7 +121,7 @@ const ClientRoute = () => {
 const TenantApp = () => {
     const { state } = useRestaurant();
     
-    if (state.isLoading) return <div className="h-screen flex items-center justify-center">Carregando sistema...</div>;
+    if (state.isLoading) return <GlobalLoading message="Carregando sistema..." />;
     
     if (state.isInactiveTenant) {
         return (
