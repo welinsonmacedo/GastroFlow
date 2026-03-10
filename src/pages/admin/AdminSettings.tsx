@@ -26,6 +26,7 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ view = 'BUSINESS' 
       paymentMethods: [],
       expenseCategories: [],
       taxRegime: 'SIMPLES_NACIONAL',
+      taxPercentage: 6.0,
       ...state.businessInfo
   });
   
@@ -52,6 +53,7 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ view = 'BUSINESS' 
               orderGracePeriodMinutes: state.businessInfo.orderGracePeriodMinutes ?? prev.orderGracePeriodMinutes,
               adminPin: state.businessInfo.adminPin ?? prev.adminPin,
               taxRegime: state.businessInfo.taxRegime || 'SIMPLES_NACIONAL',
+              taxPercentage: state.businessInfo.taxPercentage ?? 6.0,
               deliverySettings: state.businessInfo.deliverySettings || [],
               paymentMethods: state.businessInfo.paymentMethods || [],
               expenseCategories: state.businessInfo.expenseCategories || []
@@ -175,17 +177,34 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ view = 'BUSINESS' 
                     <div className="space-y-6">
                         <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 mb-4">
                              <label className="block text-xs font-black text-blue-800 uppercase mb-2 flex items-center gap-2"><FileText size={14}/> Regime Tributário</label>
-                             <select 
-                                className="w-full border-2 border-blue-200 p-3 rounded-lg text-sm bg-white font-bold text-blue-900 cursor-pointer"
-                                value={businessForm.taxRegime}
-                                onChange={e => setBusinessForm({...businessForm, taxRegime: e.target.value as TaxRegime})}
-                             >
-                                 <option value="SIMPLES_NACIONAL">Simples Nacional</option>
-                                 <option value="MEI">MEI (Microempreendedor Individual)</option>
-                                 <option value="LUCRO_PRESUMIDO">Lucro Presumido</option>
-                                 <option value="LUCRO_REAL">Lucro Real</option>
-                             </select>
-                             <p className="text-[10px] text-blue-600 mt-2 font-medium">Esta definição sugere a composição de impostos no módulo de RH.</p>
+                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                 <div>
+                                     <select 
+                                        className="w-full border-2 border-blue-200 p-3 rounded-lg text-sm bg-white font-bold text-blue-900 cursor-pointer"
+                                        value={businessForm.taxRegime}
+                                        onChange={e => setBusinessForm({...businessForm, taxRegime: e.target.value as TaxRegime})}
+                                     >
+                                         <option value="SIMPLES_NACIONAL">Simples Nacional</option>
+                                         <option value="MEI">MEI (Microempreendedor Individual)</option>
+                                         <option value="LUCRO_PRESUMIDO">Lucro Presumido</option>
+                                         <option value="LUCRO_REAL">Lucro Real</option>
+                                     </select>
+                                 </div>
+                                 <div>
+                                     <div className="relative">
+                                         <input 
+                                             type="number" 
+                                             step="0.01"
+                                             placeholder="Alíquota Média de Imposto"
+                                             className="w-full border-2 border-blue-200 p-3 rounded-lg text-sm bg-white font-bold text-blue-900"
+                                             value={businessForm.taxPercentage || ''}
+                                             onChange={e => setBusinessForm({...businessForm, taxPercentage: parseFloat(e.target.value) || 0})}
+                                         />
+                                         <span className="absolute right-4 top-3.5 text-blue-900 font-bold">%</span>
+                                     </div>
+                                 </div>
+                             </div>
+                             <p className="text-[10px] text-blue-600 mt-2 font-medium">Esta definição sugere a composição de impostos no módulo de RH e reflete no DRE.</p>
                         </div>
                         
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

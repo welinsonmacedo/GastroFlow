@@ -444,6 +444,7 @@ export interface RestaurantBusinessInfo {
     orderGracePeriodMinutes?: number;
     adminPin?: string;
     taxRegime?: TaxRegime; 
+    taxPercentage?: number;
     deliverySettings?: DeliveryMethodConfig[]; 
     paymentMethods?: PaymentMethodConfig[]; 
     expenseCategories?: ExpenseCategory[]; 

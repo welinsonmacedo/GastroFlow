@@ -24,15 +24,27 @@ export const AdminAccounting: React.FC = () => {
   // Configurações Contábeis
   const [config, setConfig] = useState({
       accountingMethod: 'COMPETENCE' as 'COMPETENCE' | 'CASH',
-      taxRate: 6.0, // Simples Nacional (Estimado)
-      // Taxas de Maquininha (Padrões de mercado, editáveis)
+      taxRate: state.businessInfo.taxPercentage ?? 6.0,
       fees: {
-          credit: 3.99,
-          debit: 1.99,
-          pix: 0.0,
-          voucher: 4.5
+          credit: state.businessInfo.paymentMethods?.find(p => p.type === 'CREDIT')?.feePercentage ?? 3.99,
+          debit: state.businessInfo.paymentMethods?.find(p => p.type === 'DEBIT')?.feePercentage ?? 1.99,
+          pix: state.businessInfo.paymentMethods?.find(p => p.type === 'PIX')?.feePercentage ?? 0.0,
+          voucher: state.businessInfo.paymentMethods?.find(p => p.type === 'MEAL_VOUCHER')?.feePercentage ?? 4.5
       }
   });
+
+  useEffect(() => {
+      setConfig(prev => ({
+          ...prev,
+          taxRate: state.businessInfo.taxPercentage ?? prev.taxRate,
+          fees: {
+              credit: state.businessInfo.paymentMethods?.find(p => p.type === 'CREDIT')?.feePercentage ?? prev.fees.credit,
+              debit: state.businessInfo.paymentMethods?.find(p => p.type === 'DEBIT')?.feePercentage ?? prev.fees.debit,
+              pix: state.businessInfo.paymentMethods?.find(p => p.type === 'PIX')?.feePercentage ?? prev.fees.pix,
+              voucher: state.businessInfo.paymentMethods?.find(p => p.type === 'MEAL_VOUCHER')?.feePercentage ?? prev.fees.voucher
+          }
+      }));
+  }, [state.businessInfo]);
 
   // Visibilidade das Seções
   const [visibility] = useState({
@@ -303,13 +315,15 @@ export const AdminAccounting: React.FC = () => {
                                 </div>
                             </div>
                             <div>
-                                <label className="block text-xs font-bold text-gray-500 mb-1">Alíquota Simples Nacional (%)</label>
+                                <label className="block text-xs font-bold text-gray-500 mb-1">Alíquota de Imposto (%)</label>
                                 <input type="number" step="0.1" className="w-full border p-2 rounded-lg text-sm font-bold bg-gray-50 focus:bg-white focus:border-blue-500 outline-none" value={config.taxRate} onChange={e => setConfig({...config, taxRate: parseFloat(e.target.value) || 0})} />
+                                <p className="text-[10px] text-gray-400 mt-1">Puxado das Configurações da Empresa</p>
                             </div>
                         </div>
                     </div>
                     <div>
                         <h4 className="text-xs font-black text-blue-600 uppercase tracking-widest mb-3">Taxas de Recebimento (%)</h4>
+                        <p className="text-[10px] text-gray-400 mb-2">Puxado das Configurações da Empresa</p>
                         <div className="grid grid-cols-2 gap-3">
                             <div><label className="block text-[10px] font-bold text-gray-500">Crédito</label><input type="number" step="0.01" className="w-full border p-2 rounded text-sm" value={config.fees.credit} onChange={e => setConfig({...config, fees: {...config.fees, credit: parseFloat(e.target.value)}})} /></div>
                             <div><label className="block text-[10px] font-bold text-gray-500">Débito</label><input type="number" step="0.01" className="w-full border p-2 rounded text-sm" value={config.fees.debit} onChange={e => setConfig({...config, fees: {...config.fees, debit: parseFloat(e.target.value)}})} /></div>
