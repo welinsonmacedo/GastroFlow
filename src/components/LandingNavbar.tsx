@@ -2,12 +2,12 @@
 import React, { useState } from 'react';
 // @ts-ignore
 import { Link, useLocation } from 'react-router-dom';
-import { ChefHat, Menu, X, MessageCircle } from 'lucide-react';
+import { Menu, X, MessageCircle } from 'lucide-react';
 
 export const LandingNavbar: React.FC = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const whatsappNumber = "5534991448794";
-  const defaultMessage = encodeURIComponent("Olá! Gostaria de falar com um consultor sobre o Flux Eat.");
+  const defaultMessage = encodeURIComponent("Olá! Gostaria de falar com um consultor sobre o ArloFlux.");
   const location = useLocation();
 
   const openWhatsApp = () => {
@@ -31,11 +31,26 @@ export const LandingNavbar: React.FC = () => {
           <div className="flex justify-between items-center h-20">
             {/* Logo */}
             <Link to="/" className="flex items-center gap-2 cursor-pointer" onClick={() => window.scrollTo({top:0, behavior:'smooth'})}>
-              <div className="bg-gradient-to-br from-green-500 to-blue-600 text-white p-2 rounded-xl shadow-md">
-                <ChefHat size={26} /> 
+              <div className="relative flex items-center justify-center">
+                <svg width="40" height="40" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="drop-shadow-sm">
+                  <path d="M50 10L15 85H30L50 40L70 85H85L50 10Z" fill="url(#logo-gradient)" />
+                  <path d="M20 65C40 55 60 55 80 65" stroke="url(#swoosh-gradient)" strokeWidth="6" strokeLinecap="round" />
+                  <circle cx="85" cy="45" r="3" fill="#22c55e" />
+                  <circle cx="75" cy="35" r="2" fill="#3b82f6" />
+                  <defs>
+                    <linearGradient id="logo-gradient" x1="15" y1="10" x2="85" y2="85" gradientUnits="userSpaceOnUse">
+                      <stop stopColor="#06b6d4" />
+                      <stop offset="1" stopColor="#8b5cf6" />
+                    </linearGradient>
+                    <linearGradient id="swoosh-gradient" x1="20" y1="65" x2="80" y2="65" gradientUnits="userSpaceOnUse">
+                      <stop stopColor="#06b6d4" />
+                      <stop offset="1" stopColor="#d946ef" />
+                    </linearGradient>
+                  </defs>
+                </svg>
               </div>
               <span className="text-2xl font-black tracking-tighter text-slate-800">
-                <span className="text-blue-600">Flux</span> <span className="text-green-500">Eat</span>
+                <span className="text-blue-600">Arlo</span><span className="text-purple-600">Flux</span>
               </span>
             </Link>
 

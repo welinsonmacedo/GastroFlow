@@ -15,7 +15,7 @@ export const PrivacyPolicy: React.FC = () => {
             <section>
                 <h2 className="text-2xl font-bold mb-4 text-slate-800">1. Introdução</h2>
                 <p>
-                    O Flux Eat ("nós", "nosso" ou "plataforma") respeita a sua privacidade e está comprometido em proteger os dados pessoais que você compartilha conosco. Esta política descreve como coletamos, usamos e protegemos suas informações ao utilizar nosso sistema de gestão para restaurantes.
+                    O ArloFlux ("nós", "nosso" ou "plataforma") respeita a sua privacidade e está comprometido em proteger os dados pessoais que você compartilha conosco. Esta política descreve como coletamos, usamos e protegemos suas informações ao utilizar nosso sistema de gestão para restaurantes.
                 </p>
             </section>
 
@@ -33,7 +33,7 @@ export const PrivacyPolicy: React.FC = () => {
                 <h2 className="text-2xl font-bold mb-4 text-slate-800">3. Uso das Informações</h2>
                 <p>Utilizamos seus dados para:</p>
                 <ul className="list-disc pl-6 space-y-2 mt-2">
-                    <li>Fornecer e manter o serviço Flux Eat operacional.</li>
+                    <li>Fornecer e manter o serviço ArloFlux operacional.</li>
                     <li>Processar pagamentos e gerenciar assinaturas.</li>
                     <li>Melhorar a experiência do usuário e desenvolver novas funcionalidades.</li>
                     <li>Enviar comunicações importantes sobre atualizações do sistema ou segurança.</li>
@@ -72,7 +72,7 @@ export const PrivacyPolicy: React.FC = () => {
 
       <footer className="bg-slate-50 border-t border-slate-200 py-8 mt-12">
           <div className="max-w-4xl mx-auto px-4 text-center text-slate-500 text-sm">
-              &copy; 2026 Flux Eat Systems. Todos os direitos reservados.
+              &copy; 2026 ArloFlux Systems. Todos os direitos reservados.
           </div>
       </footer>
     </div>

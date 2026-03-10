@@ -227,7 +227,7 @@ export const SuperAdminDashboard: React.FC = () => {
                                             <section>
                                                 <h3 className="font-bold uppercase mb-2 text-xs text-gray-900 border-b border-gray-300 pb-1">2. Objeto</h3>
                                                 <p>
-                                                    O presente contrato tem como objeto o licenciamento de uso do software <strong>Flux Eat</strong>, na modalidade SaaS (Software as a Service), para gestão de restaurante, incluindo módulos de cardápio digital, KDS e controle financeiro, conforme as especificações do plano contratado.
+                                                    O presente contrato tem como objeto o licenciamento de uso do software <strong>ArloFlux</strong>, na modalidade SaaS (Software as a Service), para gestão de restaurante, incluindo módulos de cardápio digital, KDS e controle financeiro, conforme as especificações do plano contratado.
                                                 </p>
                                             </section>
 
@@ -294,7 +294,7 @@ export const SuperAdminDashboard: React.FC = () => {
                                             <section>
                                                 <h3 className="font-bold uppercase mb-2 text-xs text-gray-900 border-b border-gray-300 pb-1">7. Propriedade Intelectual</h3>
                                                 <p>
-                                                    A CONTRATADA é a única titular de todos os direitos de propriedade intelectual sobre o software Flux Eat. Este contrato concede apenas uma licença de uso, não transferindo qualquer direito de propriedade ou código-fonte à CONTRATANTE.
+                                                    A CONTRATADA é a única titular de todos os direitos de propriedade intelectual sobre o software ArloFlux. Este contrato concede apenas uma licença de uso, não transferindo qualquer direito de propriedade ou código-fonte à CONTRATANTE.
                                                 </p>
                                             </section>
 
@@ -336,7 +336,7 @@ export const SuperAdminDashboard: React.FC = () => {
 
                                                 <div className="flex justify-between gap-8 pt-8">
                                                     <div className="flex-1 border-t border-black text-center pt-2">
-                                                        <p className="font-bold text-xs uppercase">Flux Eat Tecnologia</p>
+                                                        <p className="font-bold text-xs uppercase">ArloFlux Tecnologia</p>
                                                         <p className="text-[10px] text-gray-500">Contratada</p>
                                                     </div>
                                                     <div className="flex-1 border-t border-black text-center pt-2">

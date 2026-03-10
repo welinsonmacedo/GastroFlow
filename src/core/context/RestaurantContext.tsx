@@ -30,6 +30,7 @@ type Action =
   | { type: 'SET_ACTIVE_MODULE'; module: SystemModule }
   | { type: 'UPDATE_THEME'; theme: RestaurantTheme }
   | { type: 'UPDATE_BUSINESS_INFO'; info: RestaurantBusinessInfo }
+  | { type: 'UPDATE_GLOBAL_SETTINGS'; settings: any }
   | { type: 'SYNC_REALTIME_DATA'; payload: any }
   | { type: 'UPDATE_PLAN_LIMITS'; limits: PlanLimits }
   | { type: 'UPSERT_DELIVERY_METHOD'; method: any }
@@ -98,6 +99,7 @@ const restaurantReducer = (state: RestaurantState, action: Action): RestaurantSt
     case 'SET_ACTIVE_MODULE': return { ...state, activeModule: action.module };
     case 'UPDATE_THEME': return { ...state, theme: action.theme };
     case 'UPDATE_BUSINESS_INFO': return { ...state, businessInfo: action.info };
+    case 'UPDATE_GLOBAL_SETTINGS': return { ...state, globalSettings: action.settings };
     case 'SYNC_REALTIME_DATA': 
         return { 
             ...state, 
@@ -127,7 +129,7 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [state, localDispatch] = useReducer(restaurantReducer, initialState);
 
   const authorize = (tenantId: string, tableId: string) => {
-    sessionStorage.setItem(`fluxeat_auth_${tenantId}`, tableId);
+    sessionStorage.setItem(`arloflux_auth_${tenantId}`, tableId);
     localDispatch({ type: 'SET_AUTHORIZED', tenantId, tableId });
   };
 
@@ -203,7 +205,7 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
         if (!tenant) { 
             console.warn(`RestaurantContext: Tenant not found or query failed for slug: "${slug}"`);
-            const storedAuth = Object.keys(sessionStorage).find(key => key.startsWith('fluxeat_auth_'));
+            const storedAuth = Object.keys(sessionStorage).find(key => key.startsWith('arloflux_auth_'));
             
             if (state.isAuthorized || storedAuth) {
                 console.log('RestaurantContext: Found stale auth, clearing and reloading...');
@@ -278,9 +280,9 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             expenseCategories: (tenant.business_info?.expenseCategories) || initialState.businessInfo.expenseCategories
         };
 
-        const storedModule = sessionStorage.getItem(`fluxeat_module_${tenant.id}`);
+        const storedModule = sessionStorage.getItem(`arloflux_module_${tenant.id}`);
         const initialActiveModule = storedModule as SystemModule | null;
-        const isAuthorized = !!sessionStorage.getItem(`fluxeat_auth_${tenant.id}`);
+        const isAuthorized = !!sessionStorage.getItem(`arloflux_auth_${tenant.id}`);
 
         console.log('RestaurantContext: Dispatching INIT_DATA...');
         clearTimeout(timeoutId);
@@ -297,10 +299,10 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 allowedFeatures: tenant.allowed_features || [],
                 activeModule: initialActiveModule,
                 isAuthorized: isAuthorized,
-                tableId: isAuthorized ? sessionStorage.getItem(`fluxeat_auth_${tenant.id}`) : null
+                tableId: isAuthorized ? sessionStorage.getItem(`arloflux_auth_${tenant.id}`) : null
             }
         });
-        sessionStorage.setItem('fluxeat_tenant_slug', tenant.slug);
+        sessionStorage.setItem('arloflux_tenant_slug', tenant.slug);
         console.log('RestaurantContext: Init completed successfully.');
     } catch (error) {
         console.error("RestaurantContext: CRITICAL ERROR during init:", error);
@@ -344,9 +346,30 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       return () => { supabase.removeChannel(channel); };
   }, [state.tenantId]);
 
+  useEffect(() => {
+      const channel = supabase.channel('global_saas_config')
+          .on(
+              'postgres_changes',
+              {
+                  event: '*',
+                  schema: 'public',
+                  table: 'saas_config',
+                  filter: 'id=eq.1'
+              },
+              (payload: any) => {
+                  if (payload.new && payload.new.global_settings) {
+                      localDispatch({ type: 'UPDATE_GLOBAL_SETTINGS', settings: payload.new.global_settings });
+                  }
+              }
+          )
+          .subscribe();
+
+      return () => { supabase.removeChannel(channel); };
+  }, []);
+
   const setActiveModule = (module: SystemModule) => {
       if (state.tenantId) {
-          sessionStorage.setItem(`fluxeat_module_${state.tenantId}`, module);
+          sessionStorage.setItem(`arloflux_module_${state.tenantId}`, module);
       }
       localDispatch({ type: 'SET_ACTIVE_MODULE', module });
   };

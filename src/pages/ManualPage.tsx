@@ -535,7 +535,7 @@ export const ManualPage: React.FC = () => {
               
               <FaqItem 
                 question="O sistema funciona sem internet?"
-                answer="O Flux Eat é um sistema em nuvem e requer conexão com a internet para sincronizar pedidos entre Garçom, Cozinha e Caixa. Se a internet cair, você não conseguirá lançar novos pedidos até que ela retorne."
+                answer="O ArloFlux é um sistema em nuvem e requer conexão com a internet para sincronizar pedidos entre Garçom, Cozinha e Caixa. Se a internet cair, você não conseguirá lançar novos pedidos até que ela retorne."
               />
 
               <FaqItem 

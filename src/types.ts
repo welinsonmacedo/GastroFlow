@@ -129,6 +129,16 @@ export interface RecurringEvent {
 }
 
 // Interfaces Novas para Cálculo Real
+export interface TimeClockConfig {
+    validationType: 'GEOLOCATION' | 'NONE';
+    maxDistanceMeters?: number;
+    maxDailyPunches?: number;
+    restaurantLocation?: {
+        lat: number;
+        lng: number;
+    };
+}
+
 export interface RhPayrollSetting {
     id: string;
     minWage: number;
@@ -157,6 +167,8 @@ export interface RhPayrollSetting {
     dsrConfig?: DsrConfig;
     pointClosingDay?: number;
     integrateFinance?: boolean;
+    // Time Clock Settings
+    timeClock?: TimeClockConfig;
 }
 
 export interface DsrConfig {
@@ -409,30 +421,6 @@ export interface Plan {
     button_text: string;
 }
 
-export interface TimeClockConfig {
-    validationType: 'GEOLOCATION' | 'NONE';
-    maxDistanceMeters?: number;
-    maxDailyPunches?: number;
-    restaurantLocation?: {
-        lat: number;
-        lng: number;
-    };
-}
-
-export interface TimeClockSettings {
-    validationType: 'GEOLOCATION' | 'NONE';
-    maxDistanceMeters?: number;
-    maxDailyPunches?: number; // Default 4
-    latitude?: number;
-    longitude?: number;
-}
-
-export interface TimeClockConfig {
-    validationType: 'NONE' | 'GEOLOCATION';
-    maxDailyPunches?: number;
-    maxDistanceMeters?: number;
-    restaurantLocation?: { lat: number; lng: number };
-}
 
 export type WaiterNotificationMode = 'ALL' | 'OPENER' | 'ASSIGNED';
 
@@ -459,7 +447,6 @@ export interface RestaurantBusinessInfo {
     deliverySettings?: DeliveryMethodConfig[]; 
     paymentMethods?: PaymentMethodConfig[]; 
     expenseCategories?: ExpenseCategory[]; 
-    timeClock?: TimeClockConfig;
     waiterNotificationMode?: WaiterNotificationMode;
     strictWaiterNotification?: boolean;
 }

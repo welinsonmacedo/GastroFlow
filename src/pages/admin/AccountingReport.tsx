@@ -339,7 +339,7 @@ export const AccountingReport: React.FC = () => {
                     <div className="flex justify-between items-end">
                         <div className="text-[10px] text-slate-400 max-w-md print:text-black">
                             <p className="font-bold uppercase mb-1">Declaração de Responsabilidade</p>
-                            <p>Este relatório foi gerado eletronicamente pelo sistema Flux Eat com base nos lançamentos operacionais realizados pelo estabelecimento. Os valores aqui expressos servem como base para a apuração contábil, sujeitos à conferência dos extratos bancários e notas fiscais.</p>
+                            <p>Este relatório foi gerado eletronicamente pelo sistema ArloFlux com base nos lançamentos operacionais realizados pelo estabelecimento. Os valores aqui expressos servem como base para a apuração contábil, sujeitos à conferência dos extratos bancários e notas fiscais.</p>
                         </div>
                         <div className="text-center">
                             <div className="border-t border-black w-64 mb-2"></div>

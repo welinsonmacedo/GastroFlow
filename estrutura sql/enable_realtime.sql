@@ -1,4 +1,4 @@
--- Script para habilitar o Realtime (WebSockets) no Supabase para todas as tabelas do sistema Flux Eat
+-- Script para habilitar o Realtime (WebSockets) no Supabase para todas as tabelas do sistema ArloFlux
 
 BEGIN;
 

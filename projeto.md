@@ -1,6 +1,6 @@
-# Visão Geral do Projeto - Flux Eat
+# Visão Geral do Projeto - ArloFlux
 
-O **Flux Eat** é um sistema SaaS (Software as a Service) completo de ERP e PDV voltado para o setor gastronômico (restaurantes, lanchonetes, bares e distribuidoras). Ele foi construído com uma arquitetura *multi-tenant* (multilocatário), permitindo que diversos restaurantes utilizem a mesma infraestrutura, cada um com seu próprio subdomínio, banco de dados isolado (via Row Level Security no Supabase) e configurações personalizadas.
+O **ArloFlux** é um sistema SaaS (Software as a Service) completo de ERP e PDV voltado para o setor gastronômico (restaurantes, lanchonetes, bares e distribuidoras). Ele foi construído com uma arquitetura *multi-tenant* (multilocatário), permitindo que diversos restaurantes utilizem a mesma infraestrutura, cada um com seu próprio subdomínio, banco de dados isolado (via Row Level Security no Supabase) e configurações personalizadas.
 
 Abaixo está o detalhamento completo de cada módulo do sistema, suas funcionalidades e como eles interagem entre si.
 
@@ -118,7 +118,7 @@ Focado em rastreabilidade e prevenção de fraudes.
 ---
 
 ## 10. Módulo Super Admin (Gestão SaaS)
-Acessado apenas pelos donos do software (Flux Eat), invisível para os restaurantes.
+Acessado apenas pelos donos do software (ArloFlux), invisível para os restaurantes.
 
 *   **Gestão de Tenants (Inquilinos):** Criação, suspensão e exclusão de restaurantes na plataforma.
 *   **Gestão de Planos e Limites:** Definição dos pacotes (ex: Basic, Pro, Premium). Controla limites como: número máximo de mesas, número máximo de produtos, acesso ao KDS, acesso ao RH, etc.

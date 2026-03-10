@@ -6,7 +6,7 @@ import { useRestaurant } from '@/core/context/RestaurantContext';
 import { useAuth } from '@/core/context/AuthProvider';
 import { 
     Palette, Users, SlidersHorizontal, LogOut, Grid, ChefHat, 
-    Building2, Bike, DollarSign, ShieldCheck, Clock
+    Building2, Bike, DollarSign, ShieldCheck
 } from 'lucide-react';
 
 // Importando Sub-páginas
@@ -28,7 +28,6 @@ export const SettingsDashboard: React.FC = () => {
     { path: '/settings/delivery', label: 'DELIVERY', icon: Bike, required: 'allowCashier', featureKeys: ['config_delivery'] },
     { path: '/settings/finance-config', label: 'FINANCEIRO', icon: DollarSign, required: 'allowExpenses', featureKeys: ['config_finance_settings'] },
     { path: '/settings/security', label: 'SEGURANÇA', icon: ShieldCheck, featureKeys: ['config_security'] },
-    { path: '/settings/time-clock', label: 'PONTO ELETRONICO', icon: Clock, required: 'allowHR', featureKeys: ['config_timeclock'] },
     { path: '/settings/appearance', label: 'APARENCIA & MARCA', icon: Palette, required: 'allowCustomization', featureKeys: ['config_appearance'] },
     { path: '/settings/staff', label: 'EQUIPE & ACESSOS', icon: Users, required: 'allowStaff', featureKeys: ['config_staff'] },
   ];
@@ -146,7 +145,6 @@ export const SettingsDashboard: React.FC = () => {
                     <Route path="delivery" element={<AdminSettings view="DELIVERY" />} />
                     <Route path="finance-config" element={<AdminSettings view="FINANCE_CONFIG" />} />
                     <Route path="security" element={<AdminSettings view="SECURITY" />} />
-                    <Route path="time-clock" element={<AdminSettings view="TIME_CLOCK" />} />
                     
                     {planLimits.allowCustomization && <Route path="appearance" element={<AdminMenuAppearance />} />}
                     {planLimits.allowStaff && <Route path="staff" element={<AdminStaff />} />}

@@ -1,4 +1,4 @@
-# Arquitetura e Módulos do Sistema SaaS ERP para Restaurantes
+# Arquitetura e Módulos do Sistema SaaS ERP ArloFlux
 
 Este documento descreve a arquitetura atual do sistema, detalhando cada módulo, suas responsabilidades, funções principais e como eles se comunicam entre si utilizando React Context API e Supabase.
 

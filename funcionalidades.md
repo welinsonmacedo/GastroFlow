@@ -1,4 +1,4 @@
-# Documentação de Funcionalidades e Módulos do Sistema FluxEat
+# Documentação de Funcionalidades e Módulos do Sistema ArloFlux
 
 Este documento descreve a arquitetura de módulos, abas, arquivos e funções principais do sistema, explicando o propósito de cada componente.
 
@@ -89,7 +89,7 @@ Este documento descreve a arquitetura de módulos, abas, arquivos e funções pr
 
 ## 8. Módulo Super Admin (SaaS CEO)
 **Arquivo Principal:** `src/pages/SuperAdminDashboard.tsx`
-**Descrição:** Painel exclusivo para os donos do sistema (FluxEat) gerenciarem os restaurantes assinantes.
+**Descrição:** Painel exclusivo para os donos do sistema (ArloFlux) gerenciarem os restaurantes assinantes.
 
 **Abas e Arquivos:**
 - **Clientes (`RESTAURANTS`):** Gestão de inquilinos (restaurantes cadastrados), bloqueio/desbloqueio e acesso "impersonate" (entrar como o cliente).
@@ -105,7 +105,7 @@ Este documento descreve a arquitetura de módulos, abas, arquivos e funções pr
 ## 9. Módulo de Suporte & Auditoria
 **Arquivos:**
 - **Manual e Ajuda (`ManualPage.tsx`):** Base de conhecimento, tutoriais e FAQ para os usuários do sistema.
-- **Chamados do Cliente (`TicketsClient.tsx`):** Interface para o restaurante abrir tickets de suporte técnico e conversar com a equipe do FluxEat.
+- **Chamados do Cliente (`TicketsClient.tsx`):** Interface para o restaurante abrir tickets de suporte técnico e conversar com a equipe do ArloFlux.
 - **Auditoria (`AuditDashboard.tsx`):** Registro imutável de todas as ações críticas realizadas no sistema (quem apagou um pedido, quem alterou um preço, etc.) para fins de segurança e compliance.
 
 ---

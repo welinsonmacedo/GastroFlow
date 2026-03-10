@@ -213,6 +213,10 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               absenceLogic: {
                   justified: settingsRes.data.absence_logic?.justified || { deduction: false, disciplinaryAction: false },
                   unjustified: settingsRes.data.absence_logic?.unjustified || { deduction: true, disciplinaryAction: true }
+              },
+              timeClock: settingsRes.data.time_clock || {
+                  validationType: 'NONE',
+                  maxDailyPunches: 4
               }
           } : null;
 
@@ -811,7 +815,8 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           point_closing_day: settings.pointClosingDay,
           absence_logic: settings.absenceLogic,
           dsr_config: settings.dsrConfig,
-          integrate_finance: settings.integrateFinance
+          integrate_finance: settings.integrateFinance,
+          time_clock: settings.timeClock
       };
       const { error } = await supabase.rpc('save_payroll_settings', {
           p_tenant_id: tenantId,

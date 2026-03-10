@@ -43,7 +43,7 @@ export const AccessDenied: React.FC<AccessDeniedProps> = ({ ip, reason }) => {
                 </div>
                 <div className="bg-slate-100 p-4 text-center border-t border-slate-200">
                     <p className="text-[10px] font-bold text-slate-400 uppercase flex items-center justify-center gap-1">
-                        <Lock size={10} /> Flux Eat Security System
+                        <Lock size={10} /> ArloFlux Security System
                     </p>
                 </div>
             </div>

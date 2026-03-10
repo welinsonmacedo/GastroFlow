@@ -1,6 +1,6 @@
 {
-  "name": "Flux Eat Cliente",
-  "short_name": "Flux Eat",
+  "name": "ArloFlux Cliente",
+  "short_name": "ArloFlux",
   "start_url": "/client/login",
   "scope": "/client",
   "display": "standalone",

@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS saas_config (
 
 -- Insere a configuração padrão se não existir
 INSERT INTO saas_config (id, global_settings) 
-VALUES (1, '{"primaryColor": "#2563eb", "backgroundColor": "#f8fafc", "fontColor": "#1e293b", "logoUrl": "", "systemName": "Flux Eat"}')
+VALUES (1, '{"primaryColor": "#2563eb", "backgroundColor": "#f8fafc", "fontColor": "#1e293b", "logoUrl": "", "systemName": "ArloFlux"}')
 ON CONFLICT (id) DO NOTHING;
 
 -- 2. Tabela de Administradores do SaaS (Fallback de Login)

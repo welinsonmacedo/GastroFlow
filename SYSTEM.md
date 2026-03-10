@@ -1,7 +1,7 @@
-# Flux Eat - System Documentation
+# ArloFlux - System Documentation
 
 ## Project Overview
-Flux Eat is a comprehensive, multi-tenant restaurant and retail management system (SaaS) built with modern web technologies. It provides tailored interfaces for different roles (Owners, Managers, Cashiers, Waiters, Kitchen Staff) and business types (Restaurants, Retail/Commerce).
+ArloFlux is a comprehensive, multi-tenant restaurant and retail management system (SaaS) built with modern web technologies. It provides tailored interfaces for different roles (Owners, Managers, Cashiers, Waiters, Kitchen Staff) and business types (Restaurants, Retail/Commerce).
 
 ## Tech Stack
 - **Frontend**: React 18+, TypeScript

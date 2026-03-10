@@ -4,12 +4,12 @@ import { useRestaurant } from '@/core/context/RestaurantContext';
 import { useUI } from '@/core/context/UIContext';
 import { useStaff } from '@/core/context/StaffContext';
 import { Button } from '../../components/Button';
-import { Building2, MapPin, Loader2, Share2, Clock, Lock, Save, ShieldCheck, Bike, Plus, Trash2, Edit, CreditCard, Tag, FileText, Bell, Users } from 'lucide-react';
-import { RestaurantBusinessInfo, DeliveryMethodConfig, PaymentMethodConfig, ExpenseCategory, TaxRegime, DsrConfig } from '@/types';
+import { Building2, MapPin, Loader2, Share2, Clock, Lock, Save, Bike, Plus, Trash2, Edit, CreditCard, Tag, FileText, Bell, Users } from 'lucide-react';
+import { RestaurantBusinessInfo, DeliveryMethodConfig, PaymentMethodConfig, ExpenseCategory, TaxRegime } from '@/types';
 import { Modal } from '../../components/Modal';
 
 interface AdminSettingsProps {
-    view?: 'BUSINESS' | 'RULES' | 'SECURITY' | 'DELIVERY' | 'FINANCE_CONFIG' | 'TIME_CLOCK';
+    view?: 'BUSINESS' | 'RULES' | 'SECURITY' | 'DELIVERY' | 'FINANCE_CONFIG';
 }
 
 export const AdminSettings: React.FC<AdminSettingsProps> = ({ view = 'BUSINESS' }) => {
@@ -26,17 +26,9 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ view = 'BUSINESS' 
       paymentMethods: [],
       expenseCategories: [],
       taxRegime: 'SIMPLES_NACIONAL',
-      timeClock: { validationType: 'NONE', maxDailyPunches: 4, maxDistanceMeters: 100, restaurantLocation: { lat: 0, lng: 0 } },
       ...state.businessInfo
   });
   
-  const [dsrForm, setDsrForm] = useState<DsrConfig>({
-      calculateOnOvertime: true,
-      rateType: 'CALCULATED',
-      includeInThirteenth: true,
-      includeInVacation: true
-  });
-
   const [loadingCep, setLoadingCep] = useState(false);
 
   // Modais States
@@ -60,7 +52,6 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ view = 'BUSINESS' 
               orderGracePeriodMinutes: state.businessInfo.orderGracePeriodMinutes ?? prev.orderGracePeriodMinutes,
               adminPin: state.businessInfo.adminPin ?? prev.adminPin,
               taxRegime: state.businessInfo.taxRegime || 'SIMPLES_NACIONAL',
-              timeClock: state.businessInfo.timeClock || { validationType: 'NONE', maxDistanceMeters: 100 },
               deliverySettings: state.businessInfo.deliverySettings || [],
               paymentMethods: state.businessInfo.paymentMethods || [],
               expenseCategories: state.businessInfo.expenseCategories || []
@@ -68,19 +59,8 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ view = 'BUSINESS' 
       }
   }, [state.businessInfo]);
 
-  useEffect(() => {
-      if (legalSettings?.dsrConfig) {
-          setDsrForm(legalSettings.dsrConfig);
-      }
-  }, [legalSettings]);
-
   const handleSaveBusiness = async () => {
-      if (view === 'TIME_CLOCK') {
-          await dispatch({ type: 'UPDATE_BUSINESS_INFO', info: businessForm });
-          await saveLegalSettings({ dsrConfig: dsrForm });
-      } else {
-          await dispatch({ type: 'UPDATE_BUSINESS_INFO', info: businessForm });
-      }
+      await dispatch({ type: 'UPDATE_BUSINESS_INFO', info: businessForm });
       showAlert({ title: 'Sucesso', message: 'Dados atualizados!', type: 'SUCCESS' });
   };
   
@@ -173,33 +153,7 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ view = 'BUSINESS' 
           case 'SECURITY': return 'Segurança';
           case 'DELIVERY': return 'Configuração de Delivery';
           case 'FINANCE_CONFIG': return 'Configurações Financeiras';
-          case 'TIME_CLOCK': return 'Ponto Eletrônico';
           default: return 'Configurações';
-      }
-  };
-
-  const handleSetCurrentLocation = () => {
-      if (navigator.geolocation) {
-          navigator.geolocation.getCurrentPosition(
-              (position) => {
-                  setBusinessForm(prev => ({
-                      ...prev,
-                      timeClock: {
-                          ...prev.timeClock!,
-                          restaurantLocation: {
-                              lat: position.coords.latitude,
-                              lng: position.coords.longitude
-                          }
-                      }
-                  }));
-                  showAlert({ title: "Localização Definida", message: "Coordenadas atualizadas com sucesso.", type: 'SUCCESS' });
-              },
-              () => {
-                  showAlert({ title: "Erro", message: "Não foi possível obter sua localização.", type: 'ERROR' });
-              }
-          );
-      } else {
-          showAlert({ title: "Erro", message: "Geolocalização não suportada.", type: 'ERROR' });
       }
   };
 
@@ -207,76 +161,12 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ view = 'BUSINESS' 
     <div className="max-w-4xl mx-auto animate-fade-in pb-10">
         <header className="mb-8 flex justify-between items-center">
             <h2 className="text-2xl font-bold text-gray-800">{getPageTitle()}</h2>
-            {['BUSINESS', 'RULES', 'SECURITY', 'TIME_CLOCK'].includes(view) && (
+            {['BUSINESS', 'RULES', 'SECURITY'].includes(view) && (
                 <Button onClick={handleSaveBusiness} className="shadow-lg"><Save size={18}/> Salvar Alterações</Button>
             )}
         </header>
 
         <div className="space-y-8">
-            {/* --- TIME CLOCK VIEW --- */}
-            {view === 'TIME_CLOCK' && (
-                <div className="space-y-6">
-                    <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-200">
-                        <h2 className="text-xl font-bold mb-6 text-gray-800 flex items-center gap-2"><Clock className="text-blue-600"/> Configuração de Ponto</h2>
-                        
-                        <div className="space-y-6">
-                            <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-2">Tipo de Validação</label>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div 
-                                        onClick={() => setBusinessForm({...businessForm, timeClock: {...businessForm.timeClock!, validationType: 'GEOLOCATION'}})}
-                                        className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${businessForm.timeClock?.validationType === 'GEOLOCATION' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-blue-200'}`}
-                                    >
-                                        <div className="flex items-center gap-2 mb-2 font-bold text-gray-800"><MapPin size={18} className="text-blue-600"/> Geolocalização (GPS)</div>
-                                        <p className="text-xs text-gray-500">O colaborador deve estar dentro de um raio específico do restaurante para bater o ponto.</p>
-                                    </div>
-                                    
-                                    <div 
-                                        onClick={() => setBusinessForm({...businessForm, timeClock: {...businessForm.timeClock!, validationType: 'NONE'}})}
-                                        className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${businessForm.timeClock?.validationType === 'NONE' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-blue-200'}`}
-                                    >
-                                        <div className="flex items-center gap-2 mb-2 font-bold text-gray-800"><ShieldCheck size={18} className="text-green-600"/> Sem Validação (Limite Diário)</div>
-                                        <p className="text-xs text-gray-500">Permite bater ponto de qualquer lugar, mas limita a 4 registros por dia por colaborador.</p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {businessForm.timeClock?.validationType === 'GEOLOCATION' && (
-                                <div className="bg-gray-50 p-6 rounded-xl border border-gray-200 space-y-6 animate-fade-in">
-                                    <div className="flex justify-between items-start">
-                                        <div>
-                                            <h3 className="font-bold text-gray-800 mb-1">Localização do Restaurante</h3>
-                                            <p className="text-xs text-gray-500">Defina onde o restaurante está localizado para validar o ponto.</p>
-                                        </div>
-                                        <Button onClick={handleSetCurrentLocation} size="sm" variant="outline"><MapPin size={14}/> Usar Minha Localização Atual</Button>
-                                    </div>
-
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="block text-xs font-bold mb-1">Latitude</label>
-                                            <input type="number" step="any" className="w-full border p-2 rounded bg-white" value={businessForm.timeClock?.restaurantLocation?.lat || ''} onChange={e => setBusinessForm({...businessForm, timeClock: {...businessForm.timeClock!, restaurantLocation: {...businessForm.timeClock?.restaurantLocation!, lat: parseFloat(e.target.value)}}})} />
-                                        </div>
-                                        <div>
-                                            <label className="block text-xs font-bold mb-1">Longitude</label>
-                                            <input type="number" step="any" className="w-full border p-2 rounded bg-white" value={businessForm.timeClock?.restaurantLocation?.lng || ''} onChange={e => setBusinessForm({...businessForm, timeClock: {...businessForm.timeClock!, restaurantLocation: {...businessForm.timeClock?.restaurantLocation!, lng: parseFloat(e.target.value)}}})} />
-                                        </div>
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-xs font-bold mb-1">Raio Permitido (Metros)</label>
-                                        <div className="flex items-center gap-4">
-                                            <input type="range" min="10" max="500" step="10" className="flex-1 h-2 bg-gray-300 rounded-lg appearance-none cursor-pointer accent-blue-600" value={businessForm.timeClock?.maxDistanceMeters || 100} onChange={e => setBusinessForm({...businessForm, timeClock: {...businessForm.timeClock!, maxDistanceMeters: parseInt(e.target.value)}})} />
-                                            <span className="font-mono font-bold text-blue-600 w-20 text-right">{businessForm.timeClock?.maxDistanceMeters || 100} m</span>
-                                        </div>
-                                        <p className="text-[10px] text-gray-400 mt-1">Recomendado: 50m a 100m para compensar imprecisões do GPS.</p>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            )}
-
             {/* --- BUSINESS VIEW --- */}
             {view === 'BUSINESS' && (
                 <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-200 animate-fade-in">
@@ -532,171 +422,6 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({ view = 'BUSINESS' 
                             </div>
                         </div>
                     )}
-                </div>
-            )}
-            {/* --- TIME_CLOCK VIEW --- */}
-            {view === 'TIME_CLOCK' && (
-                <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-200">
-                    <div className="flex items-start gap-4 mb-6">
-                        <div className="bg-purple-50 p-3 rounded-2xl text-purple-600"><Clock size={32} /></div>
-                        <div>
-                            <h2 className="text-xl font-bold text-gray-800">Configuração de Ponto</h2>
-                            <p className="text-sm text-gray-500 leading-relaxed">Defina as regras para registro de ponto dos colaboradores.</p>
-                        </div>
-                    </div>
-
-                    <div className="space-y-6">
-                        <div>
-                            <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-2">Tipo de Validação</label>
-                            <select 
-                                className="w-full border-2 border-gray-200 p-3 rounded-xl focus:border-purple-500 outline-none font-bold text-gray-700"
-                                value={businessForm.timeClock?.validationType || 'NONE'}
-                                onChange={e => setBusinessForm({...businessForm, timeClock: {...businessForm.timeClock!, validationType: e.target.value as any}})}
-                            >
-                                <option value="NONE">Sem Validação (Apenas Registro)</option>
-                                <option value="GEOLOCATION">Geolocalização (GPS)</option>
-                            </select>
-                        </div>
-
-                        {businessForm.timeClock?.validationType === 'GEOLOCATION' && (
-                            <div className="bg-purple-50 p-6 rounded-xl border border-purple-100 space-y-4 animate-fade-in">
-                                <h3 className="font-bold text-purple-800 flex items-center gap-2"><MapPin size={18}/> Configuração de Local</h3>
-                                
-                                <div>
-                                    <label className="block text-xs font-bold text-purple-700 mb-1">Raio Máximo (Metros)</label>
-                                    <input 
-                                        type="number" 
-                                        className="w-full border p-3 rounded-lg" 
-                                        value={businessForm.timeClock?.maxDistanceMeters || 100} 
-                                        onChange={e => setBusinessForm({...businessForm, timeClock: {...businessForm.timeClock!, maxDistanceMeters: parseInt(e.target.value)}})} 
-                                    />
-                                    <p className="text-[10px] text-purple-600 mt-1">Distância máxima permitida entre o colaborador e o restaurante.</p>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-xs font-bold text-purple-700 mb-1">Latitude</label>
-                                        <input 
-                                            type="number" 
-                                            step="any"
-                                            className="w-full border p-3 rounded-lg" 
-                                            value={businessForm.timeClock?.restaurantLocation?.lat || ''} 
-                                            onChange={e => setBusinessForm({...businessForm, timeClock: {...businessForm.timeClock!, restaurantLocation: {...businessForm.timeClock?.restaurantLocation!, lat: parseFloat(e.target.value)}}})} 
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-bold text-purple-700 mb-1">Longitude</label>
-                                        <input 
-                                            type="number" 
-                                            step="any"
-                                            className="w-full border p-3 rounded-lg" 
-                                            value={businessForm.timeClock?.restaurantLocation?.lng || ''} 
-                                            onChange={e => setBusinessForm({...businessForm, timeClock: {...businessForm.timeClock!, restaurantLocation: {...businessForm.timeClock?.restaurantLocation!, lng: parseFloat(e.target.value)}}})} 
-                                        />
-                                    </div>
-                                </div>
-                                <Button 
-                                    type="button" 
-                                    variant="outline" 
-                                    className="w-full border-purple-200 text-purple-700 hover:bg-purple-100"
-                                    onClick={() => {
-                                        navigator.geolocation.getCurrentPosition(
-                                            (pos) => {
-                                                setBusinessForm({
-                                                    ...businessForm, 
-                                                    timeClock: {
-                                                        ...businessForm.timeClock!, 
-                                                        restaurantLocation: { lat: pos.coords.latitude, lng: pos.coords.longitude }
-                                                    }
-                                                });
-                                                showAlert({ title: "Localização Obtida", message: "Coordenadas atualizadas com sua posição atual.", type: 'SUCCESS' });
-                                            },
-                                            () => showAlert({ title: "Erro", message: "Não foi possível obter sua localização.", type: 'ERROR' })
-                                        );
-                                    }}
-                                >
-                                    <MapPin size={16} className="mr-2"/> Usar Minha Localização Atual
-                                </Button>
-                            </div>
-                        )}
-
-                        {businessForm.timeClock?.validationType === 'NONE' && (
-                            <div className="bg-gray-50 p-6 rounded-xl border border-gray-200 animate-fade-in">
-                                <label className="block text-xs font-bold text-gray-600 mb-1">Limite Diário de Registros</label>
-                                <input 
-                                    type="number" 
-                                    className="w-full border p-3 rounded-lg" 
-                                    value={businessForm.timeClock?.maxDailyPunches || 4} 
-                                    onChange={e => setBusinessForm({...businessForm, timeClock: {...businessForm.timeClock!, maxDailyPunches: parseInt(e.target.value)}})} 
-                                />
-                                <p className="text-[10px] text-gray-500 mt-1">Número máximo de batidas permitidas por dia (Padrão: 4 = Entrada, Saída Almoço, Volta Almoço, Saída).</p>
-                            </div>
-                        )}
-
-                        {/* DSR Configuration */}
-                        <div className="mt-8 border-t pt-8">
-                            <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-                                <FileText className="text-purple-600" size={20} />
-                                Configuração de DSR (Descanso Semanal Remunerado)
-                            </h3>
-                            <div className="bg-purple-50 p-6 rounded-xl border border-purple-100 space-y-4">
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <label className="font-bold text-gray-700">Calcular DSR sobre Horas Extras</label>
-                                        <p className="text-xs text-gray-500">Adiciona o valor do DSR proporcional às horas extras realizadas.</p>
-                                    </div>
-                                    <input 
-                                        type="checkbox" 
-                                        className="w-5 h-5 text-purple-600 rounded focus:ring-purple-500"
-                                        checked={dsrForm.calculateOnOvertime}
-                                        onChange={e => setDsrForm({...dsrForm, calculateOnOvertime: e.target.checked})}
-                                    />
-                                </div>
-                                
-                                {dsrForm.calculateOnOvertime && (
-                                    <div className="pl-4 border-l-2 border-purple-200 mt-2 space-y-3">
-                                        <div>
-                                            <label className="block text-xs font-bold text-purple-700 mb-1">Tipo de Cálculo</label>
-                                            <select 
-                                                className="w-full border p-2 rounded-lg bg-white"
-                                                value={dsrForm.rateType}
-                                                onChange={e => setDsrForm({...dsrForm, rateType: e.target.value as any})}
-                                            >
-                                                <option value="CALCULATED">Proporcional (Domingos e Feriados / Dias Úteis)</option>
-                                                <option value="FIXED">Fixo (1/6 - 16,66%)</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                )}
-
-                                <div className="flex items-center justify-between pt-2 border-t border-purple-200">
-                                    <div>
-                                        <label className="font-bold text-gray-700">Refletir no 13º Salário</label>
-                                        <p className="text-xs text-gray-500">Considerar média de DSR no cálculo do 13º.</p>
-                                    </div>
-                                    <input 
-                                        type="checkbox" 
-                                        className="w-5 h-5 text-purple-600 rounded focus:ring-purple-500"
-                                        checked={dsrForm.includeInThirteenth}
-                                        onChange={e => setDsrForm({...dsrForm, includeInThirteenth: e.target.checked})}
-                                    />
-                                </div>
-
-                                <div className="flex items-center justify-between pt-2 border-t border-purple-200">
-                                    <div>
-                                        <label className="font-bold text-gray-700">Refletir nas Férias</label>
-                                        <p className="text-xs text-gray-500">Considerar média de DSR no cálculo das Férias.</p>
-                                    </div>
-                                    <input 
-                                        type="checkbox" 
-                                        className="w-5 h-5 text-purple-600 rounded focus:ring-purple-500"
-                                        checked={dsrForm.includeInVacation}
-                                        onChange={e => setDsrForm({...dsrForm, includeInVacation: e.target.checked})}
-                                    />
-                                </div>
-                            </div>
-                        </div>
-                    </div>
                 </div>
             )}
         </div>

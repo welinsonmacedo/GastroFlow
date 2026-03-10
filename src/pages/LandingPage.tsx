@@ -39,7 +39,7 @@ const ContactForm = ({ whatsappNumber }: { whatsappNumber: string }) => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const message = encodeURIComponent(`Olá! Me chamo ${form.name}, do restaurante ${form.restaurant}. Gostaria de mais informações sobre o Flux Eat. Meu contato: ${form.phone}`);
+    const message = encodeURIComponent(`Olá! Me chamo ${form.name}, do restaurante ${form.restaurant}. Gostaria de mais informações sobre o ArloFlux. Meu contato: ${form.phone}`);
     window.open(`https://wa.me/${whatsappNumber}?text=${message}`, '_blank');
   };
 
@@ -139,7 +139,7 @@ const PricingCard: React.FC<{ plan: Plan, onClick: () => void }> = ({ plan, onCl
 export const LandingPage: React.FC = () => {
   const { state } = useSaaS();
   const whatsappNumber = "5534991448794";
-  const defaultMessage = encodeURIComponent("Olá! Gostaria de conhecer melhor os planos do Flux Eat.");
+  const defaultMessage = encodeURIComponent("Olá! Gostaria de conhecer melhor os planos do ArloFlux.");
 
   const openWhatsApp = () => {
     window.open(`https://wa.me/${whatsappNumber}?text=${defaultMessage}`, '_blank');
@@ -179,13 +179,13 @@ export const LandingPage: React.FC = () => {
 
           <h1 className="text-3xl sm:text-5xl md:text-7xl font-extrabold text-white tracking-tight mb-6 md:mb-8 leading-tight">
             Automatize seu restaurante com <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-green-400">
-              Flux Eat
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">
+              ArloFlux
             </span>
           </h1>
 
           <p className="text-lg sm:text-xl md:text-2xl text-slate-300 mb-8 md:mb-10 max-w-2xl font-medium tracking-tight">
-            Onde gestão e vendas acontecem sem parar.
+            Tecnologia em fluxo constante
           </p>
           <p className="text-slate-400 mb-8 md:mb-10 max-w-xl text-sm leading-relaxed px-2">
             Elimine erros na cozinha, agilize o atendimento com QR Code e tenha controle total do seu caixa em uma única plataforma intuitiva.
@@ -255,7 +255,7 @@ export const LandingPage: React.FC = () => {
                           Gestão Completa e Integrada
                       </h2>
                       <p className="text-base md:text-lg text-slate-600 leading-relaxed">
-                          Não é apenas um cardápio digital. O <strong>Flux Eat</strong> é um ERP completo modular. Você ativa apenas o que precisa, mantendo o sistema limpo e eficiente.
+                          Não é apenas um cardápio digital. O <strong>ArloFlux</strong> é um ERP completo modular. Você ativa apenas o que precisa, mantendo o sistema limpo e eficiente.
                       </p>
                   </div>
                   <div className="md:w-1/2 w-full grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -419,7 +419,7 @@ export const LandingPage: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-12 md:mb-16">
                 <h2 className="text-3xl font-extrabold text-slate-900">Planos flexíveis</h2>
-                <p className="mt-4 text-slate-500">Comece pequeno e cresça com o Flux Eat.</p>
+                <p className="mt-4 text-slate-500">Comece pequeno e cresça com o ArloFlux.</p>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
@@ -438,10 +438,13 @@ export const LandingPage: React.FC = () => {
       <footer className="bg-slate-900 text-slate-400 py-12 border-t border-slate-800">
          <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row justify-between items-center gap-6 text-center md:text-left">
             <div className="flex items-center justify-center md:justify-start gap-2 font-bold text-white text-xl">
-                 <ChefHat className="text-green-500"/> Flux Eat
+                 <div className="bg-gradient-to-br from-blue-500 to-purple-600 text-white p-1.5 rounded-lg shadow-md">
+                    <Zap size={20} /> 
+                 </div>
+                 ArloFlux
             </div>
             <div className="text-sm">
-                &copy; 2026 Flux Eat Systems. Todos os direitos reservados.
+                &copy; 2026 ArloFlux Systems. Todos os direitos reservados.
             </div>
             <div className="flex gap-4 justify-center md:justify-end">
                 <Link to="/terms" className="hover:text-white transition-colors">Termos</Link>

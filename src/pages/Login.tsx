@@ -181,9 +181,9 @@ export const Login: React.FC = () => {
 
   if (authState.isLoading) return <GlobalLoading message="Verificando autenticação..." />;
 
-  const bgUrl = restState.isValidTenant ? (restState.theme.loginBgUrl || restState.globalSettings.loginBgUrl) : null;
-  const boxColor = restState.isValidTenant ? (restState.theme.loginBoxColor || restState.globalSettings.loginBoxColor || '#ffffff') : '#ffffff';
-  const restaurantName = restState.isValidTenant ? restState.theme.restaurantName : 'FluxEat';
+  const bgUrl = restState.theme?.loginBgUrl || restState.globalSettings?.loginBgUrl;
+  const boxColor = restState.theme?.loginBoxColor || restState.globalSettings?.loginBoxColor || '#ffffff';
+  const restaurantName = restState.isValidTenant ? restState.theme.restaurantName : 'ArloFlux';
 
   return (
     <div 

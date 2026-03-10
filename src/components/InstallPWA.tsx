@@ -60,7 +60,7 @@ export const InstallPWA: React.FC = () => {
                 <Download size={24} />
             </div>
             <div>
-                <h3 className="font-bold text-sm">Instalar Flux Eat</h3>
+                <h3 className="font-bold text-sm">Instalar ArloFlux</h3>
                 <p className="text-xs text-slate-400">Adicione à tela inicial para acesso rápido.</p>
             </div>
         </div>

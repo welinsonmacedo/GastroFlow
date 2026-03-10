@@ -50,7 +50,7 @@ export const TimeClock: React.FC = () => {
         setLoading(true);
         setLocationError('');
 
-        const config = restState.businessInfo?.timeClock || { validationType: 'NONE', maxDistanceMeters: 100, maxDailyPunches: 4 };
+        const config = staffState.legalSettings?.timeClock || { validationType: 'NONE', maxDistanceMeters: 100, maxDailyPunches: 4 };
 
         // Validação 1: Limite de 4 pontos (Se NONE)
         if (config.validationType === 'NONE') {

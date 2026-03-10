@@ -205,7 +205,7 @@ export const DREReportPrint: React.FC<DREReportPrintProps> = ({
                 <div className="flex justify-between items-end">
                     <div className="text-[10px] text-gray-400 max-w-sm">
                         <p className="font-bold uppercase mb-1 text-gray-600">Declaração</p>
-                        <p>Este relatório foi gerado eletronicamente pelo sistema Flux Eat. Os valores apresentados são de caráter gerencial para auxílio na tomada de decisão e não substituem os livros contábeis oficiais exigidos pela legislação fiscal.</p>
+                        <p>Este relatório foi gerado eletronicamente pelo sistema ArloFlux. Os valores apresentados são de caráter gerencial para auxílio na tomada de decisão e não substituem os livros contábeis oficiais exigidos pela legislação fiscal.</p>
                         <p className="mt-2">Emitido em: {new Date().toLocaleString()}</p>
                     </div>
                     

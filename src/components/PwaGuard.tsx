@@ -3,10 +3,11 @@ import React, { useEffect, useState } from 'react';
 // @ts-ignore
 import { useLocation } from 'react-router-dom';
 import { Download, Smartphone, Share, PlusSquare, Monitor } from 'lucide-react';
-import { supabase } from '@/core/api/supabaseClient';
+import { useRestaurant } from '@/core/context/RestaurantContext';
 
 export const PwaGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();
+  const { state: restState } = useRestaurant();
   
   // Initialize with real value to avoid flash
   const [isPWA, setIsPwa] = useState(() => {
@@ -17,7 +18,6 @@ export const PwaGuard: React.FC<{ children: React.ReactNode }> = ({ children }) 
   });
 
   const [os, setOS] = useState<'iOS' | 'Android' | 'Desktop'>('Desktop');
-  const [pwaRequired, setPwaRequired] = useState<boolean | null>(null); // null = loading
 
   useEffect(() => {
     // Detecta se está rodando em modo Standalone (PWA)
@@ -47,57 +47,16 @@ export const PwaGuard: React.FC<{ children: React.ReactNode }> = ({ children }) 
     location.pathname === '/privacy' || 
     location.pathname === '/terms';
 
-  // Fetch PWA Requirement Config
-  useEffect(() => {
-    const checkRequirement = async () => {
-        // Optimization: If already PWA or Public, no need to fetch
-        if (isPWA || isPublicRoute) return;
-
-        try {
-            // Check localStorage first
-            const localSettings = localStorage.getItem('flux_saas_global_settings');
-            if (localSettings) {
-                const settings = JSON.parse(localSettings);
-                if (settings.pwaRequired === false) {
-                    setPwaRequired(false);
-                    return;
-                }
-            }
-
-            // Fetch from DB
-            const { data } = await supabase
-                .from('saas_config')
-                .select('global_settings')
-                .eq('id', 1)
-                .maybeSingle();
-            
-            if (data?.global_settings?.pwaRequired === false) {
-                setPwaRequired(false);
-            } else {
-                setPwaRequired(true); // Default is required
-            }
-        } catch (e) {
-            console.warn("Error checking PWA requirement", e);
-            setPwaRequired(true); // Fail safe: require PWA
-        }
-    };
-
-    checkRequirement();
-  }, [isPWA, isPublicRoute]);
-
   // Se já for PWA ou estiver em rota pública, renderiza o app normalmente
   if (isPWA || isPublicRoute) {
     return <>{children}</>;
   }
 
   // Se a configuração permitir uso sem PWA
-  if (pwaRequired === false) {
+  const pwaRequired = restState.globalSettings?.pwaRequired !== false;
+  
+  if (!pwaRequired) {
       return <>{children}</>;
-  }
-
-  // Loading state while checking requirement
-  if (pwaRequired === null) {
-      return <div className="fixed inset-0 bg-slate-900 flex items-center justify-center text-white">Verificando requisitos...</div>;
   }
 
   const isClientRoute = location.pathname.startsWith('/client');
@@ -119,7 +78,7 @@ export const PwaGuard: React.FC<{ children: React.ReactNode }> = ({ children }) 
         <p className="text-slate-300 text-lg mb-8 leading-relaxed">
           {isClientRoute 
             ? <>Para <strong>fazer pedidos</strong> e acompanhar seu <strong>histórico</strong>, é necessário instalar o aplicativo.</>
-            : <>Para acessar o painel de gestão, cozinha, caixa ou <strong>fazer pedidos</strong>, é necessário utilizar a versão instalada do <strong>Flux Eat</strong>.</>
+            : <>Para acessar o painel de gestão, cozinha, caixa ou <strong>fazer pedidos</strong>, é necessário utilizar a versão instalada do <strong>ArloFlux</strong>.</>
           }
         </p>
 
@@ -164,7 +123,7 @@ export const PwaGuard: React.FC<{ children: React.ReactNode }> = ({ children }) 
                 </div>
                 <div className="flex items-center gap-4">
                   <div className="bg-slate-100 p-2 rounded-lg text-blue-600"><Monitor size={24}/></div>
-                  <p className="text-sm font-medium">2. Clique em <strong>Instalar Flux Eat</strong>.</p>
+                  <p className="text-sm font-medium">2. Clique em <strong>Instalar ArloFlux</strong>.</p>
                 </div>
               </>
             )}

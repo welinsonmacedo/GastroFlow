@@ -54,7 +54,13 @@ export const StaffSettings: React.FC = () => {
             rateType: 'CALCULATED',
             includeInThirteenth: true,
             includeInVacation: true
-        }
+        },
+        timeClock: {
+            validationType: 'NONE',
+            maxDailyPunches: 4,
+            maxDistanceMeters: 100,
+            restaurantLocation: { lat: 0, lng: 0 }
+        } as any
     });
 
     React.useEffect(() => {
@@ -86,6 +92,10 @@ export const StaffSettings: React.FC = () => {
                     rateType: 'CALCULATED',
                     includeInThirteenth: true,
                     includeInVacation: true
+                },
+                timeClock: state.legalSettings.timeClock || {
+                    validationType: 'NONE',
+                    maxDailyPunches: 4
                 }
             });
         }
@@ -101,7 +111,8 @@ export const StaffSettings: React.FC = () => {
                 deductDelaysFromOvertime: timeTrackingForm.deductDelaysFromOvertime,
                 pointClosingDay: timeTrackingForm.pointClosingDay,
                 absenceLogic: timeTrackingForm.absenceLogic,
-                dsrConfig: timeTrackingForm.dsrConfig as any
+                dsrConfig: timeTrackingForm.dsrConfig as any,
+                timeClock: timeTrackingForm.timeClock as any
             });
             showAlert({ title: "Sucesso", message: "Configurações de ponto atualizadas.", type: "SUCCESS" });
         } catch (error: any) {
@@ -1038,6 +1049,108 @@ export const StaffSettings: React.FC = () => {
                                             <span className="text-sm text-slate-700">Refletir média de DSR nas Férias</span>
                                         </label>
                                     </div>
+                                </div>
+                            </div>
+
+                            {/* Configuração de Ponto Eletrônico */}
+                            <div className="md:col-span-2 space-y-4 pt-4 border-t">
+                                <h4 className="text-sm font-bold text-slate-800 border-b pb-2">Configuração de Ponto Eletrônico</h4>
+                                <div className="bg-purple-50 p-4 rounded-xl border border-purple-100 grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label className="block text-xs font-bold text-purple-700 mb-1">Tipo de Validação</label>
+                                        <select 
+                                            className="w-full border p-2 rounded-lg bg-white text-sm"
+                                            value={timeTrackingForm.timeClock.validationType}
+                                            onChange={e => setTimeTrackingForm({...timeTrackingForm, timeClock: {...timeTrackingForm.timeClock, validationType: e.target.value as any}})}
+                                        >
+                                            <option value="NONE">Sem Validação (Apenas Registro)</option>
+                                            <option value="GEOLOCATION">Geolocalização (GPS)</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-purple-700 mb-1">Limite Diário de Registros</label>
+                                        <input 
+                                            type="number" 
+                                            className="w-full border p-2 rounded-lg bg-white text-sm"
+                                            value={timeTrackingForm.timeClock.maxDailyPunches}
+                                            onChange={e => setTimeTrackingForm({...timeTrackingForm, timeClock: {...timeTrackingForm.timeClock, maxDailyPunches: parseInt(e.target.value)}})}
+                                        />
+                                    </div>
+
+                                    {timeTrackingForm.timeClock.validationType === 'GEOLOCATION' && (
+                                        <div className="md:col-span-2 bg-white/50 p-4 rounded-lg border border-purple-200 space-y-4">
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                <div>
+                                                    <label className="block text-[10px] font-bold text-purple-600 uppercase">Latitude</label>
+                                                    <input 
+                                                        type="number" 
+                                                        step="any"
+                                                        className="w-full border p-2 rounded text-sm"
+                                                        value={timeTrackingForm.timeClock.restaurantLocation?.lat || ''}
+                                                        onChange={e => setTimeTrackingForm({
+                                                            ...timeTrackingForm, 
+                                                            timeClock: {
+                                                                ...timeTrackingForm.timeClock, 
+                                                                restaurantLocation: { ...timeTrackingForm.timeClock.restaurantLocation, lat: parseFloat(e.target.value) }
+                                                            }
+                                                        })}
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-[10px] font-bold text-purple-600 uppercase">Longitude</label>
+                                                    <input 
+                                                        type="number" 
+                                                        step="any"
+                                                        className="w-full border p-2 rounded text-sm"
+                                                        value={timeTrackingForm.timeClock.restaurantLocation?.lng || ''}
+                                                        onChange={e => setTimeTrackingForm({
+                                                            ...timeTrackingForm, 
+                                                            timeClock: {
+                                                                ...timeTrackingForm.timeClock, 
+                                                                restaurantLocation: { ...timeTrackingForm.timeClock.restaurantLocation, lng: parseFloat(e.target.value) }
+                                                            }
+                                                        })}
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-[10px] font-bold text-purple-600 uppercase">Raio (Metros)</label>
+                                                    <input 
+                                                        type="number" 
+                                                        className="w-full border p-2 rounded text-sm"
+                                                        value={timeTrackingForm.timeClock.maxDistanceMeters || 100}
+                                                        onChange={e => setTimeTrackingForm({
+                                                            ...timeTrackingForm, 
+                                                            timeClock: {
+                                                                ...timeTrackingForm.timeClock, 
+                                                                maxDistanceMeters: parseInt(e.target.value)
+                                                            }
+                                                        })}
+                                                    />
+                                                </div>
+                                            </div>
+                                            <Button 
+                                                size="sm" 
+                                                variant="outline" 
+                                                className="w-full text-[10px] uppercase font-bold"
+                                                onClick={() => {
+                                                    if (navigator.geolocation) {
+                                                        navigator.geolocation.getCurrentPosition((pos) => {
+                                                            setTimeTrackingForm({
+                                                                ...timeTrackingForm,
+                                                                timeClock: {
+                                                                    ...timeTrackingForm.timeClock,
+                                                                    restaurantLocation: { lat: pos.coords.latitude, lng: pos.coords.longitude }
+                                                                }
+                                                            });
+                                                            showAlert({ title: "Sucesso", message: "Localização capturada.", type: 'SUCCESS' });
+                                                        });
+                                                    }
+                                                }}
+                                            >
+                                                Capturar Localização Atual
+                                            </Button>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
