@@ -1,12 +1,12 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useFinance } from '@/core/context/FinanceContext';
 import { useOrder } from '@/core/context/OrderContext';
 import { useUI } from '@/core/context/UIContext';
 import { useAuth } from '@/core/context/AuthProvider';
 import { TableStatus } from '@/types'; 
 import { Button } from '../components/Button';
-import { History, ShoppingCart, Wallet, Receipt, Lock, RefreshCcw, LogOut, LayoutGrid, Bike, User, Eye, XCircle, Banknote, Zap, CreditCard, Split, CheckSquare } from 'lucide-react';
+import { History, ShoppingCart, Wallet, Receipt, Lock, RefreshCcw, LogOut, LayoutGrid, Bike, User, Eye, XCircle, Banknote, Zap, CreditCard, Split, CheckSquare, EyeOff } from 'lucide-react';
 import { CloseRegisterModal } from '../components/modals/CloseRegisterModal';
 import { CashBleedModal } from '../components/modals/CashBleedModal';
 import { Modal } from '../components/Modal';
@@ -21,8 +21,21 @@ import { DeliveryStatusModal } from '../components/modals/DeliveryStatusModal';
 export const CashierDashboard: React.FC = () => {
   const { state: orderState, dispatch: orderDispatch } = useOrder();
   const { state: finState, openRegister, refreshTransactions, voidTransaction } = useFinance();
-  const { showAlert, showConfirm } = useUI();
+  const { showAlert, showConfirm, isHeaderVisible, toggleHeader } = useUI();
   const { logout, state: authState } = useAuth();
+
+  useEffect(() => {
+    // Hide header on mount if it's visible
+    if (isHeaderVisible) {
+      toggleHeader();
+    }
+    // Optional: Show header again on unmount
+    return () => {
+      if (!isHeaderVisible) {
+        // toggleHeader(); // We might not want to force it back on unmount if they are navigating elsewhere
+      }
+    };
+  }, []);
   
   const [activeTab, setActiveTab] = useState<'ACTIVE' | 'HISTORY' | 'PDV' | 'MANAGE'>('PDV');
   const [cart, setCart] = useState<{ item: any; quantity: number; notes: string; extras: any[] }[]>([]);
@@ -194,6 +207,14 @@ export const CashierDashboard: React.FC = () => {
                       {orderState.orders.some(o => o.type === 'DELIVERY' && !o.isPaid && o.status !== 'CANCELLED' && (o.items.filter(i => i.productType === 'KITCHEN').length === 0 || o.items.filter(i => i.productType === 'KITCHEN').every(i => i.status === 'READY'))) && (
                           <span className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white animate-pulse"></span>
                       )}
+                  </button>
+
+                  <button 
+                    onClick={toggleHeader}
+                    className="p-2.5 rounded-xl bg-gray-50 text-slate-600 hover:bg-gray-100 transition-all"
+                    title={isHeaderVisible ? "Ocultar Menu" : "Mostrar Menu"}
+                  >
+                    {isHeaderVisible ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
 
                   <button onClick={handleManualRefresh} className={`p-2.5 rounded-xl bg-gray-50 text-blue-600 hover:bg-blue-50 transition-all ${isRefreshing ? 'animate-spin' : ''}`} title="Sincronizar"><RefreshCcw size={18}/></button>
