@@ -94,7 +94,7 @@ const restaurantReducer = (state: RestaurantState, action: Action): RestaurantSt
     case 'SET_LOADING': return { ...state, isLoading: action.isLoading };
     case 'TENANT_NOT_FOUND': return { ...state, isLoading: false, isValidTenant: false };
     case 'TENANT_INACTIVE': return { ...state, isLoading: false, isValidTenant: true, isInactiveTenant: true };
-    case 'SET_AUTHORIZED': return { ...state, isAuthorized: true, tenantId: action.tenantId, tableId: action.tableId, isLoading: true };
+    case 'SET_AUTHORIZED': return { ...state, isAuthorized: true, tenantId: action.tenantId, tableId: action.tableId, isLoading: false };
     case 'INIT_DATA': return { ...state, ...action.payload, isLoading: false, isValidTenant: true, isInactiveTenant: false };
     case 'SET_ACTIVE_MODULE': return { ...state, activeModule: action.module };
     case 'UPDATE_THEME': return { ...state, theme: action.theme };

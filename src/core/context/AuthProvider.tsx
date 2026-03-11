@@ -168,119 +168,136 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         if (session?.user) {
             console.log('AuthProvider: User found in session:', session.user.id);
-            // Primeiro verifica se é CLIENTE
-            const { data: clientData, error: clientError } = await supabase
-                .from('clients')
-                .select('*')
-                .eq('auth_user_id', session.user.id)
-                .maybeSingle();
-
-            console.log('AuthProvider: Client query result:', { isClient: !!clientData, error: clientError });
-
-            if (clientData) {
-                const user: User = {
-                    id: clientData.id,
-                    name: clientData.name,
-                    role: Role.CLIENT,
-                    tenant_id: '', 
-                    auth_user_id: session.user.id,
-                    email: session.user.email,
-                    phone: clientData.phone,
-                    documentCpf: clientData.cpf
-                };
-                console.log('AuthProvider: Authenticated as CLIENT.');
-                clearTimeout(timeoutId);
-                setState({ currentUser: user, isAuthenticated: true, isLoading: false });
-                isFetchingSession.current = false;
-                return;
-            }
-
-            // Se não for cliente, verifica STAFF
-            console.log('AuthProvider: Querying staff for user:', session.user.id);
             
-            let staffQuery = supabase
-                .from('staff')
-                .select('*, tenants(id, slug, name), custom_roles(permissions)')
-                .eq('auth_user_id', session.user.id);
-            
-            // Se tiver slug, filtra pelo tenant específico para garantir segurança
-            if (slug) {
-                const { data: tenant } = await supabase.from('tenants').select('id').eq('slug', slug).maybeSingle();
-                if (tenant) {
-                    staffQuery = staffQuery.eq('tenant_id', tenant.id);
-                }
-            }
+            // Helper function for timed queries
+            const queryWithTimeout = async (queryPromise: Promise<any>, ms = 5000) => {
+                const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Query timeout')), ms));
+                return Promise.race([queryPromise, timeout]);
+            };
 
-            const { data: staffData, error: staffError } = await staffQuery.maybeSingle();
-            console.log('AuthProvider: Staff query result:', { hasStaff: !!staffData, error: staffError });
+            try {
+                // Primeiro verifica se é CLIENTE
+                const { data: clientData, error: clientError } = await queryWithTimeout(
+                    supabase
+                        .from('clients')
+                        .select('*')
+                        .eq('auth_user_id', session.user.id)
+                        .maybeSingle()
+                );
 
-            if (staffData) {
-                const t = staffData.tenants;
-                // @ts-ignore
-                const actualTenantId = Array.isArray(t) ? t[0]?.id : t?.id;
-                // @ts-ignore
-                const actualSlug = Array.isArray(t) ? t[0]?.slug : t?.slug;
+                console.log('AuthProvider: Client query result:', { isClient: !!clientData, error: clientError });
 
-                // Se logou sem slug mas encontrou um, redireciona para manter consistência
-                if (!slug && actualSlug) {
-                    window.location.href = `/?restaurant=${actualSlug}`;
+                if (clientData) {
+                    const user: User = {
+                        id: clientData.id,
+                        name: clientData.name,
+                        role: Role.CLIENT,
+                        tenant_id: '', 
+                        auth_user_id: session.user.id,
+                        email: session.user.email,
+                        phone: clientData.phone,
+                        documentCpf: clientData.cpf
+                    };
+                    console.log('AuthProvider: Authenticated as CLIENT.');
+                    clearTimeout(timeoutId);
+                    setState({ currentUser: user, isAuthenticated: true, isLoading: false });
                     isFetchingSession.current = false;
                     return;
                 }
 
-                let allowedRoutes = staffData.allowed_routes || [];
-                let allowedFeatures = [];
+                // Se não for cliente, verifica STAFF
+                console.log('AuthProvider: Querying staff for user:', session.user.id);
                 
-                if (staffData.custom_roles?.permissions) {
-                    if (staffData.custom_roles.permissions.allowed_modules) {
-                        allowedRoutes = staffData.custom_roles.permissions.allowed_modules;
-                    }
-                    if (staffData.custom_roles.permissions.allowed_features) {
-                        allowedFeatures = staffData.custom_roles.permissions.allowed_features;
-                    }
-                } else if (staffData.role === 'ADMIN') {
-                    allowedRoutes = ['RESTAURANT', 'SNACKBAR', 'DISTRIBUTOR', 'COMMERCE', 'MANAGER', 'CONFIG', 'FINANCE', 'INVENTORY', 'HR'];
-                    allowedFeatures = []; 
-                } else if (!staffData.custom_role_id && allowedRoutes.length === 0) {
-                    if (['WAITER', 'KITCHEN', 'CASHIER'].includes(staffData.role)) {
-                        allowedRoutes = ['RESTAURANT'];
-                        if (staffData.role === 'CASHIER') allowedRoutes.push('COMMERCE');
+                let staffQuery = supabase
+                    .from('staff')
+                    .select('*, tenants(id, slug, name), custom_roles(permissions)')
+                    .eq('auth_user_id', session.user.id);
+                
+                // Se tiver slug, filtra pelo tenant específico para garantir segurança
+                if (slug) {
+                    const { data: tenant } = await queryWithTimeout(
+                        supabase.from('tenants').select('id').eq('slug', slug).maybeSingle()
+                    );
+                    if (tenant) {
+                        staffQuery = staffQuery.eq('tenant_id', tenant.id);
                     }
                 }
 
-                const user: User = {
-                    id: staffData.id,
-                    name: staffData.name,
-                    role: staffData.role,
-                    tenant_id: actualTenantId,
-                    auth_user_id: staffData.auth_user_id,
-                    email: staffData.email,
-                    customRoleId: staffData.custom_role_id,
-                    allowedRoutes: allowedRoutes,
-                    allowedFeatures: allowedFeatures
-                };
-                console.log('AuthProvider: Authenticated as STAFF.');
-                clearTimeout(timeoutId);
-                setState({ currentUser: user, isAuthenticated: true, isLoading: false });
-                startHeartbeat(actualTenantId, staffData.id);
-                isFetchingSession.current = false;
-                return;
-            } else {
-                // Fallback para Owner Legado
-                const { data: tenantData } = await supabase
-                    .from('tenants')
-                    .select('id, slug, name')
-                    .eq('owner_auth_id', session.user.id)
-                    .limit(1)
-                    .maybeSingle();
-                
-                if (tenantData) {
-                    console.log('AuthProvider: Authenticated as LEGACY OWNER.');
-                    window.location.href = `/?restaurant=${tenantData.slug}`;
+                const { data: staffData, error: staffError } = await queryWithTimeout(staffQuery.maybeSingle());
+                console.log('AuthProvider: Staff query result:', { hasStaff: !!staffData, error: staffError });
+
+                if (staffData) {
+                    const t = staffData.tenants;
+                    // @ts-ignore
+                    const actualTenantId = Array.isArray(t) ? t[0]?.id : t?.id;
+                    // @ts-ignore
+                    const actualSlug = Array.isArray(t) ? t[0]?.slug : t?.slug;
+
+                    // Se logou sem slug mas encontrou um, redireciona para manter consistência
+                    if (!slug && actualSlug) {
+                        window.location.href = `/?restaurant=${actualSlug}`;
+                        isFetchingSession.current = false;
+                        return;
+                    }
+
+                    let allowedRoutes = staffData.allowed_routes || [];
+                    let allowedFeatures = [];
+                    
+                    if (staffData.custom_roles?.permissions) {
+                        if (staffData.custom_roles.permissions.allowed_modules) {
+                            allowedRoutes = staffData.custom_roles.permissions.allowed_modules;
+                        }
+                        if (staffData.custom_roles.permissions.allowed_features) {
+                            allowedFeatures = staffData.custom_roles.permissions.allowed_features;
+                        }
+                    } else if (staffData.role === 'ADMIN') {
+                        allowedRoutes = ['RESTAURANT', 'SNACKBAR', 'DISTRIBUTOR', 'COMMERCE', 'MANAGER', 'CONFIG', 'FINANCE', 'INVENTORY', 'HR'];
+                        allowedFeatures = []; 
+                    } else if (!staffData.custom_role_id && allowedRoutes.length === 0) {
+                        if (['WAITER', 'KITCHEN', 'CASHIER'].includes(staffData.role)) {
+                            allowedRoutes = ['RESTAURANT'];
+                            if (staffData.role === 'CASHIER') allowedRoutes.push('COMMERCE');
+                        }
+                    }
+
+                    const user: User = {
+                        id: staffData.id,
+                        name: staffData.name,
+                        role: staffData.role,
+                        tenant_id: actualTenantId,
+                        auth_user_id: staffData.auth_user_id,
+                        email: staffData.email,
+                        customRoleId: staffData.custom_role_id,
+                        allowedRoutes: allowedRoutes,
+                        allowedFeatures: allowedFeatures
+                    };
+                    console.log('AuthProvider: Authenticated as STAFF.');
+                    clearTimeout(timeoutId);
+                    setState({ currentUser: user, isAuthenticated: true, isLoading: false });
+                    startHeartbeat(actualTenantId, staffData.id);
                     isFetchingSession.current = false;
                     return;
+                } else {
+                    // Fallback para Owner Legado
+                    const { data: tenantData } = await queryWithTimeout(
+                        supabase
+                            .from('tenants')
+                            .select('id, slug, name')
+                            .eq('owner_auth_id', session.user.id)
+                            .limit(1)
+                            .maybeSingle()
+                    );
+                    
+                    if (tenantData) {
+                        console.log('AuthProvider: Authenticated as LEGACY OWNER.');
+                        window.location.href = `/?restaurant=${tenantData.slug}`;
+                        isFetchingSession.current = false;
+                        return;
+                    }
+                    console.warn('AuthProvider: User is in session but not found in staff or tenants table.');
                 }
-                console.warn('AuthProvider: User is in session but not found in staff or tenants table.');
+            } catch (err) {
+                console.error("AuthProvider: Error during user queries:", err);
             }
         }
     } catch (error) {

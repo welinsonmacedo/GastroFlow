@@ -27,21 +27,37 @@ export const ClientHistory = ({ isEmbedded = false }: { isEmbedded?: boolean }) 
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    console.log('ClientHistory useEffect:', { isEmbedded, isLoading: authState.isLoading, isAuthenticated: authState.isAuthenticated, currentUser: authState.currentUser });
     if (!isEmbedded && !authState.isLoading && !authState.isAuthenticated) {
       navigate('/client/login?redirect=/client/home');
       return;
     }
 
     if (authState.currentUser?.id) {
+      console.log('ClientHistory: Calling fetchHistory');
       fetchHistory();
+    } else {
+      console.log('ClientHistory: authState.currentUser?.id is falsy. Not calling fetchHistory.');
+      // Forçar o loading false se não tiver usuário, para não ficar preso
+      if (!authState.isLoading && authState.isAuthenticated) {
+         setLoading(false);
+      }
     }
   }, [authState.currentUser, authState.isLoading]);
 
   const fetchHistory = async () => {
     try {
-      const { data, error } = await supabase.rpc('get_client_order_history', {
-        p_client_id: authState.currentUser!.auth_user_id
-      });
+      // Helper function for timed queries
+      const queryWithTimeout = async (queryPromise: Promise<any>, ms = 5000) => {
+          const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Query timeout')), ms));
+          return Promise.race([queryPromise, timeout]);
+      };
+
+      const { data, error } = await queryWithTimeout(
+          supabase.rpc('get_client_order_history', {
+            p_client_id: authState.currentUser!.auth_user_id
+          })
+      );
 
       if (error) throw error;
       setOrders(data || []);

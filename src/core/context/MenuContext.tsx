@@ -49,8 +49,16 @@ export const MenuProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const fetchProducts = useCallback(async () => {
       if (!tenantId) return;
-      const { data } = await supabase.from('products').select('*').eq('tenant_id', tenantId);
-      if (data) setState({ products: mapProducts(data), isLoading: false });
+      try {
+          const { data, error } = await supabase.from('products').select('*').eq('tenant_id', tenantId);
+          if (error) {
+              console.error('MenuContext: Error fetching products:', error);
+          }
+          setState({ products: data ? mapProducts(data) : [], isLoading: false });
+      } catch (err) {
+          console.error('MenuContext: Unexpected error fetching products:', err);
+          setState(s => ({ ...s, isLoading: false }));
+      }
   }, [tenantId]);
 
   useEffect(() => {
