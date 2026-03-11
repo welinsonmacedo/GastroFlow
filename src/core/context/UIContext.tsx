@@ -22,12 +22,15 @@ interface UIContextType {
   showAlert: (options: AlertOptions) => void;
   showConfirm: (options: ConfirmOptions) => void;
   closeAlert: () => void;
+  isHeaderVisible: boolean;
+  toggleHeader: () => void;
 }
 
 const UIContext = createContext<UIContextType | undefined>(undefined);
 
 export const UIProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [isHeaderVisible, setIsHeaderVisible] = useState(true);
   const [modalConfig, setModalConfig] = useState<{
     type: ModalType;
     title: string;
@@ -45,6 +48,7 @@ export const UIProvider: React.FC<{ children: React.ReactNode }> = ({ children }
   });
 
   const close = useCallback(() => setIsOpen(false), []);
+  const toggleHeader = useCallback(() => setIsHeaderVisible(prev => !prev), []);
 
   const showAlert = useCallback(({ title, message, type = 'INFO', confirmText = 'OK' }: AlertOptions) => {
     setModalConfig({
@@ -82,7 +86,7 @@ export const UIProvider: React.FC<{ children: React.ReactNode }> = ({ children }
   }, [close]);
 
   return (
-    <UIContext.Provider value={{ showAlert, showConfirm, closeAlert: close }}>
+    <UIContext.Provider value={{ showAlert, showConfirm, closeAlert: close, isHeaderVisible, toggleHeader }}>
       {children}
       <GlobalModal
         isOpen={isOpen}

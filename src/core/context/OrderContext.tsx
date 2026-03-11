@@ -362,6 +362,13 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                   console.error("Erro: tableId não fornecido para CLOSE_TABLE");
                   break;
               }
+              // Resolve chamadas pendentes da mesa
+              await supabase.from('service_calls')
+                  .update({ status: 'RESOLVED' })
+                  .eq('table_id', action.tableId)
+                  .eq('tenant_id', tenantId)
+                  .eq('status', 'PENDING');
+
               const { error: closeError } = await supabase.rpc('close_table', { p_tenant_id: tenantId, p_table_id: action.tableId });
               if (closeError) {
                   console.error("Erro RPC close_table:", closeError);

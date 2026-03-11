@@ -6,7 +6,7 @@ import { useUI } from '@/core/context/UIContext';
 import { useAuth } from '@/core/context/AuthProvider';
 import { TableStatus } from '@/types'; 
 import { Button } from '../components/Button';
-import { History, ShoppingCart, Wallet, Receipt, Lock, RefreshCcw, LogOut, LayoutGrid, Bike, User, Eye, XCircle, Banknote, Zap, CreditCard, Split, CheckSquare } from 'lucide-react';
+import { History, ShoppingCart, Wallet, Receipt, Lock, RefreshCcw, LogOut, LayoutGrid, Bike, User, Eye, XCircle, Banknote, Zap, CreditCard, Split, CheckSquare, EyeOff } from 'lucide-react';
 import { CloseRegisterModal } from '../components/modals/CloseRegisterModal';
 import { CashBleedModal } from '../components/modals/CashBleedModal';
 import { Modal } from '../components/Modal';
@@ -20,7 +20,7 @@ import { Clock } from 'lucide-react';
 export const CashierDashboard: React.FC = () => {
   const { state: orderState, dispatch: orderDispatch } = useOrder();
   const { state: finState, openRegister, refreshTransactions, voidTransaction } = useFinance();
-  const { showAlert, showConfirm } = useUI();
+  const { showAlert, showConfirm, isHeaderVisible, toggleHeader } = useUI();
   const { logout, state: authState } = useAuth();
   
   const [activeTab, setActiveTab] = useState<'ACTIVE' | 'HISTORY' | 'PDV' | 'DELIVERY' | 'MANAGE'>('PDV');
