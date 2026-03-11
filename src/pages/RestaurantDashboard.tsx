@@ -14,6 +14,7 @@ import { Role } from '@/types';
 import { WaiterApp } from './WaiterApp';
 import { KitchenDisplay } from './KitchenDisplay';
 import { CashierDashboard } from './CashierDashboard';
+import { TVPanel } from './TVPanel';
 
 // Importando Componentes de Gestão (Reutilizados do Admin)
 import { AdminTables } from './admin/AdminTables';
@@ -226,7 +227,7 @@ export const RestaurantDashboard: React.FC = () => {
                         <Route path="cashier" element={<CashierDashboard />} />
                     )}
 
-                    <Route path="panel" element={<div className="h-full flex items-center justify-center text-2xl font-bold text-gray-400">Painel de Chamada (Em Breve)</div>} />
+                    <Route path="panel" element={<TVPanel />} />
 
                     {/* Novas Rotas para Admin dentro do Módulo Restaurante */}
                     {planLimits.allowTableMgmt && (
