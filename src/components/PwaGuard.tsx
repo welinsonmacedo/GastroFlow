@@ -39,13 +39,15 @@ export const PwaGuard: React.FC<{ children: React.ReactNode }> = ({ children }) 
     }
   }, []);
 
-  // Rotas permitidas no navegador (Login, Cardápio, Documentos Legais)
+  // Rotas permitidas no navegador (Login, Cardápio, Documentos Legais, SaaS)
   const isPublicRoute = 
     location.pathname === '/' || 
     location.pathname === '/login' ||
     location.pathname === '/register' ||
     location.pathname === '/privacy' || 
-    location.pathname === '/terms';
+    location.pathname === '/terms' ||
+    location.pathname === '/sys-admin' ||
+    location.pathname === '/dashboard';
 
   // Se já for PWA ou estiver em rota pública, renderiza o app normalmente
   if (isPWA || isPublicRoute) {
