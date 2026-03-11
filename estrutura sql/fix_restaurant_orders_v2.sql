@@ -89,8 +89,18 @@ BEGIN
              SELECT name, type, price, cost_price INTO v_product_name, v_product_type, v_product_price, v_cost_price
              FROM public.products WHERE id = v_product_id AND tenant_id = p_tenant_id;
         ELSIF v_inventory_item_id IS NOT NULL THEN
-             SELECT name, 'RESALE', sale_price, cost_price INTO v_product_name, v_product_type, v_product_price, v_cost_price
+             SELECT name, type, sale_price, cost_price INTO v_product_name, v_product_type, v_product_price, v_cost_price
              FROM public.inventory_items WHERE id = v_inventory_item_id AND tenant_id = p_tenant_id;
+             
+             -- Map inventory types to kitchen/bar types if not already set
+             IF v_product_type = 'RESALE' THEN v_product_type := 'BAR';
+             ELSIF v_product_type = 'COMPOSITE' THEN v_product_type := 'KITCHEN';
+             END IF;
+        END IF;
+
+        -- Override with type from frontend if provided
+        IF v_item->>'type' IS NOT NULL THEN
+            v_product_type := v_item->>'type';
         END IF;
 
         IF v_product_name IS NULL THEN
@@ -170,8 +180,18 @@ BEGIN
              SELECT name, type, price, cost_price INTO v_product_name, v_product_type, v_product_price, v_cost_price
              FROM public.products WHERE id = v_product_id AND tenant_id = p_tenant_id;
         ELSIF v_inventory_item_id IS NOT NULL THEN
-             SELECT name, 'RESALE', sale_price, cost_price INTO v_product_name, v_product_type, v_product_price, v_cost_price
+             SELECT name, type, sale_price, cost_price INTO v_product_name, v_product_type, v_product_price, v_cost_price
              FROM public.inventory_items WHERE id = v_inventory_item_id AND tenant_id = p_tenant_id;
+             
+             -- Map inventory types to kitchen/bar types if not already set
+             IF v_product_type = 'RESALE' THEN v_product_type := 'BAR';
+             ELSIF v_product_type = 'COMPOSITE' THEN v_product_type := 'KITCHEN';
+             END IF;
+        END IF;
+
+        -- Override with type from frontend if provided
+        IF v_item->>'type' IS NOT NULL THEN
+            v_product_type := v_item->>'type';
         END IF;
 
         IF v_product_name IS NULL THEN

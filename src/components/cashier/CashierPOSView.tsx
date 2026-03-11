@@ -60,8 +60,18 @@ export const CashierPOSView: React.FC<CashierPOSViewProps> = ({ cart, setCart })
         try {
             const itemsPayload: any[] = [];
             cart.forEach(cartItem => {
-                itemsPayload.push({ inventoryItemId: cartItem.item.id, quantity: cartItem.quantity, notes: cartItem.notes });
-                cartItem.extras.forEach(extra => itemsPayload.push({ inventoryItemId: extra.id, quantity: cartItem.quantity, notes: `[ADICIONAL] para ${cartItem.item.name}` }));
+                itemsPayload.push({ 
+                    inventoryItemId: cartItem.item.id, 
+                    quantity: cartItem.quantity, 
+                    notes: cartItem.notes,
+                    type: cartItem.item.type === 'RESALE' ? 'BAR' : 'KITCHEN'
+                });
+                cartItem.extras.forEach(extra => itemsPayload.push({ 
+                    inventoryItemId: extra.id, 
+                    quantity: cartItem.quantity, 
+                    notes: `[ADICIONAL] para ${cartItem.item.name}`,
+                    type: extra.type === 'RESALE' ? 'BAR' : 'KITCHEN'
+                }));
             });
             await orderDispatch({ type: 'PROCESS_POS_SALE', sale: { customerName: customerName.trim() || 'Consumidor Final', items: itemsPayload, totalAmount: cartTotal, method } });
             setCart([]); setCustomerName(''); setCashModalOpen(false);
@@ -132,11 +142,11 @@ export const CashierPOSView: React.FC<CashierPOSViewProps> = ({ cart, setCart })
                 <div className="p-4 bg-white border-t border-gray-100 shrink-0 shadow-[0_-5px_20px_rgba(0,0,0,0.05)] z-20">
                     <div className="flex justify-between items-end mb-3"><span className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Total a Pagar</span><span className="text-3xl font-black text-slate-800 tracking-tighter leading-none">R$ {cartTotal.toFixed(2)}</span></div>
                     <input className="w-full bg-gray-50 border border-gray-200 rounded-lg p-2 text-xs font-bold mb-3 outline-none focus:border-blue-500 focus:bg-white transition-all" placeholder="Nome do Cliente (Opcional)" value={customerName} onChange={e => setCustomerName(e.target.value)} />
-                    <div className="grid grid-cols-2 gap-1.5">
-                        <button onClick={() => handleSale('CASH')} className="py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-black text-xs uppercase shadow-md shadow-emerald-600/20 active:scale-95 transition-all flex flex-col items-center justify-center gap-0.5"><Banknote size={16} /> Dinheiro</button>
-                        <button onClick={() => handleSale('PIX')} className="py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-black text-xs uppercase shadow-md shadow-slate-900/20 active:scale-95 transition-all flex flex-col items-center justify-center gap-0.5"><Zap size={16} /> PIX</button>
-                        <button onClick={() => handleSale('DEBIT')} className="py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-black text-[9px] uppercase shadow-sm shadow-blue-600/20 active:scale-95 transition-all">Débito</button>
-                        <button onClick={() => handleSale('CREDIT')} className="py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-black text-[9px] uppercase shadow-sm shadow-indigo-600/20 active:scale-95 transition-all">Crédito</button>
+                    <div className="grid grid-cols-4 gap-1">
+                        <button onClick={() => handleSale('CASH')} className="py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-black text-[9px] uppercase active:scale-95 transition-all flex flex-col items-center justify-center">Dinheiro</button>
+                        <button onClick={() => handleSale('PIX')} className="py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg font-black text-[9px] uppercase active:scale-95 transition-all flex flex-col items-center justify-center">PIX</button>
+                        <button onClick={() => handleSale('DEBIT')} className="py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-black text-[9px] uppercase active:scale-95 transition-all flex flex-col items-center justify-center">Débito</button>
+                        <button onClick={() => handleSale('CREDIT')} className="py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-black text-[9px] uppercase active:scale-95 transition-all flex flex-col items-center justify-center">Crédito</button>
                     </div>
                 </div>
             </div>

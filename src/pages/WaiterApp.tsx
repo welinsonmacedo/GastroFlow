@@ -154,9 +154,19 @@ export const WaiterApp: React.FC = () => {
     const flattenedItems: any[] = [];
     cart.forEach(item => {
         const waiterNote = item.notes ? `${item.notes} [GARÇOM]` : `[GARÇOM]`;
-        flattenedItems.push({ productId: item.product.id, quantity: item.quantity, notes: waiterNote });
+        flattenedItems.push({ 
+            productId: item.product.id, 
+            quantity: item.quantity, 
+            notes: waiterNote,
+            type: item.product.type 
+        });
         item.extras?.forEach(extra => {
-            flattenedItems.push({ productId: extra.id, quantity: item.quantity, notes: `[ADICIONAL DE: ${item.product.name}] [GARÇOM]` });
+            flattenedItems.push({ 
+                productId: extra.id, 
+                quantity: item.quantity, 
+                notes: `[ADICIONAL DE: ${item.product.name}] [GARÇOM]`,
+                type: extra.type
+            });
         });
     });
     await orderDispatch({ type: 'PLACE_ORDER', tableId: orderingTableId, items: flattenedItems });

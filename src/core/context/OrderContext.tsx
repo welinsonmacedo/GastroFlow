@@ -184,7 +184,8 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           productId: i.productId || null,
           inventoryItemId: i.inventoryItemId || null,
           quantity: i.quantity,
-          notes: sanitizeObject(i.notes)
+          notes: sanitizeObject(i.notes),
+          type: i.type || null
       }));
 
       const { tableId, orderType } = params;
@@ -226,7 +227,8 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           inventoryItemId: i.inventoryItemId,
           productId: i.productId, 
           quantity: i.quantity,
-          notes: i.notes
+          notes: i.notes,
+          type: i.type || null
       }));
       
       // Chamada RPC
