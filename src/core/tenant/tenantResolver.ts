@@ -12,19 +12,19 @@ export const resolveTenantFromUrl = (): string | null => {
     return pathParts[2];
   }
 
-  const saasRoutes = ['/sys-admin', '/dashboard', '/register', '/login'];
-  
-  if (path === '/' || saasRoutes.some(route => path.startsWith(route))) {
-      sessionStorage.removeItem('fluxeat_tenant_slug');
-      return null;
-  }
-
   const urlParams = new URLSearchParams(window.location.search);
   const tenantParam = urlParams.get('restaurant');
   
   if (tenantParam && tenantParam !== 'null' && tenantParam !== 'undefined') {
       sessionStorage.setItem('fluxeat_tenant_slug', tenantParam);
       return tenantParam;
+  }
+
+  const saasRoutes = ['/sys-admin', '/dashboard', '/register'];
+  
+  if (path === '/' || saasRoutes.some(route => path.startsWith(route))) {
+      sessionStorage.removeItem('fluxeat_tenant_slug');
+      return null;
   }
 
   const storedSlug = sessionStorage.getItem('fluxeat_tenant_slug');

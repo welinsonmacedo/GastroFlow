@@ -102,6 +102,11 @@ const ProtectedRestaurantRoute = ({ children, allowedRoles, requiredRoute, requi
 
 const ProtectedSaaSRoute = ({ children }: PropsWithChildren) => {
     const { state } = useSaaS();
+    
+    if (state.isLoading) {
+        return <GlobalLoading message="Verificando sessão..." />;
+    }
+    
     if (!state.isAuthenticated) {
         return <Navigate to="/sys-admin" replace />;
     }

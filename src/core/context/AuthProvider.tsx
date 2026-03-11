@@ -233,6 +233,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     // @ts-ignore
                     const actualSlug = Array.isArray(t) ? t[0]?.slug : t?.slug;
 
+                    if (!actualTenantId || !actualSlug) {
+                        console.error('AuthProvider: Staff member is not associated with any tenant.');
+                        await supabase.auth.signOut();
+                        clearTimeout(timeoutId);
+                        setState({ currentUser: null, isAuthenticated: false, isLoading: false });
+                        isFetchingSession.current = false;
+                        return;
+                    }
+
                     // Se logou sem slug mas encontrou um, redireciona para manter consistência
                     if (!slug && actualSlug) {
                         window.location.href = `/?restaurant=${actualSlug}`;
@@ -290,7 +299,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     
                     if (tenantData) {
                         console.log('AuthProvider: Authenticated as LEGACY OWNER.');
-                        window.location.href = `/?restaurant=${tenantData.slug}`;
+                        
+                        if (!slug || slug !== tenantData.slug) {
+                            window.location.href = `/?restaurant=${tenantData.slug}`;
+                            isFetchingSession.current = false;
+                            return;
+                        }
+
+                        const user: User = {
+                            id: session.user.id,
+                            name: tenantData.name,
+                            role: Role.ADMIN,
+                            tenant_id: tenantData.id,
+                            auth_user_id: session.user.id,
+                            email: session.user.email,
+                            allowedRoutes: ['RESTAURANT', 'SNACKBAR', 'DISTRIBUTOR', 'COMMERCE', 'MANAGER', 'CONFIG', 'FINANCE', 'INVENTORY', 'HR'],
+                            allowedFeatures: []
+                        };
+                        
+                        clearTimeout(timeoutId);
+                        setState({ currentUser: user, isAuthenticated: true, isLoading: false });
+                        startHeartbeat(tenantData.id, session.user.id);
                         isFetchingSession.current = false;
                         return;
                     }

@@ -10,7 +10,7 @@ import { GlobalLoading } from '../components/GlobalLoading';
 
 export const SaaSLogin: React.FC = () => {
   const navigate = useNavigate();
-  const { dispatch } = useSaaS();
+  const { state, dispatch } = useSaaS();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -21,6 +21,11 @@ export const SaaSLogin: React.FC = () => {
 
   // Verifica conexão ao montar o componente
   useEffect(() => {
+    if (state.isAuthenticated && !state.isLoading) {
+        navigate('/dashboard', { replace: true });
+        return;
+    }
+
     let isMounted = true;
 
     const checkConnection = async () => {
@@ -80,7 +85,7 @@ export const SaaSLogin: React.FC = () => {
     return () => {
         isMounted = false;
     };
-  }, []);
+  }, [state.isAuthenticated, state.isLoading, navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
