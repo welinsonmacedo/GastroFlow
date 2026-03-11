@@ -1,13 +1,12 @@
-
 import React, { useEffect, useState } from 'react';
 // @ts-ignore
 import { useLocation } from 'react-router-dom';
 import { Download, Smartphone, Share, PlusSquare, Monitor } from 'lucide-react';
-import { useRestaurant } from '@/core/context/RestaurantContext';
+import { useSaaS } from '@/core/context/SaaSContext';
 
 export const PwaGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();
-  const { state: restState } = useRestaurant();
+  const { state: saasState } = useSaaS();
   
   // Initialize with real value to avoid flash
   const [isPWA, setIsPwa] = useState(() => {
@@ -39,6 +38,8 @@ export const PwaGuard: React.FC<{ children: React.ReactNode }> = ({ children }) 
     }
   }, []);
 
+  if (saasState.isLoading) return null;
+
   // Rotas permitidas no navegador (Login, Cardápio, Documentos Legais, SaaS)
   const isPublicRoute = 
     location.pathname === '/' || 
@@ -55,7 +56,7 @@ export const PwaGuard: React.FC<{ children: React.ReactNode }> = ({ children }) 
   }
 
   // Se a configuração permitir uso sem PWA
-  const pwaRequired = restState.globalSettings?.pwaRequired !== false;
+  const pwaRequired = saasState.globalSettings?.pwaRequired !== false;
   
   if (!pwaRequired) {
       return <>{children}</>;

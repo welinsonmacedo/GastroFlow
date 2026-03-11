@@ -46,6 +46,7 @@ export interface GlobalSettings {
 
 export interface SaaSState {
   isAuthenticated: boolean; 
+  isLoading: boolean;
   adminName: string | null;
   adminId: string | null;
   adminEmail: string | null;
@@ -72,10 +73,12 @@ type SaaSAction =
   | { type: 'UPDATE_GLOBAL_SETTINGS'; settings: GlobalSettings }
   | { type: 'UPDATE_PLAN_DETAILS'; plan: Plan }
   | { type: 'CREATE_PLAN'; plan: Omit<Plan, 'id'> }
-  | { type: 'DELETE_PLAN'; planId: string };
+  | { type: 'DELETE_PLAN'; planId: string }
+  | { type: 'SET_LOADING'; payload: boolean };
 
 const initialState: SaaSState = {
   isAuthenticated: false,
+  isLoading: true,
   adminName: null,
   adminId: null,
   adminEmail: null,
@@ -204,6 +207,9 @@ const saasReducer = (state: SaaSState, action: SaaSAction): SaaSState => {
             ...state,
             plans: state.plans.filter(p => p.id !== action.planId)
         };
+
+    case 'SET_LOADING':
+        return { ...state, isLoading: action.payload };
 
     default:
       return state;
@@ -356,7 +362,8 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const fetchTenants = async () => {
             try {
                 await cleanBase64Themes(); // Run cleanup first
-
+                dispatch({ type: 'SET_LOADING', payload: true });
+                
                 // Fetch Global Settings
                 try {
                     const { data: configData, error: configError } = await supabase
@@ -408,9 +415,11 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     }));
                     dispatch({ type: 'SET_TENANTS', payload: mapped });
                     fetchTenantStats(mapped.map(t => t.id));
+                    dispatch({ type: 'SET_LOADING', payload: false });
                 }
             } catch (err: any) {
                 console.error(`Erro ao buscar restaurantes:`, err);
+                dispatch({ type: 'SET_LOADING', payload: false });
             }
         };
 

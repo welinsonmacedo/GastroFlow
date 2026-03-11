@@ -258,33 +258,33 @@ const App: React.FC = () => {
         <UIProvider>
             <SecurityGuard>
                 <AuthProvider>
-                    <PwaProvider>
-                        <RestaurantProvider>
-                            <PwaGuard>
-                                <CookieConsent />
-                                <InstallPWA />
-                                <Routes>
-                                    {/* Client Routes - Tenant Agnostic */}
-                                    <Route path="/client/login" element={<ClientLogin />} />
-                                    <Route path="/client/home" element={<ClientHome />} />
-                                    <Route path="/client/history" element={<Navigate to="/client/home" replace />} />
+                    <SaaSProvider>
+                        <PwaProvider>
+                            <RestaurantProvider>
+                                <PwaGuard>
+                                    <CookieConsent />
+                                    <InstallPWA />
+                                    <Routes>
+                                        {/* Client Routes - Tenant Agnostic */}
+                                        <Route path="/client/login" element={<ClientLogin />} />
+                                        <Route path="/client/home" element={<ClientHome />} />
+                                        <Route path="/client/history" element={<Navigate to="/client/home" replace />} />
 
-                                    {/* Main Application Routes */}
-                                    <Route path="/*" element={
-                                        tenantSlug ? (
-                                            <MenuProvider>
-                                                <OrderProvider>
-                                                    <StaffProvider>
-                                                        <InventoryProvider>
-                                                            <FinanceProvider>
-                                                                <TenantApp />
-                                                            </FinanceProvider>
-                                                        </InventoryProvider>
-                                                    </StaffProvider>
-                                                </OrderProvider>
-                                            </MenuProvider>
-                                        ) : (
-                                            <SaaSProvider>
+                                        {/* Main Application Routes */}
+                                        <Route path="/*" element={
+                                            tenantSlug ? (
+                                                <MenuProvider>
+                                                    <OrderProvider>
+                                                        <StaffProvider>
+                                                            <InventoryProvider>
+                                                                <FinanceProvider>
+                                                                    <TenantApp />
+                                                                </FinanceProvider>
+                                                            </InventoryProvider>
+                                                        </StaffProvider>
+                                                    </OrderProvider>
+                                                </MenuProvider>
+                                            ) : (
                                                 <Routes>
                                                     <Route path="/" element={<Navigate to="/login" replace />} />
                                                     <Route path="/login" element={<Login />} />
@@ -295,16 +295,17 @@ const App: React.FC = () => {
                                                     <Route path="/dashboard" element={<ProtectedSaaSRoute><SuperAdminDashboard /></ProtectedSaaSRoute>} /> 
                                                     <Route path="*" element={<Navigate to="/login" />} />
                                                 </Routes>
-                                            </SaaSProvider>
-                                        )
-                                    } />
-                                </Routes>
-                            </PwaGuard>
-                        </RestaurantProvider>
-                    </PwaProvider>
+                                            )
+                                        } />
+                                    </Routes>
+                                </PwaGuard>
+                            </RestaurantProvider>
+                        </PwaProvider>
+                    </SaaSProvider>
                 </AuthProvider>
             </SecurityGuard>
         </UIProvider>
+
   );
 };
 
