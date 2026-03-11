@@ -14,7 +14,8 @@ export const resolveTenantFromUrl = (): string | null => {
 
   const saasRoutes = ['/sys-admin', '/dashboard', '/register', '/login'];
   
-  if (saasRoutes.some(route => path.startsWith(route))) {
+  if (path === '/' || saasRoutes.some(route => path.startsWith(route))) {
+      sessionStorage.removeItem('fluxeat_tenant_slug');
       return null;
   }
 
