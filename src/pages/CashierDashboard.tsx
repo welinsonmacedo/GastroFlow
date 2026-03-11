@@ -6,24 +6,28 @@ import { useUI } from '@/core/context/UIContext';
 import { useAuth } from '@/core/context/AuthProvider';
 import { TableStatus } from '@/types'; 
 import { Button } from '../components/Button';
-import { History, ShoppingCart, Wallet, Receipt, Lock, RefreshCcw, LogOut, LayoutGrid, Bike, User, Eye, XCircle, Banknote, Zap, CreditCard, Split, CheckSquare, EyeOff } from 'lucide-react';
+import { History, ShoppingCart, Wallet, Receipt, Lock, RefreshCcw, LogOut, LayoutGrid, Bike, User, Eye, XCircle, Banknote, Zap, CreditCard, Split, CheckSquare } from 'lucide-react';
 import { CloseRegisterModal } from '../components/modals/CloseRegisterModal';
 import { CashBleedModal } from '../components/modals/CashBleedModal';
 import { Modal } from '../components/Modal';
 import { GlobalLoading } from '../components/GlobalLoading';
 
 // Sub-Componentes
-import { CashierDeliveryView } from '../components/cashier/CashierDeliveryView';
 import { CashierPOSView } from '../components/cashier/CashierPOSView';
 import { Clock } from 'lucide-react';
+import { DeliveryOptionsModal } from '../components/modals/DeliveryOptionsModal';
+import { DeliveryStatusModal } from '../components/modals/DeliveryStatusModal';
 
 export const CashierDashboard: React.FC = () => {
   const { state: orderState, dispatch: orderDispatch } = useOrder();
   const { state: finState, openRegister, refreshTransactions, voidTransaction } = useFinance();
-  const { showAlert, showConfirm, isHeaderVisible, toggleHeader } = useUI();
+  const { showAlert, showConfirm } = useUI();
   const { logout, state: authState } = useAuth();
   
-  const [activeTab, setActiveTab] = useState<'ACTIVE' | 'HISTORY' | 'PDV' | 'DELIVERY' | 'MANAGE'>('PDV');
+  const [activeTab, setActiveTab] = useState<'ACTIVE' | 'HISTORY' | 'PDV' | 'MANAGE'>('PDV');
+  const [cart, setCart] = useState<{ item: any; quantity: number; notes: string; extras: any[] }[]>([]);
+  const [deliveryModalOpen, setDeliveryModalOpen] = useState(false);
+  const [deliveryStatusModalOpen, setDeliveryStatusModalOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
   
@@ -165,12 +169,33 @@ export const CashierDashboard: React.FC = () => {
           <div className="bg-white border-b px-4 py-3 flex flex-col md:flex-row justify-between items-center gap-4 shrink-0 z-20">
               <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-xl overflow-x-auto max-w-full no-scrollbar">
                   <NavTab tab="PDV" icon={ShoppingCart} label="Balcão" />
-                  <NavTab tab="DELIVERY" icon={Bike} label="Delivery" />
                   <NavTab tab="ACTIVE" icon={Receipt} label="Mesas" />
                   <NavTab tab="HISTORY" icon={History} label="Extrato" />
                   <NavTab tab="MANAGE" icon={Wallet} label="Turno" />
               </div>
               <div className="flex items-center gap-2">
+                  {activeTab === 'PDV' && (
+                      <button 
+                        onClick={() => setDeliveryModalOpen(true)} 
+                        disabled={cart.length === 0}
+                        className={`p-2.5 rounded-xl transition-all relative ${cart.length > 0 ? 'bg-orange-50 text-orange-600 hover:bg-orange-100' : 'bg-gray-50 text-gray-300 cursor-not-allowed'}`}
+                        title="Configurar Delivery"
+                      >
+                          <Bike size={18}/>
+                      </button>
+                  )}
+                  
+                  <button 
+                    onClick={() => setDeliveryStatusModalOpen(true)}
+                    className="p-2.5 rounded-xl bg-gray-50 text-slate-600 hover:bg-gray-100 transition-all relative"
+                    title="Status Delivery"
+                  >
+                      <Clock size={18}/>
+                      {orderState.orders.some(o => o.type === 'DELIVERY' && !o.isPaid && o.status !== 'CANCELLED' && (o.items.filter(i => i.productType === 'KITCHEN').length === 0 || o.items.filter(i => i.productType === 'KITCHEN').every(i => i.status === 'READY'))) && (
+                          <span className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white animate-pulse"></span>
+                      )}
+                  </button>
+
                   <button onClick={handleManualRefresh} className={`p-2.5 rounded-xl bg-gray-50 text-blue-600 hover:bg-blue-50 transition-all ${isRefreshing ? 'animate-spin' : ''}`} title="Sincronizar"><RefreshCcw size={18}/></button>
                   <div className="text-xs font-bold text-emerald-600 bg-emerald-50 px-3 py-2 rounded-lg border border-emerald-100 uppercase tracking-wide">Caixa Aberto</div>
               </div>
@@ -178,9 +203,7 @@ export const CashierDashboard: React.FC = () => {
 
           <main className="flex-1 p-3 md:p-6 overflow-hidden">
                   
-                  {activeTab === 'DELIVERY' && <CashierDeliveryView />}
-                  
-                  {activeTab === 'PDV' && <CashierPOSView />}
+                  {activeTab === 'PDV' && <CashierPOSView cart={cart} setCart={setCart} />}
 
                   {activeTab === 'ACTIVE' && (
                       <div className="flex flex-col lg:flex-row gap-6 h-full overflow-hidden">
@@ -305,6 +328,18 @@ export const CashierDashboard: React.FC = () => {
           
           <CashBleedModal isOpen={bleedModalOpen} onClose={() => setBleedModalOpen(false)} />
           <CloseRegisterModal isOpen={closeModalOpen} onClose={() => setCloseModalOpen(false)} onSuccess={() => setActiveTab('ACTIVE')} />
+          
+          <DeliveryOptionsModal 
+            isOpen={deliveryModalOpen} 
+            onClose={() => setDeliveryModalOpen(false)} 
+            cart={cart} 
+            onSuccess={() => setCart([])} 
+          />
+
+          <DeliveryStatusModal 
+            isOpen={deliveryStatusModalOpen} 
+            onClose={() => setDeliveryStatusModalOpen(false)} 
+          />
           
           <Modal isOpen={voidModalOpen} onClose={() => setVoidModalOpen(false)} title="Autorizar Cancelamento" variant="dialog" maxWidth="sm">
               <form onSubmit={handleVoidSubmit} className="space-y-6">

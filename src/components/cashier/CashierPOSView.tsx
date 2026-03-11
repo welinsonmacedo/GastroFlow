@@ -10,13 +10,17 @@ import { AddToCartModal } from '../modals/AddToCartModal';
 import { Modal } from '../Modal';
 import { Button } from '../Button';
 
-export const CashierPOSView: React.FC = () => {
+interface CashierPOSViewProps {
+    cart: { item: InventoryItem; quantity: number; notes: string; extras: InventoryItem[] }[];
+    setCart: React.Dispatch<React.SetStateAction<{ item: InventoryItem; quantity: number; notes: string; extras: InventoryItem[] }[]>>;
+}
+
+export const CashierPOSView: React.FC<CashierPOSViewProps> = ({ cart, setCart }) => {
     const { state: invState } = useInventory();
     const { dispatch: orderDispatch } = useOrder();
     const { state: finState, refreshTransactions } = useFinance();
     const { showAlert } = useUI();
 
-    const [cart, setCart] = useState<{ item: InventoryItem; quantity: number; notes: string; extras: InventoryItem[] }[]>([]);
     const [search, setSearch] = useState('');
     const [customerName, setCustomerName] = useState('');
     
