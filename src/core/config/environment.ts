@@ -1,9 +1,9 @@
 export const environment = {
-  supabaseUrl: import.meta.env.VITE_SUPABASE_URL || '',
-  supabaseAnonKey: import.meta.env.VITE_SUPABASE_ANON_KEY || '',
-  isProduction: import.meta.env.PROD || false,
-  appUrl: import.meta.env.VITE_APP_URL || window.location.origin,
-  geminiApiKey: import.meta.env.VITE_API_KEY || (typeof process !== 'undefined' ? process.env?.API_KEY : '') || '',
+  supabaseUrl: (typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env.VITE_SUPABASE_URL : process.env.VITE_SUPABASE_URL) || process.env.SUPABASE_URL || '',
+  supabaseAnonKey: (typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env.VITE_SUPABASE_ANON_KEY : process.env.VITE_SUPABASE_ANON_KEY) || process.env.SUPABASE_ANON_KEY || '',
+  isProduction: (typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env.PROD : process.env.NODE_ENV === 'production') || false,
+  appUrl: (typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env.VITE_APP_URL : process.env.VITE_APP_URL) || (typeof window !== 'undefined' ? window.location.origin : ''),
+  geminiApiKey: (typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env.VITE_API_KEY : process.env.VITE_API_KEY) || process.env.API_KEY || '',
 };
 
 export const isSupabaseConfigured = () => {
