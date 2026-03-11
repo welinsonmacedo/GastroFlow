@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { GlobalLoading } from '../components/GlobalLoading';
+import { Role } from '@/types';
 import { useAuth } from '@/core/context/AuthProvider'; // Use AuthProvider
 import { useRestaurant } from '@/core/context/RestaurantContext';
 // @ts-ignore
@@ -26,8 +27,12 @@ export const Login: React.FC = () => {
 
   useEffect(() => {
     if (authState.currentUser) {
-        if (authState.currentUser.role === 'CLIENT') {
+        if (authState.currentUser.role === Role.CLIENT) {
             navigate('/client/home');
+        } else if (authState.currentUser.role === Role.SUPER_ADMIN) {
+            navigate('/dashboard');
+        } else if (authState.currentUser.role === Role.ADMIN) {
+            navigate('/admin');
         } else {
             // Redireciona para o seletor de módulos ao logar
             navigate('/modules');
