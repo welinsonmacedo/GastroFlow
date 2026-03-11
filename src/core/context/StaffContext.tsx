@@ -879,20 +879,20 @@ export const StaffProvider: React.FC<{ children: React.ReactNode }> = ({ childre
               { id: '', minValue: 3751.06, maxValue: 4664.68, rate: 22.5, deduction: 662.77, validFrom: '2024-01-01' },
               { id: '', minValue: 4664.69, rate: 27.5, deduction: 896.00, validFrom: '2024-01-01' }
           ];
-      } else { // 2026 - Valores hipotéticos
-          settings = { minWage: 1650.00, inssCeiling: 8564.62, irrfDependentDeduction: 189.59, fgtsRate: 8.00, validFrom: '2026-01-01' };
+      } else { // 2026 - Valores atualizados
+          settings = { minWage: 1621.00, inssCeiling: 8475.55, irrfDependentDeduction: 189.59, fgtsRate: 8.00, validFrom: '2026-01-01' };
           inssBrackets = [
-              { id: '', minValue: 0, maxValue: 1650.00, rate: 7.5, validFrom: '2026-01-01' },
-              { id: '', minValue: 1650.01, maxValue: 3000.00, rate: 9.0, validFrom: '2026-01-01' },
-              { id: '', minValue: 3000.01, maxValue: 4500.00, rate: 12.0, validFrom: '2026-01-01' },
-              { id: '', minValue: 4500.01, maxValue: 8564.62, rate: 14.0, validFrom: '2026-01-01' }
+              { id: '', minValue: 0, maxValue: 1621.00, rate: 7.5, validFrom: '2026-01-01' },
+              { id: '', minValue: 1621.01, maxValue: 2902.84, rate: 9.0, validFrom: '2026-01-01' },
+              { id: '', minValue: 2902.85, maxValue: 4354.27, rate: 12.0, validFrom: '2026-01-01' },
+              { id: '', minValue: 4354.28, maxValue: 8475.55, rate: 14.0, validFrom: '2026-01-01' }
           ];
           irrfBrackets = [
-              { id: '', minValue: 0, maxValue: 2500.00, rate: 0, deduction: 0, validFrom: '2026-01-01' },
-              { id: '', minValue: 2500.01, maxValue: 3200.00, rate: 7.5, deduction: 187.50, validFrom: '2026-01-01' },
-              { id: '', minValue: 3200.01, maxValue: 4250.00, rate: 15.0, deduction: 427.50, validFrom: '2026-01-01' },
-              { id: '', minValue: 4250.01, maxValue: 5300.00, rate: 22.5, deduction: 746.25, validFrom: '2026-01-01' },
-              { id: '', minValue: 5300.01, rate: 27.5, deduction: 1011.25, validFrom: '2026-01-01' }
+              { id: '', minValue: 0, maxValue: 2428.80, rate: 0, deduction: 0, validFrom: '2026-01-01' },
+              { id: '', minValue: 2428.81, maxValue: 2826.65, rate: 7.5, deduction: 182.16, validFrom: '2026-01-01' },
+              { id: '', minValue: 2826.66, maxValue: 3751.05, rate: 15.0, deduction: 394.16, validFrom: '2026-01-01' },
+              { id: '', minValue: 3751.06, maxValue: 4664.68, rate: 22.5, deduction: 675.49, validFrom: '2026-01-01' },
+              { id: '', minValue: 4664.69, rate: 27.5, deduction: 908.73, validFrom: '2026-01-01' }
           ];
       }
 

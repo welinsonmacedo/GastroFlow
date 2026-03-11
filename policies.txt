@@ -1,0 +1,328 @@
+estrutura sql/create_rh_recurring_events.sql:CREATE POLICY "Allow recurring events viewing"
+estrutura sql/create_rh_recurring_events.sql-ON rh_recurring_events FOR SELECT
+estrutura sql/create_rh_recurring_events.sql-TO authenticated
+estrutura sql/create_rh_recurring_events.sql-USING (
+estrutura sql/create_rh_recurring_events.sql-    (EXISTS (SELECT 1 FROM saas_admins WHERE email = auth.email()))
+estrutura sql/create_rh_recurring_events.sql-    OR
+--
+estrutura sql/create_rh_recurring_events.sql:CREATE POLICY "Allow recurring events creation"
+estrutura sql/create_rh_recurring_events.sql-ON rh_recurring_events FOR INSERT
+estrutura sql/create_rh_recurring_events.sql-TO authenticated
+estrutura sql/create_rh_recurring_events.sql-WITH CHECK (
+estrutura sql/create_rh_recurring_events.sql-    (EXISTS (SELECT 1 FROM saas_admins WHERE email = auth.email()))
+estrutura sql/create_rh_recurring_events.sql-    OR
+--
+estrutura sql/create_rh_recurring_events.sql:CREATE POLICY "Allow recurring events updates"
+estrutura sql/create_rh_recurring_events.sql-ON rh_recurring_events FOR UPDATE
+estrutura sql/create_rh_recurring_events.sql-TO authenticated
+estrutura sql/create_rh_recurring_events.sql-USING (
+estrutura sql/create_rh_recurring_events.sql-    (EXISTS (SELECT 1 FROM saas_admins WHERE email = auth.email()))
+estrutura sql/create_rh_recurring_events.sql-    OR
+--
+estrutura sql/create_rh_recurring_events.sql:CREATE POLICY "Allow recurring events deletion"
+estrutura sql/create_rh_recurring_events.sql-ON rh_recurring_events FOR DELETE
+estrutura sql/create_rh_recurring_events.sql-TO authenticated
+estrutura sql/create_rh_recurring_events.sql-USING (
+estrutura sql/create_rh_recurring_events.sql-    (EXISTS (SELECT 1 FROM saas_admins WHERE email = auth.email()))
+estrutura sql/create_rh_recurring_events.sql-    OR
+--
+estrutura sql/rh_schema_sync.sql:        EXECUTE format('CREATE POLICY "Allow %s viewing" ON public.%I FOR SELECT TO authenticated USING (
+estrutura sql/rh_schema_sync.sql-            (EXISTS (SELECT 1 FROM saas_admins WHERE email = auth.email())) 
+estrutura sql/rh_schema_sync.sql-            OR (tenant_id IN (SELECT tenant_id FROM public.staff WHERE auth_user_id = auth.uid()))
+estrutura sql/rh_schema_sync.sql-        )', t, t);
+estrutura sql/rh_schema_sync.sql-        
+estrutura sql/rh_schema_sync.sql:        EXECUTE format('CREATE POLICY "Allow %s management" ON public.%I FOR ALL TO authenticated USING (
+estrutura sql/rh_schema_sync.sql-            (EXISTS (SELECT 1 FROM saas_admins WHERE email = auth.email())) 
+estrutura sql/rh_schema_sync.sql-            OR (tenant_id IN (SELECT tenant_id FROM public.staff WHERE auth_user_id = auth.uid()))
+estrutura sql/rh_schema_sync.sql-        )', t, t);
+estrutura sql/rh_schema_sync.sql-    END LOOP;
+estrutura sql/rh_schema_sync.sql-END $$;
+--
+estrutura sql/update_contract_tables.sql:CREATE POLICY "Enable read access for all users" ON public.rh_contract_templates
+estrutura sql/update_contract_tables.sql-    FOR SELECT USING (true);
+estrutura sql/update_contract_tables.sql-
+estrutura sql/update_contract_tables.sql:CREATE POLICY "Enable insert for authenticated users only" ON public.rh_contract_templates
+estrutura sql/update_contract_tables.sql-    FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+estrutura sql/update_contract_tables.sql-
+estrutura sql/update_contract_tables.sql:CREATE POLICY "Enable update for users based on tenant" ON public.rh_contract_templates
+estrutura sql/update_contract_tables.sql-    FOR UPDATE USING (auth.role() = 'authenticated');
+estrutura sql/update_contract_tables.sql-
+estrutura sql/update_contract_tables.sql:CREATE POLICY "Enable delete for users based on tenant" ON public.rh_contract_templates
+estrutura sql/update_contract_tables.sql-    FOR DELETE USING (auth.role() = 'authenticated');
+--
+estrutura sql/create_rh_event_types.sql:CREATE POLICY "Allow event types viewing"
+estrutura sql/create_rh_event_types.sql-ON rh_event_types FOR SELECT
+estrutura sql/create_rh_event_types.sql-TO authenticated
+estrutura sql/create_rh_event_types.sql-USING (
+estrutura sql/create_rh_event_types.sql-    (EXISTS (SELECT 1 FROM saas_admins WHERE email = auth.email()))
+estrutura sql/create_rh_event_types.sql-    OR
+--
+estrutura sql/create_rh_event_types.sql:CREATE POLICY "Allow event types creation"
+estrutura sql/create_rh_event_types.sql-ON rh_event_types FOR INSERT
+estrutura sql/create_rh_event_types.sql-TO authenticated
+estrutura sql/create_rh_event_types.sql-WITH CHECK (
+estrutura sql/create_rh_event_types.sql-    (EXISTS (SELECT 1 FROM saas_admins WHERE email = auth.email()))
+estrutura sql/create_rh_event_types.sql-    OR
+--
+estrutura sql/create_rh_event_types.sql:CREATE POLICY "Allow event types updates"
+estrutura sql/create_rh_event_types.sql-ON rh_event_types FOR UPDATE
+estrutura sql/create_rh_event_types.sql-TO authenticated
+estrutura sql/create_rh_event_types.sql-USING (
+estrutura sql/create_rh_event_types.sql-    (EXISTS (SELECT 1 FROM saas_admins WHERE email = auth.email()))
+estrutura sql/create_rh_event_types.sql-    OR
+--
+estrutura sql/create_rh_event_types.sql:CREATE POLICY "Allow event types deletion"
+estrutura sql/create_rh_event_types.sql-ON rh_event_types FOR DELETE
+estrutura sql/create_rh_event_types.sql-TO authenticated
+estrutura sql/create_rh_event_types.sql-USING (
+estrutura sql/create_rh_event_types.sql-    (EXISTS (SELECT 1 FROM saas_admins WHERE email = auth.email()))
+estrutura sql/create_rh_event_types.sql-    OR
+--
+estrutura sql/security_schema.sql:CREATE POLICY "Allow authenticated insert for security incidents" ON security_incidents FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+estrutura sql/security_schema.sql:CREATE POLICY "Allow superadmins to read security incidents" ON security_incidents FOR SELECT USING (
+estrutura sql/security_schema.sql-  auth.uid() IN (SELECT auth_user_id FROM public.saas_admins)
+estrutura sql/security_schema.sql-);
+estrutura sql/security_schema.sql-
+estrutura sql/security_schema.sql--- Políticas para system_settings
+estrutura sql/security_schema.sql:CREATE POLICY "Allow read system settings" ON system_settings FOR SELECT USING (true);
+estrutura sql/security_schema.sql:CREATE POLICY "Allow superadmins to manage system settings" ON system_settings FOR ALL USING (
+estrutura sql/security_schema.sql-  auth.uid() IN (SELECT auth_user_id FROM public.saas_admins)
+estrutura sql/security_schema.sql-);
+estrutura sql/security_schema.sql-
+estrutura sql/security_schema.sql--- Políticas para blocked_ips
+estrutura sql/security_schema.sql:CREATE POLICY "Allow read blocked ips" ON blocked_ips FOR SELECT USING (true);
+estrutura sql/security_schema.sql:CREATE POLICY "Allow manage blocked ips" ON blocked_ips FOR ALL USING (
+estrutura sql/security_schema.sql-  auth.uid() IN (SELECT auth_user_id FROM public.saas_admins)
+estrutura sql/security_schema.sql-);
+estrutura sql/security_schema.sql-
+estrutura sql/security_schema.sql--- Adicionar ao Realtime
+estrutura sql/security_schema.sql-ALTER PUBLICATION supabase_realtime ADD TABLE security_incidents;
+--
+estrutura sql/create_rh_staff_warnings.sql:CREATE POLICY "Enable read access for all users" ON public.rh_staff_warnings
+estrutura sql/create_rh_staff_warnings.sql-    FOR SELECT USING (true);
+estrutura sql/create_rh_staff_warnings.sql-
+estrutura sql/create_rh_staff_warnings.sql:CREATE POLICY "Enable insert for authenticated users only" ON public.rh_staff_warnings
+estrutura sql/create_rh_staff_warnings.sql-    FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+estrutura sql/create_rh_staff_warnings.sql-
+estrutura sql/create_rh_staff_warnings.sql:CREATE POLICY "Enable update for users based on tenant" ON public.rh_staff_warnings
+estrutura sql/create_rh_staff_warnings.sql-    FOR UPDATE USING (auth.role() = 'authenticated');
+estrutura sql/create_rh_staff_warnings.sql-
+estrutura sql/create_rh_staff_warnings.sql:CREATE POLICY "Enable delete for users based on tenant" ON public.rh_staff_warnings
+estrutura sql/create_rh_staff_warnings.sql-    FOR DELETE USING (auth.role() = 'authenticated');
+--
+estrutura sql/create_table_sessions.sql:CREATE POLICY "Users can insert their own sessions" ON public.table_sessions
+estrutura sql/create_table_sessions.sql-    FOR INSERT WITH CHECK (auth.uid() = user_id);
+estrutura sql/create_table_sessions.sql-
+estrutura sql/create_table_sessions.sql--- Allow users to read their own sessions
+estrutura sql/create_table_sessions.sql:CREATE POLICY "Users can read their own sessions" ON public.table_sessions
+estrutura sql/create_table_sessions.sql-    FOR SELECT USING (auth.uid() = user_id);
+--
+estrutura sql/fix_purchase_orders_rls.sql:CREATE POLICY "Allow purchase order viewing"
+estrutura sql/fix_purchase_orders_rls.sql-ON purchase_orders FOR SELECT
+estrutura sql/fix_purchase_orders_rls.sql-TO authenticated
+estrutura sql/fix_purchase_orders_rls.sql-USING (
+estrutura sql/fix_purchase_orders_rls.sql-    (EXISTS (SELECT 1 FROM saas_admins WHERE email = auth.email()))
+estrutura sql/fix_purchase_orders_rls.sql-    OR
+--
+estrutura sql/fix_purchase_orders_rls.sql:CREATE POLICY "Allow purchase order creation"
+estrutura sql/fix_purchase_orders_rls.sql-ON purchase_orders FOR INSERT
+estrutura sql/fix_purchase_orders_rls.sql-TO authenticated
+estrutura sql/fix_purchase_orders_rls.sql-WITH CHECK (
+estrutura sql/fix_purchase_orders_rls.sql-    (EXISTS (SELECT 1 FROM saas_admins WHERE email = auth.email()))
+estrutura sql/fix_purchase_orders_rls.sql-    OR
+--
+estrutura sql/fix_purchase_orders_rls.sql:CREATE POLICY "Allow purchase order updates"
+estrutura sql/fix_purchase_orders_rls.sql-ON purchase_orders FOR UPDATE
+estrutura sql/fix_purchase_orders_rls.sql-TO authenticated
+estrutura sql/fix_purchase_orders_rls.sql-USING (
+estrutura sql/fix_purchase_orders_rls.sql-    (EXISTS (SELECT 1 FROM saas_admins WHERE email = auth.email()))
+estrutura sql/fix_purchase_orders_rls.sql-    OR
+--
+estrutura sql/fix_purchase_orders_rls.sql:CREATE POLICY "Allow purchase order deletion"
+estrutura sql/fix_purchase_orders_rls.sql-ON purchase_orders FOR DELETE
+estrutura sql/fix_purchase_orders_rls.sql-TO authenticated
+estrutura sql/fix_purchase_orders_rls.sql-USING (
+estrutura sql/fix_purchase_orders_rls.sql-    (EXISTS (SELECT 1 FROM saas_admins WHERE email = auth.email()))
+estrutura sql/fix_purchase_orders_rls.sql-    OR
+--
+estrutura sql/fix_purchase_orders_rls.sql:CREATE POLICY "Allow purchase order item viewing"
+estrutura sql/fix_purchase_orders_rls.sql-ON purchase_order_items FOR SELECT
+estrutura sql/fix_purchase_orders_rls.sql-TO authenticated
+estrutura sql/fix_purchase_orders_rls.sql-USING (
+estrutura sql/fix_purchase_orders_rls.sql-    (EXISTS (SELECT 1 FROM saas_admins WHERE email = auth.email()))
+estrutura sql/fix_purchase_orders_rls.sql-    OR
+--
+estrutura sql/fix_purchase_orders_rls.sql:CREATE POLICY "Allow purchase order item creation"
+estrutura sql/fix_purchase_orders_rls.sql-ON purchase_order_items FOR INSERT
+estrutura sql/fix_purchase_orders_rls.sql-TO authenticated
+estrutura sql/fix_purchase_orders_rls.sql-WITH CHECK (
+estrutura sql/fix_purchase_orders_rls.sql-    (EXISTS (SELECT 1 FROM saas_admins WHERE email = auth.email()))
+estrutura sql/fix_purchase_orders_rls.sql-    OR
+--
+estrutura sql/fix_purchase_orders_rls.sql:CREATE POLICY "Allow purchase order item updates"
+estrutura sql/fix_purchase_orders_rls.sql-ON purchase_order_items FOR UPDATE
+estrutura sql/fix_purchase_orders_rls.sql-TO authenticated
+estrutura sql/fix_purchase_orders_rls.sql-USING (
+estrutura sql/fix_purchase_orders_rls.sql-    (EXISTS (SELECT 1 FROM saas_admins WHERE email = auth.email()))
+estrutura sql/fix_purchase_orders_rls.sql-    OR
+--
+estrutura sql/fix_purchase_orders_rls.sql:CREATE POLICY "Allow purchase order item deletion"
+estrutura sql/fix_purchase_orders_rls.sql-ON purchase_order_items FOR DELETE
+estrutura sql/fix_purchase_orders_rls.sql-TO authenticated
+estrutura sql/fix_purchase_orders_rls.sql-USING (
+estrutura sql/fix_purchase_orders_rls.sql-    (EXISTS (SELECT 1 FROM saas_admins WHERE email = auth.email()))
+estrutura sql/fix_purchase_orders_rls.sql-    OR
+--
+estrutura sql/client_auth_flow.sql:CREATE POLICY "Clients can view their own data" ON clients
+estrutura sql/client_auth_flow.sql-    FOR SELECT USING (auth.uid() = auth_user_id);
+estrutura sql/client_auth_flow.sql-
+estrutura sql/client_auth_flow.sql-DROP POLICY IF EXISTS "Clients can update their own data" ON clients;
+estrutura sql/client_auth_flow.sql:CREATE POLICY "Clients can update their own data" ON clients
+estrutura sql/client_auth_flow.sql-    FOR UPDATE USING (auth.uid() = auth_user_id);
+estrutura sql/client_auth_flow.sql-
+estrutura sql/client_auth_flow.sql-DROP POLICY IF EXISTS "Clients can insert their own data" ON clients;
+estrutura sql/client_auth_flow.sql:CREATE POLICY "Clients can insert their own data" ON clients
+estrutura sql/client_auth_flow.sql-    FOR INSERT WITH CHECK (auth.uid() = auth_user_id);
+estrutura sql/client_auth_flow.sql-
+estrutura sql/client_auth_flow.sql--- 4. RLS for orders (Clients can view their own orders)
+estrutura sql/client_auth_flow.sql-DROP POLICY IF EXISTS "Clients can view their own orders" ON orders;
+estrutura sql/client_auth_flow.sql:CREATE POLICY "Clients can view their own orders" ON orders
+estrutura sql/client_auth_flow.sql-    FOR SELECT USING (
+estrutura sql/client_auth_flow.sql-        client_id IN (SELECT id FROM clients WHERE auth_user_id = auth.uid())
+estrutura sql/client_auth_flow.sql-    );
+estrutura sql/client_auth_flow.sql-
+estrutura sql/client_auth_flow.sql--- 5. RPC to get history
+--
+estrutura sql/fix_rh_rls_v2.sql:CREATE POLICY "Allow tenant viewing"
+estrutura sql/fix_rh_rls_v2.sql-ON public.restaurants FOR SELECT
+estrutura sql/fix_rh_rls_v2.sql-TO authenticated
+estrutura sql/fix_rh_rls_v2.sql-USING (
+estrutura sql/fix_rh_rls_v2.sql-    (EXISTS (SELECT 1 FROM saas_admins WHERE email = auth.email()))
+estrutura sql/fix_rh_rls_v2.sql-    OR
+--
+estrutura sql/fix_rh_rls_v2.sql:CREATE POLICY "Allow staff viewing"
+estrutura sql/fix_rh_rls_v2.sql-ON public.staff FOR SELECT
+estrutura sql/fix_rh_rls_v2.sql-TO authenticated
+estrutura sql/fix_rh_rls_v2.sql-USING (
+estrutura sql/fix_rh_rls_v2.sql-    (EXISTS (SELECT 1 FROM saas_admins WHERE email = auth.email()))
+estrutura sql/fix_rh_rls_v2.sql-    OR
+--
+estrutura sql/fix_rh_rls_v2.sql:CREATE POLICY "Allow event types viewing"
+estrutura sql/fix_rh_rls_v2.sql-ON public.rh_event_types FOR SELECT
+estrutura sql/fix_rh_rls_v2.sql-TO authenticated
+estrutura sql/fix_rh_rls_v2.sql-USING (
+estrutura sql/fix_rh_rls_v2.sql-    (EXISTS (SELECT 1 FROM saas_admins WHERE email = auth.email()))
+estrutura sql/fix_rh_rls_v2.sql-    OR
+--
+estrutura sql/fix_rh_rls_v2.sql:CREATE POLICY "Allow event types creation"
+estrutura sql/fix_rh_rls_v2.sql-ON public.rh_event_types FOR INSERT
+estrutura sql/fix_rh_rls_v2.sql-TO authenticated
+estrutura sql/fix_rh_rls_v2.sql-WITH CHECK (
+estrutura sql/fix_rh_rls_v2.sql-    (EXISTS (SELECT 1 FROM saas_admins WHERE email = auth.email()))
+estrutura sql/fix_rh_rls_v2.sql-    OR
+--
+estrutura sql/fix_rh_rls_v2.sql:CREATE POLICY "Allow event types updates"
+estrutura sql/fix_rh_rls_v2.sql-ON public.rh_event_types FOR UPDATE
+estrutura sql/fix_rh_rls_v2.sql-TO authenticated
+estrutura sql/fix_rh_rls_v2.sql-USING (
+estrutura sql/fix_rh_rls_v2.sql-    (EXISTS (SELECT 1 FROM saas_admins WHERE email = auth.email()))
+estrutura sql/fix_rh_rls_v2.sql-    OR
+--
+estrutura sql/fix_rh_rls_v2.sql:CREATE POLICY "Allow event types deletion"
+estrutura sql/fix_rh_rls_v2.sql-ON public.rh_event_types FOR DELETE
+estrutura sql/fix_rh_rls_v2.sql-TO authenticated
+estrutura sql/fix_rh_rls_v2.sql-USING (
+estrutura sql/fix_rh_rls_v2.sql-    (EXISTS (SELECT 1 FROM saas_admins WHERE email = auth.email()))
+estrutura sql/fix_rh_rls_v2.sql-    OR
+--
+estrutura sql/fix_rh_rls_v2.sql:CREATE POLICY "Allow payroll events viewing" ON public.rh_payroll_events FOR SELECT TO authenticated USING (
+estrutura sql/fix_rh_rls_v2.sql-    (EXISTS (SELECT 1 FROM saas_admins WHERE email = auth.email())) OR (tenant_id IN (SELECT tenant_id FROM public.staff WHERE auth_user_id = auth.uid()))
+estrutura sql/fix_rh_rls_v2.sql-);
+estrutura sql/fix_rh_rls_v2.sql:CREATE POLICY "Allow payroll events creation" ON public.rh_payroll_events FOR INSERT TO authenticated WITH CHECK (
+estrutura sql/fix_rh_rls_v2.sql-    (EXISTS (SELECT 1 FROM saas_admins WHERE email = auth.email())) OR (tenant_id IN (SELECT tenant_id FROM public.staff WHERE auth_user_id = auth.uid()))
+estrutura sql/fix_rh_rls_v2.sql-);
+estrutura sql/fix_rh_rls_v2.sql-
+estrutura sql/fix_rh_rls_v2.sql--- Job Roles
+estrutura sql/fix_rh_rls_v2.sql:CREATE POLICY "Allow job roles viewing" ON public.rh_job_roles FOR SELECT TO authenticated USING (
+estrutura sql/fix_rh_rls_v2.sql-    (EXISTS (SELECT 1 FROM saas_admins WHERE email = auth.email())) OR (tenant_id IN (SELECT tenant_id FROM public.staff WHERE auth_user_id = auth.uid()))
+estrutura sql/fix_rh_rls_v2.sql-);
+estrutura sql/fix_rh_rls_v2.sql:CREATE POLICY "Allow job roles management" ON public.rh_job_roles FOR ALL TO authenticated USING (
+estrutura sql/fix_rh_rls_v2.sql-    (EXISTS (SELECT 1 FROM saas_admins WHERE email = auth.email())) OR (tenant_id IN (SELECT tenant_id FROM public.staff WHERE auth_user_id = auth.uid()))
+estrutura sql/fix_rh_rls_v2.sql-);
+estrutura sql/fix_rh_rls_v2.sql-
+estrutura sql/fix_rh_rls_v2.sql--- Shifts
+estrutura sql/fix_rh_rls_v2.sql:CREATE POLICY "Allow shifts viewing" ON public.rh_shifts FOR SELECT TO authenticated USING (
+estrutura sql/fix_rh_rls_v2.sql-    (EXISTS (SELECT 1 FROM saas_admins WHERE email = auth.email())) OR (tenant_id IN (SELECT tenant_id FROM public.staff WHERE auth_user_id = auth.uid()))
+estrutura sql/fix_rh_rls_v2.sql-);
+estrutura sql/fix_rh_rls_v2.sql:CREATE POLICY "Allow shifts management" ON public.rh_shifts FOR ALL TO authenticated USING (
+estrutura sql/fix_rh_rls_v2.sql-    (EXISTS (SELECT 1 FROM saas_admins WHERE email = auth.email())) OR (tenant_id IN (SELECT tenant_id FROM public.staff WHERE auth_user_id = auth.uid()))
+estrutura sql/fix_rh_rls_v2.sql-);
+estrutura sql/fix_rh_rls_v2.sql-
+estrutura sql/fix_rh_rls_v2.sql--- Recurring Events
+estrutura sql/fix_rh_rls_v2.sql:CREATE POLICY "Allow recurring events viewing" ON public.rh_recurring_events FOR SELECT TO authenticated USING (
+estrutura sql/fix_rh_rls_v2.sql-    (EXISTS (SELECT 1 FROM saas_admins WHERE email = auth.email())) OR (tenant_id IN (SELECT tenant_id FROM public.staff WHERE auth_user_id = auth.uid()))
+estrutura sql/fix_rh_rls_v2.sql-);
+estrutura sql/fix_rh_rls_v2.sql:CREATE POLICY "Allow recurring events creation" ON public.rh_recurring_events FOR INSERT TO authenticated WITH CHECK (
+estrutura sql/fix_rh_rls_v2.sql-    (EXISTS (SELECT 1 FROM saas_admins WHERE email = auth.email())) OR (tenant_id IN (SELECT tenant_id FROM public.staff WHERE auth_user_id = auth.uid()))
+estrutura sql/fix_rh_rls_v2.sql-);
+estrutura sql/fix_rh_rls_v2.sql-
+estrutura sql/fix_rh_rls_v2.sql-COMMIT;
+--
+estrutura sql/final_rh_database_fix.sql:        EXECUTE format('CREATE POLICY "Allow %s viewing" ON public.%I FOR SELECT TO authenticated USING (
+estrutura sql/final_rh_database_fix.sql-            (EXISTS (SELECT 1 FROM saas_admins WHERE email = auth.email())) 
+estrutura sql/final_rh_database_fix.sql-            OR (tenant_id IN (SELECT tenant_id FROM public.staff WHERE auth_user_id = auth.uid()))
+estrutura sql/final_rh_database_fix.sql-        )', t, t);
+estrutura sql/final_rh_database_fix.sql-        
+estrutura sql/final_rh_database_fix.sql:        EXECUTE format('CREATE POLICY "Allow %s management" ON public.%I FOR ALL TO authenticated USING (
+estrutura sql/final_rh_database_fix.sql-            (EXISTS (SELECT 1 FROM saas_admins WHERE email = auth.email())) 
+estrutura sql/final_rh_database_fix.sql-            OR (tenant_id IN (SELECT tenant_id FROM public.staff WHERE auth_user_id = auth.uid()))
+estrutura sql/final_rh_database_fix.sql-        )', t, t);
+estrutura sql/final_rh_database_fix.sql-    END LOOP;
+estrutura sql/final_rh_database_fix.sql-END $$;
+--
+estrutura sql/fix_restaurant_orders_v2.sql:CREATE POLICY "Allow anon viewing products" ON public.products FOR SELECT TO anon USING (true);
+estrutura sql/fix_restaurant_orders_v2.sql-
+estrutura sql/fix_restaurant_orders_v2.sql-DROP POLICY IF EXISTS "Allow anon viewing categories" ON public.menu_categories;
+estrutura sql/fix_restaurant_orders_v2.sql:CREATE POLICY "Allow anon viewing categories" ON public.menu_categories FOR SELECT TO anon USING (true);
+estrutura sql/fix_restaurant_orders_v2.sql-
+estrutura sql/fix_restaurant_orders_v2.sql-DROP POLICY IF EXISTS "Allow anon viewing tables" ON public.restaurant_tables;
+estrutura sql/fix_restaurant_orders_v2.sql:CREATE POLICY "Allow anon viewing tables" ON public.restaurant_tables FOR SELECT TO anon USING (true);
+estrutura sql/fix_restaurant_orders_v2.sql-
+estrutura sql/fix_restaurant_orders_v2.sql--- For orders and items, anon should be able to see their own if we had a session, 
+estrutura sql/fix_restaurant_orders_v2.sql--- but for now let's allow viewing by tenant_id if we want to be simple, 
+estrutura sql/fix_restaurant_orders_v2.sql--- or just allow all for now to fix the blocker.
+estrutura sql/fix_restaurant_orders_v2.sql-DROP POLICY IF EXISTS "Allow anon viewing orders" ON public.orders;
+estrutura sql/fix_restaurant_orders_v2.sql:CREATE POLICY "Allow anon viewing orders" ON public.orders FOR SELECT TO anon USING (true);
+estrutura sql/fix_restaurant_orders_v2.sql-
+estrutura sql/fix_restaurant_orders_v2.sql-DROP POLICY IF EXISTS "Allow anon viewing items" ON public.order_items;
+estrutura sql/fix_restaurant_orders_v2.sql:CREATE POLICY "Allow anon viewing items" ON public.order_items FOR SELECT TO anon USING (true);
+estrutura sql/fix_restaurant_orders_v2.sql-
+estrutura sql/fix_restaurant_orders_v2.sql-COMMIT;
+--
+estrutura sql/fix_tickets_rls.sql:CREATE POLICY "Allow ticket viewing"
+estrutura sql/fix_tickets_rls.sql-ON tickets FOR SELECT
+estrutura sql/fix_tickets_rls.sql-TO authenticated
+estrutura sql/fix_tickets_rls.sql-USING (
+estrutura sql/fix_tickets_rls.sql-    (EXISTS (SELECT 1 FROM saas_admins WHERE email = auth.email()))
+estrutura sql/fix_tickets_rls.sql-    OR
+--
+estrutura sql/fix_tickets_rls.sql:CREATE POLICY "Allow ticket creation"
+estrutura sql/fix_tickets_rls.sql-ON tickets FOR INSERT
+estrutura sql/fix_tickets_rls.sql-TO authenticated
+estrutura sql/fix_tickets_rls.sql-WITH CHECK (auth.role() = 'authenticated');
+estrutura sql/fix_tickets_rls.sql-
+estrutura sql/fix_tickets_rls.sql-
+--
+estrutura sql/fix_tickets_rls.sql:CREATE POLICY "Allow ticket updates"
+estrutura sql/fix_tickets_rls.sql-ON tickets FOR UPDATE
+estrutura sql/fix_tickets_rls.sql-TO authenticated
+estrutura sql/fix_tickets_rls.sql-USING (
+estrutura sql/fix_tickets_rls.sql-    (EXISTS (SELECT 1 FROM saas_admins WHERE email = auth.email()))
+estrutura sql/fix_tickets_rls.sql-    OR
+--
+estrutura sql/fix_tickets_rls.sql:CREATE POLICY "Allow ticket deletion by admins"
+estrutura sql/fix_tickets_rls.sql-ON tickets FOR DELETE
+estrutura sql/fix_tickets_rls.sql-TO authenticated
+estrutura sql/fix_tickets_rls.sql-USING (EXISTS (SELECT 1 FROM saas_admins WHERE email = auth.email()));
+estrutura sql/fix_tickets_rls.sql-
+estrutura sql/fix_tickets_rls.sql-

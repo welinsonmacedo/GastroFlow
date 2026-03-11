@@ -1,5 +1,5 @@
 {
   "name": "ArloFlux",
-  "description": "Tecnologia em fluxo constante",
+  "description": "ERP completo para restaurantes e comércios em geral",
   "requestFramePermissions": ["camera"]
 }

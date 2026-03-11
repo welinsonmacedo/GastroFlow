@@ -15,11 +15,13 @@ import { AdminTickets } from './admin/super/AdminTickets';
 import { AdminBlockedIPs } from './admin/super/AdminBlockedIPs';
 import { AdminIntegration } from './admin/super/AdminIntegration';
 import { logSecurityIncident } from '@/core/security/security';
+import { usePwa } from '@/core/context/PwaContext';
 
 type ViewMode = 'RESTAURANTS' | 'FINANCIAL' | 'PLANS' | 'SETTINGS' | 'CONTRACTS' | 'SECURITY' | 'TICKETS' | 'BLOCKED_IPS' | 'INTEGRATION';
 
 export const SuperAdminDashboard: React.FC = () => {
   const { state, dispatch } = useSaaS();
+  const { isInstallable, install } = usePwa();
   const { showAlert, showConfirm } = useUI();
   const navigate = useNavigate();
   const [activeView, setActiveView] = useState<ViewMode>('RESTAURANTS');
@@ -114,6 +116,9 @@ export const SuperAdminDashboard: React.FC = () => {
             </nav>
           </div>
           <button onClick={handleLogout} className="flex items-center gap-3 w-full p-3 rounded text-red-400 hover:bg-slate-800 mt-auto"><LogOut size={20} /> Sair</button>
+          {isInstallable && (
+              <button onClick={install} className="flex items-center gap-3 w-full p-3 rounded text-blue-400 hover:bg-slate-800"><Smartphone size={20} /> Instalar App</button>
+          )}
        </div>
 
        {/* Main Content */}

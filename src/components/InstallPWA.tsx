@@ -1,56 +1,13 @@
 
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Download, X } from 'lucide-react';
-// @ts-ignore
-import { useLocation } from 'react-router-dom';
+import { usePwa } from '../core/context/PwaContext';
 
 export const InstallPWA: React.FC = () => {
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
-  const [isVisible, setIsVisible] = useState(false);
-  const location = useLocation();
+  const { isInstallable, install } = usePwa();
+  const [isVisible, setIsVisible] = React.useState(true);
 
-  useEffect(() => {
-    const handler = (e: any) => {
-      e.preventDefault();
-      setDeferredPrompt(e);
-    };
-
-    window.addEventListener('beforeinstallprompt', handler);
-
-    return () => {
-      window.removeEventListener('beforeinstallprompt', handler);
-    };
-  }, []);
-
-  useEffect(() => {
-      if (deferredPrompt) {
-          setIsVisible(true);
-      } else {
-          setIsVisible(false);
-      }
-  }, [location.pathname, deferredPrompt]);
-
-  const handleInstallClick = async () => {
-    if (!deferredPrompt) return;
-
-    // Mostra o prompt nativo
-    deferredPrompt.prompt();
-
-    // Espera a escolha do usuário
-    const { outcome } = await deferredPrompt.userChoice;
-    
-    if (outcome === 'accepted') {
-      console.log('User accepted the install prompt');
-    } else {
-      console.log('User dismissed the install prompt');
-    }
-
-    // Limpa o prompt, pois ele só pode ser usado uma vez
-    setDeferredPrompt(null);
-    setIsVisible(false);
-  };
-
-  if (!isVisible) return null;
+  if (!isInstallable || !isVisible) return null;
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 p-4 animate-fade-in safe-area-bottom">
@@ -72,7 +29,7 @@ export const InstallPWA: React.FC = () => {
                 <X size={20} />
             </button>
             <button 
-                onClick={handleInstallClick}
+                onClick={install}
                 className="bg-blue-600 hover:bg-blue-50 text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors"
             >
                 Instalar
