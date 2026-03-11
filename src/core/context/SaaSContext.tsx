@@ -306,6 +306,48 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
     fetchPlans();
   }, []);
 
+  // Fetch global settings regardless of authentication
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchGlobalSettings = async () => {
+        try {
+            const { data: configData, error: configError } = await supabase
+                .from('saas_config')
+                .select('global_settings')
+                .eq('id', 1)
+                .maybeSingle();
+            
+            if (isMounted && configData && !configError) {
+                dispatch({ type: 'UPDATE_GLOBAL_SETTINGS', settings: configData.global_settings });
+            } else if (isMounted) {
+                const localSettings = localStorage.getItem('flux_saas_global_settings');
+                if (localSettings) {
+                    dispatch({ type: 'UPDATE_GLOBAL_SETTINGS', settings: JSON.parse(localSettings) });
+                }
+            }
+        } catch (e) {
+            console.warn("saas_config table might not exist yet, using localStorage:", e);
+            if (isMounted) {
+                const localSettings = localStorage.getItem('flux_saas_global_settings');
+                if (localSettings) {
+                    dispatch({ type: 'UPDATE_GLOBAL_SETTINGS', settings: JSON.parse(localSettings) });
+                }
+            }
+        } finally {
+            if (isMounted) {
+                dispatch({ type: 'SET_LOADING', payload: false });
+            }
+        }
+    };
+
+    fetchGlobalSettings();
+
+    return () => {
+        isMounted = false;
+    };
+  }, []);
+
   useEffect(() => {
     let isMounted = true;
 
@@ -362,32 +404,7 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const fetchTenants = async () => {
             try {
                 await cleanBase64Themes(); // Run cleanup first
-                dispatch({ type: 'SET_LOADING', payload: true });
                 
-                // Fetch Global Settings
-                try {
-                    const { data: configData, error: configError } = await supabase
-                        .from('saas_config')
-                        .select('global_settings')
-                        .eq('id', 1)
-                        .maybeSingle();
-                    
-                    if (configData && !configError) {
-                        dispatch({ type: 'UPDATE_GLOBAL_SETTINGS', settings: configData.global_settings });
-                    } else {
-                        const localSettings = localStorage.getItem('flux_saas_global_settings');
-                        if (localSettings) {
-                            dispatch({ type: 'UPDATE_GLOBAL_SETTINGS', settings: JSON.parse(localSettings) });
-                        }
-                    }
-                } catch (e) {
-                    console.warn("saas_config table might not exist yet, using localStorage:", e);
-                    const localSettings = localStorage.getItem('flux_saas_global_settings');
-                    if (localSettings) {
-                        dispatch({ type: 'UPDATE_GLOBAL_SETTINGS', settings: JSON.parse(localSettings) });
-                    }
-                }
-
                 const { data, error } = await supabase
                     .from('tenants')
                     .select('*')
@@ -415,11 +432,9 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     }));
                     dispatch({ type: 'SET_TENANTS', payload: mapped });
                     fetchTenantStats(mapped.map(t => t.id));
-                    dispatch({ type: 'SET_LOADING', payload: false });
                 }
             } catch (err: any) {
                 console.error(`Erro ao buscar restaurantes:`, err);
-                dispatch({ type: 'SET_LOADING', payload: false });
             }
         };
 
