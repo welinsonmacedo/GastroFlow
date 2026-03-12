@@ -46,21 +46,49 @@ export const ClientHistory = ({ isEmbedded = false }: { isEmbedded?: boolean }) 
   }, [authState.currentUser, authState.isLoading]);
 
   const fetchHistory = async () => {
+    console.log('ClientHistory: Starting fetchHistory for user:', authState.currentUser?.auth_user_id);
     try {
-      // Helper function for timed queries
-      const queryWithTimeout = async (queryPromise: Promise<any>, ms = 5000) => {
-          const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Query timeout')), ms));
-          return Promise.race([queryPromise, timeout]);
-      };
+      setLoading(true);
+      
+      // Query orders directly instead of using RPC for better reliability
+      // RLS policies already ensure clients only see their own orders
+      const { data, error } = await supabase
+        .from('orders')
+        .select(`
+          id,
+          status,
+          total_amount,
+          created_at,
+          tenants ( name ),
+          items:order_items (
+            product_name,
+            quantity,
+            unit_price
+          )
+        `)
+        .order('created_at', { ascending: false });
 
-      const { data, error } = await queryWithTimeout(
-          supabase.rpc('get_client_order_history', {
-            p_client_id: authState.currentUser!.auth_user_id
-          })
-      );
+      if (error) {
+        console.error('ClientHistory: Query Error:', error);
+        throw error;
+      }
+      
+      console.log('ClientHistory: Received data:', data);
+      
+      const mappedOrders: HistoryOrder[] = (data || []).map((o: any) => ({
+        id: o.id,
+        status: o.status,
+        total: o.total_amount,
+        date: o.created_at,
+        restaurant_name: o.tenants?.name || 'Restaurante',
+        items: (o.items || []).map((i: any) => ({
+          name: i.product_name,
+          quantity: i.quantity,
+          price: i.unit_price
+        }))
+      }));
 
-      if (error) throw error;
-      setOrders(data || []);
+      setOrders(mappedOrders);
     } catch (err) {
       console.error('Erro ao buscar histórico:', err);
     } finally {

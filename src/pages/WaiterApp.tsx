@@ -106,6 +106,9 @@ export const WaiterApp: React.FC = () => {
       
       const currentCallsCount = pendingCalls.length;
       const currentReadyCount = orderState.orders.reduce((acc, o) => {
+          // Garçom só recebe notificação de pedidos de MESA (DINE_IN)
+          if (o.type !== 'DINE_IN') return acc;
+
           const table = orderState.tables.find(t => t.id === o.tableId);
           
           if (notificationMode === 'OPENER') {
@@ -229,12 +232,12 @@ export const WaiterApp: React.FC = () => {
   };
 
   const activeOrders = orderState.orders
-      .filter(o => !o.isPaid && o.status !== 'CANCELLED')
+      .filter(o => o.type === 'DINE_IN' && !o.isPaid && o.status !== 'CANCELLED')
       .map(o => ({ ...o, items: o.items.filter(i => i.status !== 'DELIVERED' && i.status !== 'CANCELLED') }))
       .filter(o => o.items.length > 0);
 
   const historyOrders = orderState.orders
-      .filter(o => !o.isPaid && o.status !== 'CANCELLED')
+      .filter(o => o.type === 'DINE_IN' && !o.isPaid && o.status !== 'CANCELLED')
       .map(o => ({ ...o, items: o.items.filter(i => i.status === 'DELIVERED') }))
       .filter(o => o.items.length > 0)
       .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
@@ -398,7 +401,7 @@ export const WaiterApp: React.FC = () => {
                         const hasCall = !!call;
                         const isBill = call?.reason?.toLowerCase().includes('conta');
                         
-                        const tableOrders = orderState.orders.filter(o => o.tableId === table.id && !o.isPaid && o.status !== 'CANCELLED');
+                        const tableOrders = orderState.orders.filter(o => o.type === 'DINE_IN' && o.tableId === table.id && !o.isPaid && o.status !== 'CANCELLED');
                         const hasBufferedOrder = tableOrders.some(o => (new Date().getTime() - new Date(o.timestamp).getTime()) / 60000 < graceMinutes);
 
                         const isMyTable = (notificationMode === 'OPENER' && table.openedBy === authState.currentUser?.id) || 
@@ -539,7 +542,7 @@ export const WaiterApp: React.FC = () => {
             isOpen={!!selectedTableForAction} 
             onClose={() => setSelectedTableForAction(null)} 
             tableId={selectedTableForAction} 
-            orders={orderState.orders.filter(o => o.tableId === selectedTableForAction && o.status !== 'CANCELLED')}
+            orders={orderState.orders.filter(o => o.type === 'DINE_IN' && o.tableId === selectedTableForAction && o.status !== 'CANCELLED')}
             onOrder={() => { setOrderingTableId(selectedTableForAction); setSelectedTableForAction(null); setCart([]); }} 
         />
 
