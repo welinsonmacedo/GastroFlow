@@ -635,6 +635,7 @@ export interface Product {
 export interface OrderItem {
   id: string;
   productId: string;
+  inventoryItemId?: string;
   quantity: number;
   notes?: string;
   status: OrderStatus;

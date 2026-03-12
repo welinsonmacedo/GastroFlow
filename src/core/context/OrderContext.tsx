@@ -135,6 +135,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
                   items: (o.items || []).map((i: any) => ({ 
                       id: i.id, 
                       productId: i.product_id, 
+                      inventoryItemId: i.inventory_item_id,
                       quantity: Number(i.quantity) || 0, 
                       notes: i.notes, 
                       status: i.status, 

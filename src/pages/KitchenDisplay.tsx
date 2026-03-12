@@ -4,7 +4,7 @@ import { useRestaurant } from '@/core/context/RestaurantContext';
 import { useMenu } from '@/core/context/MenuContext';
 import { useOrder } from '@/core/context/OrderContext';
 import { useUI } from '@/core/context/UIContext';
-import { OrderStatus, ProductType, OrderItem } from '@/types';
+import { OrderStatus, OrderItem } from '@/types';
 import { Clock, ChefHat, CheckCircle, AlertTriangle, Volume2, Plus, Printer, RefreshCcw, Bike, ArrowRight } from 'lucide-react';
 import { printHtml, getReceiptStyles } from '@/core/print/printHelper';
 import { playNotificationSound, unlockAudioContext } from '@/core/audio/audio';
@@ -23,21 +23,66 @@ export const KitchenDisplay: React.FC = () => {
   const lastSoundTime = useRef<number>(0);
 
   const isKitchenItem = (item: OrderItem) => {
-      const product = menuState.products.find(p => p.id === item.productId);
-      const isDrink = product ? product.category === 'Bebidas' : false;
-      return item.productType === ProductType.KITCHEN && !isDrink;
+      // Se o tipo do produto for explicitamente KITCHEN ou COMPOSITE, é um item de cozinha
+      const type = String(item.productType || '').toUpperCase();
+      
+      if (type === 'KITCHEN' || type === 'COMPOSITE') {
+          // Se tiver productId, verifica se é da categoria Bebidas (que geralmente vão pro bar)
+          if (item.productId) {
+              const product = menuState.products.find(p => p.id === item.productId);
+              if (product && product.category === 'Bebidas') return false;
+          }
+          return true;
+      }
+      
+      // Se o tipo for vazio ou desconhecido, tenta inferir pelo produto no menu
+      if (item.productId) {
+          const product = menuState.products.find(p => p.id === item.productId);
+          if (product) {
+              return product.type === 'KITCHEN' || (product.category !== 'Bebidas' && product.type !== 'BAR');
+          }
+      }
+      
+      // Se for um item de inventário sem tipo definido, assume cozinha se não for explicitamente BAR
+      if (item.inventoryItemId && !type) {
+          return true;
+      }
+
+      return false;
   };
 
   const graceMinutes = restState.businessInfo?.orderGracePeriodMinutes || 0;
 
   const activeOrders = orderState.orders.filter(order => {
-      if (order.status === 'CANCELLED') return false;
-      const now = new Date().getTime();
-      const orderTime = new Date(order.timestamp).getTime();
-      const diffMinutes = (now - orderTime) / 60000;
-      if (order.type === 'DINE_IN' && diffMinutes < graceMinutes) return false;
+      // Ignora pedidos cancelados ou já entregues/finalizados
+      if (order.status === 'CANCELLED' || order.status === 'DELIVERED') return false;
+      
+      // Para pedidos de delivery ou balcão, mostra imediatamente se houver itens de cozinha
+      if (order.type === 'DELIVERY' || order.type === 'PDV') {
+          return order.items && order.items.some(item => 
+              isKitchenItem(item) && 
+              (item.status === OrderStatus.PENDING || item.status === OrderStatus.PREPARING)
+          );
+      }
 
-      return order.items.some(item => isKitchenItem(item) && (item.status === OrderStatus.PENDING || item.status === OrderStatus.PREPARING));
+      // Para pedidos de mesa (DINE_IN), respeita o tempo de carência
+      if (order.type === 'DINE_IN') {
+          const now = new Date().getTime();
+          const orderTime = new Date(order.timestamp).getTime();
+          const diffMinutes = (now - orderTime) / 60000;
+          if (diffMinutes < graceMinutes) return false;
+
+          return order.items && order.items.some(item => 
+              isKitchenItem(item) && 
+              (item.status === OrderStatus.PENDING || item.status === OrderStatus.PREPARING)
+          );
+      }
+
+      // Fallback para outros tipos de pedido
+      return order.items && order.items.some(item => 
+          isKitchenItem(item) && 
+          (item.status === OrderStatus.PENDING || item.status === OrderStatus.PREPARING)
+      );
   });
 
   const currentPendingCount = activeOrders.reduce((acc, order) => {
