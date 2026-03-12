@@ -265,40 +265,51 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
     const fetchPlans = async () => {
-         const { data } = await supabase.from('plans').select('*').order('created_at', { ascending: true });
-         if(data) {
-             const mappedPlans: Plan[] = data.map((p: any) => ({
-                 id: p.id,
-                 key: p.key as PlanType,
-                 name: p.name,
-                 price: p.price,
-                 period: p.period,
-                 features: p.features || [], 
-                 limits: { 
-                     maxTables: p.limits?.maxTables ?? 10,
-                     maxProducts: p.limits?.maxProducts ?? 30,
-                     maxStaff: p.limits?.maxStaff ?? 2,
-                     allowKds: p.limits?.allowKds ?? false,
-                     allowCashier: p.limits?.allowCashier ?? false,
-                     allowReports: p.limits?.allowReports ?? false,
-                     allowInventory: p.limits?.allowInventory ?? false,
-                     allowPurchases: p.limits?.allowPurchases ?? false,
-                     allowExpenses: p.limits?.allowExpenses ?? false,
-                     allowStaff: p.limits?.allowStaff ?? true,
-                     allowTableMgmt: p.limits?.allowTableMgmt ?? true,
-                     allowCustomization: p.limits?.allowCustomization ?? true,
-                     allowProductImages: p.limits?.allowProductImages ?? true,
-                     allowProductExtras: p.limits?.allowProductExtras ?? true,
-                     allowProductDescription: p.limits?.allowProductDescription ?? true,
-                     allowRawMaterials: p.limits?.allowRawMaterials ?? true,
-                     allowCompositeProducts: p.limits?.allowCompositeProducts ?? true,
-                     allowedModules: p.limits?.allowedModules || p.allowed_modules || [],
-                     allowedFeatures: p.limits?.allowedFeatures || p.allowed_features || []
-                 },
-                 is_popular: p.is_popular,
-                 button_text: p.button_text
-             }));
-             dispatch({ type: 'SET_PLANS', payload: mappedPlans });
+         try {
+             const { data, error } = await supabase.from('plans').select('*').order('created_at', { ascending: true });
+             
+             if (error) {
+                 if (error.code === '42P01') console.warn("Table 'plans' does not exist yet.");
+                 else if (error.status !== 401) console.error("Error fetching plans:", error);
+                 return;
+             }
+
+             if(data) {
+                 const mappedPlans: Plan[] = data.map((p: any) => ({
+                     id: p.id,
+                     key: p.key as PlanType,
+                     name: p.name,
+                     price: p.price,
+                     period: p.period,
+                     features: p.features || [], 
+                     limits: { 
+                         maxTables: p.limits?.maxTables ?? 10,
+                         maxProducts: p.limits?.maxProducts ?? 30,
+                         maxStaff: p.limits?.maxStaff ?? 2,
+                         allowKds: p.limits?.allowKds ?? false,
+                         allowCashier: p.limits?.allowCashier ?? false,
+                         allowReports: p.limits?.allowReports ?? false,
+                         allowInventory: p.limits?.allowInventory ?? false,
+                         allowPurchases: p.limits?.allowPurchases ?? false,
+                         allowExpenses: p.limits?.allowExpenses ?? false,
+                         allowStaff: p.limits?.allowStaff ?? true,
+                         allowTableMgmt: p.limits?.allowTableMgmt ?? true,
+                         allowCustomization: p.limits?.allowCustomization ?? true,
+                         allowProductImages: p.limits?.allowProductImages ?? true,
+                         allowProductExtras: p.limits?.allowProductExtras ?? true,
+                         allowProductDescription: p.limits?.allowProductDescription ?? true,
+                         allowRawMaterials: p.limits?.allowRawMaterials ?? true,
+                         allowCompositeProducts: p.limits?.allowCompositeProducts ?? true,
+                         allowedModules: p.limits?.allowedModules || p.allowed_modules || [],
+                         allowedFeatures: p.limits?.allowedFeatures || p.allowed_features || []
+                     },
+                     is_popular: p.is_popular,
+                     button_text: p.button_text
+                 }));
+                 dispatch({ type: 'SET_PLANS', payload: mappedPlans });
+             }
+         } catch (e) {
+             console.warn("Silent failure fetching plans (likely 401 or network):", e);
          }
     };
 
@@ -321,13 +332,15 @@ export const SaaSProvider: React.FC<{ children: React.ReactNode }> = ({ children
             if (isMounted && configData && !configError) {
                 dispatch({ type: 'UPDATE_GLOBAL_SETTINGS', settings: configData.global_settings });
             } else if (isMounted) {
+                if (configError && configError.status !== 401) {
+                    console.warn("Global settings fetch error:", configError);
+                }
                 const localSettings = localStorage.getItem('flux_saas_global_settings');
                 if (localSettings) {
                     dispatch({ type: 'UPDATE_GLOBAL_SETTINGS', settings: JSON.parse(localSettings) });
                 }
             }
         } catch (e) {
-            console.warn("saas_config table might not exist yet, using localStorage:", e);
             if (isMounted) {
                 const localSettings = localStorage.getItem('flux_saas_global_settings');
                 if (localSettings) {
