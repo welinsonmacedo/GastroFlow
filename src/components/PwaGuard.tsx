@@ -40,18 +40,26 @@ export const PwaGuard: React.FC<{ children: React.ReactNode }> = ({ children }) 
 
   if (saasState.isLoading) return null;
 
-  // Rotas permitidas no navegador (Login, Cardápio, Documentos Legais, SaaS)
-  const isPublicRoute = 
+  // Rotas permitidas no navegador (Login, Cardápio, Documentos Legais, SaaS e Painéis Administrativos)
+  const isBypassRoute = 
     location.pathname === '/' || 
     location.pathname === '/login' ||
     location.pathname === '/register' ||
     location.pathname === '/privacy' || 
     location.pathname === '/terms' ||
     location.pathname === '/sys-admin' ||
-    location.pathname === '/dashboard';
+    location.pathname === '/modules' ||
+    location.pathname.startsWith('/dashboard') ||
+    location.pathname.startsWith('/admin') ||
+    location.pathname.startsWith('/settings') ||
+    location.pathname.startsWith('/finance') ||
+    location.pathname.startsWith('/rh') ||
+    location.pathname.startsWith('/inventory') ||
+    location.pathname.startsWith('/audit') ||
+    location.pathname.startsWith('/commerce');
 
-  // Se já for PWA ou estiver em rota pública, renderiza o app normalmente
-  if (isPWA || isPublicRoute) {
+  // Se já for PWA ou estiver em rota de bypass, renderiza o app normalmente
+  if (isPWA || isBypassRoute) {
     return <>{children}</>;
   }
 
