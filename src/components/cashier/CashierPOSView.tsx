@@ -5,7 +5,7 @@ import { useOrder } from '@/core/context/OrderContext';
 import { useFinance } from '@/core/context/FinanceContext';
 import { useUI } from '@/core/context/UIContext';
 import { InventoryItem } from '@/types';
-import { Search, Plus, AlertTriangle, ShoppingCart, Trash2, Package, Banknote, Zap } from 'lucide-react';
+import { Search, Plus, AlertTriangle, ShoppingCart, Trash2, Package } from 'lucide-react';
 import { AddToCartModal } from '../modals/AddToCartModal';
 import { Modal } from '../Modal';
 import { Button } from '../Button';

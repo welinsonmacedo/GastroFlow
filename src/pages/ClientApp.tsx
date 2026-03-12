@@ -257,9 +257,19 @@ export const ClientApp: React.FC = () => {
         if (!tableId || cart.length === 0) return;
         const flattenedItems: any[] = [];
         cart.forEach(item => {
-            flattenedItems.push({ productId: item.product.id, quantity: item.quantity, notes: item.notes });
+            flattenedItems.push({ 
+                productId: item.product.id, 
+                quantity: item.quantity, 
+                notes: item.notes,
+                type: item.product.type || (item.product.category === 'Bebidas' ? 'BAR' : 'KITCHEN')
+            });
             item.extras?.forEach(extra => {
-                flattenedItems.push({ productId: extra.id, quantity: item.quantity, notes: `[ADICIONAL]` });
+                flattenedItems.push({ 
+                    productId: extra.id, 
+                    quantity: item.quantity, 
+                    notes: `[ADICIONAL]`,
+                    type: extra.type || (extra.category === 'Bebidas' ? 'BAR' : 'KITCHEN')
+                });
             });
         });
         await orderDispatch({ type: 'PLACE_ORDER', tableId, items: flattenedItems });
