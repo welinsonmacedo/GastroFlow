@@ -106,7 +106,7 @@ export const MenuProvider: React.FC<{ children: React.ReactNode }> = ({ children
           sort_order: product.sortOrder,
           linked_inventory_item_id: product.linkedInventoryItemId,
           is_extra: product.isExtra ?? false,
-          linked_extra_ids: product.linkedExtraIds || [],
+          linked_extra_ids: (product.linkedExtraIds && product.linkedExtraIds.length > 0) ? `{${product.linkedExtraIds.join(',')}}` : '{}',
           target_categories: product.targetCategories || []
       });
 
@@ -120,11 +120,17 @@ export const MenuProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const updateProduct = async (product: Product) => {
       const { error } = await supabase.from('products').update({
-          name: product.name, price: product.price, category: product.category, 
-          description: product.description, image: product.image, 
-          is_visible: product.isVisible, sort_order: product.sortOrder,
-          is_extra: product.isExtra, linked_extra_ids: product.linkedExtraIds,
-          target_categories: product.targetCategories
+          name: product.name, 
+          price: product.price, 
+          cost_price: product.costPrice,
+          category: product.category, 
+          description: product.description, 
+          image: product.image, 
+          is_visible: product.isVisible, 
+          sort_order: product.sortOrder,
+          is_extra: product.isExtra, 
+          linked_extra_ids: (product.linkedExtraIds && product.linkedExtraIds.length > 0) ? `{${product.linkedExtraIds.join(',')}}` : '{}',
+          target_categories: product.targetCategories || []
       }).eq('id', product.id);
       if (error) throw error;
       await fetchProducts();
