@@ -74,24 +74,40 @@ export const MenuProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const addProduct = async (product: Partial<Product>) => {
       if(!tenantId) return;
 
-      const { error } = await supabase.rpc('add_product', {
-          p_tenant_id: tenantId,
-          p_max_products: planLimits.maxProducts,
-          p_product: {
-              name: product.name,
-              price: product.price,
-              costPrice: product.costPrice,
-              category: product.category,
-              type: product.type,
-              image: product.image,
-              description: product.description,
-              isVisible: product.isVisible,
-              sortOrder: product.sortOrder,
-              linkedInventoryItemId: product.linkedInventoryItemId,
-              isExtra: product.isExtra,
-              linkedExtraIds: product.linkedExtraIds || [],
-              targetCategories: product.targetCategories || []
+      // Check limits
+      if (planLimits.maxProducts !== -1) {
+          const { count, error: countError } = await supabase
+              .from('products')
+              .select('*', { count: 'exact', head: true })
+              .eq('tenant_id', tenantId);
+          
+          if (countError) {
+              showAlert({ title: "Erro", message: "Erro ao verificar limite de produtos.", type: 'ERROR' });
+              throw countError;
           }
+
+          if (count !== null && count >= planLimits.maxProducts) {
+              const error = new Error("Limite de produtos atingido para o seu plano.");
+              showAlert({ title: "Erro", message: error.message, type: 'ERROR' });
+              throw error;
+          }
+      }
+
+      const { error } = await supabase.from('products').insert({
+          tenant_id: tenantId,
+          name: product.name,
+          price: product.price,
+          cost_price: product.costPrice,
+          category: product.category,
+          type: product.type,
+          image: product.image,
+          description: product.description,
+          is_visible: product.isVisible ?? true,
+          sort_order: product.sortOrder,
+          linked_inventory_item_id: product.linkedInventoryItemId,
+          is_extra: product.isExtra ?? false,
+          linked_extra_ids: product.linkedExtraIds || [],
+          target_categories: product.targetCategories || []
       });
 
       if (error) {

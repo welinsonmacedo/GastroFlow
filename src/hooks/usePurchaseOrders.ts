@@ -1,6 +1,6 @@
-import { useInventory } from '../context/InventoryContext';
-import { useRestaurant } from '../context/RestaurantContext';
-import { useAuth } from '../context/AuthProvider';
+import { useInventory } from '@/core/context/InventoryContext';
+import { useRestaurant } from '@/core/context/RestaurantContext';
+import { useAuth } from '@/core/context/AuthProvider';
 import { supabase, logAudit } from '../core/api/supabaseClient';
 
 export const usePurchaseOrders = () => {
