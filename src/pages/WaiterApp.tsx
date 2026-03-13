@@ -405,6 +405,36 @@ export const WaiterApp: React.FC = () => {
             {/* VIEW: TABLES (Mapa de Mesas) */}
             {activeTab === 'TABLES' && (
                 <div className="space-y-4">
+                    {/* Chamados Pendentes (Real-time List) */}
+                    {pendingCalls.length > 0 && (
+                        <div className="bg-red-50 border-2 border-red-200 rounded-[2rem] p-4 mb-6 animate-in fade-in slide-in-from-top-4 duration-500">
+                            <div className="flex items-center gap-2 mb-3 px-2">
+                                <Bell className="text-red-500 animate-bounce" size={18} />
+                                <h3 className="text-xs font-black text-red-600 uppercase tracking-widest">Chamados Pendentes ({pendingCalls.length})</h3>
+                            </div>
+                            <div className="flex flex-wrap gap-3">
+                                {pendingCalls.map(call => {
+                                    const table = orderState.tables.find(t => t.id === call.tableId);
+                                    return (
+                                        <div 
+                                            key={call.id} 
+                                            onClick={() => { setConfirmCallId(call.id); setCallingTableNumber(table?.number || 0); setCallReason(call.reason || null); }}
+                                            className="bg-white border border-red-100 p-3 rounded-2xl flex items-center gap-3 shadow-sm active:scale-95 transition-all cursor-pointer"
+                                        >
+                                            <div className="bg-red-600 text-white w-8 h-8 rounded-xl flex items-center justify-center font-black text-sm">
+                                                {table?.number || '?'}
+                                            </div>
+                                            <div>
+                                                <p className="text-[9px] font-black text-red-400 uppercase tracking-widest leading-none">Mesa {table?.number}</p>
+                                                <p className="text-[11px] font-bold text-red-700 mt-0.5">{call.reason || 'Chamando...'}</p>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
+
                     <div className="flex justify-end px-2">
                         <button onClick={playSound} className="text-[10px] font-bold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition-colors flex items-center gap-1">
                             <Volume2 size={12} /> Testar Som

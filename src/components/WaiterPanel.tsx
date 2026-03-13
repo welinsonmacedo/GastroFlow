@@ -2,15 +2,16 @@ import React from 'react';
 import { useOrder } from '../core/context/OrderContext';
 import { useInventory } from '../core/context/InventoryContext';
 import { useFinance } from '../core/context/FinanceContext';
+import { Bell, CheckCircle, Clock } from 'lucide-react';
 
 export const WaiterPanel: React.FC = () => {
-    const { state: orderState, dispatch: orderDispatch } = useOrder();
+    const { state: orderState, dispatch, resolveCall } = useOrder();
     const { state: invState } = useInventory();
     const { state: finState } = useFinance();
 
     const createOrder = async () => {
         try {
-            await orderDispatch({ 
+            await dispatch({ 
                 type: 'PLACE_ORDER', 
                 params: { 
                     tableId: '1', 
@@ -20,6 +21,14 @@ export const WaiterPanel: React.FC = () => {
             });
         } catch (error) {
             console.error("Erro ao criar pedido:", error);
+        }
+    };
+
+    const handleResolveCall = async (callId: string) => {
+        try {
+            await resolveCall(callId);
+        } catch (error) {
+            console.error("Erro ao resolver chamado:", error);
         }
     };
 
@@ -37,6 +46,45 @@ export const WaiterPanel: React.FC = () => {
                     Novo Pedido
                 </button>
             </div>
+
+            {/* Chamados Ativos (Real-time) */}
+            {orderState.serviceCalls.length > 0 && (
+                <div className="mb-8 animate-in fade-in slide-in-from-top-4 duration-500">
+                    <div className="flex items-center gap-2 mb-4">
+                        <Bell className="text-red-500 animate-bounce" size={20} />
+                        <h3 className="text-sm font-black text-red-600 uppercase tracking-widest">Chamados Ativos ({orderState.serviceCalls.length})</h3>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {orderState.serviceCalls.map(call => {
+                            const table = orderState.tables.find(t => t.id === call.tableId);
+                            return (
+                                <div key={call.id} className="bg-red-50 border-2 border-red-200 p-4 rounded-2xl flex justify-between items-center shadow-sm shadow-red-100">
+                                    <div className="flex items-center gap-3">
+                                        <div className="bg-red-600 text-white w-10 h-10 rounded-xl flex items-center justify-center font-black text-lg">
+                                            {table?.number || '?'}
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] font-black text-red-400 uppercase tracking-widest">Mesa {table?.number}</p>
+                                            <p className="text-xs font-bold text-red-700">{call.reason || 'Chamando Garçom'}</p>
+                                            <div className="flex items-center gap-1 mt-1 text-[9px] font-bold text-red-400">
+                                                <Clock size={10} />
+                                                {new Date(call.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <button 
+                                        onClick={() => handleResolveCall(call.id)}
+                                        className="bg-white text-red-600 p-2 rounded-xl hover:bg-red-600 hover:text-white transition-all shadow-sm border border-red-100"
+                                        title="Atender Chamado"
+                                    >
+                                        <CheckCircle size={20} />
+                                    </button>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {/* Coluna Pedidos */}
