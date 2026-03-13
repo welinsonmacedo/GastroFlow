@@ -4,6 +4,7 @@ import { useRestaurant } from '@/core/context/RestaurantContext';
 import { useMenu } from '@/core/context/MenuContext';
 import { useOrder } from '@/core/context/OrderContext';
 import { useInventory } from '@/core/context/InventoryContext';
+import { useFinance } from '@/core/context/FinanceContext';
 import { useUI } from '@/core/context/UIContext';
 import { useAuth } from '@/core/context/AuthProvider';
 import { TableStatus, Product, OrderStatus, ProductType } from '@/types';
@@ -18,6 +19,7 @@ export const WaiterApp: React.FC = () => {
   const { state: menuState } = useMenu();
   const { state: orderState, dispatch: orderDispatch } = useOrder();
   const { state: invState } = useInventory();
+  const { state: finState } = useFinance();
   const { state: authState } = useAuth();
   
   const [activeTab, setActiveTab] = useState<'TABLES' | 'ORDERS'>('TABLES');
@@ -372,6 +374,19 @@ export const WaiterApp: React.FC = () => {
                 </p>
              </div>
              <div className="flex items-center gap-2">
+                 {/* Indicadores Real-time */}
+                 <div className="hidden md:flex items-center gap-2 mr-2">
+                     <div className={`flex items-center gap-1 px-2 py-1 rounded-lg border ${finState.activeCashSession ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600' : 'bg-red-500/10 border-red-500/20 text-red-600'}`}>
+                         <div className={`w-1.5 h-1.5 rounded-full ${finState.activeCashSession ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'}`} />
+                         <span className="text-[8px] font-black uppercase tracking-widest">Caixa {finState.activeCashSession ? 'Aberto' : 'Fechado'}</span>
+                     </div>
+                     {invState.inventory.some(i => i.quantity <= i.minQuantity) && (
+                         <div className="flex items-center gap-1 px-2 py-1 rounded-lg border bg-amber-500/10 border-amber-500/20 text-amber-600">
+                             <AlertTriangle size={10} />
+                             <span className="text-[8px] font-black uppercase tracking-widest">Estoque</span>
+                         </div>
+                     )}
+                 </div>
                  {audioBlocked && (
                      <button onClick={() => playSound(true)} className="bg-red-500 text-white px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest animate-pulse shadow-lg shadow-red-500/30 flex items-center gap-1">
                          <Volume2 size={14} /> Ativar Som

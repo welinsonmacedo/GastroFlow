@@ -2,11 +2,12 @@
 import React, { useState, useEffect } from 'react';
 import { useFinance } from '@/core/context/FinanceContext';
 import { useOrder } from '@/core/context/OrderContext';
+import { useInventory } from '@/core/context/InventoryContext';
 import { useUI } from '@/core/context/UIContext';
 import { useAuth } from '@/core/context/AuthProvider';
 import { TableStatus } from '@/types'; 
 import { Button } from '../components/Button';
-import { History, ShoppingCart, Wallet, Receipt, Lock, RefreshCcw, LogOut, LayoutGrid, Bike, User, Eye, XCircle, Banknote, Zap, CreditCard, Split, CheckSquare, EyeOff } from 'lucide-react';
+import { History, ShoppingCart, Wallet, Receipt, Lock, RefreshCcw, LogOut, LayoutGrid, Bike, User, Eye, XCircle, Banknote, Zap, CreditCard, Split, CheckSquare, EyeOff, AlertTriangle } from 'lucide-react';
 import { CloseRegisterModal } from '../components/modals/CloseRegisterModal';
 import { CashBleedModal } from '../components/modals/CashBleedModal';
 import { Modal } from '../components/Modal';
@@ -21,6 +22,7 @@ import { DeliveryStatusModal } from '../components/modals/DeliveryStatusModal';
 export const CashierDashboard: React.FC = () => {
   const { state: orderState, dispatch: orderDispatch } = useOrder();
   const { state: finState, openRegister, refreshTransactions, voidTransaction } = useFinance();
+  const { state: invState } = useInventory();
   const { showAlert, showConfirm, isHeaderVisible, toggleHeader } = useUI();
   const { logout, state: authState } = useAuth();
 
@@ -217,6 +219,19 @@ export const CashierDashboard: React.FC = () => {
                     {isHeaderVisible ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
 
+                  {/* Indicadores Real-time */}
+                  <div className="hidden md:flex items-center gap-2 mr-2">
+                      <div className={`flex items-center gap-1 px-2 py-1 rounded-lg border ${finState.activeCashSession ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600' : 'bg-red-500/10 border-red-500/20 text-red-600'}`}>
+                          <div className={`w-1.5 h-1.5 rounded-full ${finState.activeCashSession ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'}`} />
+                          <span className="text-[8px] font-black uppercase tracking-widest">Caixa {finState.activeCashSession ? 'Aberto' : 'Fechado'}</span>
+                      </div>
+                      {invState.inventory.some(i => i.quantity <= i.minQuantity) && (
+                          <div className="flex items-center gap-1 px-2 py-1 rounded-lg border bg-amber-500/10 border-amber-500/20 text-amber-600">
+                              <AlertTriangle size={10} />
+                              <span className="text-[8px] font-black uppercase tracking-widest">Estoque</span>
+                          </div>
+                      )}
+                  </div>
                   <button onClick={handleManualRefresh} className={`p-2.5 rounded-xl bg-gray-50 text-blue-600 hover:bg-blue-50 transition-all ${isRefreshing ? 'animate-spin' : ''}`} title="Sincronizar"><RefreshCcw size={18}/></button>
                   <div className="text-xs font-bold text-emerald-600 bg-emerald-50 px-3 py-2 rounded-lg border border-emerald-100 uppercase tracking-wide">Caixa Aberto</div>
               </div>
