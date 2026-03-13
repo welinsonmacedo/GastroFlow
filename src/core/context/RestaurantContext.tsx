@@ -129,7 +129,7 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [state, localDispatch] = useReducer(restaurantReducer, initialState);
 
   const authorize = (tenantId: string, tableId: string) => {
-    sessionStorage.setItem(`arloflux_auth_${tenantId}`, tableId);
+    localStorage.setItem(`arloflux_auth_${tenantId}`, tableId);
     localDispatch({ type: 'SET_AUTHORIZED', tenantId, tableId });
   };
 
@@ -205,11 +205,11 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
         if (!tenant) { 
             console.warn(`RestaurantContext: Tenant not found or query failed for slug: "${slug}"`);
-            const storedAuth = Object.keys(sessionStorage).find(key => key.startsWith('arloflux_auth_'));
+            const storedAuth = Object.keys(localStorage).find(key => key.startsWith('arloflux_auth_'));
             
             if (state.isAuthorized || storedAuth) {
                 console.log('RestaurantContext: Found stale auth, clearing and reloading...');
-                sessionStorage.removeItem(storedAuth || '');
+                localStorage.removeItem(storedAuth || '');
                 clearTimeout(timeoutId);
                 localDispatch({ type: 'SET_LOADING', isLoading: false });
                 window.location.reload(); 
@@ -280,9 +280,9 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             expenseCategories: (tenant.business_info?.expenseCategories) || initialState.businessInfo.expenseCategories
         };
 
-        const storedModule = sessionStorage.getItem(`arloflux_module_${tenant.id}`);
+        const storedModule = localStorage.getItem(`arloflux_module_${tenant.id}`);
         const initialActiveModule = storedModule as SystemModule | null;
-        const isAuthorized = !!sessionStorage.getItem(`arloflux_auth_${tenant.id}`);
+        const isAuthorized = !!localStorage.getItem(`arloflux_auth_${tenant.id}`);
 
         console.log('RestaurantContext: Dispatching INIT_DATA...');
         clearTimeout(timeoutId);
@@ -299,10 +299,10 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
                 allowedFeatures: tenant.allowed_features || [],
                 activeModule: initialActiveModule,
                 isAuthorized: isAuthorized,
-                tableId: isAuthorized ? sessionStorage.getItem(`arloflux_auth_${tenant.id}`) : null
+                tableId: isAuthorized ? localStorage.getItem(`arloflux_auth_${tenant.id}`) : null
             }
         });
-        sessionStorage.setItem('arloflux_tenant_slug', tenant.slug);
+        localStorage.setItem('arloflux_tenant_slug', tenant.slug);
         console.log('RestaurantContext: Init completed successfully.');
     } catch (error) {
         console.error("RestaurantContext: CRITICAL ERROR during init:", error);
@@ -369,7 +369,7 @@ export const RestaurantProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
   const setActiveModule = (module: SystemModule) => {
       if (state.tenantId) {
-          sessionStorage.setItem(`arloflux_module_${state.tenantId}`, module);
+          localStorage.setItem(`arloflux_module_${state.tenantId}`, module);
       }
       localDispatch({ type: 'SET_ACTIVE_MODULE', module });
   };

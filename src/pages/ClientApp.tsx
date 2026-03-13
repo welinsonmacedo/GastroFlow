@@ -6,7 +6,6 @@ import { useRestaurant } from '@/core/context/RestaurantContext';
 import { useMenu } from '@/core/context/MenuContext';
 import { useOrder } from '@/core/context/OrderContext';
 import { useUI } from '@/core/context/UIContext';
-import { useAuth } from '@/core/context/AuthProvider';
 import { Button } from '../components/Button';
 import { TableStatus, Product, Order } from '@/types';
 import { 
@@ -70,7 +69,6 @@ export const ClientApp: React.FC = () => {
     const { state: menuState } = useMenu();
     const { state: orderState, dispatch: orderDispatch, cancelOrder } = useOrder();
     const { showConfirm, showAlert } = useUI();
-    const { state: authState } = useAuth();
 
     const [cart, setCart] = useState<{ product: Product; quantity: number; notes: string; extras?: Product[] }[]>([]);
     const [view, setView] = useState<'MENU' | 'CART' | 'STATUS' | 'BILL'>('MENU');
@@ -91,25 +89,13 @@ export const ClientApp: React.FC = () => {
     const graceMinutes = state.businessInfo?.orderGracePeriodMinutes || 0;
     const tableOrders = orderState.orders.filter(o => o.tableId === tableId && !o.isPaid && o.status !== 'CANCELLED');
 
-    const [isOpeningTable, setIsOpeningTable] = useState(false);
-
     useEffect(() => {
-        if (table && table.status !== TableStatus.OCCUPIED && !isOpeningTable) {
-            setIsOpeningTable(true);
-            const customerName = authState.currentUser?.name || authState.currentUser?.email || 'Cliente';
-            try {
-                orderDispatch({ 
-                    type: 'OPEN_TABLE', 
-                    tableId: table.id, 
-                    customerName: customerName, 
-                    accessCode: '' 
-                });
-            } catch (err) {
-                console.error("Erro ao auto-abrir mesa:", err);
-                setIsOpeningTable(false);
-            }
+        if (table && table.status === TableStatus.AVAILABLE) {
+            // Mesa foi fechada pelo garçom, remover acesso
+            localStorage.removeItem(`arloflux_auth_${state.tenantId}`);
+            window.location.href = `/client/home`;
         }
-    }, [table?.status, table?.id, authState.currentUser, isOpeningTable, orderDispatch]);
+    }, [table?.status, state.tenantId]);
 
     // --- Helpers de Estilo baseados no Tema ---
     const getRadiusClass = (radius?: string) => {
