@@ -119,7 +119,15 @@ export const InventoryProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         .on('postgres_changes', { event: '*', schema: 'public', table: 'suppliers', filter: `tenant_id=eq.${tenantId}` }, fetchData)
         .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    // Fallback polling
+    const interval = setInterval(() => {
+        fetchData();
+    }, 5000);
+
+    return () => { 
+        supabase.removeChannel(channel); 
+        clearInterval(interval);
+    };
   }, [tenantId, fetchData]);
 
   const addInventoryItem = async (item: InventoryItem): Promise<string | null> => {

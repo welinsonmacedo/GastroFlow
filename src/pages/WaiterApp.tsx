@@ -388,7 +388,7 @@ export const WaiterApp: React.FC = () => {
                      )}
                  </div>
                  {audioBlocked && (
-                     <button onClick={() => playSound(true)} className="bg-red-500 text-white px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest animate-pulse shadow-lg shadow-red-500/30 flex items-center gap-1">
+                     <button onClick={() => playSound(true)} className="bg-red-500 text-white px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest animate-pulse-fast shadow-lg shadow-red-500/30 flex items-center gap-1">
                          <Volume2 size={14} /> Ativar Som
                      </button>
                  )}
@@ -407,7 +407,7 @@ export const WaiterApp: React.FC = () => {
                 <div className="space-y-4">
                     {/* Chamados Pendentes (Real-time List) */}
                     {pendingCalls.length > 0 && (
-                        <div className="bg-red-50 border-2 border-red-200 rounded-[2rem] p-4 mb-6 animate-in fade-in slide-in-from-top-4 duration-500">
+                        <div className="bg-red-50 border-2 border-red-200 rounded-[2rem] p-4 mb-6 animate-in fade-in slide-in-from-top-4 duration-300">
                             <div className="flex items-center gap-2 mb-3 px-2">
                                 <Bell className="text-red-500 animate-bounce" size={18} />
                                 <h3 className="text-xs font-black text-red-600 uppercase tracking-widest">Chamados Pendentes ({pendingCalls.length})</h3>
@@ -453,7 +453,7 @@ export const WaiterApp: React.FC = () => {
                                           (notificationMode === 'ASSIGNED' && table.assignedWaiterId === authState.currentUser?.id);
 
                         return (
-                            <div key={table.id} onClick={() => { if (hasCall) { setConfirmCallId(call!.id); setCallingTableNumber(table.number); setCallReason(call!.reason || null); } else if (table.status === TableStatus.AVAILABLE) { setSelectedTableForOpen(table.id); } else { setSelectedTableForAction(table.id); }}} className={`p-4 rounded-[2rem] shadow-sm border-4 flex flex-col items-center justify-between min-h-[140px] transition-all cursor-pointer relative active:scale-95 ${hasCall ? 'bg-red-500 border-red-600 text-black animate-pulse shadow-red-500/50' : (table.status === TableStatus.OCCUPIED ? 'bg-white border-blue-500 text-slate-800' : 'bg-gray-100 border-transparent text-slate-400 opacity-60')} ${isMyTable ? 'ring-4 ring-offset-2 ring-blue-400' : ''}`}>
+                            <div key={table.id} onClick={() => { if (hasCall) { setConfirmCallId(call!.id); setCallingTableNumber(table.number); setCallReason(call!.reason || null); } else if (table.status === TableStatus.AVAILABLE) { setSelectedTableForOpen(table.id); } else { setSelectedTableForAction(table.id); }}} className={`p-4 rounded-[2rem] shadow-sm border-4 flex flex-col items-center justify-between min-h-[140px] transition-all cursor-pointer relative active:scale-95 ${hasCall ? 'bg-red-500 border-red-600 text-black animate-pulse-fast shadow-red-500/50' : (table.status === TableStatus.OCCUPIED ? 'bg-white border-blue-500 text-slate-800' : 'bg-gray-100 border-transparent text-slate-400 opacity-60')} ${isMyTable ? 'ring-4 ring-offset-2 ring-blue-400' : ''}`}>
                                 {isMyTable && <div className="absolute -top-3 -right-3 bg-blue-600 text-white p-1.5 rounded-full shadow-md z-10"><Check size={12} strokeWidth={4} /></div>}
                                 <div className="w-full flex justify-between items-start">
                                     <span className="text-[10px] font-black uppercase tracking-widest opacity-80">
@@ -506,7 +506,7 @@ export const WaiterApp: React.FC = () => {
                                     <div key={tblId} className={`bg-white rounded-[2rem] shadow-sm border overflow-hidden transition-all ${hasReadyItems ? 'border-emerald-400 shadow-emerald-100' : 'border-gray-100'}`}>
                                         <button onClick={() => toggleTableExpand(tblId)} className={`w-full flex items-center justify-between p-5 text-left transition-colors ${isExpanded ? 'bg-gray-50' : 'bg-white hover:bg-gray-50'}`}>
                                             <div className="flex items-center gap-4">
-                                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-black text-xl shadow-inner ${hasReadyItems ? 'bg-emerald-500 text-white animate-pulse' : 'bg-slate-900 text-white'}`}>{table?.number}</div>
+                                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-black text-xl shadow-inner ${hasReadyItems ? 'bg-emerald-500 text-white animate-pulse-fast' : 'bg-slate-900 text-white'}`}>{table?.number}</div>
                                                 <div><h3 className="font-black text-slate-800 uppercase tracking-tighter">Mesa {table?.number}</h3><p className="text-xs font-bold text-slate-400 flex items-center gap-1">{totalItems} itens pendentes {hasReadyItems && <span className="text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full text-[9px] uppercase tracking-wide ml-2 border border-emerald-100">Pronto para Servir</span>}</p></div>
                                             </div>
                                             <div className="text-slate-400">{isExpanded ? <ChevronUp size={24}/> : <ChevronDown size={24}/>}</div>

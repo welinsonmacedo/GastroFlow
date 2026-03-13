@@ -79,9 +79,9 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       tables: [], orders: [], serviceCalls: [], audioUnlocked: false, isLoading: true
   });
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (silent = false) => {
       if (!tenantId) return;
-      localDispatch({ type: 'SET_LOADING', isLoading: true });
+      if (!silent) localDispatch({ type: 'SET_LOADING', isLoading: true });
       const yesterday = new Date(); yesterday.setHours(yesterday.getHours() - 24);
 
       try {
@@ -152,7 +152,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       } catch (e) {
           console.error("Erro ao buscar dados:", e);
       } finally {
-          localDispatch({ type: 'SET_LOADING', isLoading: false });
+          if (!silent) localDispatch({ type: 'SET_LOADING', isLoading: false });
       }
 
   }, [tenantId]);
@@ -161,7 +161,7 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (!tenantId) return;
       fetchData();
       
-      const handleRealtimeUpdate = () => fetchData();
+      const handleRealtimeUpdate = () => fetchData(true);
 
       const channel = supabase.channel(`restaurant_room:${tenantId}`)
           .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `tenant_id=eq.${tenantId}` }, handleRealtimeUpdate)
@@ -171,7 +171,15 @@ export const OrderProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           .on('postgres_changes', { event: '*', schema: 'public', table: 'staff', filter: `tenant_id=eq.${tenantId}` }, handleRealtimeUpdate)
           .subscribe();
 
-      return () => { supabase.removeChannel(channel); };
+      // Fallback polling
+      const interval = setInterval(() => {
+          fetchData(true);
+      }, 5000);
+
+      return () => { 
+          supabase.removeChannel(channel); 
+          clearInterval(interval);
+      };
   }, [tenantId, fetchData]);
 
   // --- ACTIONS COM SEGURANÇA ---

@@ -11,8 +11,9 @@ export default {
       },
       animation: {
         'bounce-slow': 'bounce 3s infinite',
-        'fade-in': 'fadeIn 0.5s ease-out forwards',
-        'fade-in-down': 'fadeInDown 0.3s ease-out forwards',
+        'fade-in': 'fadeIn 0.3s ease-out forwards',
+        'fade-in-down': 'fadeInDown 0.2s ease-out forwards',
+        'pulse-fast': 'pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite',
       },
       keyframes: {
         fadeIn: {

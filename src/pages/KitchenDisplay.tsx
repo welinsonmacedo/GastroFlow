@@ -220,7 +220,7 @@ export const KitchenDisplay: React.FC = () => {
              {/* Indicadores Real-time */}
              <div className="hidden md:flex items-center gap-2 mr-4">
                  <div className={`flex items-center gap-1 px-2 py-1 rounded-lg border ${finState.activeCashSession ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-red-500/10 border-red-500/20 text-red-400'}`}>
-                     <div className={`w-1.5 h-1.5 rounded-full ${finState.activeCashSession ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'}`} />
+                     <div className={`w-1.5 h-1.5 rounded-full ${finState.activeCashSession ? 'bg-emerald-500 animate-pulse-fast' : 'bg-red-500'}`} />
                      <span className="text-[8px] font-black uppercase tracking-widest">Caixa {finState.activeCashSession ? 'Aberto' : 'Fechado'}</span>
                  </div>
                  {invState.inventory.some(i => i.quantity <= i.minQuantity) && (
@@ -232,12 +232,12 @@ export const KitchenDisplay: React.FC = () => {
              </div>
 
              {audioBlocked && (
-                 <button onClick={() => playSound(true)} className="bg-red-500 text-white px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest animate-pulse shadow-lg shadow-red-500/30 flex items-center gap-1">
+                 <button onClick={() => playSound(true)} className="bg-red-500 text-white px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest animate-pulse-fast shadow-lg shadow-red-500/30 flex items-center gap-1">
                      <Volume2 size={14} /> Ativar Som
                  </button>
              )}
-             <button onClick={() => playSound(true)} className="p-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all text-emerald-400" title="Testar Som"><Volume2 size={18} /></button>
-             <button onClick={handleManualRefresh} className={`p-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all ${isRefreshing ? 'animate-spin' : ''}`}><RefreshCcw size={18} className="text-emerald-400" /></button>
+             <button onClick={() => playSound(true)} className="p-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all duration-300 ease-out text-emerald-400" title="Testar Som"><Volume2 size={18} /></button>
+             <button onClick={handleManualRefresh} className={`p-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all duration-300 ease-out ${isRefreshing ? 'animate-spin' : ''}`}><RefreshCcw size={18} className="text-emerald-400" /></button>
              <div className="text-sm font-black font-mono text-white bg-white/10 px-3 py-1.5 rounded-xl border border-white/5">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
         </div>
       </div>
@@ -255,7 +255,7 @@ export const KitchenDisplay: React.FC = () => {
           const goesToCashier = isDelivery || isPDV;
           
           return (
-            <div key={order.id} className={`min-w-[320px] max-w-[320px] bg-slate-900 rounded-[2rem] overflow-hidden border-2 flex flex-col shadow-2xl transition-all h-full ${isLate ? 'border-red-500 ring-4 ring-red-500/10' : (isDelivery ? 'border-orange-500' : (isPDV ? 'border-purple-500' : 'border-white/10'))}`}>
+            <div key={order.id} className={`min-w-[320px] max-w-[320px] bg-slate-900 rounded-[2rem] overflow-hidden border-2 flex flex-col shadow-2xl transition-all duration-300 ease-out h-full ${isLate ? 'border-red-500 ring-4 ring-red-500/10' : (isDelivery ? 'border-orange-500' : (isPDV ? 'border-purple-500' : 'border-white/10'))}`}>
               
               <div className={`p-4 flex justify-between items-center shrink-0 ${isLate ? 'bg-red-600' : (isDelivery ? 'bg-orange-600' : (isPDV ? 'bg-purple-600' : 'bg-slate-800'))}`}>
                 <div className="overflow-hidden">
@@ -280,23 +280,23 @@ export const KitchenDisplay: React.FC = () => {
               </div>
               
               <div className="bg-slate-850 p-3 border-b border-white/5 flex justify-between shrink-0 gap-2">
-                  <button onClick={() => handlePrintOrder(order)} className="bg-slate-700 hover:bg-slate-600 p-2 rounded-xl text-white transition-all"><Printer size={20} /></button>
-                  <button onClick={() => order.items.forEach(i => isKitchenItem(i) && orderDispatch({ type: 'UPDATE_ITEM_STATUS', orderId: order.id, itemId: i.id, status: OrderStatus.READY }))} className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl font-black text-xs flex-1 transition-all uppercase tracking-tight">Concluir Tudo</button>
+                  <button onClick={() => handlePrintOrder(order)} className="bg-slate-700 hover:bg-slate-600 p-2 rounded-xl text-white transition-all duration-300 ease-out"><Printer size={20} /></button>
+                  <button onClick={() => order.items.forEach(i => isKitchenItem(i) && orderDispatch({ type: 'UPDATE_ITEM_STATUS', orderId: order.id, itemId: i.id, status: OrderStatus.READY }))} className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl font-black text-xs flex-1 transition-all duration-300 ease-out uppercase tracking-tight">Concluir Tudo</button>
               </div>
 
               <div className="p-4 flex-1 space-y-3 overflow-y-auto custom-scrollbar">
                 {groupedItems.map(({ main, extras }) => (
-                    <div key={main.id} className={`p-4 rounded-3xl border-2 transition-all relative flex flex-col gap-3 ${main.status === OrderStatus.PENDING ? 'bg-slate-800 border-emerald-500/20' : 'bg-blue-600/10 border-blue-500/30'}`}>
+                    <div key={main.id} className={`p-4 rounded-3xl border-2 transition-all duration-300 ease-out relative flex flex-col gap-3 ${main.status === OrderStatus.PENDING ? 'bg-slate-800 border-emerald-500/20' : 'bg-blue-600/10 border-blue-500/30'}`}>
                         <div>
                             <div className="flex justify-between items-start mb-2"><span className="font-black text-2xl text-white tracking-tight leading-none">{main.quantity}x {main.productName}</span></div>
-                            {main.notes && <div className="bg-yellow-500/10 border-2 border-yellow-500/30 text-yellow-500 font-black text-xs p-3 rounded-2xl flex items-start gap-2 mb-2 animate-pulse"><AlertTriangle size={16} className="shrink-0" /><span className="uppercase">{main.notes}</span></div>}
+                            {main.notes && <div className="bg-yellow-500/10 border-2 border-yellow-500/30 text-yellow-500 font-black text-xs p-3 rounded-2xl flex items-start gap-2 mb-2 animate-pulse-fast"><AlertTriangle size={16} className="shrink-0" /><span className="uppercase">{main.notes}</span></div>}
                             {extras.length > 0 && <div className="mt-2 pl-4 border-l-2 border-dashed border-white/20 space-y-1">{extras.map(e => <div key={e.id} className="text-emerald-300 text-sm font-bold flex items-center gap-2"><Plus size={12} /> {e.quantity}x {e.productName}</div>)}</div>}
                         </div>
                         <div className="flex gap-2 mt-auto">
                             {main.status === OrderStatus.PENDING ? (
-                                <button onClick={() => updateGroupStatus(order.id, main, extras, OrderStatus.PREPARING)} className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-lg shadow-emerald-600/20 transition-all">Começar</button>
+                                <button onClick={() => updateGroupStatus(order.id, main, extras, OrderStatus.PREPARING)} className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-lg shadow-emerald-600/20 transition-all duration-300 ease-out">Começar</button>
                             ) : (
-                                <button onClick={() => updateGroupStatus(order.id, main, extras, OrderStatus.READY)} className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-lg shadow-blue-600/20 transition-all flex items-center justify-center gap-2">{goesToCashier ? <span className="flex items-center gap-2"><ArrowRight size={18}/> Enviar ao Caixa</span> : <span className="flex items-center gap-2"><CheckCircle size={18}/> Pronto!</span>}</button>
+                                <button onClick={() => updateGroupStatus(order.id, main, extras, OrderStatus.READY)} className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-lg shadow-blue-600/20 transition-all duration-300 ease-out flex items-center justify-center gap-2">{goesToCashier ? <span className="flex items-center gap-2"><ArrowRight size={18}/> Enviar ao Caixa</span> : <span className="flex items-center gap-2"><CheckCircle size={18}/> Pronto!</span>}</button>
                             )}
                         </div>
                     </div>

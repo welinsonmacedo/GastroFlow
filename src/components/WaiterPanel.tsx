@@ -49,7 +49,7 @@ export const WaiterPanel: React.FC = () => {
 
             {/* Chamados Ativos (Real-time) */}
             {orderState.serviceCalls.length > 0 && (
-                <div className="mb-8 animate-in fade-in slide-in-from-top-4 duration-500">
+                <div className="mb-8 animate-in fade-in slide-in-from-top-4 duration-300">
                     <div className="flex items-center gap-2 mb-4">
                         <Bell className="text-red-500 animate-bounce" size={20} />
                         <h3 className="text-sm font-black text-red-600 uppercase tracking-widest">Chamados Ativos ({orderState.serviceCalls.length})</h3>
