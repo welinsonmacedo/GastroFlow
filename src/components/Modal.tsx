@@ -9,7 +9,7 @@ interface ModalProps {
   title: string;
   children: React.ReactNode;
   variant?: 'page' | 'dialog'; // 'page' = 100% Fullscreen, 'dialog' = Floating Window (98%)
-  maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | '5xl' | 'full'; 
+  maxWidth?: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | '5xl' | 'full'; 
   onSave?: () => void; // Ação opcional para o botão de salvar no header
   saveLabel?: string;
   disabled?: boolean;
@@ -46,6 +46,7 @@ export const Modal: React.FC<ModalProps> = ({
 
   // Renderiza o conteúdo como uma JANELA DE SISTEMA
   const maxWidthClasses = {
+    xs: 'max-w-xs',
     sm: 'max-w-sm',
     md: 'max-w-md',
     lg: 'max-w-lg',

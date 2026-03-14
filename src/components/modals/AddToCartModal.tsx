@@ -51,7 +51,7 @@ export const AddToCartModal: React.FC<AddToCartModalProps> = ({ isOpen, onClose,
     const total = ((item.salePrice || 0) + selectedExtras.reduce((acc, ex) => acc + (ex.salePrice || 0), 0)) * quantity;
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title={item.name} variant="dialog" maxWidth="sm" onSave={handleConfirm}>
+        <Modal isOpen={isOpen} onClose={onClose} title={item.name} variant="dialog" maxWidth="xs" onSave={handleConfirm}>
             <div className="space-y-6">
                 {/* Quantidade */}
                 <div className="flex items-center justify-between bg-gray-50 p-3 rounded-2xl">

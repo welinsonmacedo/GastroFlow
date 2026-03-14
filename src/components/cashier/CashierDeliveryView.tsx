@@ -67,9 +67,10 @@ export const CashierDeliveryView: React.FC = () => {
         return subtotal + (form.deliveryFee || 0);
     };
 
-    const handleAddToCart = (data: { quantity: number; notes: string; extras: InventoryItem[] }) => {
-        if (selectedItem) {
-            setCart([...cart, { item: selectedItem, ...data }]);
+    const handleAddToCart = (data: { quantity: number; notes: string; extras: InventoryItem[] }, explicitItem?: InventoryItem) => {
+        const itemToAdd = explicitItem || selectedItem;
+        if (itemToAdd) {
+            setCart([...cart, { item: itemToAdd, ...data }]);
         }
     };
 
@@ -289,7 +290,14 @@ export const CashierDeliveryView: React.FC = () => {
                 </div>
                 <div className="flex-1 overflow-y-auto p-3 grid grid-cols-2 gap-3 content-start custom-scrollbar">
                     {invState.inventory.filter(i => !i.isExtra && i.type !== 'INGREDIENT' && i.name.toLowerCase().includes(search.toLowerCase())).map(item => (
-                        <button key={item.id} onClick={() => { setSelectedItem(item); setItemModalOpen(true); }} className="bg-gray-50 p-3 rounded-xl border border-transparent hover:border-blue-300 hover:shadow-md transition-all text-left flex flex-col justify-between h-24">
+                        <button key={item.id} onClick={() => { 
+                            if (item.type === 'COMPOSITE') {
+                                setSelectedItem(item); 
+                                setItemModalOpen(true); 
+                            } else {
+                                handleAddToCart({ quantity: 1, notes: '', extras: [] }, item);
+                            }
+                        }} className="bg-gray-50 p-3 rounded-xl border border-transparent hover:border-blue-300 hover:shadow-md transition-all text-left flex flex-col justify-between h-24">
                             <div className="font-bold text-slate-800 text-xs line-clamp-2">{item.name}</div>
                             <div className="text-blue-600 font-black text-sm mt-1">R$ {item.salePrice.toFixed(2)}</div>
                         </button>

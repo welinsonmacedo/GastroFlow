@@ -33,9 +33,10 @@ export const CashierPOSView: React.FC<CashierPOSViewProps> = ({ cart, setCart })
     const [cashModalOpen, setCashModalOpen] = useState(false);
     const [cashReceived, setCashReceived] = useState('');
 
-    const handleAddToCart = (data: { quantity: number; notes: string; extras: InventoryItem[] }) => {
-        if (selectedItem) {
-            setCart([...cart, { item: selectedItem, ...data }]);
+    const handleAddToCart = (data: { quantity: number; notes: string; extras: InventoryItem[] }, explicitItem?: InventoryItem) => {
+        const itemToAdd = explicitItem || selectedItem;
+        if (itemToAdd) {
+            setCart([...cart, { item: itemToAdd, ...data }]);
         }
     };
 
@@ -99,7 +100,14 @@ export const CashierPOSView: React.FC<CashierPOSViewProps> = ({ cart, setCart })
                         {invState.inventory.filter(item => item.type !== 'INGREDIENT' && !item.isExtra && item.name.toLowerCase().includes(search.toLowerCase())).map(item => (
                             <button 
                               key={item.id} 
-                              onClick={() => { setSelectedItem(item); setItemModalOpen(true); }} 
+                              onClick={() => { 
+                                  if (item.type === 'COMPOSITE') {
+                                      setSelectedItem(item); 
+                                      setItemModalOpen(true); 
+                                  } else {
+                                      handleAddToCart({ quantity: 1, notes: '', extras: [] }, item);
+                                  }
+                              }} 
                               className="bg-white p-4 rounded-3xl shadow-sm border border-transparent hover:border-blue-300 hover:shadow-lg transition-all active:scale-95 flex flex-col justify-between h-36 group relative overflow-hidden"
                             >
                                 <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-100 transition-opacity"><Plus size={20} className="text-blue-600"/></div>
